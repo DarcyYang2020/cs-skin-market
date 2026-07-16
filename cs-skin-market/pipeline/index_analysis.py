@@ -910,11 +910,16 @@ def analyze_probability_integrated(prices, pct_90d, zscore_90d,
 #  Bottom-Fishing Signal (pre-trend leading indicator)
 # ============================================================
 
-def compute_bottom_signal_wrapper(prices, pct_90d, zscore_90d) -> dict:
-    """Wrapper that calls market_macro.compute_bottom_signal."""
+def compute_bottom_signal_wrapper(prices, pct_90d, zscore_90d, cycle_probability=None) -> dict:
+    """Wrapper that calls market_macro.compute_bottom_signal with cycle alignment."""
     from .market_macro import compute_bottom_signal, bottom_signal_summary
-    bs = compute_bottom_signal(pct_90d, zscore_90d, prices)
-    return bottom_signal_summary(bs)
+    accum_prob = 0.0
+    if cycle_probability:
+        accum_prob = cycle_probability.get("accumulation", 0.0)
+    bs = compute_bottom_signal(pct_90d, zscore_90d, prices, accumulation_prob=accum_prob)
+    summary = bottom_signal_summary(bs)
+    summary["cycle_contrib"] = bs.cycle_contrib
+    return summary
 
 # ============================================================
 #  Extended analysis with Market Trend Health + Fusion Decision
@@ -1054,7 +1059,8 @@ def analyze_index_full(index_history: list) -> dict:
             result["probability"]["prob_modifiers"] = pi.get("modifiers_applied", [])
 
         result["bottom_signal"] = compute_bottom_signal_wrapper(
-            values[-90:], pct, z)
+            values[-90:], pct, z,
+            cycle_probability=result.get("cycle_probability"))
 
         # --- Macro context ---
         try:

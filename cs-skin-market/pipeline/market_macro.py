@@ -244,9 +244,10 @@ class BottomSignal:
     breadth_contrib: int = 0
     sentiment_contrib: int = 0
     deceleration_contrib: int = 0
+    cycle_contrib: int = 0
 
 
-def compute_bottom_signal(pct_90d: float, zscore_90d: float, prices: list) -> BottomSignal:
+def compute_bottom_signal(pct_90d: float, zscore_90d: float, prices: list, accumulation_prob: float = 0.0) -> BottomSignal:
     """Compute bottom-fishing readiness 0-100.
 
     This signal fires BEFORE trend confirmation - it's a leading indicator.
@@ -322,9 +323,21 @@ def compute_bottom_signal(pct_90d: float, zscore_90d: float, prices: list) -> Bo
             elif improvement > 0:
                 bs.deceleration_contrib = 3
 
+    # 6. Cycle phase alignment bonus (0-20)
+    if accumulation_prob >= 80:
+        bs.cycle_contrib = 20
+    elif accumulation_prob >= 70:
+        bs.cycle_contrib = 15
+    elif accumulation_prob >= 60:
+        bs.cycle_contrib = 10
+    elif accumulation_prob >= 50:
+        bs.cycle_contrib = 5
+    else:
+        bs.cycle_contrib = 0
+
     bs.score = (bs.percentile_contrib + bs.zscore_contrib +
                 bs.breadth_contrib + bs.sentiment_contrib +
-                bs.deceleration_contrib)
+                bs.deceleration_contrib + bs.cycle_contrib)
 
     if bs.score >= 80:
         bs.level = "strong_bottom"
@@ -336,12 +349,12 @@ def compute_bottom_signal(pct_90d: float, zscore_90d: float, prices: list) -> Bo
         bs.action = "底部区域，等待确认信号后入场"
     elif bs.score >= 40:
         bs.level = "neutral"
-        bs.level_label = "中性"
-        bs.action = "无明显底部特征，观望"
+        bs.level_label = "中性偏底"
+        bs.action = "具备部分底部特征，可结合周期阶段轻仓参与"
     elif bs.score >= 20:
         bs.level = "no_bottom"
-        bs.level_label = "不适合抄底"
-        bs.action = "下跌中继或正常调整，勿抄底"
+        bs.level_label = "底部未确认"
+        bs.action = "未触发极端底部信号。若吸筹期概率较高，可按仓位上限轻仓分批试探"
     else:
         bs.level = "strong_market"
         bs.level_label = "强势行情"
@@ -359,4 +372,5 @@ def bottom_signal_summary(bs):
         breadth_contrib=bs.breadth_contrib,
         sentiment_contrib=bs.sentiment_contrib,
         deceleration_contrib=bs.deceleration_contrib,
+        cycle_contrib=bs.cycle_contrib,
     )
