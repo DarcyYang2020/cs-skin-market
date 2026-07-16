@@ -624,3 +624,63 @@ def analyze_index(index_history: list) -> dict:
             "recommendation": value_score.recommendation,
         },
     }
+
+
+# ============================================================
+#  Extended analysis with Market Trend Health + Fusion Decision
+# ============================================================
+
+def analyze_index_full(index_history: list) -> dict:
+    """Enhanced index analysis with market trend health and fusion decision."""
+    result = analyze_index(index_history)
+    if not result.get("has_data"):
+        return result
+
+    values = [v for _, v in index_history if v > 0]
+    if len(values) < 10:
+        return result
+
+    try:
+        from .market_th import (
+            compute_market_trend_health, market_th_summary,
+            compute_market_fusion_decision, market_fd_summary,
+        )
+
+        # Compute daily volumes from K-line if available
+        # For market index K-line from csQAQ, we approximate volumes from price changes
+        volumes = None
+        try:
+            from .collector import fetch_index_kline
+            kline = fetch_index_kline()
+            if kline and len(kline) > 0:
+                if hasattr(kline[0], 'volume'):
+                    volumes = [k.volume for k in kline[-len(values):]]
+                elif isinstance(kline[0], (list, tuple)) and len(kline[0]) >= 6:
+                    volumes = [float(k[5]) for k in kline[-len(values):] if len(k) >= 6]
+        except Exception:
+            pass
+
+        pct = result["position"]["percentile_90d"]
+        z = result["position"]["zscore_90d"]
+        cycle_phase = result.get("cycle", {}).get("phase", "unknown")
+
+        mth = compute_market_trend_health(
+            prices=values[-90:],
+            volumes=volumes[-90:] if volumes else None,
+            cycle_phase=cycle_phase,
+        )
+
+        mfd = compute_market_fusion_decision(
+            percentile_90d=pct,
+            th=mth,
+            zscore_90d=z,
+        )
+
+        result["market_trend_health"] = market_th_summary(mth)
+        result["market_fusion_decision"] = market_fd_summary(mfd)
+
+    except Exception:
+        import traceback
+        traceback.print_exc()
+
+    return result

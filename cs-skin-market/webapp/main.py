@@ -452,7 +452,7 @@ async def api_market_refresh(request: Request):
             analysis = {"has_data": False}
             if index_history and len(index_history) >= 5:
                 try:
-                    analysis = index_analysis.analyze_index(index_history)
+                    analysis = index_analysis.analyze_index_full(index_history)
                     db.set_setting(conn, "cached_index_analysis", json.dumps(analysis, ensure_ascii=False))
                 except Exception as ae:
                     print(f"[refresh] index analysis error: {ae}")

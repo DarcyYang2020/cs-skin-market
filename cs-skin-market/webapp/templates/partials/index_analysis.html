@@ -109,6 +109,99 @@
     <div style="margin-top: 4px; font-size: 12px; color: var(--text-muted);">{{ analysis.value_score.recommendation }}</div>
   </div>
 </div>
+
+<!-- ====== Market Trend Health (P0) ====== -->
+{% if analysis.market_trend_health and analysis.market_trend_health.score %}
+<div class="card" style="grid-column: 1 / -1;">
+  <div class="card-header">
+    <span class="card-title">Market Trend Health</span>
+    <span style="font-size: 36px; font-weight: 800;">{{ analysis.market_trend_health.score }}/100</span>
+  </div>
+  <div style="margin-bottom: 16px; padding: 10px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; background: rgba(255,255,255,0.05);">
+    {{ analysis.market_trend_health.level_label }} | Dir: {{ analysis.market_trend_health.direction }}
+    {% if analysis.market_trend_health.volume_divergence %}
+    <span style="margin-left: 8px; padding: 2px 8px; background: rgba(239,68,68,0.15); border-radius: 4px; color: var(--red);">{{ analysis.market_trend_health.volume_divergence_label }}</span>
+    {% endif %}
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 12px;">
+    <div style="text-align: center; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
+      <div style="font-size: 18px; font-weight: 700;">{{ analysis.market_trend_health.persistence_score }}</div>
+      <div style="font-size: 11px; color: var(--text-muted);">Persistence</div>
+    </div>
+    <div style="text-align: center; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
+      <div style="font-size: 18px; font-weight: 700;">{{ analysis.market_trend_health.steepness_score }}</div>
+      <div style="font-size: 11px; color: var(--text-muted);">Steepness</div>
+    </div>
+    <div style="text-align: center; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
+      <div style="font-size: 18px; font-weight: 700;">{{ analysis.market_trend_health.structure_score }}</div>
+      <div style="font-size: 11px; color: var(--text-muted);">MA Struct</div>
+    </div>
+    <div style="text-align: center; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
+      <div style="font-size: 18px; font-weight: 700;">{{ analysis.market_trend_health.volume_score }}</div>
+      <div style="font-size: 11px; color: var(--text-muted);">Vol/Price</div>
+    </div>
+    <div style="text-align: center; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
+      <div style="font-size: 18px; font-weight: 700;">{{ analysis.market_trend_health.anomaly_score }}</div>
+      <div style="font-size: 11px; color: var(--text-muted);">Anomaly</div>
+    </div>
+    <div style="text-align: center; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
+      <div style="font-size: 18px; font-weight: 700;">{{ analysis.market_trend_health.key_level_score }}</div>
+      <div style="font-size: 11px; color: var(--text-muted);">S/R Level</div>
+    </div>
+  </div>
+  {% if analysis.market_trend_health.deduction_sources %}
+  <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">
+    Deductions:
+    {% for src in analysis.market_trend_health.deduction_sources %}
+    <span style="display: inline-block; padding: 1px 6px; background: rgba(239,68,68,0.1); border-radius: 3px; margin: 2px;">{{ src }}</span>
+    {% endfor %}
+  </div>
+  {% endif %}
+  <div style="font-size: 11px; color: var(--text-muted);">
+    MA: {{ analysis.market_trend_health.ma_structure }} | Cross: {{ analysis.market_trend_health.ma_cross_type }} | Steep: {{ analysis.market_trend_health.steepness_signal }} | Vol: {{ analysis.market_trend_health.volume_signal }}
+  </div>
+</div>
+{% endif %}
+
+<!-- ====== Market Fusion Decision (P0) ====== -->
+{% if analysis.market_fusion_decision and analysis.market_fusion_decision.action %}
+<div class="card" style="grid-column: 1 / -1;">
+  <div class="card-header">
+    <span class="card-title">Market Fusion Decision</span>
+    <span style="font-size: 24px; font-weight: 800;">{{ analysis.market_fusion_decision.action_label }}</span>
+  </div>
+  <div style="margin-bottom: 16px; padding: 12px 16px; border-radius: 8px; background: rgba(255,255,255,0.03); font-size: 14px; line-height: 1.6; color: var(--text-secondary);">
+    {{ analysis.market_fusion_decision.action_detail }}
+  </div>
+  <div class="stat-grid">
+    <div class="stat-item">
+      <div class="stat-value">{{ "%.1f"|format(analysis.market_fusion_decision.percentile_90d) }}%</div>
+      <div class="stat-label">90d Pctl</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value">{{ analysis.market_fusion_decision.raw_th_score }} -> {{ analysis.market_fusion_decision.corrected_th_score }}</div>
+      <div class="stat-label">TH (raw->corrected)</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value">{{ analysis.market_fusion_decision.zone_label }}</div>
+      <div class="stat-label">Zone</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value" style="font-size: 28px; font-weight: 800;">{{ "%.0f"|format(analysis.market_fusion_decision.global_position_limit * 100) }}%</div>
+      <div class="stat-label">Position Limit</div>
+    </div>
+  </div>
+  {% if analysis.market_fusion_decision.deduction_sources %}
+  <div style="margin-top: 12px; font-size: 11px; color: var(--text-muted);">
+    Sources:
+    {% for src in analysis.market_fusion_decision.deduction_sources %}
+    <span style="display: inline-block; padding: 1px 6px; background: rgba(239,68,68,0.1); border-radius: 3px; margin: 2px;">{{ src }}</span>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
 {% elif not analysis or not analysis.has_data %}
 <div class="card"><div class="empty-state"><div class="icon">🔍</div><h3>暂无大盘分析数据</h3><p>点击上方「刷新数据」获取最新分析</p></div></div>
 {% endif %}

@@ -830,3 +830,6 @@ def fusion_decision_summary(fd):
         "deduction_sources": fd.deduction_sources,
         "liquidity_filtered": fd.liquidity_filtered,
     }
+
+# === Market Index Trend Health ===
+# See pipeline/market_th.py for full implementation
