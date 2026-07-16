@@ -1,4 +1,3 @@
-
 // CS-Market Web App - Frontend Scripts
 
 // ---- Modal Helper ----
@@ -39,6 +38,20 @@ document.addEventListener('htmx:afterRequest', function(evt) {
   if (wlOverlay) wlOverlay.style.display = 'none';
 });
 
+// ---- Auto-open modal when content loads into #modal-body ----
+// Uses afterSwap (fires immediately after DOM update) for reliable timing
+document.addEventListener('htmx:afterSwap', function(evt) {
+  var target = evt.detail.target;
+  if (!target) return;
+  // Check if target is #modal-body or contains it
+  if (target.id === 'modal-body' || target.querySelector('#modal-body')) {
+    var modalBody = document.getElementById('modal-body');
+    if (modalBody && modalBody.innerHTML.trim().length > 0) {
+      openModal('analysis-modal');
+    }
+  }
+});
+
 // ---- Checkbox Select All ----
 function toggleAllCheckboxes(source) {
   document.querySelectorAll('.wl-checkbox').forEach(function(cb) { cb.checked = source.checked; });
@@ -53,11 +66,3 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }, 3000);
 });
-
-// ---- Auto-open modal when content loads into #modal-body ----
-document.addEventListener('htmx:afterSettle', function(evt) {
-  if (evt.detail.target && evt.detail.target.id === 'modal-body') {
-    openModal('analysis-modal');
-  }
-});
-

@@ -60,6 +60,14 @@ TZ_BJ = timezone(timedelta(hours=8))
 
 
 
+
+def _ae(msg: str) -> str:
+    """Wrap error message in styled HTML."""
+    return f"""<div class="card" style="border-color: rgba(239,68,68,0.5);">
+<div class="card-header"><span class="card-title">&#9888;&#65039; 错误</span></div>
+<p style="color: var(--red);">{msg}</p>
+</div>"""
+
 def _now_str() -> str:
 
     return datetime.now(TZ_BJ).strftime("%Y-%m-%d %H:%M:%S")
@@ -792,10 +800,7 @@ async def api_watchlist_analyze(request: Request, item_id: int):
             volumes=volume_history if volume_history else None,
             supply_hist=supply_history if supply_history else None,
             order_book=item.order_book,
-            sector_corr=sector_corr,
             index_change_7d=idx.change_7d,
-            rarity=rarity,
-            source_val=source_val,
         )
 
         # Save report to DB (overwrites previous)
@@ -867,7 +872,7 @@ def _render_report_html(report_md, date, grade, total_score):
     html_parts.append('<div class="card-header">')
     html_parts.append('<span class="card-title">📋 分析报告</span>')
     html_parts.append(f'<span class="badge badge-{grade.lower() if grade else "unknown"}">{grade} 级</span>')
-    html_parts.append(f'<span style="font-size: 12px; color: var(--text-muted); margin-left: 8px;">{date} | 评分: {total_score}</span>')
+    html_parts.append(f'<span style="font-size: 12px; color: var(--text-muted); margin-left: 8px;">更新时间: {date} | 评分: {total_score}</span>')
     html_parts.append('</div>')
     html_parts.append('<div style="padding: 16px; max-height: 70vh; overflow-y: auto; font-size: 13px; line-height: 1.6; color: var(--text-primary);">')
     for line in lines:

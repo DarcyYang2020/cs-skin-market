@@ -157,7 +157,7 @@ def save_market_index(conn, value, change_7d, mood=""):
 def save_snapshot(conn, item_id, score_scarcity, score_volume, score_market, score_liquidity=0, total_score=0, grade="", recommendation="", price_rmb=0, report_md="") -> int:
     cur = conn.execute("""INSERT INTO snapshots (item_id,date,score_scarcity,score_volume,score_market,score_liquidity,total_score,grade,recommendation,price_rmb,report_md)
                        VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
-                       (item_id, _today(), score_scarcity, score_volume, score_market, score_liquidity, total_score, grade, recommendation, price_rmb, report_md))
+                       (item_id, _now(), score_scarcity, score_volume, score_market, score_liquidity, total_score, grade, recommendation, price_rmb, report_md))
     return cur.lastrowid
 
 
@@ -165,7 +165,7 @@ def upsert_snapshot(conn, item_id, price_rmb=0, total_score=0, grade="", report_
     conn.execute("DELETE FROM snapshots WHERE item_id=?", (item_id,))
     cur = conn.execute(
         "INSERT INTO snapshots (item_id,date,score_scarcity,score_volume,score_market,score_liquidity,total_score,grade,recommendation,price_rmb,report_md) VALUES (?,?,0,0,0,0,?,?,?,?,?)",
-        (item_id, _today(), total_score, grade, "", price_rmb, report_md))
+        (item_id, _now(), total_score, grade, "", price_rmb, report_md))
     return cur.lastrowid
 
 
