@@ -20,17 +20,15 @@ _cache_data = None
 
 
 def _fetch_macro():
-    """Fetch macro data from csQAQ, cached for 10 min."""
+    """Fetch macro data from csQAQ, cached for 10 min.
+    Uses collector._api_get for built-in rate limiting and retry."""
     global _cache_ts, _cache_data
     now = _time.time()
     if _cache_data is not None and (now - _cache_ts) < 600:
         return _cache_data
-    from .config import CSQAQ_BASE, API_TOKEN
-    url = CSQAQ_BASE + "/current_data?type=volume"
-    req = urllib.request.Request(url)
-    req.add_header("token", API_TOKEN)
-    with urllib.request.urlopen(req, timeout=10) as resp:
-        _cache_data = json.loads(resp.read().decode("utf-8")).get("data", {})
+    from .collector import _api_get
+    resp = _api_get("/current_data?type=volume")
+    _cache_data = resp.get("data", {})
     _cache_ts = now
     return _cache_data
 
