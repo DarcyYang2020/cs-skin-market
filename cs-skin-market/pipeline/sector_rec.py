@@ -55,7 +55,13 @@ def recommend(cycle_phase: str, accumulation_prob: float = 0.0) -> dict:
 
     recommendations = []
 
+    # Only analyze major capital-flow sectors (big money targets)
+    FOCUS_SECTORS = ["first_generation", "main_weapon", "agent", "covert_weapon",
+                     "thousand_weapon", "wk", "collection"]
+
     for key, si in sub_indices.items():
+        if key not in FOCUS_SECTORS:
+            continue
         if key == "init":
             continue
 
