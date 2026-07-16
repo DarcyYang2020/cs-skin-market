@@ -36,6 +36,20 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
 from pipeline import config, db, collector, scorer, valuation, regime, index_analysis, item_analysis
+
+# === In-memory analysis cache (session-level, 30-min TTL) ===
+_analysis_cache = {}  # key: item_id -> (timestamp, html_content)
+
+def _cached_analysis(item_id, compute_fn):
+    import time as _time
+    now = _time.time()
+    entry = _analysis_cache.get(item_id)
+    if entry and (now - entry[0]) < 1800:  # 30 min TTL
+        return entry[1]
+    result = compute_fn()
+    _analysis_cache[item_id] = (now, result)
+    return result
+
 from pipeline.logutil import get_logger
 _web_log = get_logger("webapp")
 from pipeline import collector_csqaq
@@ -325,36 +339,22 @@ async def page_watchlist(request: Request):
 
     try:
 
-        rows = db.watchlist_list(conn)
+        rows = db.watchlist_list_with_snapshots(conn)
+
+        # Batch fetch trend health settings (1 query instead of N)
+        th_keys = ["th_" + str(r["id"]) for r in rows]
+        th_settings = db.batch_get_settings(conn, th_keys)
 
         items = []
-
         for r in rows:
-
             item = dict(r)
-
-            snaps = conn.execute(
-
-                "SELECT price_rmb, grade FROM snapshots WHERE item_id=? ORDER BY date DESC LIMIT 1",
-
-                (r["id"],)
-
-            ).fetchone()
-
-            item["latest_price"] = snaps["price_rmb"] if snaps else None
-
-            item["latest_grade"] = snaps["grade"] if snaps else None
-            # Read cached trend health
-            item_id_str = str(r["id"])
-            th_json = db.get_setting(conn, "th_" + item_id_str, "")
+            item["latest_price"] = r["latest_price"]
+            item["latest_grade"] = r["latest_grade"]
+            th_json = th_settings.get("th_" + str(r["id"]), "")
             item["trend_health"] = json.loads(th_json) if th_json else None
-
             item["holding"] = r["holding"] if "holding" in r.keys() else 0
-
             item["avg_cost"] = r["avg_cost"] if "avg_cost" in r.keys() else 0
-
             item["quantity"] = r["quantity"] if "quantity" in r.keys() else 0
-
             items.append(item)
 
 
