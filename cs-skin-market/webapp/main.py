@@ -110,6 +110,10 @@ def _migrate_db():
 
                 pass
 
+        try:
+            conn.execute("ALTER TABLE snapshots ADD COLUMN report_html TEXT DEFAULT ''")
+        except Exception:
+            pass
         conn.commit()
 
     finally:
@@ -803,20 +807,8 @@ async def api_watchlist_analyze(request: Request, item_id: int):
             index_change_7d=idx.change_7d,
         )
 
-        # Save report to DB (overwrites previous)
-        try:
-            from pipeline.watchlist import _generate_item_report_md
-            report_md = _generate_item_report_md(analysis)
-            conn2 = db.get_conn()
-            db.upsert_snapshot(conn2, item_id, price_rmb=analysis.price_rmb,
-                              total_score=analysis.value.score, grade=analysis.value.grade,
-                              report_md=report_md)
-            conn2.commit()
-            conn2.close()
-        except Exception:
-            pass
-
-        return templates.TemplateResponse(request, "partials/analysis.html", {
+        # Render analysis HTML first
+        analysis_html = templates.TemplateResponse(request, "partials/analysis.html", {
             "name": analysis.name,
             "price_rmb": analysis.price_rmb,
             "volume_day": analysis.volume_day,
@@ -833,7 +825,24 @@ async def api_watchlist_analyze(request: Request, item_id: int):
             "fusion_decision": analysis.fusion_decision,
             "valuation_grid": analysis.valuation_grid,
             "error": None,
-            })
+        })
+
+        # Save report to DB (overwrites previous)
+        try:
+            from pipeline.watchlist import _generate_item_report_md
+            report_md = _generate_item_report_md(analysis)
+            conn2 = db.get_conn()
+            # Save the rendered HTML body for fast report loading
+            html_body = analysis_html.body.decode("utf-8") if hasattr(analysis_html, 'body') else str(analysis_html)
+            db.upsert_snapshot(conn2, item_id, price_rmb=analysis.price_rmb,
+                              total_score=analysis.value.score, grade=analysis.value.grade,
+                              report_md=report_md, report_html=html_body)
+            conn2.commit()
+            conn2.close()
+        except Exception:
+            pass
+
+        return analysis_html
 
     except Exception as e:
         import traceback; traceback.print_exc()
@@ -849,13 +858,16 @@ async def api_watchlist_report(request: Request, item_id: int):
     conn = db.get_conn()
     try:
         row = db.get_latest_snapshot_report(conn, item_id)
-        if not row or not row["report_md"]:
+        if not row or not (row["report_html"] or row["report_md"]):
             return HTMLResponse(
                 '<div class="card" style="border-color: rgba(245,158,11,0.5);">'
                 '<div class="card-header"><span class="card-title">\u26a0\ufe0f \u6682\u65e0\u62a5\u544a</span></div>'
                 '<p style="color: var(--text-secondary);">\u8be5\u7269\u54c1\u5c1a\u672a\u751f\u6210\u5206\u6790\u62a5\u544a\uff0c\u8bf7\u5148\u70b9\u51fb\u300c\u5206\u6790\u300d\u6309\u94ae\u3002</p>'
                 '</div>'
             )
+        # Return saved rich HTML if available (from analyze), otherwise fall back to markdown
+        if row["report_html"]:
+            return HTMLResponse(row["report_html"])
         report_html = _render_report_html(row["report_md"], row["date"], row["grade"], row["total_score"] or 0)
         return HTMLResponse(report_html)
     finally:

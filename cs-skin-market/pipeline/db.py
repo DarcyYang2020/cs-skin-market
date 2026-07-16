@@ -161,11 +161,11 @@ def save_snapshot(conn, item_id, score_scarcity, score_volume, score_market, sco
     return cur.lastrowid
 
 
-def upsert_snapshot(conn, item_id, price_rmb=0, total_score=0, grade="", report_md=""):
+def upsert_snapshot(conn, item_id, price_rmb=0, total_score=0, grade="", report_md="", report_html=""):
     conn.execute("DELETE FROM snapshots WHERE item_id=?", (item_id,))
     cur = conn.execute(
-        "INSERT INTO snapshots (item_id,date,score_scarcity,score_volume,score_market,score_liquidity,total_score,grade,recommendation,price_rmb,report_md) VALUES (?,?,0,0,0,0,?,?,?,?,?)",
-        (item_id, _now(), total_score, grade, "", price_rmb, report_md))
+        "INSERT INTO snapshots (item_id,date,score_scarcity,score_volume,score_market,score_liquidity,total_score,grade,recommendation,price_rmb,report_md,report_html) VALUES (?,?,0,0,0,0,?,?,?,?,?,?)",
+        (item_id, _now(), total_score, grade, "", price_rmb, report_md, report_html))
     return cur.lastrowid
 
 

@@ -156,7 +156,50 @@ async def search_good_id(item_name: str) -> tuple[int, str]:
         if m:
             good_id = int(m.group(1))
         title = await page.evaluate("() => document.title.split('-')[0].trim()")
-        print(f"  [csqaq] Navigated: {url}, good_id={good_id}")
+        print(f"  [csqaq] Navigated: {url}, good_id={good_id}, title={title}")
+
+        # Post-navigation StatTrak check: if we landed on a StatTrak variant,
+        # try clicking the next non-StatTrak option
+        if "StatTrak" in title or "StatTrak\u2122" in title:
+            print(f"  [csqaq] Landed on StatTrak variant, retrying...")
+            good_id = 0
+            # Go back and try next option
+            clicked_alt = False
+            for j in range(cnt):
+                if j == i:
+                    continue  # skip the one we already tried
+                alt_txt = await opt.nth(j).text_content() if await opt.nth(j).is_visible() else ""
+                alt_clean = alt_txt.strip() if alt_txt else ""
+                if "StatTrak" in alt_clean or "StatTrak\u2122" in alt_clean or "\u2122" in alt_clean or "\u7eaa\u5ff5\u54c1" in alt_clean:
+                    continue
+                if not alt_clean:
+                    continue
+                print(f"  [csqaq] Retry clicking: {alt_clean}")
+                await page.goto(f"{CSQAQ_WEB}/home", wait_until="domcontentloaded", timeout=15000)
+                await page.wait_for_timeout(1500)
+                await page.click(".ant-select-selector")
+                await page.wait_for_timeout(300)
+                await page.click("input")
+                await page.wait_for_timeout(200)
+                await page.type("input", item_name, delay=30)
+                await page.wait_for_timeout(2000)
+                opt2 = page.locator(".ant-select-item-option")
+                if await opt2.nth(j).is_visible():
+                    await opt2.nth(j).click(force=True, timeout=5000)
+                    await page.wait_for_timeout(2000)
+                    url2 = page.url
+                    m2 = re.search(r'/goods/(\d+)', url2)
+                    if m2:
+                        good_id = int(m2.group(1))
+                    title = await page.evaluate("() => document.title.split('-')[0].trim()")
+                    print(f"  [csqaq] Retry result: url={url2}, good_id={good_id}, title={title}")
+                clicked_alt = True
+                break
+            if not clicked_alt:
+                print(f"  [csqaq] No non-StatTrak alternative found, using original StatTrak result")
+                # Recover the original StatTrak good_id from the first navigation
+                if good_id == 0 and m:
+                    good_id = int(m.group(1))
     finally:
         await page.close()
         await browser.close()
