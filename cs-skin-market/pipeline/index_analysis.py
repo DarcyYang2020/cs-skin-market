@@ -859,6 +859,30 @@ def analyze_probability_integrated(prices, pct_90d, zscore_90d,
     prob7 = max(3, min(97, prob7 * total_mod))
     prob30 = max(3, min(97, prob30 * total_mod))
 
+    # Bearish macro cap: if breadth is very bearish AND players declining,
+    # cap upside probability because mean-reversion logic breaks in downtrends
+    bearish_score = 0
+    if breadth <= 25:
+        bearish_score += 2
+    elif breadth <= 40:
+        bearish_score += 1
+    if online <= 30:
+        bearish_score += 1
+    if sentiment <= 40:
+        bearish_score += 1  # greedy but not fearful = no contrarian boost
+
+    if bearish_score >= 3:
+        # Strong bearish: cap up-prob at 45%
+        prob3 = min(prob3, 45)
+        prob7 = min(prob7, 45)
+        prob30 = min(prob30, 45)
+        modifiers.append("?????? <=45%")
+    elif bearish_score >= 2:
+        prob3 = min(prob3, 55)
+        prob7 = min(prob7, 55)
+        prob30 = min(prob30, 55)
+        modifiers.append("?????? <=55%")
+
     # Confidence: based on how extreme the modifiers are
     if abs(total_mod - 1.0) > 0.2:
         confidence = "high"
@@ -949,9 +973,34 @@ def analyze_index_full(index_history: list) -> dict:
         result["cycle_probability"] = analyze_cycle_probability(
             values[-90:], pct, z)
 
+        # Derive unified cycle phase from probability distribution
+        cp = result["cycle_probability"]
+        max_phase = max(cp, key=cp.get)
+        phase_labels = {
+            "accumulation": ("accumulation", "???", "?????????"),
+            "consolidation": ("consolidation", "???", "???????????"),
+            "markup": ("markup", "???", "???????????"),
+            "distribution": ("distribution", "???", "?????????"),
+        }
+        if max_phase in phase_labels:
+            ph, pl, ps = phase_labels[max_phase]
+            if "cycle" in result:
+                result["cycle"]["phase"] = ph
+                result["cycle"]["phase_label"] = pl
+                result["cycle"]["phase_strategy"] = ps
+                result["cycle"]["phase_confidence"] = round(cp[max_phase] / 100, 2)
+
         result["probability_integrated"] = analyze_probability_integrated(
             values[-90:], pct, z,
             volatility_regime=result.get("probability", {}).get("volatility_regime", "normal"))
+        # Overwrite old probability prob_up values with integrated (bearish-capped) values
+        pi = result["probability_integrated"]
+        if "probability" in result:
+            result["probability"]["prob_up_3d"] = pi["prob_up_3d"]
+            result["probability"]["prob_up_7d"] = pi["prob_up_7d"]
+            result["probability"]["prob_up_30d"] = pi["prob_up_30d"]
+            result["probability"]["prob_confidence"] = pi.get("confidence", "low")
+            result["probability"]["prob_modifiers"] = pi.get("modifiers_applied", [])
 
         result["bottom_signal"] = compute_bottom_signal_wrapper(
             values[-90:], pct, z)
