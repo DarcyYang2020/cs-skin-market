@@ -1,0 +1,35 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Project - runtime data (database, reports, debug)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+data/*.db
+data/scan_*.md
+data/_debug_*
+*.log
+
+# Environment
+.env
+.env.local
+
+# Node (if any)
+node_modules/

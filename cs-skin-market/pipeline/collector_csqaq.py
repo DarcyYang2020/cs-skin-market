@@ -1,0 +1,331 @@
+﻿# -*- coding: utf-8 -*-
+"""csqaq.com Playwright data collector.
+Navigates directly to goods page and intercepts chart API.
+"""
+
+import asyncio, json, re
+from collections import defaultdict
+from datetime import datetime, timezone, timedelta
+from typing import Optional
+
+TZ_BJ = timezone(timedelta(hours=8))
+CSQAQ_WEB = "https://csqaq.com"
+_PROXY = None
+
+try:
+    from .config import PROXY as _P
+    _PROXY = {"server": _P} if _P else None
+except:
+    pass
+
+
+class KLinePoint:
+    def __init__(self, date="", open=0.0, high=0.0, low=0.0, close=0.0, volume=0):
+        self.date, self.open, self.high, self.low, self.close, self.volume = date, open, high, low, close, volume
+
+
+class ItemData:
+    def __init__(self):
+        self.name = self.steam_name = self.weapon = self.skin = self.wear = ""
+        self.price_rmb = self.volume_day = self.volume_total = 0
+        self.trend = ""
+        self.order_book = None
+        self.kline_90d = []
+        self._daily_bars = []
+        self._kline_raw = []
+        self.good_id = 0
+        self.sector = ""
+        self.rarity_name = self.exterior_name = ""
+        self.sell_price_rate_1 = self.sell_price_rate_7 = self.sell_price_rate_15 = 0.0
+        self.sell_price_rate_30 = self.sell_price_rate_90 = self.sell_price_rate_180 = 0.0
+        self.type_name = ""
+        self.quality_name = ""
+        self.group_hash_name = ""
+        self.case_name = ""
+        self.case_discontinued = False
+        self.case_created = ""
+        self.rank_num = 0
+        self.rank_change = 0
+        self.statistic_variants = []
+
+class OrderBook:
+    def __init__(self, lowest_sell=0.0, highest_buy=0.0, sell_count=0, buy_count=0):
+        self.lowest_sell, self.highest_buy = lowest_sell, highest_buy
+        self.sell_count, self.buy_count = sell_count, buy_count
+        self.spread_rmb = self.spread_pct = self.bid_depth = 0.0
+
+
+def _chart_to_daily_ohlc(chart_data: dict) -> list:
+    """Convert chart {timestamp, main_data, num_data} to daily KLinePoint list."""
+    ts = chart_data.get("timestamp", [])
+    prices = chart_data.get("main_data", [])
+    sc = chart_data.get("num_data", [])
+    if not ts or not prices:
+        return []
+    daily = defaultdict(list)
+    for i in range(min(len(ts), len(prices))):
+        ts_s = ts[i] / 1000.0
+        d = datetime.fromtimestamp(ts_s, tz=TZ_BJ).strftime("%Y-%m-%d")
+        p = float(prices[i]) if prices[i] is not None else 0.0
+        n = int(sc[i]) if i < len(sc) and sc[i] is not None else 0
+        if p > 0:
+            daily[d].append({"price": p, "count": n})
+    result = []
+    for d in sorted(daily.keys()):
+        pts = daily[d]
+        pl = [p["price"] for p in pts]
+        vl = [p["count"] for p in pts]
+        result.append(KLinePoint(date=d, open=pl[0], high=max(pl), low=min(pl), close=pl[-1], volume=max(vl)))
+    return result
+
+
+def _chart_to_raw(chart_data: dict) -> list:
+    ts = chart_data.get("timestamp", [])
+    prices = chart_data.get("main_data", [])
+    sc = chart_data.get("num_data", [])
+    raw = []
+    for i in range(len(ts)):
+        raw.append({
+            "timestamp": ts[i],
+            "price": float(prices[i]) if i < len(prices) and prices[i] is not None else 0.0,
+            "in_sale": int(sc[i]) if i < len(sc) and sc[i] is not None else 0,
+            "volume": 0, "tx_amount": 0.0, "tx_count": 0, "survive_num": 0,
+        })
+    return raw
+
+
+async def _browser():
+    from playwright.async_api import async_playwright
+    pw = await async_playwright().start()
+    b = await pw.chromium.launch(headless=True, proxy=_PROXY)
+    return pw, b
+
+
+async def search_good_id(item_name: str) -> tuple[int, str]:
+    """Async: Search csqaq.com for an item, return (good_id, page_title)."""
+    pw, browser = await _browser()
+    page = await browser.new_page()
+    
+    good_id = 0
+    title = ""
+    
+    try:
+        await page.goto(f"{CSQAQ_WEB}/home", wait_until="domcontentloaded", timeout=30000)
+        await page.wait_for_timeout(2000)
+        
+        # Click and wait for Ant Design select to initialize
+        await page.click(".ant-select-selector")
+        await page.wait_for_timeout(500)
+        
+        # Focus the input and type
+        await page.click("input")
+        await page.wait_for_timeout(200)
+        await page.type("input", item_name, delay=30)
+        await page.wait_for_timeout(2500)
+        
+        opt = page.locator(".ant-select-item-option")
+        cnt = await opt.count()
+        print(f"  [csqaq] Search options: {cnt}")
+        # First pass: find non-StatTrak, non-Souvenir option
+        clicked = False
+        for i in range(cnt):
+            if await opt.nth(i).is_visible():
+                txt = await opt.nth(i).text_content()
+                txt_clean = txt.strip() if txt else ""
+                # Skip StatTrak and Souvenir variants
+                if "StatTrak" in txt_clean or "StatTrak\u2122" in txt_clean or "\u2122" in txt_clean or "\u7eaa\u5ff5\u54c1" in txt_clean:
+                    print(f"  [csqaq] Skipping StatTrak/Souvenir: {txt_clean}")
+                    continue
+                print(f"  [csqaq] Clicking: {txt_clean}")
+                await opt.nth(i).click(force=True, timeout=5000)
+                clicked = True
+                break
+        # Fallback: if all results are StatTrak, use the first one
+        if not clicked:
+            for i in range(cnt):
+                if await opt.nth(i).is_visible():
+                    txt = await opt.nth(i).text_content()
+                    print(f"  [csqaq] Fallback clicking: {txt.strip() if txt else ''}")
+                    await opt.nth(i).click(force=True, timeout=5000)
+                    break
+        
+        await page.wait_for_timeout(2000)
+        
+        url = page.url
+        m = re.search(r'/goods/(\d+)', url)
+        if m:
+            good_id = int(m.group(1))
+        title = await page.evaluate("() => document.title.split('-')[0].trim()")
+        print(f"  [csqaq] Navigated: {url}, good_id={good_id}")
+    finally:
+        await page.close()
+        await browser.close()
+        await pw.stop()
+    
+    return good_id, title
+
+
+async def fetch_item_detail(good_id: int) -> Optional[ItemData]:
+    """Async: Fetch item detail + 90-day K-line from csqaq.com/goods/{good_id}.
+    Uses Playwright with route interception for period=90 chart data.
+    Also captures good_detail response for price/volume info.
+    """
+    item = ItemData()
+    item.good_id = good_id
+    
+    pw, browser = await _browser()
+    page = await browser.new_page()
+    
+    captured = {"chart": None, "detail": None}
+    
+    try:
+        async def on_response(response):
+            url = response.url
+            try:
+                if "info/chart" in url and response.ok:
+                    body = await response.text()
+                    captured["chart"] = body
+                if "info/good?id=" in url and response.ok:
+                    body = await response.text()
+                    captured["detail"] = body
+            except:
+                pass
+        
+        async def modify_chart(route, request):
+            if "info/chart" in request.url:
+                try:
+                    body = json.loads(request.post_data)
+                    body["period"] = "90"
+                    body["key"] = "sell_price"
+                    body["platform"] = 1
+                    await route.continue_(post_data=json.dumps(body))
+                except:
+                    await route.continue_()
+            else:
+                await route.continue_()
+        
+        page.on("response", on_response)
+        await page.route("**/info/chart**", modify_chart)
+        
+        await page.goto(f"{CSQAQ_WEB}/goods/{good_id}", wait_until="domcontentloaded", timeout=30000)
+        await page.wait_for_timeout(10000)
+        
+        # 1. Parse chart data
+        if captured["chart"]:
+            data = json.loads(captured["chart"])
+            if data.get("code") == 200 and data.get("data"):
+                cd = data["data"]
+                item._daily_bars = _chart_to_daily_ohlc(cd)
+                item._kline_raw = _chart_to_raw(cd)
+                item.kline_90d = item._daily_bars[:]
+                ts = cd.get("timestamp", [])
+                prices = cd.get("main_data", [])
+                nums = cd.get("num_data", [])
+                if prices:
+                    item.price_rmb = float(prices[-1]) if prices[-1] is not None else 0.0
+                if nums:
+                    item.volume_total = int(nums[-1]) if nums[-1] is not None else 0
+                print(f"  [csqaq] Chart: {len(ts)} pts, {len(item._daily_bars)} daily bars")
+        
+        # 2. Parse detail data
+        if captured["detail"]:
+            data = json.loads(captured["detail"])
+            if data.get("code") == 200:
+                gi = data["data"].get("goods_info", {})
+                item.name = gi.get("name", item.name)
+                item.steam_name = gi.get("market_hash_name", "")
+                item.sell_price_rate_1 = float(gi.get("sell_price_rate_1", 0))
+                item.sell_price_rate_7 = float(gi.get("sell_price_rate_7", 0))
+                item.sell_price_rate_15 = float(gi.get("sell_price_rate_15", 0))
+                item.sell_price_rate_30 = float(gi.get("sell_price_rate_30", 0))
+                item.sell_price_rate_90 = float(gi.get("sell_price_rate_90", 0))
+                item.sell_price_rate_180 = float(gi.get("sell_price_rate_180", 0))
+                item.rarity_name = gi.get("rarity_localized_name", "")
+                item.exterior_name = gi.get("exterior_localized_name", "")
+                item.type_name = gi.get("type_localized_name", "")
+                item.quality_name = gi.get("quality_localized_name", "")
+                item.group_hash_name = gi.get("group_hash_name", "")
+                item.rank_num = int(gi.get("rank_num", 0))
+                item.rank_change = int(gi.get("rank_num_change", 0))
+                
+                # Container/case info
+                container = data["data"].get("container", [])
+                if container and isinstance(container, list) and len(container) > 0:
+                    c = container[0]
+                    item.case_name = c.get("name", "")
+                    item.case_discontinued = c.get("comment", "") == "\u7edd\u7248"
+                    item.case_created = c.get("created_at", "")
+                
+                # Statistic variants (same skin, different wears)
+                sl = data["data"].get("statistic_list", [])
+                if isinstance(sl, list):
+                    item.statistic_variants = sl
+                
+                buff_sell = float(gi.get("buff_sell_price", 0))
+                if buff_sell > 0:
+                    item.price_rmb = buff_sell
+                
+                item.volume_total = int(gi.get("buff_sell_num", item.volume_total))
+                item.volume_day = int(gi.get("turnover_number", 0))
+                
+                buy_price = float(gi.get("buff_buy_price", 0))
+                buy_num = int(gi.get("buff_buy_num", 0))
+                if buy_price > 0 and item.price_rmb > 0:
+                    ob = OrderBook(item.price_rmb, buy_price, item.volume_total, buy_num)
+                    ob.spread_rmb = round(ob.lowest_sell - ob.highest_buy, 2)
+                    ob.spread_pct = round(ob.spread_rmb / ob.lowest_sell * 100, 1)
+                    item.order_book = ob
+    finally:
+        await page.close()
+        await browser.close()
+        await pw.stop()
+    
+    return item if item.price_rmb > 0 else None
+
+
+async def fetch_kline_90d(good_id: int) -> tuple[list, list]:
+    """Async: Get 90-day K-line data. Returns (daily_ohlc_list, raw_points_list)."""
+    pw, browser = await _browser()
+    page = await browser.new_page()
+    
+    chart_data = {}
+    try:
+        async def on_response(response):
+            if "info/chart" in response.url:
+                try:
+                    chart_data["body"] = await response.text()
+                except:
+                    pass
+        
+        async def modify_chart(route, request):
+            if "info/chart" in request.url:
+                try:
+                    body = json.loads(request.post_data)
+                    body["period"] = "90"
+                    body["key"] = "sell_price"
+                    body["platform"] = 1
+                    await route.continue_(post_data=json.dumps(body))
+                except:
+                    await route.continue_()
+            else:
+                await route.continue_()
+        
+        page.on("response", on_response)
+        await page.route("**/info/chart**", modify_chart)
+        
+        await page.goto(f"{CSQAQ_WEB}/goods/{good_id}", wait_until="domcontentloaded", timeout=30000)
+        await page.wait_for_timeout(10000)
+        
+        ohlc, raw = [], []
+        if chart_data.get("body"):
+            data = json.loads(chart_data["body"])
+            if data.get("code") == 200 and data.get("data"):
+                cd = data["data"]
+                ohlc = _chart_to_daily_ohlc(cd)
+                raw = _chart_to_raw(cd)
+    finally:
+        await page.close()
+        await browser.close()
+        await pw.stop()
+    
+    return ohlc, raw

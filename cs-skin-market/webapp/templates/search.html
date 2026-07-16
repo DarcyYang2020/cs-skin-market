@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}CS-Market 搜索{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="search-bar" style="margin-bottom: 0;">
+    <input type="text" name="query" id="search-input" class="form-input"
+           placeholder="搜索饰品名称，如：AK-47 | 红线、FN57 | 霸意大名..."
+           value="{{ query or '' }}"
+           autocomplete="off"
+           hx-post="/api/items/search"
+           hx-target="#search-results"
+           hx-trigger="keyup changed delay:500ms"
+           hx-indicator="#search-indicator">
+    <button class="btn btn-primary"
+            hx-post="/api/items/search"
+            hx-include="#search-input"
+            hx-target="#search-results"
+            hx-indicator="#search-indicator">
+      <span class="htmx-indicator spinner" id="search-indicator"></span>
+      🔍 搜索
+    </button>
+  </div>
+</div>
+
+<div id="search-results">
+  {% if items %}
+  <div class="card">
+    <div class="card-header"><span class="card-title">搜索结果 ({{ items|length }})</span></div>
+    <div class="table-wrap"><table><thead><tr><th>物品名称</th><th>价格</th><th>日成交量</th><th>在售</th><th>趋势</th><th>操作</th></tr></thead>
+      <tbody>{% for item in items %}<tr><td><strong>{{ item.name }}</strong></td><td>¥{{ "%.2f"|format(item.price_rmb) }}</td><td>{{ item.volume_day }}</td><td>{{ item.volume_total }}</td><td>{% if item.trend == 'up' %}<span class="up">📈</span>{% elif item.trend == 'down' %}<span class="down">📉</span>{% else %}📳{% endif %}</td><td><button class="btn btn-outline btn-sm" hx-get="/api/items/analyze?name={{ item.name|urlencode }}&rarity=restricted&source=case&discontinued_years=0" hx-target="#modal-body" hx-swap="innerHTML" hx-indicator="#analysis-overlay-full" onclick="openModal('analysis-modal');document.getElementById('analysis-overlay-full').style.display='flex';">分析</button></td></tr>{% endfor %}</tbody>
+    </table></div>
+  </div>
+  {% elif query %}
+  <div class="card"><div class="empty-state"><div class="icon">🔍</div><h3>未找到 "{{ query }}"</h3></div></div>
+  {% else %}
+  <div class="card"><div class="empty-state"><div class="icon">🔍</div><h3>搜索 CS 饰品</h3><p>输入完整名称（含磨损度）以获得精确匹配</p></div></div>
+  {% endif %}
+</div>
+
+<!-- Analysis Loading Overlay -->
+<div id="analysis-overlay-full" class="scan-overlay" style="display:none;">
+  <div class="scan-progress-box">
+    <span class="spinner" style="width: 32px; height: 32px; margin-bottom: 16px;"></span>
+    <h3>正在分析...</h3>
+    <p style="color: var(--text-secondary); font-size: 14px;">正在从 csQAQ 采集数据，请稍候</p>
+  </div>
+</div>
+
+{% endblock %}

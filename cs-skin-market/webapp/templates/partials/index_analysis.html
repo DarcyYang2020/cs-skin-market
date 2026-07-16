@@ -1,0 +1,114 @@
+{% if analysis and analysis.has_data %}
+<!-- ====== Position Intelligence ====== -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">🎯 点位智能判断</span>
+    <span class="badge {% if analysis.position.valuation_tier == 'undervalued' %}badge-s{% elif analysis.position.valuation_tier == 'bubble' %}badge-c{% elif analysis.position.valuation_tier == 'overvalued' %}badge-b{% else %}badge-b{% endif %}">
+      {{ analysis.position.tier_label }}
+    </span>
+  </div>
+
+  <!-- Strategy Zone (from trading-strategies.md) -->
+  <div style="margin-bottom: 16px; padding: 14px 16px; border-radius: 8px; border: 1px solid {% if analysis.position.strategy_zone == 'entry' %}rgba(34,197,94,0.4){% elif analysis.position.strategy_zone == 'exit' %}rgba(239,68,68,0.4){% else %}var(--border){% endif %}; background: {% if analysis.position.strategy_zone == 'entry' %}rgba(34,197,94,0.08){% elif analysis.position.strategy_zone == 'exit' %}rgba(239,68,68,0.08){% else %}rgba(255,255,255,0.02){% endif %};">
+    <div style="font-size: 18px; font-weight: 700; margin-bottom: 6px;">{{ analysis.position.zone_label }}</div>
+    <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">{{ analysis.position.zone_action }}</div>
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat-item">
+      <div class="stat-value" style="font-size: 20px;">{{ "%.1f"|format(analysis.position.percentile_90d) }}%</div>
+      <div class="stat-label">90日百分位（≤30%入场）</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value" style="font-size: 20px;">{{ "%.2f"|format(analysis.position.zscore_90d) }}</div>
+      <div class="stat-label">Z-Score（≤-1.5入场 | ≥+2离场）</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value" style="font-size: 18px;">{{ analysis.position.short_term_label }}</div>
+      <div class="stat-label">短线信号（Z反转）</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value" style="font-size: 18px;">{{ analysis.position.mid_term_label }}</div>
+      <div class="stat-label">中线信号（百分位区间）</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value" style="font-size: 18px;">{{ analysis.position.long_term_label }}</div>
+      <div class="stat-label">长线信号（≤25%布局 ≥75%退出）</div>
+    </div>
+  </div>
+
+  <div style="margin-top: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+    <div>
+      <div class="card-subtitle" style="margin-bottom: 4px;">🟢 支撑位</div>
+      {% if analysis.position.support_levels %}
+        {% for lvl in analysis.position.support_levels %}
+        <span style="display: inline-block; padding: 2px 8px; background: var(--green-bg); color: var(--green); border-radius: 4px; font-size: 12px; margin: 2px 4px 2px 0;">{{ "%.2f"|format(lvl) }}</span>
+        {% endfor %}
+      {% else %}<span style="color: var(--text-muted); font-size: 12px;">--</span>{% endif %}
+    </div>
+    <div>
+      <div class="card-subtitle" style="margin-bottom: 4px;">🔴 压力位</div>
+      {% if analysis.position.resistance_levels %}
+        {% for lvl in analysis.position.resistance_levels %}
+        <span style="display: inline-block; padding: 2px 8px; background: var(--red-bg); color: var(--red); border-radius: 4px; font-size: 12px; margin: 2px 4px 2px 0;">{{ "%.2f"|format(lvl) }}</span>
+        {% endfor %}
+      {% else %}<span style="color: var(--text-muted); font-size: 12px;">--</span>{% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- ====== Probability + Cycle + Value Score ====== -->
+<div class="analysis-grid">
+  <!-- Prob Prediction -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">📊 涨跌概率预测</span>
+      <span style="font-size: 12px; color: var(--text-muted);">均值回归 · 波动: {{ analysis.probability.volatility_regime }}</span>
+    </div>
+    <table>
+      <tr><td style="color: var(--text-muted);">3日上涨</td><td><div style="display: flex; align-items: center; gap: 8px;"><div style="flex: 1; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden;"><div style="height: 100%; width: {{ analysis.probability.prob_up_3d }}%; background: {{ '#22c55e' if analysis.probability.prob_up_3d >= 50 else '#ef4444' }}; border-radius: 3px;"></div></div><span style="font-size: 13px; width: 45px; text-align: right; font-weight: 600;" class="{{ 'up' if analysis.probability.prob_up_3d >= 50 else 'down' }}">{{ "%.0f"|format(analysis.probability.prob_up_3d) }}%</span></div></td></tr>
+      <tr><td style="color: var(--text-muted);">7日上涨</td><td><div style="display: flex; align-items: center; gap: 8px;"><div style="flex: 1; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden;"><div style="height: 100%; width: {{ analysis.probability.prob_up_7d }}%; background: {{ '#22c55e' if analysis.probability.prob_up_7d >= 50 else '#ef4444' }}; border-radius: 3px;"></div></div><span style="font-size: 13px; width: 45px; text-align: right; font-weight: 600;" class="{{ 'up' if analysis.probability.prob_up_7d >= 50 else 'down' }}">{{ "%.0f"|format(analysis.probability.prob_up_7d) }}%</span></div></td></tr>
+      <tr><td style="color: var(--text-muted);">30日上涨</td><td><div style="display: flex; align-items: center; gap: 8px;"><div style="flex: 1; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden;"><div style="height: 100%; width: {{ analysis.probability.prob_up_30d }}%; background: {{ '#22c55e' if analysis.probability.prob_up_30d >= 50 else '#ef4444' }}; border-radius: 3px;"></div></div><span style="font-size: 13px; width: 45px; text-align: right; font-weight: 600;" class="{{ 'up' if analysis.probability.prob_up_30d >= 50 else 'down' }}">{{ "%.0f"|format(analysis.probability.prob_up_30d) }}%</span></div></td></tr>
+    </table>
+    <div style="margin-top: 12px; display: flex; gap: 16px; font-size: 12px;">
+      <span>🟢 支撑: <strong style="color: var(--green);">{{ "%.2f"|format(analysis.probability.key_support) }}</strong></span>
+      <span>🔴 压力: <strong style="color: var(--red);">{{ "%.2f"|format(analysis.probability.key_resistance) }}</strong></span>
+    </div>
+    <div style="margin-top: 8px; font-size: 12px; color: var(--text-muted);">
+      预期收益: 3日 {{ "%+.2f%%"|format(analysis.probability.expected_return_3d) }} | 7日 {{ "%+.2f%%"|format(analysis.probability.expected_return_7d) }} | 30日 {{ "%+.2f%%"|format(analysis.probability.expected_return_30d) }}
+    </div>
+  </div>
+
+  <!-- Cycle Analysis (strategy-aligned) -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">🔄 周期阶段</span>
+      <span style="font-size: 20px;">{{ analysis.cycle.phase_label }}</span>
+    </div>
+    <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; line-height: 1.6;">{{ analysis.cycle.phase_description }}</p>
+    <div style="padding: 8px 12px; background: rgba(59,130,246,0.08); border-radius: 6px; font-size: 13px; color: var(--accent); margin-bottom: 12px; font-weight: 600;">
+      🎯 操作：{{ analysis.cycle.phase_strategy }}
+    </div>
+    <table>
+      <tr><td style="color: var(--text-muted);">置信度</td><td><div style="display: flex; align-items: center; gap: 8px;"><div style="flex: 1; height: 4px; background: rgba(255,255,255,0.05); border-radius: 2px; overflow: hidden;"><div style="height: 100%; width: {{ (analysis.cycle.phase_confidence * 100)|int }}%; background: var(--accent); border-radius: 2px;"></div></div><span style="font-size: 12px;">{{ "%.0f"|format(analysis.cycle.phase_confidence * 100) }}%</span></div></td></tr>
+    </table>
+    <div style="margin-top: 12px; padding: 8px 12px; background: rgba(255,255,255,0.03); border-radius: 6px; font-size: 12px; color: var(--text-muted);">🔮 下一阶段：{{ analysis.cycle.next_phase_trigger }}</div>
+  </div>
+
+  <!-- Value Score (strategy-aligned) -->
+  <div class="card" style="grid-column: 1 / -1;">
+    <div class="card-header">
+      <span class="card-title">⭐ 投资性价比评分</span>
+      <span style="font-size: 36px; font-weight: 800;" class="{{ 'up' if analysis.value_score.score >= 7 else ('down' if analysis.value_score.score < 4 else 'neutral') }}">{{ analysis.value_score.score }}/10</span>
+    </div>
+    <div class="score-bar-wrap"><span style="width: 65px; font-size: 13px; color: var(--text-secondary);">入场接近度</span><div class="score-bar"><div class="score-bar-fill {{ 'high' if analysis.value_score.entry_proximity >= 2.0 else 'medium' }}" style="width: {{ (analysis.value_score.entry_proximity / 2.5 * 100)|int }}%;"></div></div><span style="font-size: 13px; width: 40px; text-align: right;">{{ "%.1f"|format(analysis.value_score.entry_proximity) }}</span></div>
+    <div class="score-bar-wrap"><span style="width: 65px; font-size: 13px; color: var(--text-secondary);">风险度</span><div class="score-bar"><div class="score-bar-fill {{ 'high' if analysis.value_score.risk_score >= 2.0 else 'medium' }}" style="width: {{ (analysis.value_score.risk_score / 2.5 * 100)|int }}%;"></div></div><span style="font-size: 13px; width: 40px; text-align: right;">{{ "%.1f"|format(analysis.value_score.risk_score) }}</span></div>
+    <div class="score-bar-wrap"><span style="width: 65px; font-size: 13px; color: var(--text-secondary);">周期对齐</span><div class="score-bar"><div class="score-bar-fill {{ 'high' if analysis.value_score.cycle_score >= 2.0 else 'medium' }}" style="width: {{ (analysis.value_score.cycle_score / 2.5 * 100)|int }}%;"></div></div><span style="font-size: 13px; width: 40px; text-align: right;">{{ "%.1f"|format(analysis.value_score.cycle_score) }}</span></div>
+    <div class="score-bar-wrap"><span style="width: 65px; font-size: 13px; color: var(--text-secondary);">逆向情绪</span><div class="score-bar"><div class="score-bar-fill {{ 'high' if analysis.value_score.sentiment_score >= 2.0 else 'medium' }}" style="width: {{ (analysis.value_score.sentiment_score / 2.5 * 100)|int }}%;"></div></div><span style="font-size: 13px; width: 40px; text-align: right;">{{ "%.1f"|format(analysis.value_score.sentiment_score) }}</span></div>
+    <div style="margin-top: 14px; font-size: 14px; font-weight: 700; color: var(--text-primary);">{{ analysis.value_score.position_advice }}</div>
+    <div style="margin-top: 4px; font-size: 12px; color: var(--text-muted);">{{ analysis.value_score.recommendation }}</div>
+  </div>
+</div>
+{% elif not analysis or not analysis.has_data %}
+<div class="card"><div class="empty-state"><div class="icon">🔍</div><h3>暂无大盘分析数据</h3><p>点击上方「刷新数据」获取最新分析</p></div></div>
+{% endif %}

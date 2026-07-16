@@ -1,0 +1,285 @@
+{% extends "base.html" %}
+{% block title %}CS-Market 自选{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <div class="toolbar-left">
+    <button class="btn btn-primary btn-sm" onclick="openAddModal()">➕ 添加自选</button>
+    <button class="btn btn-outline btn-sm" hx-post="/api/watchlist/scan" hx-target="#scan-results" hx-indicator="#scan-indicator-full">
+      <span class="htmx-indicator spinner" id="scan-indicator-full"></span> 🔄 批量扫描
+    </button>
+  </div>
+  <div class="toolbar-right">
+    <span class="card-subtitle" id="wl-count">{{ items|length }} 个自选</span>
+  </div>
+</div>
+
+<div id="scan-results"></div>
+
+<!-- Holdings Summary Bar -->
+<div class="card" style="margin-bottom: 16px; padding: 12px 16px;">
+  <div style="display: flex; gap: 32px; align-items: center; flex-wrap: wrap;">
+    <div>
+      <span style="font-size: 12px; color: var(--text-muted);">总资产</span>
+      <span style="font-size: 20px; font-weight: 700; margin-left: 8px; color: var(--accent);">¥{{ "%.2f"|format(total_assets) }}</span>
+    </div>
+    <div>
+      <span style="font-size: 12px; color: var(--text-muted);">买入总价</span>
+      <span style="font-size: 20px; font-weight: 700; margin-left: 8px; color: var(--text-primary);">¥{{ "%.2f"|format(total_buy_cost) }}</span>
+    </div>
+    <div>
+      <span style="font-size: 12px; color: var(--text-muted);">持仓比例</span>
+      <span style="font-size: 20px; font-weight: 700; margin-left: 8px;">{{ "%.1f"|format(position_ratio) }}%</span>
+    </div>
+    <button class="btn btn-outline btn-sm" onclick="openAssetsModal({{ total_assets }})" style="margin-left: auto;">✏️ 设置总资产</button>
+  </div>
+  {% if total_assets == 0 %}
+  <div style="margin-top: 8px; font-size: 12px; color: var(--red);">⚠️ 未设置总资产，请点击设置</div>
+  {% endif %}
+</div>
+
+<div class="card">
+  {% if items %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:30px;"><input type="checkbox" onclick="toggleAllCheckboxes(this)"></th>
+          <th>物品名称</th>
+          <th style="width:70px;">持仓</th>
+          <th style="width:100px;">建仓均价</th>
+          <th style="width:60px;">数量</th>
+          <th style="width:110px;">最新价格</th>
+          <th style="width:60px;">评级</th>
+          <th style="width:80px;">趋势健康</th>
+          <th style="width:160px;">操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+        <tr id="wl-row-{{ item.id }}">
+          <td><input type="checkbox" class="wl-checkbox" value="{{ item.id }}"></td>
+          <td><strong>{{ item.name }}</strong></td>
+          <td><span>{% if item.holding %}✅ 持仓{% else %}⬜ 未持{% endif %}</span></td>
+          <td><span>{% if item.avg_cost and item.avg_cost > 0 %}¥{{ "%.2f"|format(item.avg_cost) }}{% else %}--{% endif %}</span></td>
+          <td><span>{% if item.quantity and item.quantity > 0 %}{{ item.quantity }}{% else %}--{% endif %}</span></td>
+          <td>{% if item.latest_price %}¥{{ "%.2f"|format(item.latest_price) }}{% else %}<span style="color: var(--text-muted);">--</span>{% endif %}</td>
+          <td>{% if item.latest_grade %}<span class="badge badge-{{ item.latest_grade|lower }}">{{ item.latest_grade }}</span>{% else %}<span class="badge badge-unknown">--</span>{% endif %}</td>
+          <td>
+            {% if item.trend_health %}
+            {% set th = item.trend_health %}
+            <span style="font-size:13px;color:{% if th.direction == 'up' %}#22c55e{% elif th.direction == 'down' %}#ef4444{% else %}var(--text-muted){% endif %};">
+              {% if th.direction == 'up' %}📈 {{ th.score }}{% elif th.direction == 'down' %}📉 {{ th.score }}{% else %}➖ {{ th.score }}{% endif %}
+            </span>
+            {% else %}
+            <span style="font-size:12px;color:var(--text-muted);">--</span>
+            {% endif %}
+          </td>
+          <td>
+            <button class="btn btn-outline btn-sm" onclick="openEditModal({{ item.id }}, '{{ item.name|e }}', {{ item.holding or 0 }}, {{ item.avg_cost or 0 }}, {{ item.quantity or 0 }})">编辑</button>
+            <button class="btn btn-danger btn-sm" hx-delete="/api/watchlist/{{ item.id }}" hx-target="#wl-row-{{ item.id }}" hx-swap="outerHTML" hx-confirm="确认删除？">删除</button>
+            <button class="btn btn-outline btn-sm" hx-get="/api/watchlist/{{ item.id }}/analyze" hx-target="#modal-body" hx-swap="innerHTML" hx-indicator="#wl-analysis-indicator" onclick="openModal('analysis-modal');document.getElementById('wl-analysis-indicator').style.display='flex';">分析</button>
+            <button class="btn btn-outline btn-sm" hx-get="/api/watchlist/{{ item.id }}/report" hx-target="#modal-body" hx-swap="innerHTML">📋 查看报告</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state"><div class="icon">📋</div><h3>还没有自选物品</h3><p>点击「添加自选」输入完整 CS 饰品名称开始追踪</p></div>
+  {% endif %}
+</div>
+
+<div id="wl-analysis-indicator" class="scan-overlay" style="display:none;">
+  <div class="scan-progress-box"><span class="spinner" style="width:32px;height:32px;"></span><h3>正在分析...</h3></div>
+</div>
+
+<!-- Add Modal -->
+<div class="modal-overlay" id="add-modal" style="display:none;">
+  <div class="modal">
+    <h3>➕ 添加自选</h3>
+    <form onsubmit="doAdd(event)">
+      <div class="form-group">
+        <label>物品名称</label>
+        <input type="text" id="add-name" class="form-input" required placeholder="如：AK-47 | 红线 (崭新出厂)">
+      </div>
+      <div class="form-group">
+        <label>持仓状态</label>
+        <select id="add-holding" class="form-input" onchange="toggleCostQty()">
+          <option value="0">⬜ 未持仓</option>
+          <option value="1">✅ 已持仓</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>建仓均价 (RMB)</label>
+        <input type="number" id="add-avgcost" class="form-input" step="0.01" min="0" disabled placeholder="0.00">
+      </div>
+      <div class="form-group">
+        <label>数量</label>
+        <input type="number" id="add-qty" class="form-input" min="0" disabled placeholder="0">
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-outline" onclick="closeModal('add-modal')">取消</button>
+        <button type="submit" class="btn btn-primary">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="edit-modal" style="display:none;">
+  <div class="modal">
+    <h3>✏️ 编辑自选</h3>
+    <form onsubmit="doSave(event)">
+      <input type="hidden" id="edit-id">
+      <div class="form-group">
+        <label>物品名称</label>
+        <input type="text" id="edit-name" class="form-input" readonly>
+      </div>
+      <div class="form-group">
+        <label>持仓状态</label>
+        <select id="edit-holding" class="form-input" onchange="toggleEditCostQty()">
+          <option value="0">⬜ 未持仓</option>
+          <option value="1">✅ 已持仓</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>建仓均价 (RMB)</label>
+        <input type="number" id="edit-avgcost" class="form-input" step="0.01" min="0" placeholder="0.00">
+      </div>
+      <div class="form-group">
+        <label>数量</label>
+        <input type="number" id="edit-qty" class="form-input" min="0" placeholder="0">
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-outline" onclick="closeModal('edit-modal')">取消</button>
+        <button type="submit" class="btn btn-primary">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Assets Modal -->
+<div class="modal-overlay" id="assets-modal" style="display:none;">
+  <div class="modal">
+    <h3>✏️ 设置总资产</h3>
+    <form onsubmit="doSetAssets(event)">
+      <div class="form-group">
+        <label>总资产金额 (RMB)</label>
+        <input type="number" id="assets-amount" class="form-input" step="0.01" min="0" required placeholder="例如：10000">
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-outline" onclick="closeModal('assets-modal')">取消</button>
+        <button type="submit" class="btn btn-primary">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openAddModal() {
+  document.getElementById('add-form').reset();
+  document.getElementById('add-avgcost').disabled = true;
+  document.getElementById('add-qty').disabled = true;
+  openModal('add-modal');
+}
+function toggleCostQty() {
+  var en = document.getElementById('add-holding').value === '1';
+  document.getElementById('add-avgcost').disabled = !en;
+  document.getElementById('add-qty').disabled = !en;
+  if (!en) { document.getElementById('add-avgcost').value = '0'; document.getElementById('add-qty').value = '0'; }
+}
+function openEditModal(id, name, holding, avgCost, qty) {
+  document.getElementById('edit-id').value = id;
+  document.getElementById('edit-name').value = name;
+  document.getElementById('edit-holding').value = holding;
+  document.getElementById('edit-avgcost').value = avgCost || 0;
+  document.getElementById('edit-qty').value = qty || 0;
+  toggleEditCostQty();
+  openModal('edit-modal');
+}
+function toggleEditCostQty() {
+  var h = document.getElementById('edit-holding').value === '1';
+  document.getElementById('edit-avgcost').disabled = !h;
+  document.getElementById('edit-qty').disabled = !h;
+  if (!h) { document.getElementById('edit-avgcost').value = '0'; document.getElementById('edit-qty').value = '0'; }
+}
+
+async function doAdd(e) {
+  e.preventDefault();
+  var fd = new FormData();
+  fd.append('name', document.getElementById('add-name').value);
+  fd.append('holding', document.getElementById('add-holding').value);
+  fd.append('avg_cost', document.getElementById('add-avgcost').value || '0');
+  fd.append('quantity', document.getElementById('add-qty').value || '0');
+  try {
+    var r = await fetch('/api/watchlist/add', {method: 'POST', body: fd});
+    if (r.ok) { closeModal('add-modal'); window.location.href = window.location.pathname + '?_=' + Date.now(); }
+    else { alert(await r.text()); }
+  } catch(e) { alert('添加失败: ' + e); }
+}
+
+async function doSave(e) {
+  e.preventDefault();
+  var id = document.getElementById('edit-id').value;
+  var holding = document.getElementById('edit-holding').value;
+  var avgCost = document.getElementById('edit-avgcost').value || '0';
+  var qty = document.getElementById('edit-qty').value || '0';
+  var fd = new FormData();
+  fd.append('holding', holding);
+  fd.append('avg_cost', avgCost);
+  fd.append('quantity', qty);
+  try {
+    var r = await fetch('/api/watchlist/' + id, {method: 'PUT', body: fd});
+    if (r.ok) {
+      var row = document.getElementById('wl-row-' + id);
+      if (row) {
+        var cells = row.cells;
+        cells[2].querySelector('span').textContent = (holding === '1') ? '✅ 持仓' : '⬜ 未持';
+        cells[3].querySelector('span').textContent = (+avgCost > 0) ? '¥' + parseFloat(avgCost).toFixed(2) : '--';
+        cells[4].querySelector('span').textContent = (+qty > 0) ? qty : '--';
+        var name = document.getElementById('edit-name').value;
+        var btns = row.querySelectorAll('button');
+        if (btns.length >= 1) {
+          btns[0].setAttribute('onclick', "openEditModal(" + id + ", '" + name.replace(/'/g, "\\'") + "', " + holding + ", " + avgCost + ", " + qty + ")");
+        }
+      }
+      closeModal('edit-modal');
+    } else { alert(await r.text()); }
+  } catch(e) { alert('保存失败: ' + e); }
+}
+
+document.addEventListener('htmx:afterRequest', function(evt) {
+  var wl = document.getElementById('wl-analysis-indicator');
+  if (wl) wl.style.display = 'none';
+});
+
+function openAssetsModal(currentAmount) {
+  document.getElementById('assets-amount').value = currentAmount || 0;
+  openModal('assets-modal');
+}
+
+async function doSetAssets(e) {
+  e.preventDefault();
+  var amount = document.getElementById('assets-amount').value;
+  try {
+    var r = await fetch('/api/watchlist/assets', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: 'amount=' + encodeURIComponent(amount)
+    });
+    if (r.ok) {
+      closeModal('assets-modal');
+      window.location.href = window.location.pathname + '?_' + Date.now();
+    } else {
+      alert(await r.text());
+    }
+  } catch(err) {
+    alert('设置失败: ' + err);
+  }
+}
+</script>
+{% endblock %}

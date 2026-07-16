@@ -1,0 +1,4 @@
+﻿interface:
+  display_name: "CS 饰品市场策略"
+  short_description: "CS 饰品市场行情分析、选品筛选与买卖交易策略辅助工具"
+  default_prompt: "分析当前 CS 饰品市场行情，推荐值得关注的饰品，并给出买卖建议。"

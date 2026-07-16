@@ -1,0 +1,251 @@
+{% if error %}
+<div class="card" style="border-color: rgba(239,68,68,0.5);">
+  <div class="card-header"><span class="card-title">⚠️ 分析失败</span></div>
+  <p style="color: var(--red);">{{ error }}</p>
+</div>
+{% else %}
+<div class="analysis-result" id="analysis-result">
+
+  <!-- Section 1: Basic Info -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">📊 {{ name }}</span>
+      <span style="font-size: 24px; font-weight: 700; color: var(--accent);">¥{{ "%.2f"|format(price_rmb) }}</span>
+    </div>
+  </div>
+
+  <!-- Section 2: Core Quantitative Panel -->
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+
+    <!-- 2a. Percentile + Z-score -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">📐 90日估值定位</span>
+        <span class="badge {% if position.valuation_tier == 'undervalued' %}badge-s{% elif position.valuation_tier == 'bubble' or position.valuation_tier == 'overvalued' %}badge-c{% else %}badge-b{% endif %}">{{ position.tier_label }}</span>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-item">
+          <div class="stat-label">90日百分位</div>
+          <div class="stat-value" style="font-size: 28px;">{{ "%.1f"|format(position.percentile_90d) }}%</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Z-Score 偏离度</div>
+          <div class="stat-value" style="font-size: 28px; color: {% if position.zscore_90d <= -1.5 %}#22c55e{% elif position.zscore_90d >= 2 %}#ef4444{% else %}var(--text-primary){% endif %};">{{ "%+.2f"|format(position.zscore_90d) }}</div>
+        </div>
+      </div>
+      <div style="margin-top: 8px; font-size: 12px; color: var(--text-muted);">
+        90日范围：¥{{ "%.2f"|format(position.low_90d) }} ~ ¥{{ "%.2f"|format(position.high_90d) }}
+        | 中位：¥{{ "%.2f"|format(position.median_90d) }}
+        | 数据点：{{ position.data_points }}
+      </div>
+      <div style="margin-top: 6px; font-size: 13px;">
+        {% if position.zscore_90d <= -1.5 %}
+        🟢 Z-score < -1.5：处于超跌反弹区间，均值回归力量较强
+        {% elif position.zscore_90d >= 2 %}
+        🔴 Z-score > +2：严重超涨风险，注意回调压力
+        {% else %}
+        ➖ Z-score 在正常波动区间
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- 2b. Auxiliary Factors -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">📎 辅助量价因子</span></div>
+      <table>
+        <tr><td style="color:var(--text-muted);">90日均价</td><td>¥{{ "%.2f"|format(aux.mean_price_90d) }}</td></tr>
+        <tr><td style="color:var(--text-muted);">近7日均量</td><td>{{ "%.0f"|format(aux.mean_volume_7d) }} 件/日</td></tr>
+        <tr><td style="color:var(--text-muted);">换手率</td><td>{{ "%.3f"|format(aux.turnover_rate) }}%</td></tr>
+        <tr><td style="color:var(--text-muted);">均线乖离率(MA30)</td><td class="{{ 'up' if aux.ma_deviation > 0 else 'down' }}">{{ "%+.2f"|format(aux.ma_deviation) }}%</td></tr>
+        <tr><td style="color:var(--text-muted);">资金流斜率</td><td class="{{ 'up' if aux.vol_flow_slope > 0 else 'down' }}">{{ "%+.3f"|format(aux.vol_flow_slope) }}</td></tr>
+      </table>
+    </div>
+
+  </div>
+
+  <!-- 2c. Cycle Phase -->
+  {% if cycle.phase != 'unknown' %}
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">🔄 周期智能判定</span>
+      <span style="font-size: 16px; font-weight: 600;">{{ cycle.phase_label }}</span>
+    </div>
+    <p style="font-size: 14px; margin-bottom: 6px;">{{ cycle.phase_description }}</p>
+    <p style="font-size: 14px; font-weight: 600; color: var(--accent);">👉 {{ cycle.phase_strategy }}</p>
+    {% if cycle.next_phase_trigger %}
+    <p style="font-size: 12px; color: var(--text-muted); margin-top: 6px;">下一阶段触发条件：{{ cycle.next_phase_trigger }}</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <!-- Section 3: Probability & Whale Detection -->
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+
+    <!-- Probability Prediction -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">📊 涨跌概率预测</span>
+        <span style="font-size: 12px; color: var(--text-muted);">均值回归 · 波动: {{ probability.volatility_regime }}</span>
+      </div>
+      <table>
+        <tr>
+          <td></td>
+          <td style="text-align:center;color:#22c55e;">📈 上涨</td>
+          <td style="text-align:center;color:var(--text-muted);">➖ 震荡</td>
+          <td style="text-align:center;color:#ef4444;">📉 下跌</td>
+        </tr>
+        <tr>
+          <td style="color:var(--text-muted);">3日</td>
+          <td style="text-align:center;" class="up">{{ "%.0f"|format(probability.prob_up_3d) }}%</td>
+          <td style="text-align:center;">{{ "%.0f"|format(100-probability.prob_up_3d-probability.prob_down_3d) }}%</td>
+          <td style="text-align:center;" class="down">{{ "%.0f"|format(probability.prob_down_3d) }}%</td>
+        </tr>
+        <tr>
+          <td style="color:var(--text-muted);">7日</td>
+          <td style="text-align:center;" class="up">{{ "%.0f"|format(probability.prob_up_7d) }}%</td>
+          <td style="text-align:center;">{{ "%.0f"|format(100-probability.prob_up_7d-probability.prob_down_7d) }}%</td>
+          <td style="text-align:center;" class="down">{{ "%.0f"|format(probability.prob_down_7d) }}%</td>
+        </tr>
+        <tr>
+          <td style="color:var(--text-muted);">30日</td>
+          <td style="text-align:center;" class="up">{{ "%.0f"|format(probability.prob_up_30d) }}%</td>
+          <td style="text-align:center;">{{ "%.0f"|format(100-probability.prob_up_30d-probability.prob_down_30d) }}%</td>
+          <td style="text-align:center;" class="down">{{ "%.0f"|format(probability.prob_down_30d) }}%</td>
+        </tr>
+      </table>
+      <div style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">
+        🟢 支撑: ¥{{ "%.2f"|format(probability.key_support) }} | 🔴 压力: ¥{{ "%.2f"|format(probability.key_resistance) }}
+      </div>
+      <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+        预期收益: 3日 {{ "%+.2f"|format(probability.expected_return_3d) }}% | 7日 {{ "%+.2f"|format(probability.expected_return_7d) }}% | 30日 {{ "%+.2f"|format(probability.expected_return_30d) }}%
+      </div>
+    </div>
+
+    <!-- Whale Detection -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">🐋 庄盘识别</span>
+        <span style="font-size: 14px; font-weight: 600; color: {% if whale.level == 'extreme_whale' %}#ef4444{% elif whale.level == 'strong_whale' %}#f59e0b{% elif whale.level == 'weak_whale' %}#fbbf24{% else %}#22c55e{% endif %};">
+          {{ whale.level_label }}
+        </span>
+      </div>
+      <div style="font-size: 20px; font-weight: 700; text-align: center; padding: 12px 0;">
+        {{ "%.0f"|format(whale.probability) }}%
+      </div>
+      <div style="text-align: center; font-size: 12px; color: var(--text-muted);">庄盘概率</div>
+      <table style="margin-top: 8px;">
+        <tr><td style="color:var(--text-muted);">量价背离</td><td>{{ "%.0f"|format(whale.volume_divergence_score) }}/25</td></tr>
+        <tr><td style="color:var(--text-muted);">波动异常</td><td>{{ "%.0f"|format(whale.volatility_anomaly_score) }}/25</td></tr>
+        <tr><td style="color:var(--text-muted);">持仓锁紧</td><td>{{ "%.0f"|format(whale.position_lock_score) }}/20</td></tr>
+        <tr><td style="color:var(--text-muted);">相关性异常</td><td>{{ "%.0f"|format(whale.correlation_anomaly_score) }}/15</td></tr>
+      </table>
+      {% if whale.anomaly_flags %}
+      <div style="font-size: 12px; margin-top: 6px;">
+        <span style="font-weight: 600;">⚠️ 异常因子：</span>
+        {% for flag in whale.anomaly_flags %}
+        <span style="color: var(--text-muted);">{{ flag }}</span>{% if not loop.last %} · {% endif %}
+        {% endfor %}
+      </div>
+      {% endif %}
+      <div style="font-size: 12px; color: var(--accent); margin-top: 8px;">
+        🎯 {{ whale.trading_rule }}
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Section: Trend Health + Valuation Grid + Fusion Decision (v3) -->
+  {% if trend_health %}
+
+    <!-- Fusion Decision Bar -->
+    {% if fusion_decision %}
+    <div class="card" style="border: 2px solid; border-color: {% if fusion_decision.action == 'buy' %}#22c55e{% elif fusion_decision.action == 'sell' or fusion_decision.action == 'avoid' %}#ef4444{% elif fusion_decision.action == 'reduce' %}#f59e0b{% else %}var(--border-color){% endif %}; margin-bottom: 12px;">
+      <div class="card-header">
+        <span class="card-title">🎯 融合决策</span>
+        <span style="font-size: 18px; font-weight: 700; color: {% if fusion_decision.action == 'buy' %}#22c55e{% elif fusion_decision.action == 'sell' or fusion_decision.action == 'avoid' %}#ef4444{% elif fusion_decision.action == 'reduce' %}#f59e0b{% else %}var(--text-primary){% endif %};">{{ fusion_decision.action_label }}</span>
+      </div>
+      <p style="font-size: 14px; margin: 4px 0;">{{ fusion_decision.action_detail }}</p>
+      <div style="font-size: 12px; color: var(--text-muted);">
+        {{ fusion_decision.zone_label }} | 原始TH: {{ fusion_decision.raw_th_score }} → 修正后: {{ fusion_decision.corrected_th_score }}
+        {% if fusion_decision.deduction_sources %}
+        | 扣分: 
+        {% for src in fusion_decision.deduction_sources %}
+          {% if src == 'distribution_cycle' %}🔴出货期{% elif src == 'whale_pooling' %}🐋抱团{% elif src == 'position_locked' %}🔒锁仓{% elif src == 'consolidation_phase' %}🟡洗盘{% elif src == 'high_consolidation' %}🟠高位洗盘{% elif src == 'false_bull_trend' %}⚠️虚假多头{% else %}{{ src }}{% endif %}
+          {% if not loop.last %}+{% endif %}
+        {% endfor %}
+        {% endif %}
+        {% if fusion_decision.liquidity_filtered %}| 💧流动性过滤{% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+
+    <!-- Trend Health -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">📊 趋势健康度</span>
+        <span class="badge {% if trend_health.score >= 60 %}badge-s{% elif trend_health.score >= 40 %}badge-b{% else %}badge-c{% endif %}">{{ trend_health.level_label }}</span>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-item">
+          <div class="stat-value" style="font-size: 24px;">{{ trend_health.score }}/100</div>
+          <div class="stat-label">健康度得分</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" style="font-size: 16px; color: {% if trend_health.direction == 'up' %}#22c55e{% elif trend_health.direction == 'down' %}#ef4444{% else %}var(--text-secondary){% endif %};">
+            {% if trend_health.direction == 'up' %}📈 向上{% elif trend_health.direction == 'down' %}📉 向下{% else %}➖ 走平{% endif %}
+          </div>
+          <div class="stat-label">趋势方向</div>
+        </div>
+      </div>
+      {% if trend_health.raw_score != trend_health.score %}
+      <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">原始: {{ trend_health.raw_score }} → 修正后: {{ trend_health.score }}</div>
+      {% endif %}
+      <table style="margin-top: 8px;">
+        <tr><td style="color:var(--text-muted);">持续性 (24%)</td><td>{{ trend_health.persistence_score }}/100</td></tr>
+        <tr><td style="color:var(--text-muted);">均线结构 (19%)</td><td>{{ trend_health.ma_structure }} {% if trend_health.ma_cross_type == 'golden_cross' %}🔑金叉{% elif trend_health.ma_cross_type == 'death_cross' %}💀死叉{% endif %}</td></tr>
+        <tr><td style="color:var(--text-muted);">趋势陡度 (24%)</td><td>{{ trend_health.steepness_signal }}</td></tr>
+        <tr><td style="color:var(--text-muted);">量价配合 (18%)</td><td>{{ trend_health.volume_signal }}</td></tr>
+        <tr><td style="color:var(--text-muted);">缺口风险 (13%)</td><td>{% if trend_health.has_anomaly %}        <tr><td style="color:var(--text-muted);">关键位验证 (10%)</td><td>{{ trend_health.key_level_score }}/100 {% if trend_health.key_level_signal %} ({{ trend_health.key_level_signal }}){% endif %}</td></tr>
+ (10%)</td><td>{{ trend_health.key_level_score }}/100 {% if trend_health.key_level_signal %} ({{ trend_health.key_level_signal }}){% endif %}</td></tr>
+        <tr><td style="color:var(--text-muted);">缺口风险 (13%)</td><td>{% if trend_health.has_anomaly %}⚠️ {{ trend_health.anomaly_count }}次{% else %}✅ 无{% endif %}{% if trend_health.anomaly_type != 'none' %} ({{ trend_health.anomaly_type }}){% endif %}</td></tr>
+      </table>
+    </div>
+
+    <!-- Valuation Grid 3x4 -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">🎯 估值宫格 (3×4)</span>
+        {% if valuation_grid %}
+        <span style="font-size: 14px; font-weight: 700; color: {% if valuation_grid.grid_action in ('buy_zone','hold') %}#22c55e{% elif valuation_grid.grid_action in ('reduce','watch') %}#f59e0b{% else %}#ef4444{% endif %};">{{ valuation_grid.grid_emoji }} {{ valuation_grid.grid_label }}</span>
+        {% endif %}
+      </div>
+      {% if valuation_grid %}
+      <div style="font-size: 13px; margin-bottom: 4px;">
+        <strong>百分位:</strong> {{ "%.1f"|format(valuation_grid.percentile) }}% 
+        | <strong>趋势强度:</strong> {{ valuation_grid.trend_score }}/100
+        {% if valuation_grid.is_extreme_bubble %}<span style="color:#ef4444;font-weight:700;"> ⚠️ 极度泡沫</span>{% endif %}
+      </div>
+      
+      <!-- Position Sizing -->
+      <div style="background: var(--bg-secondary); border-radius: 6px; padding: 8px 10px; margin-bottom: 8px;">
+        <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 2px;">📊 仓位建议</div>
+        <div style="font-size: 13px; font-weight: 500;">{{ valuation_grid.position_sizing }}</div>
+      </div>
+      
+      <!-- Stop Loss -->
+      <div style="background: var(--bg-secondary); border-radius: 6px; padding: 8px 10px;">
+        <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 2px;">🛑 止盈止损</div>
+        <div style="font-size: 13px; font-weight: 500;">{{ valuation_grid.stop_loss_advice }}</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+</div>
+{% endif %}
+{% endif %}

@@ -1,0 +1,46 @@
+﻿<div class="card" id="index-card">
+  <div class="card-header">
+    <span class="card-title">📈 csQAQ 综合指数</span>
+    <span class="card-subtitle">数据更新：{{ last_update }}</span>
+    <button class="btn btn-outline btn-sm"
+            hx-post="/api/market/refresh"
+            hx-target="#dashboard-content"
+            hx-swap="innerHTML"
+            hx-indicator="this">
+      <span class="htmx-indicator spinner"></span>
+      🔧 刷新数据
+    </button>
+  </div>
+  <div class="stat-grid">
+    <div class="stat-item">
+      <div class="stat-value">{{ "%.2f"|format(idx.value) if idx else "--" }}</div>
+      <div class="stat-label">当前指数</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value {{ 'up' if idx and idx.change_7d > 0 else ('down' if idx and idx.change_7d < 0 else 'neutral') }}">
+        {{ "%+.2f%%"|format(idx.change_7d) if idx else "--" }}
+      </div>
+      <div class="stat-label">7日涨跌</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value" style="font-size:20px;">
+        {{ idx.mood if idx else "--" }}
+      </div>
+      <div class="stat-label">市场情绪</div>
+    </div>
+    {% if regime_label %}
+    <div class="stat-item">
+      <div class="stat-value" style="font-size:20px;">
+        <span class="regime-badge {{ regime_class }}">{{ regime_label }}</span>
+      </div>
+      <div class="stat-label">推荐仓位：{{ regime_position }}</div>
+    </div>
+    {% endif %}
+  </div>
+
+  {% if regime_strategy %}
+  <div style="margin-top: 12px; padding: 10px 14px; background: rgba(255,255,255,0.03); border-radius: 6px; font-size: 13px; color: var(--text-secondary);">
+    💡 {{ regime_strategy }}
+  </div>
+  {% endif %}
+</div>
