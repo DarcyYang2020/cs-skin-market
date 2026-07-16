@@ -28,7 +28,7 @@
   <div class="card">
     <div class="card-header"><span class="card-title">搜索结果 ({{ items|length }})</span></div>
     <div class="table-wrap"><table><thead><tr><th>物品名称</th><th>价格</th><th>日成交量</th><th>在售</th><th>趋势</th><th>操作</th></tr></thead>
-      <tbody>{% for item in items %}<tr><td><strong>{{ item.name }}</strong></td><td>¥{{ "%.2f"|format(item.price_rmb) }}</td><td>{{ item.volume_day }}</td><td>{{ item.volume_total }}</td><td>{% if item.trend == 'up' %}<span class="up">📈</span>{% elif item.trend == 'down' %}<span class="down">📉</span>{% else %}📳{% endif %}</td><td><button class="btn btn-outline btn-sm" hx-get="/api/items/analyze?name={{ item.name|urlencode }}&rarity=restricted&source=case&discontinued_years=0" hx-target="#modal-body" hx-swap="innerHTML" hx-indicator="#analysis-overlay-full" onclick="openModal('analysis-modal');document.getElementById('analysis-overlay-full').style.display='flex';">分析</button></td></tr>{% endfor %}</tbody>
+      <tbody>{% for item in items %}<tr><td><strong>{{ item.name }}</strong></td><td>¥{{ "%.2f"|format(item.price_rmb) }}</td><td>{{ item.volume_day }}</td><td>{{ item.volume_total }}</td><td>{% if item.trend == 'up' %}<span class="up">📈</span>{% elif item.trend == 'down' %}<span class="down">📉</span>{% else %}📳{% endif %}</td><td><button class="btn btn-outline btn-sm" hx-get="/api/items/analyze?name={{ item.name|urlencode }}&rarity=restricted&source=case&discontinued_years=0" hx-target="#modal-body" hx-swap="innerHTML" hx-indicator="#analysis-overlay-full" onclick="document.getElementById('analysis-overlay-full').style.display='flex';">分析</button></td></tr>{% endfor %}</tbody>
     </table></div>
   </div>
   {% elif query %}
