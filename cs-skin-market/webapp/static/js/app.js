@@ -53,3 +53,11 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }, 3000);
 });
+
+// ---- Auto-open modal when content loads into #modal-body ----
+document.addEventListener('htmx:afterSettle', function(evt) {
+  if (evt.detail.target && evt.detail.target.id === 'modal-body') {
+    openModal('analysis-modal');
+  }
+});
+
