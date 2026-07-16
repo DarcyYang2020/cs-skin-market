@@ -1,4 +1,4 @@
-﻿import re
+import re
 
 path = r"C:\Users\81572\Desktop\codex\cs-model\cs-skin-market\SKILL.md"
 with open(path, "r", encoding="utf-8") as f:
@@ -29,4 +29,4 @@ if desc_match:
     print("  PASS" if 25 <= len(desc) <= 64 else "  FAIL")
 
 print("")
-print("All structural checks passed!")
+print("All structural checks passed!")

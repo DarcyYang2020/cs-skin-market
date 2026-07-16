@@ -1,4 +1,4 @@
-﻿import json
+import json
 
 body = []
 
@@ -77,4 +77,4 @@ frontmatter = parts[1]
 with open(path, "w", encoding="utf-8") as f:
     f.write("---" + frontmatter + "---\n" + "\n".join(body))
 
-print("Part 1 written")
+print("Part 1 written")

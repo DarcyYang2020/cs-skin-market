@@ -1,4 +1,4 @@
-﻿import socket
+import socket
 import ssl
 import urllib.request
 
@@ -56,4 +56,4 @@ try:
 except Exception as e:
     print(f"Price Overview FAIL: {e}")
 
-print("\n=== Done ===")
+print("\n=== Done ===")

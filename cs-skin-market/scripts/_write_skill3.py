@@ -1,4 +1,4 @@
-﻿body = []
+body = []
 
 body.append("")
 body.append("## Workflow C: Trade Recommendation")
@@ -43,4 +43,4 @@ path = r"C:\Users\81572\Desktop\codex\cs-model\cs-skin-market\SKILL.md"
 with open(path, "a", encoding="utf-8") as f:
     f.write("\n".join(body))
 
-print("Part 3 appended")
+print("Part 3 appended")

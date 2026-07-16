@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """csqaq.com Playwright data collector.
 Navigates directly to goods page and intercepts chart API.
 """
@@ -27,11 +27,15 @@ async def _get_browser():
         return _browser_pw, _browser_inst
     # Close old if exists
     if _browser_inst:
-        try: await _browser_inst.close()
-        except: pass
+        try:
+            await _browser_inst.close()
+        except Exception:
+            pass  # browser may already be closed
     if _browser_pw:
-        try: await _browser_pw.stop()
-        except: pass
+        try:
+            await _browser_pw.stop()
+        except Exception:
+            pass  # playwright may already be stopped
     from playwright.async_api import async_playwright
     _browser_pw = await async_playwright().start()
     _browser_inst = await _browser_pw.chromium.launch(headless=True, proxy=_PROXY)
@@ -42,8 +46,8 @@ _PROXY = None
 try:
     from .config import PROXY as _P
     _PROXY = {"server": _P} if _P else None
-except:
-    pass
+except ImportError:
+    pass  # config.py not available or missing PROXY
 
 
 class KLinePoint:
@@ -259,7 +263,7 @@ async def fetch_item_detail(good_id: int) -> Optional[ItemData]:
                 if "info/good?id=" in url and response.ok:
                     body = await response.text()
                     captured["detail"] = body
-            except:
+            except Exception:
                 pass
         
         async def modify_chart(route, request):
@@ -270,7 +274,7 @@ async def fetch_item_detail(good_id: int) -> Optional[ItemData]:
                     body["key"] = "sell_price"
                     body["platform"] = 1
                     await route.continue_(post_data=json.dumps(body))
-                except:
+                except Exception:
                     await route.continue_()
             else:
                 await route.continue_()
@@ -364,7 +368,7 @@ async def fetch_kline_90d(good_id: int) -> tuple[list, list]:
             if "info/chart" in response.url:
                 try:
                     chart_data["body"] = await response.text()
-                except:
+                except Exception:
                     pass
         
         async def modify_chart(route, request):
@@ -375,7 +379,7 @@ async def fetch_kline_90d(good_id: int) -> tuple[list, list]:
                     body["key"] = "sell_price"
                     body["platform"] = 1
                     await route.continue_(post_data=json.dumps(body))
-                except:
+                except Exception:
                     await route.continue_()
             else:
                 await route.continue_()

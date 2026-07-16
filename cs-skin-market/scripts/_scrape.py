@@ -1,4 +1,4 @@
-﻿import urllib.request, urllib.parse, json, http.cookiejar
+import urllib.request, urllib.parse, json, http.cookiejar
 
 handler = urllib.request.ProxyHandler({"http": "http://127.0.0.1:7897", "https": "http://127.0.0.1:7897"})
 cj = http.cookiejar.CookieJar()
@@ -42,4 +42,4 @@ try:
         data = json.loads(resp.read().decode("utf-8"))
         print(json.dumps(data, indent=2, ensure_ascii=False)[:2000])
 except Exception as e:
-    print("  Error: " + str(e))
+    print("  Error: " + str(e))
