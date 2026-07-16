@@ -626,6 +626,272 @@ def analyze_index(index_history: list) -> dict:
     }
 
 
+
+
+# ============================================================
+#  Enhanced Cycle Detection with Probability Distribution
+# ============================================================
+
+def analyze_cycle_probability(prices, pct_90d, zscore_90d) -> dict:
+    """Return 4-phase probability distribution (sums to 100%).
+
+    Uses: percentile + Z-score + MA crossover + market breadth + greed sentiment.
+    """
+    from .market_macro import compute_breadth_score, compute_sentiment_score
+
+    if not prices or len(prices) < 14:
+        return {"accumulation": 25, "consolidation": 25, "markup": 25, "distribution": 25}
+
+    # Short MAs
+    n = len(prices)
+    ma7 = sum(prices[-min(7, n):]) / min(7, n)
+    ma30 = sum(prices[-min(30, n):]) / min(30, n)
+    ma7_prev = sum(prices[-min(14, n):-min(7, n)]) / max(min(7, n-7), 1) if n >= 14 else ma7
+    ma_cross_up = ma7 > ma30 and ma7_prev <= ma30
+
+    breadth = compute_breadth_score(7)
+    sentiment = compute_sentiment_score()
+
+    # Score each phase independently (0-100)
+    scores = {"accumulation": 0, "consolidation": 0, "markup": 0, "distribution": 0}
+
+    # --- Accumulation signals ---
+    if pct_90d <= 20:
+        scores["accumulation"] += 35
+    elif pct_90d <= 30:
+        scores["accumulation"] += 25
+    elif pct_90d <= 40:
+        scores["accumulation"] += 15
+
+    if zscore_90d <= -1.5:
+        scores["accumulation"] += 25
+    elif zscore_90d <= -0.5:
+        scores["accumulation"] += 15
+
+    if breadth <= 25:
+        scores["accumulation"] += 20
+    elif breadth <= 40:
+        scores["accumulation"] += 10
+
+    if sentiment >= 70:
+        scores["accumulation"] += 20
+    elif sentiment >= 55:
+        scores["accumulation"] += 10
+
+    # --- Consolidation signals ---
+    if 20 <= pct_90d <= 60:
+        scores["consolidation"] += 30
+    elif 15 <= pct_90d <= 70:
+        scores["consolidation"] += 20
+
+    if -1.0 <= zscore_90d <= 1.0:
+        scores["consolidation"] += 30
+    elif -1.5 <= zscore_90d <= 1.5:
+        scores["consolidation"] += 20
+
+    if 30 <= breadth <= 60:
+        scores["consolidation"] += 20
+    elif 20 <= breadth <= 70:
+        scores["consolidation"] += 10
+
+    if 40 <= sentiment <= 60:
+        scores["consolidation"] += 20
+
+    # --- Markup signals ---
+    if pct_90d >= 40 and ma_cross_up:
+        scores["markup"] += 30
+    elif ma_cross_up:
+        scores["markup"] += 20
+    elif ma7 > ma30:
+        scores["markup"] += 15
+
+    if zscore_90d >= 0.5 and ma7 > ma30:
+        scores["markup"] += 20
+
+    if breadth >= 65:
+        scores["markup"] += 25
+    elif breadth >= 50:
+        scores["markup"] += 15
+
+    if 20 <= pct_90d <= 70:
+        scores["markup"] += 15
+
+    # --- Distribution signals ---
+    if pct_90d >= 70:
+        scores["distribution"] += 35
+    elif pct_90d >= 60:
+        scores["distribution"] += 20
+
+    if zscore_90d >= 1.5:
+        scores["distribution"] += 25
+    elif zscore_90d >= 0.5:
+        scores["distribution"] += 15
+
+    if ma7 < ma30 and pct_90d >= 50:
+        scores["distribution"] += 20
+    elif ma7 < ma30:
+        scores["distribution"] += 10
+
+    if sentiment <= 30:
+        scores["distribution"] += 20
+    elif sentiment <= 45:
+        scores["distribution"] += 10
+
+    # Softmax-like normalization
+    import math
+    total = sum(math.exp(s / 15) for s in scores.values())
+    probs = {k: round(math.exp(v / 15) / total * 100, 1) for k, v in scores.items()}
+
+    # Adjust to sum exactly 100
+    diff = 100.0 - sum(probs.values())
+    if diff != 0:
+        max_k = max(probs, key=probs.get)
+        probs[max_k] = round(probs[max_k] + diff, 1)
+
+    return probs
+
+
+
+# ============================================================
+#  Integrated Probability Prediction (Z-score + macro modifiers)
+# ============================================================
+
+def analyze_probability_integrated(prices, pct_90d, zscore_90d,
+                                     volatility_regime="normal") -> dict:
+    """Enhanced probability prediction with macro modifiers.
+
+    Base: Z-score mean-reversion probability.
+    Modifiers: breadth, sentiment, online trend, position.
+    """
+    import statistics
+    from .market_macro import (compute_breadth_score, compute_sentiment_score,
+                                 compute_online_trend_score)
+
+    if not prices or len(prices) < 5:
+        return {"prob_up_3d": 50, "prob_up_7d": 50, "prob_up_30d": 50,
+                "confidence": "low", "modifiers_applied": []}
+
+    # Base: Z-score mean-reversion for 3 timeframes
+    def _base_prob(z, horizon_days, vol_regime):
+        mean_rev_strength = -z / 3.0
+        base = 50 + mean_rev_strength * 15
+        if vol_regime == "high_volatile":
+            base = 50 + mean_rev_strength * 8
+        elif vol_regime == "volatile":
+            base = 50 + mean_rev_strength * 12
+        factor = min(1.0, horizon_days / 10.0)
+        base = 50 + (base - 50) * factor
+        return max(5, min(95, base))
+
+    prob3 = _base_prob(zscore_90d, 3, volatility_regime)
+    prob7 = _base_prob(zscore_90d, 7, volatility_regime)
+    prob30 = _base_prob(zscore_90d, 30, volatility_regime)
+
+    # Macro modifiers
+    modifiers = []
+    breadth = compute_breadth_score(7)
+    sentiment = compute_sentiment_score()
+    online = compute_online_trend_score()
+
+    # Breadth modifier: bearish breadth dampens upside, bullish amplifies
+    if breadth <= 25:
+        b_mod = 0.7
+        modifiers.append("???? x0.7")
+    elif breadth <= 40:
+        b_mod = 0.85
+        modifiers.append("???? x0.85")
+    elif breadth >= 75:
+        b_mod = 1.15
+        modifiers.append("???? x1.15")
+    elif breadth >= 65:
+        b_mod = 1.08
+        modifiers.append("???? x1.08")
+    else:
+        b_mod = 1.0
+
+    # Sentiment modifier: extreme fear boosts upside (contrarian)
+    if sentiment >= 80:
+        s_mod = 1.15
+        modifiers.append("????(??) x1.15")
+    elif sentiment >= 70:
+        s_mod = 1.08
+        modifiers.append("??(??) x1.08")
+    elif sentiment <= 20:
+        s_mod = 0.85
+        modifiers.append("????(??) x0.85")
+    elif sentiment <= 35:
+        s_mod = 0.92
+        modifiers.append("??(??) x0.92")
+    else:
+        s_mod = 1.0
+
+    # Online trend modifier
+    if online <= 15:
+        o_mod = 0.88
+        modifiers.append("?????? x0.88")
+    elif online <= 30:
+        o_mod = 0.94
+        modifiers.append("?????? x0.94")
+    elif online >= 75:
+        o_mod = 1.10
+        modifiers.append("???? x1.10")
+    else:
+        o_mod = 1.0
+
+    # Position modifier: low percentile = stronger mean reversion
+    if pct_90d <= 10:
+        p_mod = 1.12
+        modifiers.append("???? x1.12")
+    elif pct_90d <= 20:
+        p_mod = 1.06
+        modifiers.append("???? x1.06")
+    elif pct_90d >= 85:
+        p_mod = 0.88
+        modifiers.append("???? x0.88")
+    elif pct_90d >= 70:
+        p_mod = 0.94
+        modifiers.append("???? x0.94")
+    else:
+        p_mod = 1.0
+
+    total_mod = b_mod * s_mod * o_mod * p_mod
+    prob3 = max(3, min(97, prob3 * total_mod))
+    prob7 = max(3, min(97, prob7 * total_mod))
+    prob30 = max(3, min(97, prob30 * total_mod))
+
+    # Confidence: based on how extreme the modifiers are
+    if abs(total_mod - 1.0) > 0.2:
+        confidence = "high"
+    elif abs(total_mod - 1.0) > 0.1:
+        confidence = "medium"
+    else:
+        confidence = "low"
+
+    return {
+        "prob_up_3d": round(prob3, 1),
+        "prob_up_7d": round(prob7, 1),
+        "prob_up_30d": round(prob30, 1),
+        "confidence": confidence,
+        "modifiers_applied": modifiers,
+        "base_probs": {
+            "prob_up_3d": round(_base_prob(zscore_90d, 3, volatility_regime), 1),
+            "prob_up_7d": round(_base_prob(zscore_90d, 7, volatility_regime), 1),
+            "prob_up_30d": round(_base_prob(zscore_90d, 30, volatility_regime), 1),
+        },
+    }
+
+
+
+# ============================================================
+#  Bottom-Fishing Signal (pre-trend leading indicator)
+# ============================================================
+
+def compute_bottom_signal_wrapper(prices, pct_90d, zscore_90d) -> dict:
+    """Wrapper that calls market_macro.compute_bottom_signal."""
+    from .market_macro import compute_bottom_signal, bottom_signal_summary
+    bs = compute_bottom_signal(pct_90d, zscore_90d, prices)
+    return bottom_signal_summary(bs)
+
 # ============================================================
 #  Extended analysis with Market Trend Health + Fusion Decision
 # ============================================================
@@ -678,6 +944,42 @@ def analyze_index_full(index_history: list) -> dict:
 
         result["market_trend_health"] = market_th_summary(mth)
         result["market_fusion_decision"] = market_fd_summary(mfd)
+
+        # --- New: enhanced analysis (v4) ---
+        result["cycle_probability"] = analyze_cycle_probability(
+            values[-90:], pct, z)
+
+        result["probability_integrated"] = analyze_probability_integrated(
+            values[-90:], pct, z,
+            volatility_regime=result.get("probability", {}).get("volatility_regime", "normal"))
+
+        result["bottom_signal"] = compute_bottom_signal_wrapper(
+            values[-90:], pct, z)
+
+        # --- Macro context ---
+        try:
+            from .market_macro import (
+                compute_breadth_score, breadth_label,
+                compute_sentiment_score, sentiment_label, get_greedy_current,
+                compute_online_trend_score, online_label, get_online_current,
+                compute_card_trend_score, card_label,
+            )
+            result["macro_context"] = {
+                "breadth_7d": compute_breadth_score(7),
+                "breadth_7d_label": breadth_label(compute_breadth_score(7)),
+                "breadth_90d": compute_breadth_score(90),
+                "breadth_90d_label": breadth_label(compute_breadth_score(90)),
+                "sentiment_score": compute_sentiment_score(),
+                "sentiment_label": sentiment_label(compute_sentiment_score()),
+                "greedy_current": get_greedy_current(),
+                "online_score": compute_online_trend_score(),
+                "online_label": online_label(compute_online_trend_score()),
+                "online_current": get_online_current(),
+                "card_score": compute_card_trend_score(),
+                "card_label": card_label(compute_card_trend_score()),
+            }
+        except Exception:
+            pass
 
     except Exception:
         import traceback
