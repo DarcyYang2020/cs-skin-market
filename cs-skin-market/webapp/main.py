@@ -450,7 +450,13 @@ async def api_market_refresh(request: Request):
             sectors_data = [{"name": s.name, "change_pct": s.change_pct, "momentum": s.momentum} for s in sectors]
 
             db.set_setting(conn, "cached_sectors", json.dumps(sectors_data, ensure_ascii=False))
-            # Compute and cache index analysis
+
+            # Cache sub_indices for sector recommendations (from MarketIndex._sub_indices)
+            if idx._sub_indices:
+                try:
+                    db.set_setting(conn, "cached_sub_indices", json.dumps(idx._sub_indices, ensure_ascii=False))
+                except Exception as se:
+                    _web_log.warning(f"sub_indices cache error: {se}")            # Compute and cache index analysis
             analysis = {"has_data": False}
             if index_history and len(index_history) >= 5:
                 try:
