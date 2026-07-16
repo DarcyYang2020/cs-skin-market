@@ -8,7 +8,7 @@
     </span>
   </div>
 
-  <!-- Strategy Zone (from trading-strategies.md) -->
+  <!-- Strategy 估值区间 (from trading-strategies.md) -->
   <div style="margin-bottom: 16px; padding: 14px 16px; border-radius: 8px; border: 1px solid {% if analysis.position.strategy_zone == 'entry' %}rgba(34,197,94,0.4){% elif analysis.position.strategy_zone == 'exit' %}rgba(239,68,68,0.4){% else %}var(--border){% endif %}; background: {% if analysis.position.strategy_zone == 'entry' %}rgba(34,197,94,0.08){% elif analysis.position.strategy_zone == 'exit' %}rgba(239,68,68,0.08){% else %}rgba(255,255,255,0.02){% endif %};">
     <div style="font-size: 18px; font-weight: 700; margin-bottom: 6px;">{{ analysis.position.zone_label }}</div>
     <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">{{ analysis.position.zone_action }}</div>
@@ -111,29 +111,29 @@
 </div>
 
 
-<!-- ====== Cycle Probability (v4) ====== -->
+<!-- ====== 周期概率分布 (v4) ====== -->
 {% if analysis.cycle_probability %}
 <div class="card">
   <div class="card-header">
-    <span class="card-title">Cycle Probability</span>
-    <span class="badge badge-s">{{ analysis.cycle_probability.accumulation }}% Accum</span>
+    <span class="card-title">周期概率分布</span>
+    <span class="badge badge-s">{{ analysis.cycle_probability.accumulation }}% 吸筹</span>
   </div>
   <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
     <div style="text-align: center; padding: 10px; background: rgba(34,197,94,0.08); border-radius: 6px;">
       <div style="font-size: 22px; font-weight: 800; color: var(--green);">{{ analysis.cycle_probability.accumulation }}%</div>
-      <div style="font-size: 11px; color: var(--text-muted);">Accumulation</div>
+      <div style="font-size: 11px; color: var(--text-muted);">吸筹期</div>
     </div>
     <div style="text-align: center; padding: 10px; background: rgba(255,255,255,0.03); border-radius: 6px;">
       <div style="font-size: 22px; font-weight: 800; color: var(--yellow);">{{ analysis.cycle_probability.consolidation }}%</div>
-      <div style="font-size: 11px; color: var(--text-muted);">Consolidation</div>
+      <div style="font-size: 11px; color: var(--text-muted);">洗盘期</div>
     </div>
     <div style="text-align: center; padding: 10px; background: rgba(59,130,246,0.08); border-radius: 6px;">
       <div style="font-size: 22px; font-weight: 800; color: var(--accent);">{{ analysis.cycle_probability.markup }}%</div>
-      <div style="font-size: 11px; color: var(--text-muted);">Markup</div>
+      <div style="font-size: 11px; color: var(--text-muted);">拉升期</div>
     </div>
     <div style="text-align: center; padding: 10px; background: rgba(239,68,68,0.08); border-radius: 6px;">
       <div style="font-size: 22px; font-weight: 800; color: var(--red);">{{ analysis.cycle_probability.distribution }}%</div>
-      <div style="font-size: 11px; color: var(--text-muted);">Distribution</div>
+      <div style="font-size: 11px; color: var(--text-muted);">出货期</div>
     </div>
   </div>
 </div>
@@ -143,54 +143,54 @@
 {% if analysis.bottom_signal %}
 <div class="card">
   <div class="card-header">
-    <span class="card-title">Bottom-Fishing Readiness</span>
+    <span class="card-title">抄底就绪度</span>
     <span style="font-size: 28px; font-weight: 800;">{{ analysis.bottom_signal.score }}/100</span>
   </div>
   <div style="margin-bottom: 12px; padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; background: rgba(255,255,255,0.03);">
     {{ analysis.bottom_signal.level_label }}: {{ analysis.bottom_signal.action }}
   </div>
-  <div class="score-bar-wrap"><span style="width: 60px; font-size: 12px; color: var(--text-muted);">Pctl Extr</span><div class="score-bar"><div class="score-bar-fill high" style="width: {{ (analysis.bottom_signal.percentile_contrib / 25 * 100)|int }}%;"></div></div><span style="font-size: 12px; width: 30px; text-align: right;">{{ analysis.bottom_signal.percentile_contrib }}</span></div>
-  <div class="score-bar-wrap"><span style="width: 60px; font-size: 12px; color: var(--text-muted);">Z Extr</span><div class="score-bar"><div class="score-bar-fill high" style="width: {{ (analysis.bottom_signal.zscore_contrib / 20 * 100)|int }}%;"></div></div><span style="font-size: 12px; width: 30px; text-align: right;">{{ analysis.bottom_signal.zscore_contrib }}</span></div>
-  <div class="score-bar-wrap"><span style="width: 60px; font-size: 12px; color: var(--text-muted);">Breadth</span><div class="score-bar"><div class="score-bar-fill high" style="width: {{ (analysis.bottom_signal.breadth_contrib / 20 * 100)|int }}%;"></div></div><span style="font-size: 12px; width: 30px; text-align: right;">{{ analysis.bottom_signal.breadth_contrib }}</span></div>
-  <div class="score-bar-wrap"><span style="width: 60px; font-size: 12px; color: var(--text-muted);">Fear</span><div class="score-bar"><div class="score-bar-fill high" style="width: {{ (analysis.bottom_signal.sentiment_contrib / 20 * 100)|int }}%;"></div></div><span style="font-size: 12px; width: 30px; text-align: right;">{{ analysis.bottom_signal.sentiment_contrib }}</span></div>
-  <div class="score-bar-wrap"><span style="width: 60px; font-size: 12px; color: var(--text-muted);">Decel</span><div class="score-bar"><div class="score-bar-fill high" style="width: {{ (analysis.bottom_signal.deceleration_contrib / 15 * 100)|int }}%;"></div></div><span style="font-size: 12px; width: 30px; text-align: right;">{{ analysis.bottom_signal.deceleration_contrib }}</span></div>
+  <div class="score-bar-wrap"><span style="width: 60px; font-size: 12px; color: var(--text-muted);">价格超跌</span><div class="score-bar"><div class="score-bar-fill high" style="width: {{ (analysis.bottom_signal.percentile_contrib / 25 * 100)|int }}%;"></div></div><span style="font-size: 12px; width: 30px; text-align: right;">{{ analysis.bottom_signal.percentile_contrib }}</span></div>
+  <div class="score-bar-wrap"><span style="width: 60px; font-size: 12px; color: var(--text-muted);">偏离极端</span><div class="score-bar"><div class="score-bar-fill high" style="width: {{ (analysis.bottom_signal.zscore_contrib / 20 * 100)|int }}%;"></div></div><span style="font-size: 12px; width: 30px; text-align: right;">{{ analysis.bottom_signal.zscore_contrib }}</span></div>
+  <div class="score-bar-wrap"><span style="width: 60px; font-size: 12px; color: var(--text-muted);">广度恐慌</span><div class="score-bar"><div class="score-bar-fill high" style="width: {{ (analysis.bottom_signal.breadth_contrib / 20 * 100)|int }}%;"></div></div><span style="font-size: 12px; width: 30px; text-align: right;">{{ analysis.bottom_signal.breadth_contrib }}</span></div>
+  <div class="score-bar-wrap"><span style="width: 60px; font-size: 12px; color: var(--text-muted);">情绪冰点</span><div class="score-bar"><div class="score-bar-fill high" style="width: {{ (analysis.bottom_signal.sentiment_contrib / 20 * 100)|int }}%;"></div></div><span style="font-size: 12px; width: 30px; text-align: right;">{{ analysis.bottom_signal.sentiment_contrib }}</span></div>
+  <div class="score-bar-wrap"><span style="width: 60px; font-size: 12px; color: var(--text-muted);">跌速衰竭</span><div class="score-bar"><div class="score-bar-fill high" style="width: {{ (analysis.bottom_signal.deceleration_contrib / 15 * 100)|int }}%;"></div></div><span style="font-size: 12px; width: 30px; text-align: right;">{{ analysis.bottom_signal.deceleration_contrib }}</span></div>
 </div>
 {% endif %}
 
-<!-- ====== Macro Context (v4) ====== -->
+<!-- ====== 宏观环境 (v4) ====== -->
 {% if analysis.macro_context %}
 <div class="card">
   <div class="card-header">
-    <span class="card-title">Macro Context</span>
+    <span class="card-title">宏观环境</span>
   </div>
   <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
     <div style="padding: 10px; background: rgba(255,255,255,0.03); border-radius: 6px; text-align: center;">
-      <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 3px;">Breadth 7d</div>
+      <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 3px;">广度(7日)</div>
       <div style="font-size: 18px; font-weight: 700;">{{ analysis.macro_context.breadth_7d_label }}</div>
       <div style="font-size: 12px; color: var(--text-muted);">{{ "%.0f"|format(analysis.macro_context.breadth_7d) }}</div>
     </div>
     <div style="padding: 10px; background: rgba(255,255,255,0.03); border-radius: 6px; text-align: center;">
-      <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 3px;">Breadth 90d</div>
+      <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 3px;">广度(90日)</div>
       <div style="font-size: 18px; font-weight: 700;">{{ analysis.macro_context.breadth_90d_label }}</div>
       <div style="font-size: 12px; color: var(--text-muted);">{{ "%.0f"|format(analysis.macro_context.breadth_90d) }}</div>
     </div>
     <div style="padding: 10px; background: rgba(255,255,255,0.03); border-radius: 6px; text-align: center;">
-      <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 3px;">Greedy</div>
+      <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 3px;">贪婪指数</div>
       <div style="font-size: 18px; font-weight: 700;">{{ analysis.macro_context.sentiment_label }}</div>
       <div style="font-size: 12px; color: var(--text-muted);">{{ "%.0f"|format(analysis.macro_context.greedy_current) }}</div>
     </div>
     <div style="padding: 10px; background: rgba(255,255,255,0.03); border-radius: 6px; text-align: center;">
-      <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 3px;">Online</div>
+      <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 3px;">在线人数</div>
       <div style="font-size: 18px; font-weight: 700;">{{ analysis.macro_context.online_label }}</div>
       <div style="font-size: 12px; color: var(--text-muted);">{{ analysis.macro_context.online_current }}</div>
     </div>
     <div style="padding: 10px; background: rgba(255,255,255,0.03); border-radius: 6px; text-align: center;">
-      <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 3px;">Online Score</div>
+      <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 3px;">在线趋势</div>
       <div style="font-size: 18px; font-weight: 700;">{{ "%.0f"|format(analysis.macro_context.online_score) }}</div>
       <div style="font-size: 12px; color: var(--text-muted);">/100</div>
     </div>
     <div style="padding: 10px; background: rgba(255,255,255,0.03); border-radius: 6px; text-align: center;">
-      <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 3px;">Card Price</div>
+      <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 3px;">充值卡价</div>
       <div style="font-size: 18px; font-weight: 700;">{{ analysis.macro_context.card_label }}</div>
       <div style="font-size: 12px; color: var(--text-muted);">{{ "%.0f"|format(analysis.macro_context.card_score) }}/100</div>
     </div>
@@ -198,15 +198,15 @@
 </div>
 {% endif %}
 
-<!-- ====== Market Trend Health (P0) ====== -->
+<!-- ====== 大盘趋势健康度 (P0) ====== -->
 {% if analysis.market_trend_health and analysis.market_trend_health.score %}
 <div class="card" style="grid-column: 1 / -1;">
   <div class="card-header">
-    <span class="card-title">Market Trend Health</span>
+    <span class="card-title">大盘趋势健康度</span>
     <span style="font-size: 36px; font-weight: 800;">{{ analysis.market_trend_health.score }}/100</span>
   </div>
   <div style="margin-bottom: 16px; padding: 10px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; background: rgba(255,255,255,0.05);">
-    {{ analysis.market_trend_health.level_label }} | Dir: {{ analysis.market_trend_health.direction }}
+    {{ analysis.market_trend_health.level_label }} | 方向: {{ analysis.market_trend_health.direction }}
     {% if analysis.market_trend_health.volume_divergence %}
     <span style="margin-left: 8px; padding: 2px 8px; background: rgba(239,68,68,0.15); border-radius: 4px; color: var(--red);">{{ analysis.market_trend_health.volume_divergence_label }}</span>
     {% endif %}
@@ -214,32 +214,32 @@
   <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 12px;">
     <div style="text-align: center; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
       <div style="font-size: 18px; font-weight: 700;">{{ analysis.market_trend_health.persistence_score }}</div>
-      <div style="font-size: 11px; color: var(--text-muted);">Persistence</div>
+      <div style="font-size: 11px; color: var(--text-muted);">趋势持续</div>
     </div>
     <div style="text-align: center; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
       <div style="font-size: 18px; font-weight: 700;">{{ analysis.market_trend_health.steepness_score }}</div>
-      <div style="font-size: 11px; color: var(--text-muted);">Steepness</div>
+      <div style="font-size: 11px; color: var(--text-muted);">趋势陡度</div>
     </div>
     <div style="text-align: center; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
       <div style="font-size: 18px; font-weight: 700;">{{ analysis.market_trend_health.structure_score }}</div>
-      <div style="font-size: 11px; color: var(--text-muted);">MA Struct</div>
+      <div style="font-size: 11px; color: var(--text-muted);">均线结构</div>
     </div>
     <div style="text-align: center; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
       <div style="font-size: 18px; font-weight: 700;">{{ analysis.market_trend_health.volume_score }}</div>
-      <div style="font-size: 11px; color: var(--text-muted);">Vol/Price</div>
+      <div style="font-size: 11px; color: var(--text-muted);">量价配合</div>
     </div>
     <div style="text-align: center; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
       <div style="font-size: 18px; font-weight: 700;">{{ analysis.market_trend_health.anomaly_score }}</div>
-      <div style="font-size: 11px; color: var(--text-muted);">Anomaly</div>
+      <div style="font-size: 11px; color: var(--text-muted);">异常缺口</div>
     </div>
     <div style="text-align: center; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
       <div style="font-size: 18px; font-weight: 700;">{{ analysis.market_trend_health.key_level_score }}</div>
-      <div style="font-size: 11px; color: var(--text-muted);">S/R Level</div>
+      <div style="font-size: 11px; color: var(--text-muted);">支撑压力</div>
     </div>
   </div>
   {% if analysis.market_trend_health.deduction_sources %}
   <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">
-    Deductions:
+    扣分来源:
     {% for src in analysis.market_trend_health.deduction_sources %}
     <span style="display: inline-block; padding: 1px 6px; background: rgba(239,68,68,0.1); border-radius: 3px; margin: 2px;">{{ src }}</span>
     {% endfor %}
@@ -251,11 +251,11 @@
 </div>
 {% endif %}
 
-<!-- ====== Market Fusion Decision (P0) ====== -->
+<!-- ====== 大盘融合决策 (P0) ====== -->
 {% if analysis.market_fusion_decision and analysis.market_fusion_decision.action %}
 <div class="card" style="grid-column: 1 / -1;">
   <div class="card-header">
-    <span class="card-title">Market Fusion Decision</span>
+    <span class="card-title">大盘融合决策</span>
     <span style="font-size: 24px; font-weight: 800;">{{ analysis.market_fusion_decision.action_label }}</span>
   </div>
   <div style="margin-bottom: 16px; padding: 12px 16px; border-radius: 8px; background: rgba(255,255,255,0.03); font-size: 14px; line-height: 1.6; color: var(--text-secondary);">
@@ -264,24 +264,24 @@
   <div class="stat-grid">
     <div class="stat-item">
       <div class="stat-value">{{ "%.1f"|format(analysis.market_fusion_decision.percentile_90d) }}%</div>
-      <div class="stat-label">90d Pctl</div>
+      <div class="stat-label">90日百分位</div>
     </div>
     <div class="stat-item">
       <div class="stat-value">{{ analysis.market_fusion_decision.raw_th_score }} -> {{ analysis.market_fusion_decision.corrected_th_score }}</div>
-      <div class="stat-label">TH (raw->corrected)</div>
+      <div class="stat-label">TH分(原始>修正)</div>
     </div>
     <div class="stat-item">
       <div class="stat-value">{{ analysis.market_fusion_decision.zone_label }}</div>
-      <div class="stat-label">Zone</div>
+      <div class="stat-label">估值区间</div>
     </div>
     <div class="stat-item">
       <div class="stat-value" style="font-size: 28px; font-weight: 800;">{{ "%.0f"|format(analysis.market_fusion_decision.global_position_limit * 100) }}%</div>
-      <div class="stat-label">Position Limit</div>
+      <div class="stat-label">仓位上限</div>
     </div>
   </div>
   {% if analysis.market_fusion_decision.deduction_sources %}
   <div style="margin-top: 12px; font-size: 11px; color: var(--text-muted);">
-    Sources:
+    来源:
     {% for src in analysis.market_fusion_decision.deduction_sources %}
     <span style="display: inline-block; padding: 1px 6px; background: rgba(239,68,68,0.1); border-radius: 3px; margin: 2px;">{{ src }}</span>
     {% endfor %}
