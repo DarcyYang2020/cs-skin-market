@@ -796,61 +796,61 @@ def analyze_probability_integrated(prices, pct_90d, zscore_90d,
     # Breadth modifier: bearish breadth dampens upside, bullish amplifies
     if breadth <= 25:
         b_mod = 0.7
-        modifiers.append("???? x0.7")
+        modifiers.append("广度极弱 x0.7")
     elif breadth <= 40:
         b_mod = 0.85
-        modifiers.append("???? x0.85")
+        modifiers.append("广度偏弱 x0.85")
     elif breadth >= 75:
         b_mod = 1.15
-        modifiers.append("???? x1.15")
+        modifiers.append("广度强劲 x1.15")
     elif breadth >= 65:
         b_mod = 1.08
-        modifiers.append("???? x1.08")
+        modifiers.append("广度较好 x1.08")
     else:
         b_mod = 1.0
 
     # Sentiment modifier: extreme fear boosts upside (contrarian)
     if sentiment >= 80:
         s_mod = 1.15
-        modifiers.append("????(??) x1.15")
+        modifiers.append("极度恐惧(反转) x1.15")
     elif sentiment >= 70:
         s_mod = 1.08
-        modifiers.append("??(??) x1.08")
+        modifiers.append("恐惧(反转) x1.08")
     elif sentiment <= 20:
         s_mod = 0.85
-        modifiers.append("????(??) x0.85")
+        modifiers.append("极度贪婪(反转) x0.85")
     elif sentiment <= 35:
         s_mod = 0.92
-        modifiers.append("??(??) x0.92")
+        modifiers.append("贪婪(反转) x0.92")
     else:
         s_mod = 1.0
 
     # Online trend modifier
     if online <= 15:
         o_mod = 0.88
-        modifiers.append("?????? x0.88")
+        modifiers.append("玩家骤降 x0.88")
     elif online <= 30:
         o_mod = 0.94
-        modifiers.append("?????? x0.94")
+        modifiers.append("玩家下降 x0.94")
     elif online >= 75:
         o_mod = 1.10
-        modifiers.append("???? x1.10")
+        modifiers.append("玩家激增 x1.10")
     else:
         o_mod = 1.0
 
     # Position modifier: low percentile = stronger mean reversion
     if pct_90d <= 10:
         p_mod = 1.12
-        modifiers.append("???? x1.12")
+        modifiers.append("极度低估 x1.12")
     elif pct_90d <= 20:
         p_mod = 1.06
-        modifiers.append("???? x1.06")
+        modifiers.append("低估 x1.06")
     elif pct_90d >= 85:
         p_mod = 0.88
-        modifiers.append("???? x0.88")
+        modifiers.append("极度高估 x0.88")
     elif pct_90d >= 70:
         p_mod = 0.94
-        modifiers.append("???? x0.94")
+        modifiers.append("高估 x0.94")
     else:
         p_mod = 1.0
 
@@ -876,12 +876,12 @@ def analyze_probability_integrated(prices, pct_90d, zscore_90d,
         prob3 = min(prob3, 45)
         prob7 = min(prob7, 45)
         prob30 = min(prob30, 45)
-        modifiers.append("?????? <=45%")
+        modifiers.append("熊市封顶 ≤45%")
     elif bearish_score >= 2:
         prob3 = min(prob3, 55)
         prob7 = min(prob7, 55)
         prob30 = min(prob30, 55)
-        modifiers.append("?????? <=55%")
+        modifiers.append("熊市封顶 ≤55%")
 
     # Confidence: based on how extreme the modifiers are
     if abs(total_mod - 1.0) > 0.2:
@@ -977,10 +977,10 @@ def analyze_index_full(index_history: list) -> dict:
         cp = result["cycle_probability"]
         max_phase = max(cp, key=cp.get)
         phase_labels = {
-            "accumulation": ("accumulation", "???", "?????????"),
-            "consolidation": ("consolidation", "???", "???????????"),
-            "markup": ("markup", "???", "???????????"),
-            "distribution": ("distribution", "???", "?????????"),
+            "accumulation": ("accumulation", "📥 吸筹期", "分批建仓囤货，耐心持仓"),
+            "consolidation": ("consolidation", "📊 洗盘期", "不加仓不止损，持有卧倒"),
+            "markup": ("markup", "🚀 拉升期", "持有为主，临近高位减仓"),
+            "distribution": ("distribution", "📉 出货期", "只卖不买，空仓观望"),
         }
         if max_phase in phase_labels:
             ph, pl, ps = phase_labels[max_phase]
