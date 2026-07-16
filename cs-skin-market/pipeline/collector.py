@@ -174,6 +174,22 @@ def fetch_market_index() -> MarketIndex | None:
 
 
 def fetch_index_kline() -> list:
+    return _cached_kline(_fetch_index_kline_raw)
+
+# === K-line cache (valid 1 hour) ===
+import time as _time_mod
+_kline_cache = {"data": None, "ts": 0}
+
+def _cached_kline(fetcher, *args):
+    now = _time_mod.time()
+    if _kline_cache["data"] is not None and (now - _kline_cache["ts"]) < 3600:
+        return _kline_cache["data"]
+    result = fetcher(*args)
+    _kline_cache["data"] = result
+    _kline_cache["ts"] = now
+    return result
+
+def _fetch_index_kline_raw() -> list:
     """Fetch daily index K-line data from csQAQ API.
     GET /api/v1/sub/kline?id=1&type=1day
     Returns list of (date_str, value) tuples (close price)."""

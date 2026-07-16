@@ -10,6 +10,33 @@ from typing import Optional
 
 TZ_BJ = timezone(timedelta(hours=8))
 CSQAQ_WEB = "https://csqaq.com"
+CSQAQ_WEB = "https://csqaq.com"
+
+# === Browser singleton (reuse across calls) ===
+_browser_pw = None
+_browser_inst = None
+_browser_last_used = 0
+
+async def _get_browser():
+    global _browser_pw, _browser_inst, _browser_last_used
+    import time as _time
+    now = _time.time()
+    # Recycle browser if older than 5 minutes
+    if _browser_pw and _browser_inst and (now - _browser_last_used) < 300:
+        _browser_last_used = now
+        return _browser_pw, _browser_inst
+    # Close old if exists
+    if _browser_inst:
+        try: await _browser_inst.close()
+        except: pass
+    if _browser_pw:
+        try: await _browser_pw.stop()
+        except: pass
+    from playwright.async_api import async_playwright
+    _browser_pw = await async_playwright().start()
+    _browser_inst = await _browser_pw.chromium.launch(headless=True, proxy=_PROXY)
+    _browser_last_used = now
+    return _browser_pw, _browser_inst
 _PROXY = None
 
 try:
@@ -103,7 +130,7 @@ async def _browser():
 
 async def search_good_id(item_name: str) -> tuple[int, str]:
     """Async: Search csqaq.com for an item, return (good_id, page_title)."""
-    pw, browser = await _browser()
+    pw, browser = await _get_browser()
     page = await browser.new_page()
     
     good_id = 0
@@ -111,7 +138,8 @@ async def search_good_id(item_name: str) -> tuple[int, str]:
     
     try:
         await page.goto(f"{CSQAQ_WEB}/home", wait_until="domcontentloaded", timeout=30000)
-        await page.wait_for_timeout(2000)
+        await page.wait_for_timeout(1000)
+        await page.wait_for_selector(".ant-select-selector", timeout=8000)
         
         # Click and wait for Ant Design select to initialize
         await page.click(".ant-select-selector")
@@ -121,7 +149,8 @@ async def search_good_id(item_name: str) -> tuple[int, str]:
         await page.click("input")
         await page.wait_for_timeout(200)
         await page.type("input", item_name, delay=30)
-        await page.wait_for_timeout(2500)
+        await page.wait_for_timeout(1500)
+        await page.wait_for_selector(".ant-select-item-option", timeout=5000)
         
         opt = page.locator(".ant-select-item-option")
         cnt = await opt.count()
@@ -202,8 +231,7 @@ async def search_good_id(item_name: str) -> tuple[int, str]:
                     good_id = int(m.group(1))
     finally:
         await page.close()
-        await browser.close()
-        await pw.stop()
+        # Browser kept alive for reuse
     
     return good_id, title
 
@@ -216,7 +244,7 @@ async def fetch_item_detail(good_id: int) -> Optional[ItemData]:
     item = ItemData()
     item.good_id = good_id
     
-    pw, browser = await _browser()
+    pw, browser = await _get_browser()
     page = await browser.new_page()
     
     captured = {"chart": None, "detail": None}
@@ -251,7 +279,7 @@ async def fetch_item_detail(good_id: int) -> Optional[ItemData]:
         await page.route("**/info/chart**", modify_chart)
         
         await page.goto(f"{CSQAQ_WEB}/goods/{good_id}", wait_until="domcontentloaded", timeout=30000)
-        await page.wait_for_timeout(10000)
+        await page.wait_for_timeout(6000)  # Reduced from 10s, chart loads via API
         
         # 1. Parse chart data
         if captured["chart"]:
@@ -320,15 +348,14 @@ async def fetch_item_detail(good_id: int) -> Optional[ItemData]:
                     item.order_book = ob
     finally:
         await page.close()
-        await browser.close()
-        await pw.stop()
+        # Browser kept alive for reuse
     
     return item if item.price_rmb > 0 else None
 
 
 async def fetch_kline_90d(good_id: int) -> tuple[list, list]:
     """Async: Get 90-day K-line data. Returns (daily_ohlc_list, raw_points_list)."""
-    pw, browser = await _browser()
+    pw, browser = await _get_browser()
     page = await browser.new_page()
     
     chart_data = {}
@@ -357,7 +384,7 @@ async def fetch_kline_90d(good_id: int) -> tuple[list, list]:
         await page.route("**/info/chart**", modify_chart)
         
         await page.goto(f"{CSQAQ_WEB}/goods/{good_id}", wait_until="domcontentloaded", timeout=30000)
-        await page.wait_for_timeout(10000)
+        await page.wait_for_timeout(6000)  # Reduced from 10s, chart loads via API
         
         ohlc, raw = [], []
         if chart_data.get("body"):
@@ -368,7 +395,6 @@ async def fetch_kline_90d(good_id: int) -> tuple[list, list]:
                 raw = _chart_to_raw(cd)
     finally:
         await page.close()
-        await browser.close()
-        await pw.stop()
+        # Browser kept alive for reuse
     
     return ohlc, raw
