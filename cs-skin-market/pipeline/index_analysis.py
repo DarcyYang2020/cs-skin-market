@@ -990,6 +990,57 @@ def analyze_index_full(index_history: list) -> dict:
                 result["cycle"]["phase_strategy"] = ps
                 result["cycle"]["phase_confidence"] = round(cp[max_phase] / 100, 2)
 
+        # Recompute value_score fields based on unified v4 cycle phase
+        if "value_score" in result and max_phase in phase_labels:
+            new_phase = max_phase
+            vs = result["value_score"]
+            pct_val = result["position"]["percentile_90d"]
+
+            # Recompute cycle_score
+            if new_phase == "accumulation":
+                new_cycle_score = 2.5
+            elif new_phase == "markup" and pct_val < EXIT_PERCENTILE_MIN:
+                new_cycle_score = 1.8
+            elif new_phase == "consolidation":
+                new_cycle_score = 1.2
+            elif new_phase == "distribution":
+                new_cycle_score = 0.3
+            else:
+                new_cycle_score = 1.0
+
+            # Recompute total score
+            new_total = vs["entry_proximity"] + vs["risk_score"] + new_cycle_score + vs["sentiment_score"]
+            new_score = max(1, min(10, round(new_total)))
+
+            # Update position_advice
+            if new_phase == "accumulation" and new_score >= 6:
+                new_advice = "\U0001f4e5 \u5206\u6279\u5efa\u4ed3\uff08\u5165\u573a\u533a + \u5438\u7b79\u671f\uff0c\u6309\u7b56\u7565\u5206\u6279\u4e70\u5165\uff09"
+            elif new_phase == "accumulation":
+                new_advice = "\U0001f4e5 \u8f7b\u4ed3\u8bd5\u63a2\uff08\u5165\u573a\u533a\u4f46\u8bc4\u5206\u504f\u4f4e\uff0c\u5148\u89c2\u671b\uff09"
+            elif new_phase == "markup" and pct_val < EXIT_PERCENTILE_MIN:
+                new_advice = "\u2796 \u6301\u4ed3\u4e0d\u52a0\u4ed3\uff08\u62c9\u5347\u671f\uff0c\u6301\u6709\u4e3b\u52a8\uff0c\u4e34\u8fd1\u9ad8\u4f4d\u6b62\u76c8\uff09"
+            elif new_phase == "consolidation":
+                new_advice = "\U0001f4ca \u5367\u5012\u6301\u6709\uff08\u6d17\u76d8\u671f\uff0c\u4e0d\u52a0\u4ed3\u4e0d\u6b62\u635f\uff09"
+            elif new_phase == "distribution":
+                new_advice = "\U0001f6aa \u6b62\u76c8\u79bb\u573a\uff08\u51fa\u8d27\u671f\uff0c\u53ea\u5356\u4e0d\u4e70\uff09"
+            else:
+                new_advice = "\u2796 \u89c2\u671b\u7b49\u5f85"
+
+            # Update recommendation
+            if new_score >= 7:
+                new_rec = "\u7efc\u5408\u6027\u4ef7\u6bd4\u4f18\u79c0\uff0c\u5f53\u524d\u4f4d\u7f6e\u9002\u5408\u79ef\u6781\u5e03\u5c40\u3002\u5efa\u8bae\u6301\u6709\u5468\u671f15-45\u5929\u3002"
+            elif new_score >= 5:
+                new_rec = "\u6027\u4ef7\u6bd4\u4e2d\u7b49\uff0c\u53ef\u9002\u5f53\u914d\u7f6e\uff0c\u63a7\u5236\u4ed3\u4f4d"
+            elif new_score >= 3:
+                new_rec = "\u6027\u4ef7\u6bd4\u504f\u4f4e\uff0c\u5efa\u8bae\u89c2\u671b\u7b49\u5f85\u66f4\u4f73\u65f6\u673a"
+            else:
+                new_rec = "\u6027\u4ef7\u6bd4\u5f88\u5dee\uff0c\u5efa\u8bae\u56de\u907f\u6216\u7b49\u5f85\u8c03\u6574"
+
+            vs["cycle_score"] = round(new_cycle_score, 2)
+            vs["score"] = new_score
+            vs["position_advice"] = new_advice
+            vs["recommendation"] = new_rec
+
         result["probability_integrated"] = analyze_probability_integrated(
             values[-90:], pct, z,
             volatility_regime=result.get("probability", {}).get("volatility_regime", "normal"))
