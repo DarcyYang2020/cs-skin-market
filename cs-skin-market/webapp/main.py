@@ -36,6 +36,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
 from pipeline import config, db, collector, scorer, valuation, regime, index_analysis, item_analysis
+from pipeline.logutil import get_logger
+_web_log = get_logger("webapp")
 from pipeline import collector_csqaq
 
 
@@ -424,7 +426,7 @@ async def api_market_refresh(request: Request):
         try:
             sectors = collector.fetch_sector_flow()
         except Exception as sec_err:
-            print(f"[refresh] sector fetch error: {sec_err}")
+            _web_log.warning(f"sector fetch error: {sec_err}")
 
 
         conn = db.get_conn()
@@ -441,7 +443,7 @@ async def api_market_refresh(request: Request):
                         [(date_str, val) for date_str, val in index_history]
                     )
                 except Exception as ke:
-                    print(f"[refresh] kline batch save error: {ke}")
+                    _web_log.warning(f"kline batch save error: {ke}")
 
             # Save sectors as JSON in settings
 
@@ -455,7 +457,7 @@ async def api_market_refresh(request: Request):
                     analysis = index_analysis.analyze_index_full(index_history)
                     db.set_setting(conn, "cached_index_analysis", json.dumps(analysis, ensure_ascii=False))
                 except Exception as ae:
-                    print(f"[refresh] index analysis error: {ae}")
+                    _web_log.error(f"index analysis error: {ae}")
             conn.commit()
 
         finally:

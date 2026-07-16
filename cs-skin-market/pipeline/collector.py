@@ -16,6 +16,8 @@ from pathlib import Path
 from typing import Optional
 
 from .config import CSQAQ_BASE, API_TOKEN, API_RATE_LIMIT, DATA_DIR
+from .logutil import get_logger
+_log = get_logger()
 
 TZ_BJ = timezone(timedelta(hours=8))
 
@@ -102,10 +104,10 @@ def _api_call(method: str, path: str, body: dict | None = None) -> dict:
             err_body = e.read().decode("utf-8")
         except Exception:
             err_body = ""
-        print(f"[collector] HTTP {e.code} on {method} {path}: {err_body[:200]}")
+        _log.warning(f"HTTP {e.code} on {method} {path}: {err_body[:200]}")
         return {"code": e.code, "msg": str(e), "data": None}
     except Exception as e:
-        print(f"[collector] Error on {method} {path}: {e}")
+        _log.error(f"Error on {method} {path}: {e}")
         return {"code": -1, "msg": str(e), "data": None}
 
 
@@ -144,7 +146,7 @@ def fetch_market_index() -> MarketIndex | None:
     resp = _api_get("/current_data?type=init")
     data = resp.get("data")
     if not data:
-        print("[collector] fetch_market_index: no data")
+        _log.warning("fetch_market_index: no data")
         return None
 
     sub_indices = data.get("sub_index_data", [])
@@ -196,7 +198,7 @@ def _fetch_index_kline_raw() -> list:
     resp = _api_get("/sub/kline?id=1&type=1day")
     data = resp.get("data")
     if not data or not isinstance(data, list):
-        print("[collector] fetch_index_kline: no data from API")
+        _log.warning("fetch_index_kline: no data from API")
         return []
 
     points = []
@@ -305,7 +307,7 @@ def fetch_item_detail(name_or_hash: str | None = None, good_id: int = 0,
             good_id = get_good_id_by_market_hash(name_or_hash)
 
     if not good_id:
-        print(f"[collector] fetch_item_detail: no good_id found")
+        _log.warning("fetch_item_detail: no good_id found")
         return None
 
     # 1. Get basic detail

@@ -174,3 +174,44 @@ CATEGORY_PARAMS = {
     "胶囊": {"mad_scale": 2.2,  "liq_floor": 1},
     "_default": {"mad_scale": 1.0, "liq_floor": 5},
 }
+
+
+# ============================================================
+#  Analysis Engine Thresholds (centralized from item_analysis)
+# ============================================================
+
+# --- Percentile zones ---
+PCT_UNDERVALUED_MAX = 30       # <=30% = undervalued
+PCT_FAIR_MAX = 70              # <=70% = fair / neutral
+PCT_OVERVAULED_MIN = 70        # >70% = overvalued / bubble
+PCT_EXTREME_BUBBLE = 90        # >90% = extreme bubble warning
+
+# --- Z-score signals ---
+Z_ENTRY_MAX = -1.5             # <= -1.5 = oversold / entry signal
+Z_EXIT_MIN = 2.0               # >= +2.0 = overbought / exit signal
+Z_EXTREME_EXIT = 2.5           # >= +2.5 = extreme overbought
+
+# --- Trend Health score bands ---
+TH_STRONG = 70                 # >=70 = strong trend
+TH_NEUTRAL = 50                # >=50 = neutral-to-positive
+TH_WEAK = 40                   # <40 = weak/declining
+TH_VERY_WEAK = 20              # <20 = very weak
+
+# --- Volume stability thresholds ---
+VOL_STABLE_MIN = 0.8           # avg_vol within 80% of median = stable
+VOL_VOLATILE_MAX = 2.0         # avg_vol > 2x median = volatile
+VOL_EXTREME_MAX = 2.5          # > 2.5 = extreme volatility
+
+# --- Cycle detection ---
+CYCLE_CONFIDENCE_BASE = 35     # base confidence for weak signals
+CYCLE_CONFIDENCE_MEDIUM = 55   # medium confidence
+CYCLE_CONFIDENCE_HIGH = 60     # high confidence
+
+# --- Whale detection ---
+WHALE_RANGE_TIGHT = 5.0        # <=5% price range = tight (position locking)
+WHALE_CONSECUTIVE_CLOSE = 5    # >=5 consecutive closes near same level
+
+# --- Supply analysis ---
+SUPPLY_VOLUME_LOW = 100        # <100 total volume = low supply score
+SUPPLY_VOLUME_MED = 200        # <200 = medium
+SUPPLY_VOLUME_HIGH = 500       # >=500 = high

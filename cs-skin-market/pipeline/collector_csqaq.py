@@ -9,6 +9,8 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 TZ_BJ = timezone(timedelta(hours=8))
+from .logutil import get_logger
+_csq_log = get_logger()
 CSQAQ_WEB = "https://csqaq.com"
 CSQAQ_WEB = "https://csqaq.com"
 
@@ -158,7 +160,7 @@ async def search_good_id(item_name: str) -> tuple[int, str]:
         
         opt = page.locator(".ant-select-item-option")
         cnt = await opt.count()
-        print(f"  [csqaq] Search options: {cnt}")
+        _csq_log.info(f"Search options: {cnt}")
         # First pass: find non-StatTrak, non-Souvenir option
         clicked = False
         for i in range(cnt):
@@ -167,9 +169,9 @@ async def search_good_id(item_name: str) -> tuple[int, str]:
                 txt_clean = txt.strip() if txt else ""
                 # Skip StatTrak and Souvenir variants
                 if "StatTrak" in txt_clean or "StatTrak\u2122" in txt_clean or "\u2122" in txt_clean or "\u7eaa\u5ff5\u54c1" in txt_clean:
-                    print(f"  [csqaq] Skipping StatTrak/Souvenir: {txt_clean}")
+                    _csq_log.info(f"Skipping StatTrak/Souvenir: {txt_clean}")
                     continue
-                print(f"  [csqaq] Clicking: {txt_clean}")
+                _csq_log.info(f"Clicking: {txt_clean}")
                 await opt.nth(i).click(force=True, timeout=5000)
                 clicked = True
                 break
@@ -178,7 +180,7 @@ async def search_good_id(item_name: str) -> tuple[int, str]:
             for i in range(cnt):
                 if await opt.nth(i).is_visible():
                     txt = await opt.nth(i).text_content()
-                    print(f"  [csqaq] Fallback clicking: {txt.strip() if txt else ''}")
+                    _csq_log.info(f"Fallback clicking: {txt.strip() if txt else ''}")
                     await opt.nth(i).click(force=True, timeout=5000)
                     break
         
@@ -189,12 +191,12 @@ async def search_good_id(item_name: str) -> tuple[int, str]:
         if m:
             good_id = int(m.group(1))
         title = await page.evaluate("() => document.title.split('-')[0].trim()")
-        print(f"  [csqaq] Navigated: {url}, good_id={good_id}, title={title}")
+        _csq_log.info(f"Navigated: {url}, good_id={good_id}, title={title}")
 
         # Post-navigation StatTrak check: if we landed on a StatTrak variant,
         # try clicking the next non-StatTrak option
         if "StatTrak" in title or "StatTrak\u2122" in title:
-            print(f"  [csqaq] Landed on StatTrak variant, retrying...")
+            _csq_log.info("Landed on StatTrak variant, retrying...")
             good_id = 0
             # Go back and try next option
             clicked_alt = False
@@ -207,7 +209,7 @@ async def search_good_id(item_name: str) -> tuple[int, str]:
                     continue
                 if not alt_clean:
                     continue
-                print(f"  [csqaq] Retry clicking: {alt_clean}")
+                _csq_log.info(f"Retry clicking: {alt_clean}")
                 await page.goto(f"{CSQAQ_WEB}/home", wait_until="domcontentloaded", timeout=15000)
                 await page.wait_for_timeout(1500)
                 await page.click(".ant-select-selector")
@@ -225,11 +227,11 @@ async def search_good_id(item_name: str) -> tuple[int, str]:
                     if m2:
                         good_id = int(m2.group(1))
                     title = await page.evaluate("() => document.title.split('-')[0].trim()")
-                    print(f"  [csqaq] Retry result: url={url2}, good_id={good_id}, title={title}")
+                    _csq_log.info(f"Retry result: url={url2}, good_id={good_id}, title={title}")
                 clicked_alt = True
                 break
             if not clicked_alt:
-                print(f"  [csqaq] No non-StatTrak alternative found, using original StatTrak result")
+                _csq_log.warning("No non-StatTrak alternative found, using original StatTrak result")
                 # Recover the original StatTrak good_id from the first navigation
                 if good_id == 0 and m:
                     good_id = int(m.group(1))
@@ -300,7 +302,7 @@ async def fetch_item_detail(good_id: int) -> Optional[ItemData]:
                     item.price_rmb = float(prices[-1]) if prices[-1] is not None else 0.0
                 if nums:
                     item.volume_total = int(nums[-1]) if nums[-1] is not None else 0
-                print(f"  [csqaq] Chart: {len(ts)} pts, {len(item._daily_bars)} daily bars")
+                _csq_log.info(f"Chart: {len(ts)} pts, {len(item._daily_bars)} daily bars")
         
         # 2. Parse detail data
         if captured["detail"]:
