@@ -173,26 +173,7 @@ def fetch_market_index() -> MarketIndex | None:
         else:
             result.mood = "neutral"
 
-    # Stash sub_indices for cycle-sector recommendations
-    result._sub_indices = []
-    for si in sub_indices:
-        result._sub_indices.append({
-            "name_key": si.get("name_key", ""),
-            "name": si.get("name", ""),
-            "id": si.get("id", 0),
-            "value": si.get("market_index", 0),
-            "change_pct": si.get("chg_rate", 0),
-            "change_7d": si.get("chg_rate", 0),
-        })
-    # Cache sub_indices to DB
-    try:
-        from . import db as _db2
-        _conn2 = _db2.get_conn()
-        _db2.set_setting(_conn2, "cached_sub_indices", json.dumps(result._sub_indices, ensure_ascii=False))
-        _conn2.close()
-    except Exception:
-        pass
-    return result
+        return result
 
 
 def fetch_index_kline() -> list:
@@ -211,58 +192,6 @@ def _cached_kline(fetcher, *args):
     _kline_cache["ts"] = now
     return result
 
-
-def fetch_sub_kline(name_key: str) -> list:
-    """Fetch daily K-line for a sub-index by name_key."""
-    try:
-        from . import db as _sk_db
-        conn = _sk_db.get_conn()
-        raw = _sk_db.get_setting(conn, "cached_sub_indices", "[]")
-        conn.close()
-        sub_indices = {s["name_key"]: s for s in json.loads(raw)}
-        si = sub_indices.get(name_key)
-        if not si:
-            _log.warning(f"fetch_sub_kline: unknown name_key={name_key}")
-            return []
-        idx_id = si.get("id", 0)
-        if not idx_id:
-            return []
-        return _cached_sub_kline(idx_id, name_key)
-    except Exception as e:
-        _log.warning(f"fetch_sub_kline error for {name_key}: {e}")
-        return []
-
-
-_sub_kline_cache = {}
-
-def _cached_sub_kline(idx_id: int, name_key: str) -> list:
-    """Cached sub-index K-line fetch."""
-    now = _time_mod.time()
-    entry = _sub_kline_cache.get(name_key)
-    if entry and (now - entry["ts"]) < 3600:
-        return entry["data"]
-
-    resp = _api_get(f"/sub/kline?id={idx_id}&type=1day")
-    data = resp.get("data")
-    if not data or not isinstance(data, list):
-        return []
-
-    points = []
-    for row in data:
-        try:
-            ts = int(row.get("t", 0)) / 1000.0
-            if ts <= 0:
-                continue
-            dt = datetime.fromtimestamp(ts, tz=TZ_BJ)
-            date_str = dt.strftime("%Y-%m-%d")
-            close_val = float(row.get("c", 0))
-            if close_val > 0:
-                points.append((date_str, close_val))
-        except (ValueError, TypeError):
-            continue
-
-    _sub_kline_cache[name_key] = {"data": points, "ts": now}
-    return points
 
 def _fetch_index_kline_raw() -> list:
     """Fetch daily index K-line data from csQAQ API.

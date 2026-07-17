@@ -925,11 +925,9 @@ def compute_bottom_signal_wrapper(prices, pct_90d, zscore_90d, cycle_probability
 #  Extended analysis with Market Trend Health + Fusion Decision
 # ============================================================
 
-def analyze_cycle_sector_recommendation(cycle_phase: str, accumulation_prob: float = 0.0) -> dict:
-    """Thin wrapper around sector_rec.recommend (data-driven engine)."""
-    from .sector_rec import recommend
-    return recommend(cycle_phase, accumulation_prob)
-
+def analyze_cycle_sector_recommendation(cycle_phase, accumulation_prob=0.0):
+    """Removed - was unused. Returns empty result."""
+    return {"cycle_phase": cycle_phase, "sectors": [], "core_sectors": [], "secondary_sectors": [], "avoid_sectors": []}
 
 def analyze_index_full(index_history: list) -> dict:
     """Enhanced index analysis with market trend health and fusion decision."""
