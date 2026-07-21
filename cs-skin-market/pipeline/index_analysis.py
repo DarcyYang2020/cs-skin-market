@@ -1,4 +1,4 @@
-"""
+﻿"""
 Market index multi-dimensional analysis engine — CS-SKIN SPECIFIC.
 Based on:
   - cs-knowledge.md Ch5: CS2 market features (event-driven, no fundamentals, etc.)
@@ -11,6 +11,7 @@ Core algorithm path:
 """
 
 import statistics
+from .config import FEE_RATE
 from dataclasses import dataclass, field
 
 
@@ -135,11 +136,11 @@ def _percentile(prices: list, current: float) -> float:
 def _zscore(prices: list, current: float) -> float:
     if len(prices) < 2 or current <= 0:
         return 0.0
-    mean = statistics.mean(prices)
-    std = statistics.stdev(prices)
-    if std == 0:
+    med = statistics.median(prices)
+    mad = statistics.median([abs(v - med) for v in prices])
+    if mad == 0:
         return 0.0
-    return round((current - mean) / std, 2)
+    return round((current - med) / (mad * 1.4826), 2)
 
 
 def _daily_returns(prices: list) -> list:
@@ -187,7 +188,7 @@ def _strategy_zone(percentile: float, zscore: float) -> tuple:
             "\u7b56\u7565\u5165\u573a\u4fe1\u53f7\uff1a\u767e\u5206\u4f4d\u226430%\u4e14Z\u2264-1.5\uff0c\u53ef\u5206\u6279\u5efa\u4ed3\u3002\u5efa\u8bae\u6301\u6709\u5468\u671f15-45\u5929\u3002"
         )
     # Exit zone: either condition triggers
-    elif percentile >= EXIT_PERCENTILE_MIN or zscore >= EXIT_ZSCORE_MIN:
+    elif percentile >= EXIT_PERCENTILE_MIN and zscore >= EXIT_ZSCORE_MIN:
         trigger = []
         if percentile >= EXIT_PERCENTILE_MIN:
             trigger.append("百分位≥" + str(EXIT_PERCENTILE_MIN) + "%")
@@ -196,7 +197,7 @@ def _strategy_zone(percentile: float, zscore: float) -> tuple:
         return (
             "exit",
             "\U0001f534 \u79bb\u573a\u533a",
-            "策略离场信号：" + sep.join(trigger) + "，建议止盈减仓。不要追高，等待回调。"
+            "策略离场信号：" + "、".join(trigger) + "，建议止盈减仓。不要追高，等待回调。"
         )
     # Hold zone: between entry and exit
     else:
@@ -348,97 +349,6 @@ def analyze_probability(values: list, zscore: float,
 
     return result
 
-
-# ============================================================
-#  3. Cycle Analysis — STRATEGY ALIGNED
-# ============================================================
-
-def analyze_cycle(values: list, returns: list, volatility_14d: float,
-                  mom_14d: float, mom_30d: float, vol_regime: str,
-                  percentile: float, zscore: float) -> CycleAnalysis:
-    """Cycle detection aligned with trading-strategies.md.
-    
-    Primary: percentile + Z-score
-    Secondary: volatility + momentum as confirmation
-    
-    Strategy mapping:
-      accumulation: percentile low, Z negative → 只买不卖
-      consolidation: oscillating, no extreme → 卧倒持有
-      markup: percentile rising, Z turning → 持有为主
-      distribution: percentile high, Z positive → 只卖不买
-    """
-    result = CycleAnalysis()
-    if len(values) < 14 or len(returns) < 14:
-        result.phase = "unknown"
-        result.phase_description = "\u6570\u636e\u4e0d\u8db3\uff0c\u65e0\u6cd5\u5224\u65ad\u5468\u671f"
-        return result
-
-    # Momentum consistency
-    recent_returns = returns[-7:]
-    up_days = sum(1 for r in recent_returns if r > 0.3)
-    down_days = sum(1 for r in recent_returns if r < -0.3)
-    mom_consistent = max(up_days, down_days) / 7 if recent_returns else 0
-
-    # ---- Phase classification (percentile + Z primary) ----
-    if percentile <= ENTRY_PERCENTILE_MAX and zscore <= -1.0:
-        # Accumulation zone: cheap + depressed
-        result.phase = "accumulation"
-        conf = 0.80 if zscore <= ENTRY_ZSCORE_MAX else 0.65
-        result.phase_description = (
-            f"\u767e\u5206\u4f4d{percentile:.0f}%\uff0cZ={zscore:+.1f}"
-            f"\u2014\u2014\u5438\u7b79\u671f\uff0c\u4ef7\u683c\u5904\u4e8e\u5386\u53f2\u4f4e\u4f4d\u3002"
-            f"\u7b56\u7565\uff1a\u53ea\u4e70\u4e0d\u5356\u3001\u5206\u6279\u56e4\u8d27\u3001\u8010\u5fc3\u6301\u4ed3\u3002"
-        )
-        result.phase_strategy = "\U0001f4e5 \u53ea\u4e70\u4e0d\u5356\uff0c\u5206\u6279\u5efa\u4ed3"
-        result.next_phase_trigger = "\u767e\u5206\u4f4d\u5347\u81f330-50%\u3001Z\u503c\u56de\u5347\u81f3-0.5\u4ee5\u4e0a\u65f6\u8fdb\u5165\u62c9\u5347\u671f"
-        result.phase_confidence = conf
-
-    elif percentile >= EXIT_PERCENTILE_MIN or zscore >= EXIT_ZSCORE_MIN:
-        # Distribution zone: expensive + overbought
-        result.phase = "distribution"
-        conf = 0.80 if zscore >= EXIT_ZSCORE_MIN else 0.65
-        trigger = []
-        if percentile >= EXIT_PERCENTILE_MIN:
-            trigger.append(f"\u767e\u5206\u4f4d{percentile:.0f}%\u2265{EXIT_PERCENTILE_MIN}%")
-        if zscore >= EXIT_ZSCORE_MIN:
-            trigger.append(f"Z={zscore:+.1f}\u2265+{EXIT_ZSCORE_MIN}")
-        result.phase_description = (
-            _SEP.join(trigger) +
-            "——出货期，价格高位。" +
-            "策略：只卖不买、空仓观望。"
-        )
-        result.phase_strategy = "\U0001f4e4 \u53ea\u5356\u4e0d\u4e70\uff0c\u6b62\u76c8\u79bb\u573a"
-        result.next_phase_trigger = "\u767e\u5206\u4f4d\u56de\u843d\u81f350%\u4ee5\u4e0b\u65f6\u8fdb\u5165\u6d17\u76d8\u671f"
-        result.phase_confidence = conf
-
-    elif mom_14d > 2.0 and percentile < EXIT_PERCENTILE_MIN:
-        # Markup: price rising but not yet at exit
-        result.phase = "markup"
-        result.phase_description = (
-            f"\u767e\u5206\u4f4d{percentile:.0f}%\uff0c14\u65e5\u6da8\u5e45{mom_14d:+.1f}%"
-            f"\u2014\u2014\u62c9\u5347\u671f\uff0c\u4ef7\u683c\u6b63\u5728\u56de\u5347\u3002"
-            f"\u7b56\u7565\uff1a\u6301\u6709\u4e3a\u4e3b\u3001\u4e34\u8fd1\u9ad8\u4f4d\u51cf\u4ed3\uff08\u767e\u5206\u4f4d\u226565%\u65f6\uff09\u3002"
-        )
-        result.phase_strategy = "\U0001f4c8 \u6301\u6709\u4e3b\u52a8\uff0c\u4e34\u8fd1\u9ad8\u4f4d\u6b62\u76c8"
-        result.next_phase_trigger = f"\u767e\u5206\u4f4d\u8fbe\u5230{EXIT_PERCENTILE_MIN}%\u6216Z\u8fbe\u5230+{EXIT_ZSCORE_MIN}\u65f6\u8fdb\u5165\u51fa\u8d27\u671f"
-        result.phase_confidence = 0.60 if mom_14d > 4 else 0.50
-
-    else:
-        # Consolidation: no extreme signals
-        result.phase = "consolidation"
-        result.phase_description = (
-            f"\u767e\u5206\u4f4d{percentile:.0f}%\uff0cZ={zscore:+.1f}"
-            f"\u2014\u2014\u6d17\u76d8\u671f\uff0c\u9707\u8361\u53cd\u590d\u3002"
-            f"\u7b56\u7565\uff1a\u4e0d\u52a0\u4ed3\u3001\u4e0d\u6b62\u635f\u3001\u6301\u6709\u5367\u5012\u3002"
-        )
-        result.phase_strategy = "\U0001f4ca \u4e0d\u52a0\u4ed3\u3001\u4e0d\u6b62\u635f\u3001\u5367\u5012\u6301\u6709"
-        result.next_phase_trigger = "\u7a81\u7834\u9707\u8361\u533a\u95f4\u540e\u91cd\u65b0\u8bc4\u4f30\u65b9\u5411"
-        result.phase_confidence = 0.35
-
-    return result
-
-
-# ============================================================
 #  4. Value Score — STRATEGY ALIGNED
 # ============================================================
 
@@ -483,7 +393,8 @@ def analyze_value_score(values: list, returns: list, percentile: float,
     elif phase == "consolidation":
         cycle_score = 1.2
     elif phase == "distribution":
-        cycle_score = 0.3
+        cycle_score = 1.0
+
     else:
         cycle_score = 1.0
 
@@ -507,6 +418,12 @@ def analyze_value_score(values: list, returns: list, percentile: float,
     total = entry_proximity + risk_score + cycle_score + sentiment_score
     score = max(1, min(10, round(total)))
 
+    # ---- Event Risk Penalty ----
+    from .market_macro import event_risk_coefficient
+    evt = event_risk_coefficient()
+    if evt < 0.85:
+        score = max(1, score - 1)
+
     # ---- Position Advice ----
     if phase == "accumulation" and score >= 6:
         position_advice = "\U0001f4e5 \u5206\u6279\u5efa\u4ed3\uff08\u5165\u573a\u533a + \u5438\u7b79\u671f\uff0c\u6309\u7b56\u7565\u5206\u6279\u4e70\u5165\uff09"
@@ -523,9 +440,9 @@ def analyze_value_score(values: list, returns: list, percentile: float,
 
     # ---- Recommendation ----
     if score >= 7:
-        rec = "\u7efc\u5408\u6027\u4ef7\u6bd4\u4f18\u79c0\uff0c\u5f53\u524d\u4f4d\u7f6e\u9002\u5408\u79ef\u6781\u5e03\u5c40\u3002\u5efa\u8bae\u6301\u6709\u5468\u671f15-45\u5929\u3002"
+        rec = "\u7efc\u5408\u6027\u4ef7\u6bd4\u4f18\u79c0\uff0c\u5f53\u524d\u4f4d\u7f6e\u9002\u5408\u79ef\u6781\u5e03\u5c40\u3002\u5efa\u8bae\u6301\u6709\u5468\u671f15-45\u5929\u3002 \u6ce8\uff1a\u5df2\u6263\u96641%\u624b\u7eed\u8d39"
     elif score >= 5:
-        rec = "\u6027\u4ef7\u6bd4\u4e2d\u7b49\uff0c\u53ef\u9002\u5f53\u914d\u7f6e\uff0c\u63a7\u5236\u4ed3\u4f4d"
+        rec = "\u6027\u4ef7\u6bd4\u4e2d\u7b49\uff0c\u53ef\u9002\u5f53\u914d\u7f6e\uff0c\u63a7\u5236\u4ed3\u4f4d \u6ce8\uff1a\u5df2\u6263\u96641%\u624b\u7eed\u8d39"
     elif score >= 3:
         rec = "\u6027\u4ef7\u6bd4\u504f\u4f4e\uff0c\u5efa\u8bae\u89c2\u671b\u7b49\u5f85\u66f4\u4f73\u65f6\u673a"
     else:
@@ -566,7 +483,7 @@ def analyze_index(index_history: list) -> dict:
 
     position = analyze_position(values)
     probability = analyze_probability(values, z, vol_14d, vol_regime)
-    cycle = analyze_cycle(values, returns_list, vol_14d, mom_14d, mom_30d, vol_regime, pct, z)
+    cycle = CycleAnalysis()
     value_score = analyze_value_score(
         values, returns_list, pct, z, vol_14d, vol_regime, cycle.phase, mom_7d, mom_30d
     )
@@ -678,6 +595,15 @@ def analyze_cycle_probability(prices, pct_90d, zscore_90d) -> dict:
     elif sentiment >= 55:
         scores["accumulation"] += 10
 
+    # Grinding bottom: flat tight range + low pct (no Z needed)
+    if pct_90d <= 25:
+        recent = prices[-14:]
+        rng = (max(recent) - min(recent)) / (sum(recent)/len(recent)) * 100
+        if rng < 5:
+            scores["accumulation"] += 20
+        elif rng < 8:
+            scores["accumulation"] += 10
+
     # --- Consolidation signals ---
     if 20 <= pct_90d <= 60:
         scores["consolidation"] += 30
@@ -716,26 +642,40 @@ def analyze_cycle_probability(prices, pct_90d, zscore_90d) -> dict:
     if 20 <= pct_90d <= 70:
         scores["markup"] += 15
 
+    # Supply-lock markup proxy: moderate pct + uptrend + tight range
+    if 15 <= pct_90d <= 60 and ma7 > ma30:
+        recent = prices[-14:]
+        rng = (max(recent) - min(recent)) / (sum(recent)/len(recent)) * 100
+        if rng < 6:
+            scores["markup"] += 15
+
     # --- Distribution signals ---
     if pct_90d >= 70:
-        scores["distribution"] += 35
-    elif pct_90d >= 60:
         scores["distribution"] += 20
+    elif pct_90d >= 60:
+        scores["distribution"] += 12
 
     if zscore_90d >= 1.5:
-        scores["distribution"] += 25
-    elif zscore_90d >= 0.5:
         scores["distribution"] += 15
+    elif zscore_90d >= 0.5:
+        scores["distribution"] += 10
 
     if ma7 < ma30 and pct_90d >= 50:
-        scores["distribution"] += 20
+        scores["distribution"] += 12
     elif ma7 < ma30:
-        scores["distribution"] += 10
+        scores["distribution"] += 6
 
     if sentiment <= 30:
-        scores["distribution"] += 20
+        scores["distribution"] += 12
     elif sentiment <= 45:
-        scores["distribution"] += 10
+        scores["distribution"] += 6
+
+    # Slow distribution: high pct + flat topping + moderate Z
+    if pct_90d > 65:
+        recent = prices[-14:]
+        rng = (max(recent) - min(recent)) / (sum(recent)/len(recent)) * 100
+        if rng < 5 and -0.5 <= zscore_90d <= 1.0:
+            scores["distribution"] += 18
 
     # Softmax-like normalization
     import math
@@ -757,14 +697,14 @@ def analyze_cycle_probability(prices, pct_90d, zscore_90d) -> dict:
 # ============================================================
 
 def analyze_probability_integrated(prices, pct_90d, zscore_90d,
-                                     volatility_regime="normal") -> dict:
+                                     volatility_regime="normal", cycle_phase="unknown") -> dict:
     """Enhanced probability prediction with macro modifiers.
 
     Base: Z-score mean-reversion probability.
     Modifiers: breadth, sentiment, online trend, position.
     """
     import statistics
-    from .market_macro import (compute_breadth_score, compute_sentiment_score,
+    from .market_macro import (compute_breadth_score, compute_sentiment_score, event_risk_coefficient,
                                  compute_online_trend_score)
 
     if not prices or len(prices) < 5:
@@ -859,29 +799,16 @@ def analyze_probability_integrated(prices, pct_90d, zscore_90d,
     prob7 = max(3, min(97, prob7 * total_mod))
     prob30 = max(3, min(97, prob30 * total_mod))
 
-    # Bearish macro cap: if breadth is very bearish AND players declining,
-    # cap upside probability because mean-reversion logic breaks in downtrends
-    bearish_score = 0
-    if breadth <= 25:
-        bearish_score += 2
-    elif breadth <= 40:
-        bearish_score += 1
-    if online <= 30:
-        bearish_score += 1
-    if sentiment <= 40:
-        bearish_score += 1  # greedy but not fearful = no contrarian boost
-
-    if bearish_score >= 3:
-        # Strong bearish: cap up-prob at 45%
-        prob3 = min(prob3, 45)
-        prob7 = min(prob7, 45)
-        prob30 = min(prob30, 45)
-        modifiers.append("熊市封顶 ≤45%")
-    elif bearish_score >= 2:
-        prob3 = min(prob3, 55)
-        prob7 = min(prob7, 55)
-        prob30 = min(prob30, 55)
-        modifiers.append("熊市封顶 ≤55%")
+    # Cycle phase modifier (replaces old bearish_score cap which overlapped breadth)
+    cmod = {"accumulation": 1.05, "markup": 1.10, "consolidation": 1.0, "distribution": 0.85}.get(cycle_phase, 1.0)
+    if cmod != 1.0:
+        modifiers.append("周期修正 x" + str(cmod))
+    evt = event_risk_coefficient()
+    if evt < 1.0:
+        modifiers.append("事件风险折价 x" + str(evt))
+    prob3 = max(3, min(97, prob3 * cmod * evt))
+    prob7 = max(3, min(97, prob7 * cmod * evt))
+    prob30 = max(3, min(97, prob30 * cmod * evt))
 
     # Confidence: based on how extreme the modifiers are
     if abs(total_mod - 1.0) > 0.2:
@@ -944,6 +871,7 @@ def analyze_index_full(index_history: list) -> dict:
             compute_market_trend_health, market_th_summary,
             compute_market_fusion_decision, market_fd_summary,
         )
+        from .market_macro import event_risk_coefficient
 
         # Compute daily volumes from K-line if available
         # For market index K-line from csQAQ, we approximate volumes from price changes
@@ -967,17 +895,34 @@ def analyze_index_full(index_history: list) -> dict:
             prices=values[-90:],
             volumes=volumes[-90:] if volumes else None,
             cycle_phase=cycle_phase,
+            event_risk_discount=event_risk_coefficient(),
         )
+
+        # Compute percentile trend (7d direction)
+        pct_trend = "flat"
+        if len(values) >= 14:
+            pct_7d_ago = _percentile(values[-90:-7], values[-8]) if len(values) >= 15 else pct
+            if pct > pct_7d_ago + 3:
+                pct_trend = "rising"
+            elif pct < pct_7d_ago - 3:
+                pct_trend = "falling"
+        elif len(values) >= 2:
+            if values[-1] > values[-2] * 1.01:
+                pct_trend = "rising"
+            elif values[-1] < values[-2] * 0.99:
+                pct_trend = "falling"
 
         mfd = compute_market_fusion_decision(
             percentile_90d=pct,
             th=mth,
             zscore_90d=z,
+            cycle_phase=result.get("cycle", {}).get("phase", "unknown"),
+            event_risk_discount=event_risk_coefficient(),
+            percentile_trend=pct_trend,
         )
 
         result["market_trend_health"] = market_th_summary(mth)
         result["market_fusion_decision"] = market_fd_summary(mfd)
-
         # --- New: enhanced analysis (v4) ---
         result["cycle_probability"] = analyze_cycle_probability(
             values[-90:], pct, z)
@@ -998,6 +943,13 @@ def analyze_index_full(index_history: list) -> dict:
                 result["cycle"]["phase_label"] = pl
                 result["cycle"]["phase_strategy"] = ps
                 result["cycle"]["phase_confidence"] = round(cp[max_phase] / 100, 2)
+                trigger_map = {
+                    "accumulation": "\u767e\u5206\u4f4d\u5347\u81f330-50%\u3001Z\u503c\u56de\u5347\u81f3-0.5\u4ee5\u4e0a\u65f6\u8fdb\u5165\u62c9\u5347\u671f",
+                    "consolidation": "\u7a81\u7834\u9707\u8361\u533a\u95f4\u540e\u91cd\u65b0\u8bc4\u4f30\u65b9\u5411",
+                    "markup": "\u767e\u5206\u4f4d\u8fbe\u523065%\u6216Z\u8fbe\u5230+2.0\u65f6\u8fdb\u5165\u51fa\u8d27\u671f",
+                    "distribution": "\u767e\u5206\u4f4d\u56de\u843d\u81f350%\u4ee5\u4e0b\u65f6\u8fdb\u5165\u6d17\u76d8\u671f",
+                }
+                result["cycle"]["next_phase_trigger"] = trigger_map.get(ph, "")
 
         # Recompute value_score fields based on unified v4 cycle phase
         if "value_score" in result and max_phase in phase_labels:
@@ -1052,7 +1004,8 @@ def analyze_index_full(index_history: list) -> dict:
 
         result["probability_integrated"] = analyze_probability_integrated(
             values[-90:], pct, z,
-            volatility_regime=result.get("probability", {}).get("volatility_regime", "normal"))
+            volatility_regime=result.get("probability", {}).get("volatility_regime", "normal"),
+            cycle_phase=result.get("cycle", {}).get("phase", "unknown"))
         # Overwrite old probability prob_up values with integrated (bearish-capped) values
         pi = result["probability_integrated"]
         if "probability" in result:
@@ -1079,6 +1032,7 @@ def analyze_index_full(index_history: list) -> dict:
                 compute_sentiment_score, sentiment_label, get_greedy_current,
                 compute_online_trend_score, online_label, get_online_current,
                 compute_card_trend_score, card_label,
+                event_risk_coefficient,
             )
             result["macro_context"] = {
                 "breadth_7d": compute_breadth_score(7),

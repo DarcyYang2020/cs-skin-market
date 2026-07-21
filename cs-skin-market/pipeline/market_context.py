@@ -1,6 +1,7 @@
 # Market Context Anchor -- solves the 30-day item data limitation.
 import statistics, math
 from dataclasses import dataclass, field
+from .index_analysis import _percentile, _zscore  # reuse instead of redefining
 
 @dataclass
 class MarketContext:
@@ -36,16 +37,6 @@ def _pearson_r(xs, ys):
 def _returns(prices):
     return [math.log(prices[i]/prices[i-1]) for i in range(1,len(prices)) if prices[i-1]>0 and prices[i]>0]
 
-def _percentile(values, current):
-    if not values or current<=0: return 50.0
-    return round(sum(1 for v in values if v<current)/len(values)*100,1)
-
-def _zscore(values, current):
-    if len(values)<2 or current<=0: return 0.0
-    m=statistics.mean(values)
-    try: s=statistics.stdev(values)
-    except: return 0.0
-    return round((current-m)/s,2) if s!=0 else 0.0
 
 def _momentum(prices, days):
     if len(prices)<=days or prices[-days-1]<=0: return 0.0

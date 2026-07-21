@@ -4,6 +4,8 @@
   <p style="color: var(--red);">{{ error }}</p>
 </div>
 {% else %}
+{{ oob_price|safe }}
+{{ oob_grade|safe }}
 <div class="analysis-result" id="analysis-result">
 
   <!-- Section 1: Basic Info -->
@@ -11,6 +13,11 @@
     <div class="card-header">
       <span class="card-title">📊 {{ name }}</span>
       <span style="font-size: 24px; font-weight: 700; color: var(--accent);">¥{{ "%.2f"|format(price_rmb) }}</span>
+      <div style="display: flex; gap: 20px; margin-top: 8px; font-size: 13px; color: var(--text-secondary);">
+        <span>日成交量: <strong style="color: var(--text-primary);">{{ "%.0f"|format(volume_day) }}</strong> 件</span>
+        <span>在售总量: <strong style="color: var(--text-primary);">{{ "%.0f"|format(volume_total) }}</strong> 件</span>
+        {% if analysis_time %}<span>分析时间: <strong style="color: var(--text-muted);">{{ analysis_time }}</strong></span>{% endif %}
+      </div>
     </div>
   </div>
 
@@ -154,7 +161,57 @@
   </div>
 
 
-  <!-- Section: Trend Health + Valuation Grid + Fusion Decision (v3) -->
+      <!-- Price Zones -->
+  {% if price_zones and price_zones.entry %}
+  <div class="card" style="margin-bottom: 12px;">
+    <div class="card-header"><span class="card-title">📊 买卖区间参考</span></div>
+    {% if price_zones.ath_warning %}
+    <div style="font-size: 11px; color: #dc2626; background: #fef2f2; padding: 6px 8px; border-radius: 4px; margin-bottom: 6px;">
+      ⚠️ {{ price_zones.strategy }}
+    </div>
+    {% elif price_zones.strategy %}
+    <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px; padding: 2px 0;">
+      📌 {{ price_zones.strategy }}
+    </div>
+    {% endif %}
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 13px;">
+            <div style="background: #f0fdf4; padding: 8px; border-radius: 6px;">
+        <div style="font-weight: 600; color: #16a34a;">买入区间</div>
+        {% if price_zones.entry.low > 0 %}
+        <div>低吸: ¥{{ price_zones.entry.low }}</div>
+        <div>建仓: ¥{{ price_zones.entry.high }}</div>
+        {% if price_zones.entry_pct %}
+        <div style="font-size: 10px; color: #666;">分位 {{ price_zones.entry_pct.low }}%-{{ price_zones.entry_pct.high }}%</div>
+        {% endif %}
+        {% else %}
+        <div style="color: #999;">⛔ 不建议买入</div>
+        <div style="font-size: 10px; color: #999;">趋势偏弱，等待反转信号</div>
+        {% endif %}
+      </div>>
+      <div style="background: #fef2f2; padding: 8px; border-radius: 6px;">
+        <div style="font-weight: 600; color: #dc2626;">卖出区间</div>
+        <div>止盈: ¥{{ price_zones.exit.low }}</div>
+        <div>高估: ¥{{ price_zones.exit.high }}</div>
+        {% if price_zones.exit_pct %}
+        <div style="font-size: 10px; color: #666;">分位 {{ price_zones.exit_pct.low }}%-{{ price_zones.exit_pct.high }}%</div>
+        {% endif %}
+      </div>
+      <div style="background: #fef9c3; padding: 8px; border-radius: 6px;">
+        <div style="font-weight: 600; color: #ca8a04;">止损参考</div>
+        <div>¥{{ price_zones.stop_loss }}</div>
+        <div style="font-size: 10px; color: #666;">亏损 {{ "%.1f"|format((1 - price_zones.stop_loss / price_zones.current) * 100) }}%</div>
+      </div>
+      <div style="background: #dbeafe; padding: 8px; border-radius: 6px;">
+        <div style="font-weight: 600; color: #2563eb;">目标价位</div>
+        <div>¥{{ price_zones.take_profit }}</div>
+        <div style="font-size: 10px; color: #666;">盈利 {{ "%.1f"|format((price_zones.take_profit / price_zones.current - 1) * 100) }}%</div>
+      </div>
+    </div>
+    <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">
+      当前价 ¥{{ price_zones.current }}</div>
+  </div>
+  {% endif %}
+<!-- Section: Trend Health + Valuation Grid + Fusion Decision (v3) -->
   {% if trend_health %}
 
     <!-- Fusion Decision Bar -->
@@ -213,33 +270,6 @@
       </table>
     </div>
 
-    <!-- Valuation Grid 3x4 -->
-    <div class="card">
-      <div class="card-header">
-        <span class="card-title">🎯 估值宫格 (3×4)</span>
-        {% if valuation_grid %}
-        <span style="font-size: 14px; font-weight: 700; color: {% if valuation_grid.grid_action in ('buy_zone','hold') %}#22c55e{% elif valuation_grid.grid_action in ('reduce','watch') %}#f59e0b{% else %}#ef4444{% endif %};">{{ valuation_grid.grid_emoji }} {{ valuation_grid.grid_label }}</span>
-        {% endif %}
-      </div>
-      {% if valuation_grid %}
-      <div style="font-size: 13px; margin-bottom: 4px;">
-        <strong>百分位:</strong> {{ "%.1f"|format(valuation_grid.percentile) }}% 
-        | <strong>趋势强度:</strong> {{ valuation_grid.trend_score }}/100
-        {% if valuation_grid.is_extreme_bubble %}<span style="color:#ef4444;font-weight:700;"> ⚠️ 极度泡沫</span>{% endif %}
-      </div>
-      
-      <!-- Position Sizing -->
-      <div style="background: var(--bg-secondary); border-radius: 6px; padding: 8px 10px; margin-bottom: 8px;">
-        <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 2px;">📊 仓位建议</div>
-        <div style="font-size: 13px; font-weight: 500;">{{ valuation_grid.position_sizing }}</div>
-      </div>
-      
-      <!-- Stop Loss -->
-      <div style="background: var(--bg-secondary); border-radius: 6px; padding: 8px 10px;">
-        <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 2px;">🛑 止盈止损</div>
-        <div style="font-size: 13px; font-weight: 500;">{{ valuation_grid.stop_loss_advice }}</div>
-      </div>
-      {% endif %}
     </div>
   </div>
   {% endif %}

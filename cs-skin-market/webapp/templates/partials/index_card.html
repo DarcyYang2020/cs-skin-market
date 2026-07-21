@@ -13,18 +13,18 @@
   </div>
   <div class="stat-grid">
     <div class="stat-item">
-      <div class="stat-value">{{ "%.2f"|format(idx.value) if idx else "--" }}</div>
+      <div class="stat-value">{{ "%.2f"|format(index.value) if index else "--" }}</div>
       <div class="stat-label">当前指数</div>
     </div>
     <div class="stat-item">
-      <div class="stat-value {{ 'up' if idx and idx.change_7d > 0 else ('down' if idx and idx.change_7d < 0 else 'neutral') }}">
-        {{ "%+.2f%%"|format(idx.change_7d) if idx else "--" }}
+      <div class="stat-value {{ 'up' if index and index.change_7d > 0 else ('down' if index and index.change_7d < 0 else 'neutral') }}">
+        {{ "%+.2f%%"|format(index.change_7d) if index else "--" }}
       </div>
       <div class="stat-label">7日涨跌</div>
     </div>
     <div class="stat-item">
       <div class="stat-value" style="font-size:20px;">
-        {{ idx.mood if idx else "--" }}
+        {{ index.mood if index else "--" }}
       </div>
       <div class="stat-label">市场情绪</div>
     </div>

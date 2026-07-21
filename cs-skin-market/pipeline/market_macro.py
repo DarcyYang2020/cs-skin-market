@@ -339,6 +339,11 @@ def compute_bottom_signal(pct_90d: float, zscore_90d: float, prices: list, accum
                 bs.breadth_contrib + bs.sentiment_contrib +
                 bs.deceleration_contrib + bs.cycle_contrib)
 
+    # Event risk discount
+    evt = event_risk_coefficient()
+    if evt < 1.0:
+        bs.score = round(bs.score * evt)
+
     if bs.score >= 80:
         bs.level = "strong_bottom"
         bs.level_label = "强烈抄底信号"
@@ -374,3 +379,25 @@ def bottom_signal_summary(bs):
         deceleration_contrib=bs.deceleration_contrib,
         cycle_contrib=bs.cycle_contrib,
     )
+
+
+def event_risk_coefficient() -> float:
+    """Return event risk discount (1.0 = no risk, 0.7 = major risk).
+    Checks for known V社 events via settings table.
+    """
+    import json
+    try:
+        from . import db
+        conn = db.get_conn()
+        try:
+            evt = db.get_setting(conn, "event_active", "")
+            if evt:
+                data = json.loads(evt) if isinstance(evt, str) else evt
+                if isinstance(data, dict):
+                    coeff = data.get("coefficient", 1.0)
+                    return max(0.5, min(1.0, float(coeff)))
+            return 1.0
+        finally:
+            conn.close()
+    except Exception:
+        return 1.0

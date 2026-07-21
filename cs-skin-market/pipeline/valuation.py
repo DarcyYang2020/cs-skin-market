@@ -1,4 +1,4 @@
-"""
+﻿"""
 Historical valuation analysis: percentile rank, z-score, cheap/expensive signals.
 """
 
@@ -33,14 +33,14 @@ def calc_percentile(prices, current):
 
 
 def calc_zscore(prices, current):
-    """Z-score: how many standard deviations from mean."""
+    """MAD-based Z-score (unified with index_analysis)."""
     if len(prices) < 2 or current <= 0:
         return 0.0
-    mean = statistics.mean(prices)
-    std = statistics.stdev(prices)
-    if std == 0:
+    med = statistics.median(prices)
+    mad = statistics.median([abs(v - med) for v in prices])
+    if mad == 0:
         return 0.0
-    return round((current - mean) / std, 2)
+    return round((current - med) / (mad * 1.4826), 2)
 
 
 def get_valuation_summary(conn, item_id):

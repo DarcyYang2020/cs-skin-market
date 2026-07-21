@@ -1,4 +1,4 @@
-{% if analysis and analysis.has_data %}
+﻿{% if analysis and analysis.has_data %}
 <!-- ====== Position Intelligence ====== -->
 <div class="card">
   <div class="card-header">
@@ -158,80 +158,6 @@
 {% endif %}
 
 <!-- ====== 宏观环境 (v4) ====== -->
-
-<!-- ====== Cycle-Sector Recommendation (v4) ====== -->
-{% if analysis.sector_recommendation %}
-<div class="card">
-  <div class="card-header">
-    <span class="card-title">&#x1f4ca; {{ analysis.sector_recommendation.phase_label }} &#xb7; 板块配置建议</span>
-    <span style="font-size: 12px; color: var(--text-muted);">{{ analysis.sector_recommendation.phase_advice }}</span>
-  </div>
-
-  <!-- Core sectors -->
-  {% if analysis.sector_recommendation.core_sectors %}
-  <div style="margin-bottom: 12px;">
-    <div style="font-size: 13px; font-weight: 600; color: var(--green); margin-bottom: 6px;">&#x1f7e2; 核心配置</div>
-    <div style="display: flex; flex-wrap: wrap; gap: 6px;">
-      {% for sec in analysis.sector_recommendation.core_sectors %}
-      <div style="flex: 1; min-width: 160px; padding: 10px 12px; background: rgba(34,197,94,0.08); border-radius: 8px; border: 1px solid rgba(34,197,94,0.2);">
-        <div style="font-weight: 700; font-size: 14px;">{{ sec.name }} <span style="font-size: 11px; color: var(--green);">{{ sec.opp_type }}</span></div>
-        <div style="font-size: 11px; color: var(--text-muted); margin-top: 3px; line-height: 1.5;">{{ sec.opp_label }}</div>
-        <div style="font-size: 11px; margin-top: 4px;">
-          <span style="color: var(--text-muted);">总{{ sec.score }}</span>
-          {% if sec.change_7d != 0 %}
-          <span style="margin-left: 8px; color: {{ 'var(--green)' if sec.change_7d > 0 else 'var(--red)' }};">7日 {{ '%+.1f%%'|format(sec.change_7d) }}</span>
-          {% endif %}
-        </div>
-        {% if sec.verify_detail %}
-        <div style="font-size: 11px; margin-top: 3px; padding: 3px 6px; background: rgba(255,255,255,0.04); border-radius: 4px; line-height: 1.4;">
-          <span style="color: {{ 'var(--green)' if sec.verify_score >= 10 else ('var(--yellow)' if sec.verify_score >= 5 else 'var(--red)') }};">&#x2714; 底部验证:</span>
-          <span style="color: var(--text-secondary);">{{ sec.verify_detail }}</span>
-          {% if sec.pct_90d is defined %}
-          <span style="color: var(--text-muted); margin-left: 4px;">({{ sec.pct_90d }}% {{ sec.z_90d }}Z)</span>
-          {% endif %}
-        </div>
-        {% endif %}
-      </div>
-      {% endfor %}
-    </div>
-  </div>
-  {% endif %}
-
-  <!-- Secondary sectors -->
-  {% if analysis.sector_recommendation.secondary_sectors %}
-  <div style="margin-bottom: 12px;">
-    <div style="font-size: 13px; font-weight: 600; color: var(--yellow); margin-bottom: 6px;">&#x1f7e1; 次级关注</div>
-    <div style="display: flex; flex-wrap: wrap; gap: 6px;">
-      {% for sec in analysis.sector_recommendation.secondary_sectors %}
-      <div style="flex: 1; min-width: 140px; padding: 8px 10px; background: rgba(255,255,255,0.03); border-radius: 6px;">
-        <div style="font-weight: 600; font-size: 13px;">{{ sec.name }} <span style="font-size: 11px; color: var(--text-muted);">{{ sec.score }}</span></div>
-        <div style="font-size: 11px; color: var(--text-muted);">{{ sec.rationale }}</div>
-        {% if sec.verify_detail %}
-        <div style="font-size: 10px; margin-top: 2px; color: var(--text-secondary);">{{ sec.verify_detail }} ({{ sec.pct_90d }}% {{ sec.z_90d }}Z)</div>
-        {% endif %}
-        {% if sec.change_7d != 0 %}
-        <div style="font-size: 10px; margin-top: 2px; color: {{ 'var(--green)' if sec.change_7d > 0 else 'var(--red)' }};">7? {{ '%+.1f%%'|format(sec.change_7d) }}</div>
-        {% endif %}
-      </div>
-      {% endfor %}
-    </div>
-  </div>
-  {% endif %}
-
-  <!-- Avoid sectors (collapsed) -->
-  {% if analysis.sector_recommendation.avoid_sectors %}
-  <details style="font-size: 12px; color: var(--text-muted);">
-    <summary style="cursor: pointer;">&#x1f534; 回避板块 ({{ analysis.sector_recommendation.avoid_sectors|length }})</summary>
-    <div style="margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px;">
-      {% for sec in analysis.sector_recommendation.avoid_sectors %}
-      <span style="padding: 2px 8px; background: rgba(239,68,68,0.08); border-radius: 4px; font-size: 11px;">{{ sec.name }}</span>
-      {% endfor %}
-    </div>
-  </details>
-  {% endif %}
-</div>
-{% endif %}
-
 {% if analysis.macro_context %}
 <div class="card">
   <div class="card-header">
@@ -285,7 +211,7 @@
     <span style="margin-left: 8px; padding: 2px 8px; background: rgba(239,68,68,0.15); border-radius: 4px; color: var(--red);">{{ analysis.market_trend_health.volume_divergence_label }}</span>
     {% endif %}
   </div>
-  <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 12px;">
+  <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 12px;">
     <div style="text-align: center; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
       <div style="font-size: 18px; font-weight: 700;">{{ analysis.market_trend_health.persistence_score }}</div>
       <div style="font-size: 11px; color: var(--text-muted);">趋势持续</div>
@@ -307,8 +233,6 @@
       <div style="font-size: 11px; color: var(--text-muted);">异常缺口</div>
     </div>
     <div style="text-align: center; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
-      <div style="font-size: 18px; font-weight: 700;">{{ analysis.market_trend_health.key_level_score }}</div>
-      <div style="font-size: 11px; color: var(--text-muted);">支撑压力</div>
     </div>
   </div>
   {% if analysis.market_trend_health.deduction_sources %}
@@ -362,8 +286,10 @@
   </div>
   {% endif %}
 </div>
-{% endif %}
+
+
 
 {% elif not analysis or not analysis.has_data %}
 <div class="card"><div class="empty-state"><div class="icon">🔍</div><h3>暂无大盘分析数据</h3><p>点击上方「刷新数据」获取最新分析</p></div></div>
+{% endif %}
 {% endif %}

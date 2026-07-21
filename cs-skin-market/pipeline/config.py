@@ -1,4 +1,4 @@
-"""
+﻿"""
 Pipeline configuration — paths, DB location, csQAQ API, model parameters.
 v4: csqaq.com Playwright data source.
 """
@@ -17,17 +17,13 @@ API_RATE_LIMIT = 1.1  # seconds between calls (1 req/sec)
 
 # ---- Four-factor model weights ----
 WEIGHT_SCARCITY  = 0.35
-WEIGHT_VOLUME    = 0.25
+WEIGHT_VOLUME    = 0.15  # reduced: steamdt volume data has limited accuracy
 WEIGHT_LIQUIDITY = 0.15
 WEIGHT_MARKET    = 0.25
+WEIGHT_PROBABILITY = 0.10  # added for clarity
 
 # ---- Grade thresholds ----
-GRADE_THRESHOLDS = {
-    "S": 3.5,
-    "A": 2.5,
-    "B": 1.5,
-    "C": 0.0,
-}
+# GRADE_THRESHOLDS removed - use T["GRADE_S"] etc instead
 
 # ============================================================
 #  FACTOR 1: Scarcity
@@ -215,3 +211,34 @@ WHALE_CONSECUTIVE_CLOSE = 5    # >=5 consecutive closes near same level
 SUPPLY_VOLUME_LOW = 100        # <100 total volume = low supply score
 SUPPLY_VOLUME_MED = 200        # <200 = medium
 SUPPLY_VOLUME_HIGH = 500       # >=500 = high
+
+# ============================================================
+#  Unified Threshold Table (all modules reference here)
+# ============================================================
+THRESHOLDS = {
+    # Trend Health thresholds (used by market_th.py, trend_health.py)
+    "TH_STRONG": 55,
+    "TH_NEUTRAL": 35,
+    "TH_WEAK": 20,
+}
+
+
+
+# ============================================================
+#  Experimental Features
+# ============================================================
+ENABLE_MACRO_CONTEXT = False  # market_macro breadth/sentiment/online/card (EXPERIMENTAL)
+
+# ---- Transaction fees ----
+FEE_RATE = 0.01         # 悠悠 1% 手续费
+
+
+# ---- Category-specific thresholds (simplified P0) ----
+# Override entry/exit thresholds for categories with different volatility.
+# Omitted categories fall back to global defaults.
+CATEGORY_THRESHOLDS = {
+    "收藏品": {"pct_entry": 20, "z_entry": -2.0, "pct_exit": 60, "z_exit": 1.5},
+    "胶囊":       {"pct_entry": 20, "z_entry": -2.0, "pct_exit": 60, "z_exit": 1.5},
+    "手套":       {"pct_entry": 35, "z_entry": -1.2, "pct_exit": 70, "z_exit": 2.2},
+    "匕首":       {"pct_entry": 35, "z_entry": -1.2, "pct_exit": 70, "z_exit": 2.2},
+}

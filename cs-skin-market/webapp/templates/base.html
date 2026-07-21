@@ -4,41 +4,60 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{% block title %}CS-Market{% endblock %}</title>
-<link rel="stylesheet" href="/static/css/style.css?v=5">
+<link rel="stylesheet" href="/static/css/style.css?v=7">
 <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-<script defer src="/static/js/app.js?v=5"></script>
+<script defer src="/static/js/app.js?v=7"></script>
 {% block head %}{% endblock %}
 </head>
 <body>
-  <nav class="navbar">
-    <a href="/" class="navbar-brand">
-      <span class="logo-dot"></span>
-      CS-Market
-    </a>
-    <div class="navbar-nav">
-      <a href="/" class="{% if active_page == 'dashboard' %}active{% endif %}">📊 大盘</a>
-      <a href="/search" class="{% if active_page == 'search' %}active{% endif %}">🔍 搜索</a>
-      <a href="/watchlist" class="{% if active_page == 'watchlist' %}active{% endif %}">⭐ 自选</a>
-      {% block nav_extra %}{% endblock %}
+  <!-- Left Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">C</div>
+      <span>CS-Market</span>
     </div>
-  </nav>
-  <div class="main-container">
+    <div class="sidebar-nav">
+      <div class="nav-label">市场分析</div>
+      <a href="/" class="{% if active_page == 'dashboard' %}active{% endif %}">
+        <span class="nav-icon">📊</span> 大盘
+      </a>
+      <a href="/search" class="{% if active_page == 'search' %}active{% endif %}">
+        <span class="nav-icon">🔍</span> 单品分析
+      </a>
+      <a href="/watchlist" class="{% if active_page == 'watchlist' %}active{% endif %}">
+        <span class="nav-icon">⭐</span> 持仓管理
+      </a>
+          </div>
+    <div class="sidebar-footer">v3.0 · csQAQ</div>
+  </div>
+
+  <!-- Right Content -->
+  <div class="main-content">
     {% block content %}{% endblock %}
   </div>
+
   <div id="toast-container"></div>
   {% block scripts %}{% endblock %}
 
-<!-- Global Analysis Modal -->
-<div id="analysis-modal" class="modal-overlay" style="display:none;">
-  <div class="modal-container modal-xl">
-    <div class="modal-header-bar">
-      <span class="modal-title-text">📊 分析报告</span>
-      <button class="modal-close-btn" onclick="closeModal('analysis-modal')">✕</button>
-    </div>
-    <div class="modal-body-scroll" id="modal-body">
-      <!-- HTMX 分析/报告内容载入此处 -->
+  <!-- Global Analysis Modal -->
+  <div id="analysis-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-container">
+      <div class="modal-header-bar">
+        <span class="modal-title-text">📊 分析报告</span>
+        <button class="modal-close-btn" onclick="closeModal('analysis-modal')">✕</button>
+      </div>
+      <div class="modal-body-scroll" id="modal-body"></div>
     </div>
   </div>
-</div>
+<script>
+function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+// Close modal on overlay click
+document.addEventListener('click', function(e) {
+  if (e.target.classList.contains('modal-overlay')) {
+    e.target.style.display = 'none';
+  }
+});
+</script>
 </body>
 </html>

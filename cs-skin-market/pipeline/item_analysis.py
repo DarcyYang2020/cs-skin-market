@@ -1,4 +1,4 @@
-"""
+﻿"""
 Single-item investment analysis engine --- CS2 skin specific.
 Unifies: percentile/Z-score, cycle detection, liquidity scoring,
 value scoring, probability prediction, and whale manipulation detection.
@@ -11,6 +11,7 @@ import math
 from .trend_health import compute_trend_health, trend_health_summary, compute_fusion_decision, fusion_decision_summary
 from .valuation import compute_valuation_grid, valuation_grid_summary
 from .supply import analyze_supply, supply_summary
+from .market_context import build_market_context, context_summary
 from dataclasses import dataclass, field
 
 # ============================================================
@@ -20,21 +21,6 @@ ENTRY_PERCENTILE_MAX = 30
 ENTRY_ZSCORE_MAX = -1.5
 EXIT_PERCENTILE_MIN = 65
 EXIT_ZSCORE_MIN = 2.0
-
-"""
-Single-item investment analysis engine — CS2 skin specific.
-Unifies: percentile/Z-score, cycle detection, liquidity scoring,
-value scoring, probability prediction, and whale manipulation detection.
-
-All statistical windows default to 90 days.
-"""
-
-import statistics
-import math
-from .trend_health import compute_trend_health, trend_health_summary, compute_fusion_decision, fusion_decision_summary
-from .valuation import compute_valuation_grid, valuation_grid_summary
-from .supply import analyze_supply, supply_summary
-from dataclasses import dataclass, field
 
 # ============================================================
 # Strategy Constants
@@ -63,12 +49,11 @@ class ItemPositionIntel:
     median_90d: float = 0.0
     data_points: int = 0
     decayed_pct_90d: float = 50.0
-    mad_zscore_90d: float = 0.0
     valuation_slope: float = 0.0
     valuation_trend: str = "数据不足"
 
     def __post_init__(self):
-        if self.percentile_90d <= 20:
+        if self.percentile_90d <= 30:
             self.valuation_tier = "undervalued"
             self.tier_label = "低位低估"
         elif self.percentile_90d <= 70:
@@ -229,6 +214,7 @@ class ItemAnalysisResult:
     data_quality: str = "low"
     trend_health: dict = field(default_factory=dict)
     fusion_decision: dict = field(default_factory=dict)
+    price_zones: dict = field(default_factory=dict)
     valuation_grid: dict = field(default_factory=dict)
 
 
@@ -253,12 +239,12 @@ def _analyze_position(prices):
     below = sum(1 for p in window if p < current)
     pos.percentile_90d = round(below / len(window) * 100, 1)
 
-    # Z-score
+    # MAD-based Z-score (unified with index_analysis)
     if len(window) >= 3:
-        mean = statistics.mean(window)
-        std = statistics.stdev(window)
-        if std > 0:
-            pos.zscore_90d = round((current - mean) / std, 2)
+        med = statistics.median(window)
+        mad = statistics.median([abs(v - med) for v in window])
+        if mad > 0:
+            pos.zscore_90d = round((current - med) / (mad * 1.4826), 2)
 
     pos.high_90d = round(max(window), 2)
     pos.low_90d  = round(min(window), 2)
@@ -298,23 +284,8 @@ def _analyze_position(prices):
         pos.valuation_slope = 0.0
         pos.valuation_trend = "数据不足"
 
-    # --- MAD-based Z-score (unified with trend_health) ---
-    if len(window) >= 5:
-        try:
-            import statistics as _st
-            med = _st.median(window)
-            mad_val = _st.median([abs(p - med) for p in window])
-            if mad_val > 0:
-                pos.mad_zscore_90d = round(0.6745 * (current - med) / mad_val, 2)
-            else:
-                pos.mad_zscore_90d = pos.zscore_90d
-        except Exception:
-            pos.mad_zscore_90d = pos.zscore_90d
-    else:
-        pos.mad_zscore_90d = pos.zscore_90d
-
-    # Re-compute tier_label (post_init ran with default 50.0)
-    if pos.percentile_90d <= 20:
+# Re-compute tier_label (post_init ran with default 50.0)
+    if pos.percentile_90d <= 30:
         pos.valuation_tier = 'undervalued'
         pos.tier_label = '低位低估'
     elif pos.percentile_90d <= 70:
@@ -362,10 +333,10 @@ def _analyze_cycle(prices, volumes=None):
     ma_dev = abs(ma7 / ma30 - 1) * 100 if ma30 > 0 else 100
 
     if ma7 > ma30 * 1.05 and pct_current > 65:
-        cyc.phase = "distribution"
-        cyc.phase_label = "出货期"
-        cyc.phase_description = "价格高位 + 短期均线远高于长期均线，资金可能派发"
-        cyc.phase_strategy = "只卖不买，分批止盈离场"
+        cyc.phase = "markup"
+        cyc.phase_label = "强势拉升期"
+        cyc.phase_description = "价格高位 + 短期均线强势上行，拉升阶段"
+        cyc.phase_strategy = "持有为主，逐步止盈"
         cyc.phase_confidence = min(80, 50 + pct_current * 0.3)
         cyc.next_phase_trigger = "百分位跌破50%或均线死叉"
     elif ma7 > ma30 and pct_current < 30:
@@ -374,9 +345,10 @@ def _analyze_cycle(prices, volumes=None):
         cyc.phase_description = "低位 + 短期均线上穿，资金可能吸筹"
         cyc.phase_strategy = "分批建仓，耐心持仓"
         cyc.phase_confidence = min(80, 50 + (30 - pct_current) * 1.5)
-        cyc.next_phase_trigger = "百分位突破50%进入拉升"
+        cyc.next_phase_trigger = "百分位突码50%进入拉升"
     elif ma7 > ma30 and 30 <= pct_current <= 65:
         cyc.phase = "markup"
+        cyc.phase_label = "拉升期"
         cyc.phase_label = "拉升期"
         cyc.phase_description = "价格在合理区间持续上行"
         cyc.phase_strategy = "持有为主，临近高位减仓"
@@ -472,18 +444,19 @@ def score_liquidity(prices, volumes, volume_total):
     if volumes and len(volumes) >= 7:
         vol_day = max(1, sum(volumes[-7:]) // 7)
 
+    # Volume score halved (steamdt volume data has limited accuracy)
     if vol_day >= 100:
-        vol_score = 40
+        vol_score = 20
     elif vol_day >= 30:
-        vol_score = 32
-    elif vol_day >= 10:
-        vol_score = 24
-    elif vol_day >= 3:
         vol_score = 16
-    elif vol_day >= 1:
+    elif vol_day >= 10:
+        vol_score = 12
+    elif vol_day >= 3:
         vol_score = 8
+    elif vol_day >= 1:
+        vol_score = 4
     else:
-        vol_score = 2
+        vol_score = 1
     liq.breakdown["volume"] = vol_score
 
     # Supply depth score (30%)
@@ -683,12 +656,12 @@ def compute_value_score(position, cycle, liquidity, probability):
         cyc_score = 1.0
     val.breakdown["cycle"] = round(cyc_score, 1)
 
-    # Liquidity score (20%)
-    liq_norm = liquidity.score / 100 * 2.0
+    # Liquidity score (15%) ? reduced from 20%, volume data has limited accuracy
+    liq_norm = liquidity.score / 100 * 1.5
     val.breakdown["liquidity"] = round(liq_norm, 1)
 
-    # Probability score (15%)
-    prob_norm = probability.prob_up_7d / 100 * 1.5
+    # Probability score (20%) ? increased from 15% to compensate
+    prob_norm = probability.prob_up_7d / 100 * 2.0
     val.breakdown["probability"] = round(prob_norm, 1)
 
     val.score = round(pos_score + cyc_score + liq_norm + prob_norm, 1)
@@ -730,7 +703,7 @@ def analyze_whale(prices, volumes):
         if vol_mean > 0:
             max_vol = max(vol_recent)
             vol_spike = max_vol / vol_mean if vol_mean > 0 else 1
-            vol_score = min(40, max(0, (vol_spike - 2) * 10))
+            vol_score = min(20, max(0, (vol_spike - 2) * 5))  # reduced weight (volume data limited)
             wh.volume_divergence_score = round(vol_score, 1)
 
     # 2. Volatility anomaly (25%): low volatility + price rise = lock
@@ -887,6 +860,25 @@ def detect_signal_conflicts(position, cycle, th_score, whale_prob):
             "interpretation": "可能是自然的市场追捧，非资金操纵。但仍需警惕高位风险，可持有但设好止盈"
         })
 
+    # Conflict 5: Cycle distribution + fusion buy/hold
+    if cycle.phase == "distribution" and th_score >= 60:
+        conflicts.append({
+            "modules": "周期判定 vs 趋势健康",
+            "severity": "high",
+            "description": "周期判定出货期但趋势健康度偏高(" + str(th_score) + ")",
+            "interpretation": "趋势表面强劲但周期不利，可能是诱多拉升。建议以周期信号为准，分批减仓"
+        })
+
+    # Conflict 6: Cycle accumulation + fusion sell/avoid
+    if cycle.phase == "accumulation" and th_score < 40:
+        conflicts.append({
+            "modules": "周期判定 vs 趋势健康",
+            "severity": "medium",
+            "description": "周期判定吸筹期但趋势健康度偏低(" + str(th_score) + ")",
+            "interpretation": "虽处于低位区域但趋势疲弱，可能是下跌中继而非吸筹。建议等待趋势确认后再介入"
+        })
+
+
     # Decision certainty: fewer conflicts = higher certainty
     certainty = "high" if len(conflicts) == 0 else ("medium" if len(conflicts) <= 1 else "low")
 
@@ -974,10 +966,11 @@ def run_item_analysis(
     th = compute_trend_health(
         prices, volumes,
         cycle_phase=cycle.phase,
-        whale_prob=None,  # will be updated after whale detection
+        whale_prob=None,
         position_lock_score=0,
         liquidity_score=liquidity.score,
         item_meta=item_meta,
+        zscore_90d=position.zscore_90d,
     )
     th_dict = trend_health_summary(th)
 
@@ -993,6 +986,7 @@ def run_item_analysis(
             position_lock_score=whale.position_lock_score,
             liquidity_score=liquidity.score,
             item_meta=item_meta,
+            zscore_90d=position.zscore_90d,
         )
         th = th2
         th_dict = trend_health_summary(th)
@@ -1003,8 +997,7 @@ def run_item_analysis(
     # ---- Value Score ----
     value = compute_value_score(position, cycle, liquidity, probability)
 
-    # ---- Fusion Decision ----
-    fd = compute_fusion_decision(position.percentile_90d, th, liquidity.score, position.zscore_90d)
+    fd = compute_fusion_decision(position.percentile_90d, th, liquidity.score, position.zscore_90d, cycle_phase=cycle.phase, event_risk_discount=event_risk_coefficient(), prices=prices)
 
     # Market cycle filter: during market distribution, downgrade buy signals
     if market_cycle == "distribution" and fd.action in ("buy", "hold"):
@@ -1049,9 +1042,9 @@ def run_item_analysis(
         value.grade = "C"
 
     # Override cycle labels based on fusion decision
-    cycle.phase_label = fd.action_label
-    cycle.phase_strategy = fd.action_detail
-
+    # Cycle labels kept independent from fusion decision (no override)
+    # cycle.phase_label and cycle.phase_strategy now stay as cycle-detected values
+    pass
     # Apply event risk discount from supply analysis
     if supply.has_event_risk and supply.event_risk_discount < 1.0:
         value.score = round(value.score * supply.event_risk_discount, 1)
@@ -1070,7 +1063,7 @@ def run_item_analysis(
     market_ctx = None
     if market_history and len(market_history) >= 5 and n >= 5:
         try:
-            from .market_context import build_market_context
+            # import moved to top
             market_ctx = build_market_context(
                 prices, market_history, market_cycle, market_zscore
             )
@@ -1078,6 +1071,124 @@ def run_item_analysis(
             pass
 
     # ---- Build result ----
+
+
+    # ---- Price Zones (volatility-scaled, anchored to current price) ----
+    price_zones = {}
+    if n >= 10:
+        # ---- Volatility anchor (14d return std) ----
+        returns = [(prices[i] - prices[i-1]) / prices[i-1] for i in range(max(1, n-14), n) if prices[i-1] > 0]
+        atr_pct = (sum(abs(r) for r in returns) / len(returns)) if returns else 0.03
+        atr_pct = max(0.01, min(0.10, atr_pct))  # clamp 1%-10%
+
+        cycle_phase = cycle.phase if hasattr(cycle, 'phase') else 'unknown'
+        th_score = th.score if hasattr(th, 'score') else 50
+        whale_prob = whale.probability if hasattr(whale, 'probability') else 0
+        whale_level = whale.level if hasattr(whale, 'level') else 'none'
+
+        # ---- Cycle-adjusted volatility multipliers ----
+        buy_widen = 1.0
+        sell_widen = 1.0
+        if cycle_phase == 'accumulation':
+            buy_widen = 1.3
+            sell_widen = 0.85
+        elif cycle_phase == 'markup':
+            buy_widen = 0.75
+            sell_widen = 1.2
+        elif cycle_phase == 'distribution':
+            buy_widen = 0.7
+            sell_widen = 0.7
+        elif cycle_phase == 'consolidation':
+            buy_widen = 1.0
+            sell_widen = 1.0
+
+        if th_score >= 70:
+            buy_widen *= 0.85
+            sell_widen *= 1.15
+        elif th_score <= 30:
+            buy_widen *= 1.3
+            sell_widen *= 0.85
+
+        if whale_level in ('strong_whale', 'extreme_whale') and whale_prob >= 40:
+            buy_widen *= 1.2
+            sell_widen *= 0.8
+
+        # ---- Compute zones (anchored to current price) ----
+        entry_low  = round(current * (1 - atr_pct * 1.5 * buy_widen), 2)
+        entry_high = round(current * (1 - atr_pct * 0.4 * buy_widen), 2)
+        exit_low   = round(current * (1 + atr_pct * 0.4 * sell_widen), 2)
+        exit_high  = round(current * (1 + atr_pct * 1.5 * sell_widen), 2)
+        stop_loss  = round(current * (1 - atr_pct * 2.5 * buy_widen), 2)
+        take_profit = round(current * (1 + atr_pct * 2.5 * sell_widen), 2)
+
+        # ---- Sanity: clamp to historical range ----
+        hist_low = min(prices)
+        hist_high = max(prices)
+        entry_low = max(entry_low, round(hist_low * 0.9, 2))
+        entry_high = max(entry_high, round(current * 0.95, 2))
+        exit_high = min(exit_high, round(hist_high * 1.1, 2))
+        stop_loss = max(stop_loss, round(current * 0.80, 2))
+        take_profit = min(take_profit, round(current * 1.30, 2))
+
+        # Ensure entry < current < exit
+        entry_high = min(entry_high, round(current * 0.98, 2))
+        exit_low = max(exit_low, round(current * 1.02, 2))
+        entry_low = min(entry_low, entry_high - 0.01)
+        exit_high = max(exit_high, exit_low + 0.01)
+
+        # ---- Downtrend guard: suppress buy zone when falling ----
+        if th_score < 40 or cycle_phase == 'distribution':
+            entry_low = 0
+            entry_high = 0
+            stop_loss = 0
+            exit_low = round(current * (1 + atr_pct * 0.3), 2)
+            exit_high = round(current * (1 + atr_pct * 0.8), 2)
+
+        # ---- ATH override ----
+        ath_mode = current > hist_high * 0.98
+        if ath_mode:
+            atr_val = round(current * atr_pct * 2, 2)
+            price_zones = {
+                "entry": {"low": round(current * 0.90, 2), "high": round(current * 0.96, 2)},
+                "exit": {"low": round(current * 1.04, 2), "high": round(current * 1.10, 2)},
+                "stop_loss": round(current * 0.82, 2),
+                "take_profit": round(current * 1.18, 2),
+                "current": round(current, 2),
+                "ath_warning": True,
+                "ath_price": hist_high,
+                "entry_pct": {"low": 10, "high": 20},
+                "exit_pct": {"low": 75, "high": 90},
+                "strategy": "创历史新高(¥" + str(hist_high) + ")，无历史回朔参考区间。基于近期波动率估算: 回调" + str(atr_val) + "可轻仓试多，突破前高" + str(round(current * 1.04, 2)) + "加仓",
+            }
+        else:
+            # Strategy explanation
+            phase_names = {
+                'markup': '拉升期',
+                'accumulation': '吸筹期',
+                'distribution': '出货期',
+                'consolidation': '洗盘期',
+            }
+            phase_cn = phase_names.get(cycle_phase, cycle_phase)
+            strat = []
+            if cycle_phase != 'unknown':
+                strat.append(phase_cn)
+            if th_score >= 60:
+                strat.append('趋势偏强(' + str(th_score) + '分)')
+            elif th_score <= 40:
+                strat.append('趋势偏弱(' + str(th_score) + '分)')
+            if whale_prob >= 40:
+                strat.append('庄家风险' + str(whale_prob) + '%')
+
+            price_zones = {
+                "entry": {"low": entry_low, "high": entry_high},
+                "exit": {"low": exit_low, "high": exit_high},
+                "stop_loss": stop_loss,
+                "take_profit": take_profit,
+                "current": round(current, 2),
+                "entry_pct": {"low": round(entry_low / current * 100, 1), "high": round(entry_high / current * 100, 1)},
+                "exit_pct": {"low": round(exit_low / current * 100, 1), "high": round(exit_high / current * 100, 1)},
+                "strategy": " | ".join(strat) if strat else "",
+            }
     return ItemAnalysisResult(
         name=name,
         price_rmb=current,
@@ -1097,6 +1208,7 @@ def run_item_analysis(
         fusion_decision=fd_dict,
         valuation_grid=vg_dict,
         supply_analysis=supply_dict,
-        market_context=market_ctx.context_summary() if market_ctx else {},
-        corr_label="",
+        market_context=context_summary(market_ctx) if market_ctx else {},
+        price_zones=price_zones,
     )
+

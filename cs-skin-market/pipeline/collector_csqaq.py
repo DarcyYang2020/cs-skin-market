@@ -1,17 +1,16 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """csqaq.com Playwright data collector.
 Navigates directly to goods page and intercepts chart API.
 """
 
 import asyncio, json, re
+import logging
 from collections import defaultdict
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 TZ_BJ = timezone(timedelta(hours=8))
-from .logutil import get_logger
-_csq_log = get_logger()
-CSQAQ_WEB = "https://csqaq.com"
+_csq_log = logging.getLogger(__name__)
 CSQAQ_WEB = "https://csqaq.com"
 
 # === Browser singleton (reuse across calls) ===
@@ -20,6 +19,20 @@ _browser_inst = None
 _browser_last_used = 0
 
 async def _get_browser():
+    """Get or create Playwright browser instance (with retry for Windows asyncio issue)."""
+    for attempt in range(3):
+        try:
+            return await _get_browser_once()
+        except NotImplementedError:
+            if attempt < 2:
+                await asyncio.sleep(1)
+            else:
+                raise
+    return None, None
+
+
+async def _get_browser_once():
+
     global _browser_pw, _browser_inst, _browser_last_used
     import time as _time
     now = _time.time()
@@ -32,229 +45,240 @@ async def _get_browser():
         try:
             await _browser_inst.close()
         except Exception:
-            pass  # browser may already be closed
-    if _browser_pw:
-        try:
-            await _browser_pw.stop()
-        except Exception:
-            pass  # playwright may already be stopped
+            pass
+        _browser_inst = None
+        _browser_pw = None
     from playwright.async_api import async_playwright
     _browser_pw = await async_playwright().start()
-    _browser_inst = await _browser_pw.chromium.launch(headless=True, proxy=_PROXY)
+    launch_kw = dict(headless=True)
+    _browser_inst = await _browser_pw.chromium.launch(**launch_kw)
     _browser_last_used = now
     return _browser_pw, _browser_inst
-_PROXY = None
 
-try:
-    from .config import PROXY as _P
-    _PROXY = {"server": _P} if _P else None
-except ImportError:
-    pass  # config.py not available or missing PROXY
-
-
-class KLinePoint:
-    def __init__(self, date="", open=0.0, high=0.0, low=0.0, close=0.0, volume=0):
-        self.date, self.open, self.high, self.low, self.close, self.volume = date, open, high, low, close, volume
-
-
+# ============================================================
+# Data container
+# ============================================================
 class ItemData:
     def __init__(self):
-        self.name = self.steam_name = self.weapon = self.skin = self.wear = ""
-        self.price_rmb = self.volume_day = self.volume_total = 0
-        self.trend = ""
-        self.order_book = None
-        self.kline_90d = []
-        self._daily_bars = []
-        self._kline_raw = []
-        self.good_id = 0
-        self.sector = ""
-        self.rarity_name = self.exterior_name = ""
-        self.sell_price_rate_1 = self.sell_price_rate_7 = self.sell_price_rate_15 = 0.0
-        self.sell_price_rate_30 = self.sell_price_rate_90 = self.sell_price_rate_180 = 0.0
-        self.type_name = ""
-        self.quality_name = ""
-        self.group_hash_name = ""
-        self.case_name = ""
-        self.case_discontinued = False
-        self.case_created = ""
-        self.rank_num = 0
-        self.rank_change = 0
-        self.statistic_variants = []
+        self.good_id: int = 0
+        self.name: str = ""
+        self.steam_name: str = ""
+        self.price_rmb: float = 0.0
+        self.price_buff: float = 0.0
+        self.price_steam: float = 0.0
+        self.volume_day: int = 0
+        self.volume_total: int = 0
+        self.in_sale_count: int = 0
+        self.order_book: Optional[dict] = None
+        self.kline_90d: list = []
 
-class OrderBook:
-    def __init__(self, lowest_sell=0.0, highest_buy=0.0, sell_count=0, buy_count=0):
-        self.lowest_sell, self.highest_buy = lowest_sell, highest_buy
-        self.sell_count, self.buy_count = sell_count, buy_count
-        self.spread_rmb = self.spread_pct = self.bid_depth = 0.0
+def _chart_to_daily_ohlc(cd: dict) -> list:
+    """Aggregate 10-min chart data into daily OHLCV bars.
+    Returns list of Bar objects with close, high, low, volume, in_sale_count.
+    """
+    ts_arr = cd.get("timestamp", [])
+    price_arr = cd.get("main_data", [])
+    num_arr = cd.get("num_data", [])
+    tx_arr = cd.get("tx_data", [])
+    amount_arr = cd.get("amount_data", [])
+    tx_count_arr = cd.get("txcount_data", [])
+    survive_arr = cd.get("survive_data", [])
+
+    class Bar:
+        def __init__(self, ts, close, high, low, volume, in_sale, tx_amount, tx_count, survive):
+            self.ts = ts
+            self.date = ""  # set below
+            self.close = close
+            self.high = high
+            self.low = low
+            self.volume = volume
+            self.in_sale_count = in_sale
+            self.tx_amount = tx_amount
+            self.tx_count = tx_count
+            self.survive = survive
+
+    daily = {}
+    for i in range(min(len(ts_arr), len(price_arr))):
+        if i >= len(price_arr) or price_arr[i] is None or price_arr[i] == "":
+            continue
+        try:
+            price = float(price_arr[i])
+        except (TypeError, ValueError):
+            continue
+        if price <= 0:
+            continue
+        ts = int(ts_arr[i]) // 1000 if ts_arr[i] else 0
+        dt = datetime.fromtimestamp(ts, tz=TZ_BJ)
+        day_key = dt.strftime("%Y-%m-%d")
+        vol = float(tx_count_arr[i]) if i < len(tx_count_arr) and tx_count_arr[i] is not None else 0
+        tx_amt = float(tx_arr[i]) if i < len(tx_arr) and tx_arr[i] is not None else 0
+        tx_cnt = int(tx_count_arr[i]) if i < len(tx_count_arr) and tx_count_arr[i] is not None else 0
+        survive = int(survive_arr[i]) if i < len(survive_arr) and survive_arr[i] is not None else 0
+        if day_key in daily:
+            b = daily[day_key]
+            if price > b.high: b.high = price
+            if price < b.low: b.low = price
+            b.close = price
+            b.volume += vol
+            b.date = day_key; b.in_sale_count = int(float(num_arr[i])) if i < len(num_arr) and num_arr[i] is not None else 0
+            b.tx_amount += tx_amt
+            b.tx_count += tx_cnt
+            b.survive = survive
+        else:
+            b = Bar(ts, price, price, price, vol, int(float(num_arr[i])) if i < len(num_arr) and num_arr[i] is not None else 0, tx_amt, tx_cnt, survive); b.date = day_key; daily[day_key] = b
+
+    return list(daily.values())
+
+def _chart_to_raw(cd: dict) -> list:
+    """Convert chart data to raw point list for backtesting."""
+    ts_arr = cd.get("timestamp", [])
+    price_arr = cd.get("main_data", [])
+    vol_arr = cd.get("num_data", [])
+    out = []
+    for i in range(min(len(ts_arr), len(price_arr))):
+        try:
+            p = float(price_arr[i]) if price_arr[i] is not None else 0
+            v = float(vol_arr[i]) if i < len(vol_arr) and vol_arr[i] is not None else 0
+        except (TypeError, ValueError):
+            continue
+        out.append([ts_arr[i], p, v])
+    return out
+
+# ============================================================
+# Search for good_id by name
+# ============================================================
 
 
-def _chart_to_daily_ohlc(chart_data: dict) -> list:
-    """Convert chart {timestamp, main_data, num_data} to daily KLinePoint list."""
-    ts = chart_data.get("timestamp", [])
-    prices = chart_data.get("main_data", [])
-    sc = chart_data.get("num_data", [])
-    if not ts or not prices:
-        return []
-    daily = defaultdict(list)
-    for i in range(min(len(ts), len(prices))):
-        ts_s = ts[i] / 1000.0
-        d = datetime.fromtimestamp(ts_s, tz=TZ_BJ).strftime("%Y-%m-%d")
-        p = float(prices[i]) if prices[i] is not None else 0.0
-        n = int(sc[i]) if i < len(sc) and sc[i] is not None else 0
-        if p > 0:
-            daily[d].append({"price": p, "count": n})
-    result = []
-    for d in sorted(daily.keys()):
-        pts = daily[d]
-        pl = [p["price"] for p in pts]
-        vl = [p["count"] for p in pts]
-        result.append(KLinePoint(date=d, open=pl[0], high=max(pl), low=min(pl), close=pl[-1], volume=max(vl)))
-    return result
+# Wear condition mapping
+WEAR_CONDITIONS = ["崭新出厂", "略有磨损", "久经沙场", "破损不堪", "战痕累累"]
+
+def _extract_wear(query: str) -> str:
+    """Extract wear condition from query string. Returns empty string if none found."""
+    for wc in WEAR_CONDITIONS:
+        if wc in query:
+            return wc
+    return ""
+
+def _has_wear_conflict(query: str, result_title: str) -> bool:
+    """Check if query specifies a wear condition that conflicts with the result."""
+    q_wear = _extract_wear(query)
+    if not q_wear:
+        return False
+    r_wear = _extract_wear(result_title)
+    if not r_wear:
+        return False
+    return q_wear != r_wear
 
 
-def _chart_to_raw(chart_data: dict) -> list:
-    ts = chart_data.get("timestamp", [])
-    prices = chart_data.get("main_data", [])
-    sc = chart_data.get("num_data", [])
-    raw = []
-    for i in range(len(ts)):
-        raw.append({
-            "timestamp": ts[i],
-            "price": float(prices[i]) if i < len(prices) and prices[i] is not None else 0.0,
-            "in_sale": int(sc[i]) if i < len(sc) and sc[i] is not None else 0,
-            "volume": 0, "tx_amount": 0.0, "tx_count": 0, "survive_num": 0,
-        })
-    return raw
+def _has_skin_mismatch(query: str, result_title: str) -> bool:
+    """Check if query's Chinese skin name chars overlap with result title."""
+    chinese_q = set(c for c in query if '一' <= c <= '鿿')
+    if not chinese_q:
+        return False  # No Chinese chars in query, can't verify
+    chinese_r = set(c for c in result_title if '一' <= c <= '鿿')
+    if not chinese_r:
+        return False  # No Chinese chars in result, skip check
+    overlap = chinese_q & chinese_r
+    # Require at least 50% of query Chinese chars to match
+    if len(overlap) < max(1, len(chinese_q) // 2):
+        return True  # Mismatch!
+    return False
 
+async def search_good_id(query: str) -> tuple[int, str]:
+    """Search csQAQ for a good_id by name.
+    1. Normalize " | " to " " for Chinese search
+    2. Trigger csQAQ autocomplete via React fiber
+    3. Filter out StatTrak/纪念品 results
+    4. Click best match, extract good_id from URL
+    """
+    query = query.replace(" | ", " ").replace("|", " ")
 
-async def _browser():
-    from playwright.async_api import async_playwright
-    pw = await async_playwright().start()
-    b = await pw.chromium.launch(headless=True, proxy=_PROXY)
-    return pw, b
-
-
-async def search_good_id(item_name: str) -> tuple[int, str]:
-    """Async: Search csqaq.com for an item, return (good_id, page_title)."""
     pw, browser = await _get_browser()
     page = await browser.new_page()
-    
-    good_id = 0
-    title = ""
     
     try:
-        await page.goto(f"{CSQAQ_WEB}/home", wait_until="domcontentloaded", timeout=30000)
-        await page.wait_for_timeout(1000)
-        await page.wait_for_selector(".ant-select-selector", timeout=8000)
+        await page.goto(CSQAQ_WEB, wait_until="domcontentloaded", timeout=30000)
+        await page.wait_for_timeout(3000)
         
-        # Click and wait for Ant Design select to initialize
-        await page.click(".ant-select-selector")
-        await page.wait_for_timeout(500)
+        # Trigger autocomplete via React fiber
+        result = await page.evaluate("""
+            async (q) => {
+                const el = document.querySelector("#rc_select_0");
+                if (!el) return "no el";
+                const fiberKey = Object.keys(el).find(
+                    k => k.startsWith("__reactFiber") || k.startsWith("__reactInternalInstance")
+                );
+                if (!fiberKey) return "no fiber";
+                const fiber = el[fiberKey];
+                let node = fiber;
+                let tries = 0;
+                while (node && tries < 30) {
+                    const props = node.memoizedProps;
+                    if (props && (props.onChange || props.onSearch)) {
+                        const setter = Object.getOwnPropertyDescriptor(
+                            window.HTMLInputElement.prototype, "value"
+                        ).set;
+                        setter.call(el, q);
+                        if (props.onChange) props.onChange({ target: { value: q } });
+                        else if (props.onSearch) props.onSearch(q);
+                        return "ok";
+                    }
+                    node = node.return || node.stateNode;
+                    tries++;
+                }
+                return "no handler";
+            }
+        """, query)
         
-        # Focus the input and type
-        await page.click("input")
-        await page.wait_for_timeout(200)
-        await page.type("input", item_name, delay=30)
-        await page.wait_for_timeout(1500)
-        await page.wait_for_selector(".ant-select-item-option", timeout=5000)
+        await page.wait_for_timeout(3000)
         
-        opt = page.locator(".ant-select-item-option")
-        cnt = await opt.count()
-        _csq_log.info(f"Search options: {cnt}")
-        # First pass: find non-StatTrak, non-Souvenir option
-        clicked = False
-        for i in range(cnt):
-            if await opt.nth(i).is_visible():
-                txt = await opt.nth(i).text_content()
-                txt_clean = txt.strip() if txt else ""
-                # Skip StatTrak and Souvenir variants
-                if "StatTrak" in txt_clean or "StatTrak\u2122" in txt_clean or "\u2122" in txt_clean or "\u7eaa\u5ff5\u54c1" in txt_clean:
-                    _csq_log.info(f"Skipping StatTrak/Souvenir: {txt_clean}")
+        dropdown = await page.query_selector(".ant-select-dropdown:not(.ant-select-dropdown-hidden)")
+        if not dropdown:
+            _csq_log.warning(f"Search '{query}': no dropdown")
+            return 0, ""
+        
+        items = await dropdown.query_selector_all(".ant-select-item-option, [role='option'], .ant-select-item")
+        
+        candidates = []
+        for item in items:
+            try:
+                title = (await item.inner_text()).strip()
+                if not title or title.isdigit():
                     continue
-                _csq_log.info(f"Clicking: {txt_clean}")
-                await opt.nth(i).click(force=True, timeout=5000)
-                clicked = True
-                break
-        # Fallback: if all results are StatTrak, use the first one
-        if not clicked:
-            for i in range(cnt):
-                if await opt.nth(i).is_visible():
-                    txt = await opt.nth(i).text_content()
-                    _csq_log.info(f"Fallback clicking: {txt.strip() if txt else ''}")
-                    await opt.nth(i).click(force=True, timeout=5000)
-                    break
-        
-        await page.wait_for_timeout(2000)
-        
-        url = page.url
-        m = re.search(r'/goods/(\d+)', url)
-        if m:
-            good_id = int(m.group(1))
-        title = await page.evaluate("() => document.title.split('-')[0].trim()")
-        _csq_log.info(f"Navigated: {url}, good_id={good_id}, title={title}")
-
-        # Post-navigation StatTrak check: if we landed on a StatTrak variant,
-        # try clicking the next non-StatTrak option
-        if "StatTrak" in title or "StatTrak\u2122" in title:
-            _csq_log.info("Landed on StatTrak variant, retrying...")
-            good_id = 0
-            # Go back and try next option
-            clicked_alt = False
-            for j in range(cnt):
-                if j == i:
-                    continue  # skip the one we already tried
-                alt_txt = await opt.nth(j).text_content() if await opt.nth(j).is_visible() else ""
-                alt_clean = alt_txt.strip() if alt_txt else ""
-                if "StatTrak" in alt_clean or "StatTrak\u2122" in alt_clean or "\u2122" in alt_clean or "\u7eaa\u5ff5\u54c1" in alt_clean:
+                if "StatTrak" in title or "纪念品" in title:
                     continue
-                if not alt_clean:
-                    continue
-                _csq_log.info(f"Retry clicking: {alt_clean}")
-                await page.goto(f"{CSQAQ_WEB}/home", wait_until="domcontentloaded", timeout=15000)
-                await page.wait_for_timeout(1500)
-                await page.click(".ant-select-selector")
-                await page.wait_for_timeout(300)
-                await page.click("input")
-                await page.wait_for_timeout(200)
-                await page.type("input", item_name, delay=30)
-                await page.wait_for_timeout(2000)
-                opt2 = page.locator(".ant-select-item-option")
-                if await opt2.nth(j).is_visible():
-                    await opt2.nth(j).click(force=True, timeout=5000)
-                    await page.wait_for_timeout(2000)
-                    url2 = page.url
-                    m2 = re.search(r'/goods/(\d+)', url2)
-                    if m2:
-                        good_id = int(m2.group(1))
-                    title = await page.evaluate("() => document.title.split('-')[0].trim()")
-                    _csq_log.info(f"Retry result: url={url2}, good_id={good_id}, title={title}")
-                clicked_alt = True
-                break
-            if not clicked_alt:
-                _csq_log.warning("No non-StatTrak alternative found, using original StatTrak result")
-                # Recover the original StatTrak good_id from the first navigation
-                if good_id == 0 and m:
-                    good_id = int(m.group(1))
+                candidates.append((title, item))
+            except Exception:
+                continue
+        
+        if not candidates:
+            _csq_log.warning(f"Search '{query}': all filtered out")
+            return 0, ""
+        
+        best_title, best_item = candidates[0]
+        await best_item.click()
+        await page.wait_for_timeout(5000)
+        
+        url_match = re.search(r"/goods/(\d+)", page.url)
+        if url_match:
+            gid = int(url_match.group(1))
+            _csq_log.info(f"Search '{query}' -> good_id={gid} '{best_title}'")
+            return gid, best_title
+        
+        _csq_log.warning(f"Search '{query}': no good_id in URL")
+        return 0, ""
+    
     finally:
         await page.close()
-        # Browser kept alive for reuse
-    
-    return good_id, title
 
 
-async def fetch_item_detail(good_id: int) -> Optional[ItemData]:
-    """Async: Fetch item detail + 90-day K-line from csqaq.com/goods/{good_id}.
-    Uses Playwright with route interception for period=90 chart data.
-    Also captures good_detail response for price/volume info.
-    """
+async def fetch_item_detail(good_id: int):
+    """Async: Fetch item detail + 90-day K-line from csqaq.com/goods/{good_id}."""
     item = ItemData()
     item.good_id = good_id
-    
     pw, browser = await _get_browser()
     page = await browser.new_page()
-    
-    captured = {"chart": None, "detail": None}
-    
+    captured = {'chart': None, 'detail': None}
     try:
         async def on_response(response):
             url = response.url
@@ -267,140 +291,124 @@ async def fetch_item_detail(good_id: int) -> Optional[ItemData]:
                     captured["detail"] = body
             except Exception:
                 pass
-        
         async def modify_chart(route, request):
             if "info/chart" in request.url:
                 try:
                     body = json.loads(request.post_data)
                     body["period"] = "90"
                     body["key"] = "sell_price"
-                    body["platform"] = 1
+                    body["platform"] = 2
                     await route.continue_(post_data=json.dumps(body))
                 except Exception:
                     await route.continue_()
             else:
                 await route.continue_()
-        
-        page.on("response", on_response)
-        await page.route("**/info/chart**", modify_chart)
-        
-        await page.goto(f"{CSQAQ_WEB}/goods/{good_id}", wait_until="domcontentloaded", timeout=30000)
-        await page.wait_for_timeout(6000)  # Reduced from 10s, chart loads via API
-        
-        # 1. Parse chart data
-        if captured["chart"]:
-            data = json.loads(captured["chart"])
-            if data.get("code") == 200 and data.get("data"):
-                cd = data["data"]
+        page.on('response', on_response)
+        await page.route('**/info/chart**', modify_chart)
+        await page.goto(f'{CSQAQ_WEB}/goods/{good_id}', wait_until='domcontentloaded', timeout=30000)
+        await page.wait_for_timeout(6000)
+        # Extract youyoupin listing price from page DOM
+        try:
+            yyyp_price = await page.evaluate("() => { const el = document.querySelector('.ant-statistic-content-value'); if (el) return el.innerText.trim(); return ''; }")
+            if yyyp_price:
+                p = float(yyyp_price.replace(',', '').replace('\u00a5', ''))
+                if p > 0:
+                    item.price_rmb = p
+        except Exception:
+            pass
+        if captured['chart']:
+            data = json.loads(captured['chart'])
+            if data.get('code') == 200 and data.get('data'):
+                cd = data['data']
                 item._daily_bars = _chart_to_daily_ohlc(cd)
                 item._kline_raw = _chart_to_raw(cd)
                 item.kline_90d = item._daily_bars[:]
-                ts = cd.get("timestamp", [])
-                prices = cd.get("main_data", [])
-                nums = cd.get("num_data", [])
-                if prices:
-                    item.price_rmb = float(prices[-1]) if prices[-1] is not None else 0.0
+                ts = cd.get('timestamp', [])
+                prices = cd.get('main_data', [])
+                nums = cd.get('num_data', [])
+                if nums and prices:
+                    try:
+                        item.volume_day = max(int(float(nums[-1])), 0) if nums[-1] else 0
+                    except (TypeError, ValueError):
+                        item.volume_day = 0
+                if item._daily_bars:
+                    try:
+                        item.price_rmb = item._daily_bars[-1].close
+                    except (TypeError, ValueError, IndexError):
+                        item.price_rmb = 0.0
+                elif prices:
+                    try:
+                        item.price_rmb = float(prices[-1])
+                    except (TypeError, ValueError):
+                        item.price_rmb = 0.0
                 if nums:
-                    item.volume_total = int(nums[-1]) if nums[-1] is not None else 0
-                _csq_log.info(f"Chart: {len(ts)} pts, {len(item._daily_bars)} daily bars")
-        
-        # 2. Parse detail data
-        if captured["detail"]:
-            data = json.loads(captured["detail"])
-            if data.get("code") == 200:
-                gi = data["data"].get("goods_info", {})
-                item.name = gi.get("name", item.name)
-                item.steam_name = gi.get("market_hash_name", "")
-                item.sell_price_rate_1 = float(gi.get("sell_price_rate_1", 0))
-                item.sell_price_rate_7 = float(gi.get("sell_price_rate_7", 0))
-                item.sell_price_rate_15 = float(gi.get("sell_price_rate_15", 0))
-                item.sell_price_rate_30 = float(gi.get("sell_price_rate_30", 0))
-                item.sell_price_rate_90 = float(gi.get("sell_price_rate_90", 0))
-                item.sell_price_rate_180 = float(gi.get("sell_price_rate_180", 0))
-                item.rarity_name = gi.get("rarity_localized_name", "")
-                item.exterior_name = gi.get("exterior_localized_name", "")
-                item.type_name = gi.get("type_localized_name", "")
-                item.quality_name = gi.get("quality_localized_name", "")
-                item.group_hash_name = gi.get("group_hash_name", "")
-                item.rank_num = int(gi.get("rank_num", 0))
-                item.rank_change = int(gi.get("rank_num_change", 0))
-                
-                # Container/case info
-                container = data["data"].get("container", [])
-                if container and isinstance(container, list) and len(container) > 0:
-                    c = container[0]
-                    item.case_name = c.get("name", "")
-                    item.case_discontinued = c.get("comment", "") == "\u7edd\u7248"
-                    item.case_created = c.get("created_at", "")
-                
-                # Statistic variants (same skin, different wears)
-                sl = data["data"].get("statistic_list", [])
-                if isinstance(sl, list):
-                    item.statistic_variants = sl
-                
-                buff_sell = float(gi.get("buff_sell_price", 0))
-                if buff_sell > 0:
-                    item.price_rmb = buff_sell
-                
-                item.volume_total = int(gi.get("buff_sell_num", item.volume_total))
-                item.volume_day = int(gi.get("turnover_number", 0))
-                
-                buy_price = float(gi.get("buff_buy_price", 0))
-                buy_num = int(gi.get("buff_buy_num", 0))
-                if buy_price > 0 and item.price_rmb > 0:
-                    ob = OrderBook(item.price_rmb, buy_price, item.volume_total, buy_num)
-                    ob.spread_rmb = round(ob.lowest_sell - ob.highest_buy, 2)
-                    ob.spread_pct = round(ob.spread_rmb / ob.lowest_sell * 100, 1)
-                    item.order_book = ob
+                    try:
+                        item.volume_total = max((int(float(v)) if v else 0) for v in nums)
+                    except (TypeError, ValueError):
+                        item.volume_total = 0
+        if captured['detail']:
+            try:
+                dd = json.loads(captured['detail'])
+                if dd.get('code') == 200 and dd.get('data'):
+                    d = dd['data']
+                    gi = d.get('goods_info', d)  # fallback to d itself
+                    item.name = gi.get('name', '') or item.name
+                    item.steam_name = gi.get('market_hash_name', '') or gi.get('steam_name', '')
+                    # Only use detail API price if chart price is 0 (stale fallback)
+                    if item.price_rmb == 0:
+                        try:
+                            for pk in ('yyyp_sell_price', 'sell_price', 'price'):
+                                pv = gi.get(pk, 0)
+                                if pv and float(pv) > 0:
+                                    item.price_rmb = float(pv)
+                                    break
+                        except (TypeError, ValueError):
+                            pass
+                    item.in_sale_count = int(gi.get('in_sale_count', gi.get('sale_num', gi.get('buff_sell_num', 0))) or 0)
+            except Exception:
+                pass
+        return item
     finally:
         await page.close()
-        # Browser kept alive for reuse
-    
-    return item if item.price_rmb > 0 else None
 
 
-async def fetch_kline_90d(good_id: int) -> tuple[list, list]:
-    """Async: Get 90-day K-line data. Returns (daily_ohlc_list, raw_points_list)."""
+async def fetch_kline_90d(good_id: int):
+    """Async: Get 90-day K-line data."""
     pw, browser = await _get_browser()
     page = await browser.new_page()
-    
-    chart_data = {}
+    captured = {'chart': None}
     try:
         async def on_response(response):
-            if "info/chart" in response.url:
-                try:
-                    chart_data["body"] = await response.text()
-                except Exception:
-                    pass
-        
+            url = response.url
+            try:
+                if "info/chart" in url and response.ok:
+                    body = await response.text()
+                    captured["chart"] = body
+            except Exception:
+                pass
         async def modify_chart(route, request):
             if "info/chart" in request.url:
                 try:
                     body = json.loads(request.post_data)
                     body["period"] = "90"
                     body["key"] = "sell_price"
-                    body["platform"] = 1
+                    body["platform"] = 2
                     await route.continue_(post_data=json.dumps(body))
                 except Exception:
                     await route.continue_()
             else:
                 await route.continue_()
-        
-        page.on("response", on_response)
-        await page.route("**/info/chart**", modify_chart)
-        
-        await page.goto(f"{CSQAQ_WEB}/goods/{good_id}", wait_until="domcontentloaded", timeout=30000)
-        await page.wait_for_timeout(6000)  # Reduced from 10s, chart loads via API
-        
+        page.on('response', on_response)
+        await page.route('**/info/chart**', modify_chart)
+        await page.goto(f'{CSQAQ_WEB}/goods/{good_id}', wait_until='domcontentloaded', timeout=30000)
+        await page.wait_for_timeout(6000)
         ohlc, raw = [], []
-        if chart_data.get("body"):
-            data = json.loads(chart_data["body"])
-            if data.get("code") == 200 and data.get("data"):
-                cd = data["data"]
+        if captured['chart']:
+            data = json.loads(captured['chart'])
+            if data.get('code') == 200 and data.get('data'):
+                cd = data['data']
                 ohlc = _chart_to_daily_ohlc(cd)
                 raw = _chart_to_raw(cd)
+        return ohlc, raw
     finally:
         await page.close()
-        # Browser kept alive for reuse
-    
-    return ohlc, raw

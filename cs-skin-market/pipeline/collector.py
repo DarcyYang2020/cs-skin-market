@@ -16,8 +16,7 @@ from pathlib import Path
 from typing import Optional
 
 from .config import CSQAQ_BASE, API_TOKEN, API_RATE_LIMIT, DATA_DIR
-from .logutil import get_logger
-_log = get_logger()
+import logging
 
 TZ_BJ = timezone(timedelta(hours=8))
 
@@ -141,10 +140,28 @@ def _parse_int(raw) -> int:
 #  Market index
 # ============================================================
 
-def fetch_market_index() -> MarketIndex | None:
-    """Fetch CS composite index via csQAQ current_data API."""
+
+def _current_data_with_fallback() -> dict | None:
+    """Fetch /current_data?type=init with 401 fallback to browser."""
     resp = _api_get("/current_data?type=init")
     data = resp.get("data")
+    
+    if resp.get("code") == 401 and not data:
+        _log.warning("current_data: API 401 (IP binding mismatch), falling back to browser")
+        try:
+            import asyncio
+            from .collector_csqaq import fetch_current_data_via_browser
+            return asyncio.run(fetch_current_data_via_browser())
+        except Exception as e:
+            _log.error(f"current_data: browser fallback failed: {e}")
+            return None
+    
+    return data
+
+def fetch_market_index() -> MarketIndex | None:
+    """Fetch CS composite index via csQAQ current_data API.
+    Falls back to browser interception on 401 IP binding mismatch."""
+    data = _current_data_with_fallback()
     if not data:
         _log.warning("fetch_market_index: no data")
         return None
@@ -162,14 +179,15 @@ def fetch_market_index() -> MarketIndex | None:
     if main_idx:
         result.value = _parse_price(main_idx.get("market_index"))
         result.change_7d = float(main_idx.get("chg_rate", 0))
-        # mood from greedy data
+        # mood from greedy data (uses level: low=fear, high=greed)
         greedy = data.get("greedy_status", {})
-        label = greedy.get("label", "")
         level = greedy.get("level", "")
-        if "恐惧" in str(label):
-            result.mood = "cold"
-        elif "贪婪" in str(label):
-            result.mood = "hot"
+        if level == "low":
+            result.mood = "恐惧"
+        elif level == "high":
+            result.mood = "贪婪"
+        elif level == "medium":
+            result.mood = "中性"
         else:
             result.mood = "neutral"
 
@@ -196,9 +214,19 @@ def _cached_kline(fetcher, *args):
 def _fetch_index_kline_raw() -> list:
     """Fetch daily index K-line data from csQAQ API.
     GET /api/v1/sub/kline?id=1&type=1day
-    Returns list of (date_str, value) tuples (close price)."""
+    Returns list of (date_str, value) tuples (close price).
+    
+    Falls back to Playwright browser interception when API returns 401
+    (IP binding mismatch due to dynamic ISP IP changes).
+    """
     resp = _api_get("/sub/kline?id=1&type=1day")
     data = resp.get("data")
+    
+    # Fallback: 401 -> return empty (no browser fallback available)
+    if resp.get("code") == 401 and not data:
+        _log.warning("fetch_index_kline: API 401, returning empty")
+        return []
+    
     if not data or not isinstance(data, list):
         _log.warning("fetch_index_kline: no data from API")
         return []
@@ -223,9 +251,9 @@ def _fetch_index_kline_raw() -> list:
 # ============================================================
 
 def fetch_sector_flow() -> list[SectorFlow]:
-    """Fetch sector/type flow data from csQAQ current_data."""
-    resp = _api_get("/current_data?type=init")
-    data = resp.get("data")
+    """Fetch sector/type flow data from csQAQ current_data.
+    Falls back to browser interception on 401 IP binding mismatch."""
+    data = _current_data_with_fallback()
     if not data:
         return []
 

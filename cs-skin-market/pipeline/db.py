@@ -181,10 +181,18 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         price_rmb REAL,
 
         report_md TEXT,
+        report_html TEXT DEFAULT '',
 
         created_at TEXT DEFAULT (datetime('now','localtime')))""")
 
     conn.execute("CREATE INDEX IF NOT EXISTS idx_snapshots_item_date ON snapshots(item_id, date)")
+
+    # Migrate: add report_html if missing
+    try:
+        conn.execute("ALTER TABLE snapshots ADD COLUMN report_html TEXT DEFAULT ''")
+    except sqlite3.OperationalError:
+        pass  # column already exists
+
 
     conn.execute("""CREATE TABLE IF NOT EXISTS positions (
 
@@ -300,6 +308,22 @@ def save_price(conn, item_id, price_rmb, volume_day=0, volume_total=0):
 
 
 
+def save_price_history_batch(conn, item_id, daily_bars):
+    """Save 90-day K-line data (Bar objects) to price_history table.
+    daily_bars: list of Bar objects with .date, .close, .volume, .in_sale_count, .survive
+    """
+    for bar in daily_bars:
+        if not bar.date or not bar.close or bar.close <= 0:
+            continue
+        vol_day = int(bar.volume) if bar.volume else 0
+        vol_total = int(bar.survive) if bar.survive else 0
+        conn.execute(
+            "INSERT OR REPLACE INTO price_history (item_id, date, price_rmb, volume_day, volume_total) VALUES (?,?,?,?,?)",
+            (item_id, bar.date, round(bar.close, 2), vol_day, vol_total)
+        )
+
+
+
 def save_market_index(conn, value, change_7d, mood=""):
 
     conn.execute("INSERT OR REPLACE INTO market_index (date,value,change_7d,mood) VALUES (?,?,?,?)",
@@ -310,13 +334,13 @@ def save_market_index(conn, value, change_7d, mood=""):
 
 
 
-def save_snapshot(conn, item_id, score_scarcity, score_volume, score_market, score_liquidity=0, total_score=0, grade="", recommendation="", price_rmb=0, report_md="") -> int:
+def save_snapshot(conn, item_id, score_scarcity, score_volume, score_market, score_liquidity=0, total_score=0, grade="", recommendation="", price_rmb=0, report_md="", report_html="") -> int:
 
-    cur = conn.execute("""INSERT INTO snapshots (item_id,date,score_scarcity,score_volume,score_market,score_liquidity,total_score,grade,recommendation,price_rmb,report_md)
+    cur = conn.execute("""INSERT INTO snapshots (item_id,date,score_scarcity,score_volume,score_market,score_liquidity,total_score,grade,recommendation,price_rmb,report_md,report_html)
 
-                       VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
 
-                       (item_id, _now(), score_scarcity, score_volume, score_market, score_liquidity, total_score, grade, recommendation, price_rmb, report_md))
+                       (item_id, _now(), score_scarcity, score_volume, score_market, score_liquidity, total_score, grade, recommendation, price_rmb, report_md, report_html))
 
     return cur.lastrowid
 
@@ -543,7 +567,7 @@ def get_setting(conn, key, default=""):
 def watchlist_list_with_snapshots(conn):
     """Optimized: single JOIN query instead of N+1 per-item queries."""
     return conn.execute("""
-        SELECT i.*, s.price_rmb AS latest_price, s.grade AS latest_grade
+        SELECT i.*, s.price_rmb AS latest_price, s.grade AS latest_grade, s.recommendation AS latest_summary
         FROM items i
         LEFT JOIN snapshots s ON s.item_id = i.id
             AND s.date = (SELECT MAX(date) FROM snapshots WHERE item_id = i.id)
@@ -573,10 +597,10 @@ def watchlist_list(conn):
 
 
 
-def watchlist_add(conn, name) -> int:
-
+def watchlist_add(conn, name, holding=0, avg_cost=0.0, quantity=0) -> int:
     item_id = upsert_item(conn, name, in_watchlist=1)
-
+    if holding:
+        conn.execute("UPDATE items SET holding=?, avg_cost=?, quantity=? WHERE id=?", (holding, avg_cost, quantity, item_id))
     return item_id
 
 
