@@ -258,9 +258,21 @@ async def page_watchlist(request: Request):
         items_raw = db.watchlist_list_with_snapshots(conn)
         total_assets = float(db.get_setting(conn, "total_assets", 0) or 0)
         # Convert sqlite3.Row to dict for .get() access
-        items = [dict(r) for r in items_raw]
-        total_buy_cost = sum((i.get("avg_cost") or 0) * (i.get("quantity") or 0) for i in items)
+        all_items = [dict(r) for r in items_raw]
+        total_buy_cost = sum((i.get("avg_cost") or 0) * (i.get("quantity") or 0) for i in all_items)
         position_ratio = (total_buy_cost / total_assets * 100) if total_assets > 0 else 0
+
+        # Pagination: 10 per page, ordered by add time (id)
+        PAGE_SIZE = 10
+        total_items = len(all_items)
+        total_pages = max(1, (total_items + PAGE_SIZE - 1) // PAGE_SIZE)
+        try:
+            page = max(1, int(request.query_params.get("page", 1)))
+        except (TypeError, ValueError):
+            page = 1
+        page = min(page, total_pages)
+        items = all_items[(page - 1) * PAGE_SIZE: page * PAGE_SIZE]
+
         # Load trend health + parse latest_summary for each item
         import json as _json
         for item in items:
@@ -283,6 +295,7 @@ async def page_watchlist(request: Request):
             "total_assets": total_assets,
             "total_buy_cost": total_buy_cost,
             "position_ratio": position_ratio,
+            "pagination": {"page": page, "total_pages": total_pages, "total_items": total_items},
         })
     finally:
         conn.close()

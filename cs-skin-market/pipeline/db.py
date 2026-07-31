@@ -572,7 +572,7 @@ def watchlist_list_with_snapshots(conn):
         LEFT JOIN snapshots s ON s.item_id = i.id
             AND s.date = (SELECT MAX(date) FROM snapshots WHERE item_id = i.id)
         WHERE i.in_watchlist = 1
-        ORDER BY i.name
+        ORDER BY i.id
     """).fetchall()
 
 
