@@ -296,5 +296,17 @@ spread_pct / highest_buy / bid_7d_chg / bid_30d_chg / spread_avg / bid_count / d
 ## 回测记录
 | 文件 | 说明 |
 |---|---|
+| run_item_backtest.py | 单品离线回放, warmup=30: 67信号, 14d胜率60.9%/均+15.7%, 30d胜率77%/均+29.3% (2026-05-21~07-31) |
+| data/item_backtest_latest.json | 单品回测最新明细（信号+分层字段） |
+
+### 补仓建议阈值（2026-07-31, 数据验证）
+
+浮亏持仓补仓/止损分层（`batch_scan._portfolio_advice`，sentiment_score 由大盘贪婪指数实时计算）：
+
+- 市场贪婪 sent≤30 → 禁止补仓（回测 30d 胜率 0%）
+- pct 25~40 半山腰 → 暂缓补仓（14d 胜率 28%）
+- pct≤25 + 单品TH≥40 + z≤-0.5 + 大盘TH≥45 → 可分批补仓（14d 胜率 75%）
+- pct≤25 但大盘TH<45 → 暂缓，等大盘共振
+- 单品TH<30 → 止损优先
 | references/backtest_results.json | 大盘 2025-11-02 ~ 2026-07-21, 232条 |
 | pipeline/config.py THRESHOLDS | TH_STRONG=55, TH_NEUTRAL=35 |

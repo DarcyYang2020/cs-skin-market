@@ -1067,8 +1067,9 @@ async def _run_batch_scan_task(scan_id: str, rows: list):
     idx = collector.fetch_market_index()
     if idx is None or idx.value == 0:
         idx = type("obj", (object,), {"value": 0, "change_7d": 0})()
-    # Compute market TH once for resonance-aware portfolio advice
+    # Compute market TH + sentiment once for resonance-aware portfolio advice
     market_th_score = 50
+    sentiment_score = 50.0
     try:
         conn_m = db.get_conn()
         rows_m = conn_m.execute('SELECT value FROM market_index ORDER BY date DESC LIMIT 90').fetchall()
@@ -1078,6 +1079,8 @@ async def _run_batch_scan_task(scan_id: str, rows: list):
             from pipeline.market_th import compute_market_trend_health
             mth_m = compute_market_trend_health(vals_m)
             market_th_score = mth_m.corrected_score if hasattr(mth_m, 'corrected_score') else mth_m.score
+        from pipeline.market_macro import compute_sentiment_score
+        sentiment_score = float(compute_sentiment_score() or 50)
     except Exception:
         pass
     results = []
@@ -1116,7 +1119,7 @@ async def _run_batch_scan_task(scan_id: str, rows: list):
             )
             analysis.volume_day = volume_day
             analysis.volume_total = item.volume_total or 0
-            pa = _portfolio_advice(holding, avg_cost, qty, item.price_rmb, analysis, market_th=market_th_score)
+            pa = _portfolio_advice(holding, avg_cost, qty, item.price_rmb, analysis, market_th=market_th_score, sentiment_score=sentiment_score)
             results.append(dict(
                 name=exact_name, holding=holding, avg_cost=avg_cost, qty=qty,
                 price_rmb=item.price_rmb, grade=analysis.value.grade, score=analysis.value.score,

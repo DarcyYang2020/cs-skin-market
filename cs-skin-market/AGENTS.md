@@ -134,6 +134,32 @@ webapp/templates/
 - 融合修正：≤25 且 buy → 🟡 求购承接弱·观望；≥75 + watch 低估 → 🟡 底部观察·承接增强
 - 单品报告 🛒 求购承接卡片
 
+### 单品回测工具 (run_item_backtest.py, 2026-07-31)
+
+离线回放单品引擎（不采集、不联网），验证买入信号历史胜率：
+
+```
+python run_item_backtest.py --all --warmup 30 --stratify
+python run_item_backtest.py --items "AWP | 冥界之河 (崭新出厂);AK-47 | 抽象派 1337 (崭新出厂)" --warmup 60
+```
+
+- 数据源: `price_history`（2026-04-21 起，按日期取最新采集去重）+ `market_index`（2025-11-02 起）
+- 情绪: 离线回测用大盘价格近似（与 run_backtest.py 同一 approx_sentiment），实时引擎仍用贪婪指数
+- 缺失成交量/在售/盘口历史 → 回测用中性默认值，信号带 data_quality 标注
+- warmup=30 结果（2026-05-21~07-31, 67信号）: 14d胜率60.9%/均+15.7%, 30d胜率77%/均+29.3%
+- 分层结论（支撑补仓阈值）: pct≤25&th≥40 → 14d胜率75%; pct 25~40(半山腰) → 14d胜率28%; 市场贪婪(sent≤30) → 30d胜率0%
+- 输出: 控制台明细 + data/item_backtest_latest.json
+
+### 持仓补仓建议 (batch_scan._portfolio_advice, 2026-07-31)
+
+浮亏持仓按数据验证阈值分层（sentiment_score 由大盘贪婪指数计算，批量扫描时传入）：
+
+- 市场贪婪 sent≤30 → 禁止补仓（30d 期望为负）
+- pct 25~40 半山腰 → 暂缓补仓，等 pct≤25
+- pct≤25 + 单品TH≥40 + z≤-0.5 + 大盘TH≥45 → 可分批补仓（14d 胜率 75%）
+- pct≤25 但大盘TH<45 → 暂缓，等大盘共振
+- 单品TH<30 → 止损优先（风险预算原则）
+
 ## 文件结构
 
 `

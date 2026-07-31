@@ -119,6 +119,37 @@ def t_val():
     assert result.grid_action
 check('valuation grid produces valid action', t_val)
 
+print('[Portfolio Advice: 补仓分级]')
+def t_advice():
+    from pipeline.batch_scan import _portfolio_advice
+    from types import SimpleNamespace
+    def mk(pct=15.0, z=-1.0, th=45, phase='consolidation'):
+        pos = SimpleNamespace(percentile_90d=pct, zscore_90d=z)
+        return SimpleNamespace(
+            position=pos,
+            trend_health={'score': th},
+            cycle=SimpleNamespace(phase=phase),
+            fusion_decision={'action': 'hold'},
+            value=SimpleNamespace(score=5.0, grade='C'),
+            risk_level='D',
+        )
+    # 深度低估+趋势及格+大盘配合 → 可分批补仓
+    a = _portfolio_advice(True, 100.0, 10, 80.0, mk(pct=15, z=-1.2, th=45), market_th=50, sentiment_score=60)
+    assert a['action'] == '可分批补仓', a['action']
+    # 半山腰 pct 25~40 → 暂缓补仓
+    a = _portfolio_advice(True, 100.0, 10, 80.0, mk(pct=30, z=-0.6, th=45), market_th=50, sentiment_score=60)
+    assert a['action'] == '暂缓补仓', a['action']
+    # 市场贪婪 sent<=30 → 禁止补仓
+    a = _portfolio_advice(True, 100.0, 10, 80.0, mk(pct=15, z=-1.2, th=45), market_th=50, sentiment_score=20)
+    assert a['action'] == '禁止补仓', a['action']
+    # 深度低估但大盘TH<45 → 暂缓补仓
+    a = _portfolio_advice(True, 100.0, 10, 80.0, mk(pct=15, z=-1.2, th=45), market_th=40, sentiment_score=60)
+    assert a['action'] == '暂缓补仓', a['action']
+    # 趋势走弱 → 止损
+    a = _portfolio_advice(True, 100.0, 10, 80.0, mk(pct=15, z=-1.2, th=25), market_th=50, sentiment_score=60)
+    assert a['action'] == '趋势走弱，考虑止损', a['action']
+check('portfolio advice 补仓分级 works', t_advice)
+
 print()
 print(f'=== Results: {passed} passed, {failed} failed ===')
 if failures:
