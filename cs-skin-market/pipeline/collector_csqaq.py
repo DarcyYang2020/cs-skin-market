@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """csqaq.com Playwright data collector.
 Navigates directly to goods page and intercepts chart API.
 """
@@ -8,6 +8,7 @@ import logging
 from collections import defaultdict
 from datetime import datetime, timezone, timedelta
 from typing import Optional
+from .config import CSQAQ_BASE, API_TOKEN
 
 TZ_BJ = timezone(timedelta(hours=8))
 _csq_log = logging.getLogger(__name__)
@@ -272,20 +273,40 @@ async def search_good_id(query: str) -> tuple[int, str]:
         await page.close()
 
 
+
+async def _modify_chart_route(route, request, platform=2):
+    """Modify chart API request with given platform."""
+    if "info/chart" in request.url:
+        try:
+            body = json.loads(request.post_data)
+            body["period"] = "90"
+            body["key"] = "sell_price"
+            body["platform"] = platform
+            await route.continue_(post_data=json.dumps(body))
+        except Exception:
+            await route.continue_()
+    else:
+        await route.continue_()
+
 async def fetch_item_detail(good_id: int):
     """Async: Fetch item detail + 90-day K-line from csqaq.com/goods/{good_id}."""
     item = ItemData()
     item.good_id = good_id
     pw, browser = await _get_browser()
     page = await browser.new_page()
-    captured = {'chart': None, 'detail': None}
+    captured = {'chart': None, 'detail': None, 'buy_chart': None}
+    want_buy = {'flag': False}
     try:
         async def on_response(response):
             url = response.url
             try:
                 if "info/chart" in url and response.ok:
                     body = await response.text()
-                    captured["chart"] = body
+                    if want_buy['flag']:
+                        captured["buy_chart"] = body
+                        want_buy['flag'] = False
+                    else:
+                        captured["chart"] = body
                 if "info/good?id=" in url and response.ok:
                     body = await response.text()
                     captured["detail"] = body
@@ -296,7 +317,6 @@ async def fetch_item_detail(good_id: int):
                 try:
                     body = json.loads(request.post_data)
                     body["period"] = "90"
-                    body["key"] = "sell_price"
                     body["platform"] = 2
                     await route.continue_(post_data=json.dumps(body))
                 except Exception:
@@ -305,8 +325,8 @@ async def fetch_item_detail(good_id: int):
                 await route.continue_()
         page.on('response', on_response)
         await page.route('**/info/chart**', modify_chart)
-        await page.goto(f'{CSQAQ_WEB}/goods/{good_id}', wait_until='domcontentloaded', timeout=30000)
-        await page.wait_for_timeout(6000)
+        await page.goto(f'{CSQAQ_WEB}/goods/{good_id}', wait_until='domcontentloaded', timeout=15000)
+        await page.wait_for_timeout(1500)
         # Extract youyoupin listing price from page DOM
         try:
             yyyp_price = await page.evaluate("() => { const el = document.querySelector('.ant-statistic-content-value'); if (el) return el.innerText.trim(); return ''; }")
@@ -346,6 +366,38 @@ async def fetch_item_detail(good_id: int):
                         item.volume_total = max((int(float(v)) if v else 0) for v in nums)
                     except (TypeError, ValueError):
                         item.volume_total = 0
+        # Retry with Buff platform if no chart data from YouYouPin
+        if (not captured['chart'] or not item.kline_90d) and good_id:
+            _csq_log.info(f"Empty chart from platform=2, retrying with platform=1 (Buff) good_id={good_id}")
+            try:
+                await page.route('**/info/chart**', lambda r, req: _modify_chart_route(r, req, platform=1))
+                await page.goto(f'{CSQAQ_WEB}/goods/{good_id}', wait_until='domcontentloaded', timeout=15000)
+                await page.wait_for_timeout(1500)
+                if captured['chart']:
+                    data2 = json.loads(captured['chart'])
+                    if data2.get('code') == 200 and data2.get('data'):
+                        cd2 = data2['data']
+                        item._daily_bars = _chart_to_daily_ohlc(cd2)
+                        item._kline_raw = _chart_to_raw(cd2)
+                        item.kline_90d = item._daily_bars[:]
+                        p2 = cd2.get('main_data', [])
+                        n2 = cd2.get('num_data', [])
+                        if n2 and p2:
+                            try: item.volume_day = max(int(float(n2[-1])), 0) if n2[-1] else 0
+                            except: pass
+                        if item._daily_bars:
+                            try: item.price_rmb = item._daily_bars[-1].close
+                            except: pass
+                        elif p2:
+                            try: item.price_rmb = float(p2[-1])
+                            except: pass
+                        if n2:
+                            try: item.volume_total = max((int(float(v)) if v else 0) for v in n2)
+                            except: pass
+                        _csq_log.info(f"Buff platform returned {len(item.kline_90d)} bars")
+            except Exception as e2:
+                _csq_log.warning(f"Buff retry failed: {e2}")
+
         if captured['detail']:
             try:
                 dd = json.loads(captured['detail'])
@@ -365,6 +417,68 @@ async def fetch_item_detail(good_id: int):
                         except (TypeError, ValueError):
                             pass
                     item.in_sale_count = int(gi.get('in_sale_count', gi.get('sale_num', gi.get('buff_sell_num', 0))) or 0)
+            except Exception:
+                pass
+        # Build order_book from the page native 求购价 chart (uses browser session,
+        # bypasses the ApiToken IP whitelist that blocks direct /info/chart POST).
+        if not page.is_closed() and item.price_rmb > 0:
+            try:
+                btns = await page.query_selector_all("button")
+                for b in btns:
+                    t = (await b.inner_text()).strip()
+                    if t == "出售价":
+                        await b.click()
+                        break
+                await page.wait_for_timeout(800)
+                want_buy["flag"] = True
+                clicked = await page.evaluate("""() => {
+                    const els = document.querySelectorAll('.ant-dropdown-menu-item, [role="menuitem"], li[class*="menu"]');
+                    for (const el of els) {
+                        if ((el.innerText || '').trim().includes('求购价')) { el.click(); return true; }
+                    }
+                    return false;
+                }""")
+                if clicked:
+                    await page.wait_for_timeout(3000)
+            except Exception:
+                pass
+        if captured.get("buy_chart") and item.price_rmb > 0:
+            try:
+                bd = json.loads(captured["buy_chart"])
+                if bd.get("code") == 200 and bd.get("data"):
+                    cd_buy = bd["data"]
+                    buy_bars = _chart_to_daily_ohlc(cd_buy)
+                    buy_prices = [b.close for b in buy_bars if b.close > 0]
+                    if buy_prices:
+                        highest_buy = buy_prices[-1]
+                        spread_pct = round((item.price_rmb - highest_buy) / item.price_rmb * 100, 1)
+
+                        def _bid_chg(series, n):
+                            if len(series) > n and series[-n - 1] > 0:
+                                return round((series[-1] - series[-n - 1]) / series[-n - 1] * 100, 1)
+                            return None
+
+                        sell_by_date = {}
+                        for b in item.kline_90d:
+                            if getattr(b, "close", 0) > 0:
+                                sell_by_date[b.date] = b.close
+                        spreads = []
+                        for b in buy_bars:
+                            s = sell_by_date.get(b.date)
+                            if s and s > 0:
+                                spreads.append((s - b.close) / s * 100)
+                        spread_avg = round(sum(spreads) / len(spreads), 1) if spreads else None
+                        spread_7d_avg = round(sum(spreads[-7:]) / len(spreads[-7:]), 1) if len(spreads) >= 7 else None
+                        item.order_book = {
+                            "spread_pct": max(0.0, spread_pct),
+                            "depth": item.volume_total,
+                            "bid_count": int(item.in_sale_count * 0.1) if item.in_sale_count > 0 else 0,
+                            "highest_buy": round(highest_buy, 2),
+                            "bid_7d_chg": _bid_chg(buy_prices, 7),
+                            "bid_30d_chg": _bid_chg(buy_prices, 30),
+                            "spread_avg": spread_avg,
+                            "spread_7d_avg": spread_7d_avg,
+                        }
             except Exception:
                 pass
         return item
@@ -400,8 +514,8 @@ async def fetch_kline_90d(good_id: int):
                 await route.continue_()
         page.on('response', on_response)
         await page.route('**/info/chart**', modify_chart)
-        await page.goto(f'{CSQAQ_WEB}/goods/{good_id}', wait_until='domcontentloaded', timeout=30000)
-        await page.wait_for_timeout(6000)
+        await page.goto(f'{CSQAQ_WEB}/goods/{good_id}', wait_until='domcontentloaded', timeout=15000)
+        await page.wait_for_timeout(1500)
         ohlc, raw = [], []
         if captured['chart']:
             data = json.loads(captured['chart'])
@@ -409,6 +523,24 @@ async def fetch_kline_90d(good_id: int):
                 cd = data['data']
                 ohlc = _chart_to_daily_ohlc(cd)
                 raw = _chart_to_raw(cd)
+
+        # Retry with Buff platform if no chart data
+        if (not captured['chart'] or not ohlc) and good_id:
+            _csq_log.info(f"fetch_kline_90d: empty from platform=2, retry platform=1 (Buff) good_id={good_id}")
+            try:
+                await page.route('**/info/chart**', lambda r, req: _modify_chart_route(r, req, platform=1))
+                await page.goto(f'{CSQAQ_WEB}/goods/{good_id}', wait_until='domcontentloaded', timeout=15000)
+                await page.wait_for_timeout(1500)
+                if captured['chart']:
+                    data2 = json.loads(captured['chart'])
+                    if data2.get('code') == 200 and data2.get('data'):
+                        cd2 = data2['data']
+                        ohlc = _chart_to_daily_ohlc(cd2)
+                        raw = _chart_to_raw(cd2)
+                        _csq_log.info(f"fetch_kline_90d Buff returned {len(ohlc)} bars")
+            except Exception as e2:
+                _csq_log.warning(f"fetch_kline_90d Buff retry failed: {e2}")
+
         return ohlc, raw
     finally:
         await page.close()

@@ -127,6 +127,20 @@ def sentiment_label(score: float) -> str:
     else: return "极度贪婪"
 
 
+
+
+def compute_sentiment_factor() -> float:
+    """Map 0-100 sentiment score to -1.0 ~ +1.0 uniform correction factor.
+    +1.0 = extreme fear (contrarian buy), -1.0 = extreme greed (contrarian sell).
+    Used across probability, bottom, fusion decision layers.
+    """
+    s = compute_sentiment_score()
+    if s >= 85:  return 0.6
+    if s >= 70:  return 0.3
+    if s >= 50:  return 0.0
+    if s >= 30:  return -0.3
+    return -0.6
+
 def get_greedy_current() -> float:
     d = _fetch_macro()
     greedy = d.get("greedy", [])

@@ -1048,11 +1048,25 @@ async def api_watchlist_set_assets(request: Request, amount: float = Form(...)):
 _scan_progress: dict = {}
 
 async def _run_batch_scan_task(scan_id: str, rows: list):
+    import json as _json
     from pipeline.batch_scan import _portfolio_advice
     from pipeline import collector_csqaq, collector_steamdt, item_analysis, collector
     idx = collector.fetch_market_index()
     if idx is None or idx.value == 0:
         idx = type("obj", (object,), {"value": 0, "change_7d": 0})()
+    # Compute market TH once for resonance-aware portfolio advice
+    market_th_score = 50
+    try:
+        conn_m = db.get_conn()
+        rows_m = conn_m.execute('SELECT value FROM market_index ORDER BY date DESC LIMIT 90').fetchall()
+        conn_m.close()
+        if len(rows_m) >= 14:
+            vals_m = [r['value'] for r in reversed(rows_m)]
+            from pipeline.market_th import compute_market_trend_health
+            mth_m = compute_market_trend_health(vals_m)
+            market_th_score = mth_m.corrected_score if hasattr(mth_m, 'corrected_score') else mth_m.score
+    except Exception:
+        pass
     results = []
     total = len(rows)
     for i, row in enumerate(rows):
@@ -1089,7 +1103,7 @@ async def _run_batch_scan_task(scan_id: str, rows: list):
             )
             analysis.volume_day = volume_day
             analysis.volume_total = item.volume_total or 0
-            pa = _portfolio_advice(holding, avg_cost, qty, item.price_rmb, analysis)
+            pa = _portfolio_advice(holding, avg_cost, qty, item.price_rmb, analysis, market_th=market_th_score)
             results.append(dict(
                 name=exact_name, holding=holding, avg_cost=avg_cost, qty=qty,
                 price_rmb=item.price_rmb, grade=analysis.value.grade, score=analysis.value.score,
@@ -1186,9 +1200,44 @@ async def _run_batch_scan_task(scan_id: str, rows: list):
         for e in errors:
             html.append("<div style=\"margin-bottom:4px;\"><strong>" + str(e["name"]) + "</strong>: <span style=\"color:var(--red);\">" + str(e.get("error","")) + "</span></div>")
         html.append("</div>")
-    _scan_progress[scan_id]["html"] = "\n".join(html)
+    _scan_progress[scan_id]["html"] = final_html = "\n".join(html)
     _scan_progress[scan_id]["done"] = True
+    # Persist to disk
+    try:
+        import json as _jcache
+        from pathlib import Path as _P
+        _cache_path = _P(__file__).resolve().parent.parent / "data" / "batch_scan_latest.json"
+        _cache_path.write_text(_jcache.dumps({"time": __import__("datetime").datetime.now().isoformat(), "html": final_html}, ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        pass
 
+
+@app.get("/api/watchlist/batch-scan-latest")
+async def api_batch_scan_latest():
+    """Return the latest cached batch scan result."""
+    import json as _J
+    from pathlib import Path as _P
+    cache_path = _P(__file__).resolve().parent.parent / "data" / "batch_scan_latest.json"
+    if not cache_path.exists():
+        return {"found": False}
+    try:
+        data = _J.loads(cache_path.read_text(encoding="utf-8"))
+        return {"found": True, "time": data["time"], "html": data.get("html", "")}
+    except Exception:
+        return {"found": False}
+
+@app.post("/api/watchlist/batch-scan-latest/clear")
+async def api_batch_scan_latest_clear():
+    """Clear cached batch scan result."""
+    from pathlib import Path as _P
+    cache_path = _P(__file__).resolve().parent.parent / "data" / "batch_scan_latest.json"
+    try:
+        cache_path.unlink(missing_ok=True)
+    except Exception:
+        pass
+    return {"ok": True}
+
+@app.post("/api/watchlist/batch-scan-selected")
 async def api_watchlist_batch_scan_selected(request: Request):
     body = await request.json()
     ids = body.get("ids", [])
@@ -1216,3 +1265,303 @@ async def api_batch_scan_progress(scan_id: str):
         return {"error": "not found"}
     return {"current": p["current"], "total": p["total"], "name": p.get("name", ""), "done": p["done"], "html": p.get("html", "")}
 
+
+
+@app.get("/discover", response_class=HTMLResponse)
+async def page_discover(request: Request):
+    return templates.TemplateResponse(request, "discover.html", {"active_page": "discover"})
+
+# ---- Discover high-score items by weapon type ----
+_discover_progress: dict = {}
+DISCOVER_WEAPONS = [
+    "AK-47", "AWP", "沙漠之鹰", "M4A4",
+    "USP", "MP7", "SSG 08", "法玛斯",
+]
+
+async def _run_discover_task(task_id: str, items: list):
+    """Background: search each item via shared browser, analyze, sort by composite score."""
+    from pipeline import collector_csqaq, collector_steamdt, item_analysis as _ia
+    # Get market TH for context-aware filtering
+    market_th = 50
+    try:
+        conn_m = db.get_conn()
+        rows_m = conn_m.execute('SELECT value FROM market_index ORDER BY date DESC LIMIT 90').fetchall()
+        conn_m.close()
+        if len(rows_m) >= 14:
+            vals_m = [r['value'] for r in reversed(rows_m)]
+            from pipeline.market_th import compute_market_trend_health
+            mth_m = compute_market_trend_health(vals_m)
+            market_th = mth_m.corrected_score if hasattr(mth_m, 'corrected_score') else mth_m.score
+    except Exception:
+        pass
+    results = []
+    total = len(items)
+    skipped = 0
+    for i, (good_id, name, price_rmb) in enumerate(items):
+        _discover_progress[task_id]["current"] = i + 1
+        _discover_progress[task_id]["name"] = name
+        try:
+            item = await collector_csqaq.fetch_item_detail(good_id)
+            if item is None:
+                results.append(dict(name=name, error="详情获取失败"))
+                continue
+            exact_name = item.name or name
+            daily_bars = item.kline_90d if hasattr(item, "kline_90d") and item.kline_90d else []
+            prices = [k.close for k in daily_bars if k.close > 0] if daily_bars else [price_rmb]
+
+            # P0: Pre-filter - skip items with high percentile (overvalued)
+            if len(prices) >= 14:
+                current_p = prices[-1]
+                pct_quick = sum(1 for p in prices if p < current_p) / len(prices) * 100
+                if pct_quick > 75:
+                    skipped += 1
+                    continue
+
+            volumes = [k.volume for k in daily_bars] if daily_bars else []
+            supply_hist = [k.in_sale_count for k in daily_bars] if daily_bars else []
+
+            steamdt_vol = 0
+            if hasattr(item, "steam_name") and item.steam_name:
+                try:
+                    sv = await collector_steamdt.fetch_steamdt_volume(item.steam_name)
+                    if sv and isinstance(sv, dict):
+                        steamdt_vol = list(sv.values())[0]
+                except Exception:
+                    pass
+            volume_day = steamdt_vol if steamdt_vol > 0 else max(1, (item.volume_total or 0) // 20)
+
+            analysis = _ia.run_item_analysis(
+                name=exact_name, prices=prices, volumes=volumes or None,
+                supply_hist=supply_hist or None, order_book=item.order_book,
+                index_change_7d=0,
+            )
+
+            pos = analysis.position if hasattr(analysis, "position") else {}
+            pct_val = getattr(pos, "percentile_90d", 50) if hasattr(pos, "percentile_90d") else 50
+            z_val = getattr(pos, "zscore_90d", 0) if hasattr(pos, "zscore_90d") else 0
+            score = analysis.value.score
+
+            # P1: Composite score = score * valuation discount
+            valuation_discount = max(0.5, 1.0 - pct_val / 200)
+            composite = round(score * valuation_discount, 1)
+
+            # P3: Market-linked filter
+            if market_th < 55 and score < 6.0 and composite < 5.0:
+                skipped += 1
+                continue
+
+            results.append(dict(
+                name=exact_name, price_rmb=price_rmb or item.price_rmb,
+                grade=analysis.value.grade, score=score, composite=composite,
+                percentile_90d=pct_val, zscore_90d=round(z_val, 2),
+                trend=analysis.trend_health,
+                cycle_phase=getattr(analysis.cycle, "phase", "unknown"),
+                cycle_label=getattr(analysis.cycle, "phase_label", ""),
+                strategy=getattr(analysis.cycle, "phase_strategy", ""),
+                fusion=getattr(analysis, "fusion_decision", {}),
+                valuation_tier=getattr(analysis.position, "valuation_tier", ""),
+                tier_label=getattr(analysis.position, "tier_label", ""),
+            ))
+        except Exception as e:
+            _web_log.error(f"Discover analyze {name} error: {traceback.format_exc()}")
+            results.append(dict(name=name, error=str(e)[:200]))
+
+    _discover_progress[task_id]["skipped"] = skipped
+    results.sort(key=lambda r: r.get("composite", 0) or r.get("score", 0) or 0, reverse=True)
+    _discover_progress[task_id]["results"] = results
+    _discover_progress[task_id]["done"] = True
+
+    html = _render_discover_html(results, market_th)
+    _discover_progress[task_id]["html"] = html
+def _render_discover_html(results, market_th=50):
+    """Render discover results with valuation columns, add-to-watchlist, and heatmap."""
+    sorted_r = sorted(results, key=lambda r: -(r.get("composite", 0) or r.get("score", 0) or 0))
+    top10 = sorted_r[:10]
+    errors = [r for r in sorted_r if r.get("error")]
+    ok_count = len(sorted_r) - len(errors)
+
+    # ---- Heatmap: by weapon type ----
+    from collections import defaultdict
+    by_type = defaultdict(list)
+    for r in sorted_r:
+        if r.get("error"):
+            continue
+        wt = r["name"].split(" |")[0] if "|" in r["name"] else "other"
+        by_type[wt].append(r)
+
+    heatmap_rows = []
+    for wt, items in sorted(by_type.items(), key=lambda x: -len(x[1])):
+        if len(items) == 0:
+            continue
+        avg_score = sum(it.get("score", 0) for it in items) / len(items)
+        avg_pct = sum(it.get("percentile_90d", 50) for it in items) / len(items)
+        best = max(items, key=lambda x: x.get("composite", 0) or x.get("score", 0))
+        pct_cls = "green" if avg_pct <= 25 else ("yellow" if avg_pct <= 50 else "red")
+        heatmap_rows.append(
+            f'<tr><td><strong>{wt}</strong></td>'
+            f'<td>{len(items)}</td>'
+            f'<td style="color:var(--green);">{avg_score:.1f}</td>'
+            f'<td class="{pct_cls}">{avg_pct:.0f}%</td>'
+            f'<td style="font-size:12px;">{best["name"][:30]}</td>'
+            f'<td style="font-weight:600;">{best.get("composite", best.get("score",0)):.1f}</td></tr>'
+        )
+    heatmap_html = (
+        '<div class="card" style="margin-bottom:16px;">'
+        '<div class="card-header"><span class="card-title">\U0001f4ca \u54c1\u7c7b\u70ed\u529b\u56fe</span></div>'
+        '<table style="width:100%;font-size:13px;">'
+        '<thead><tr><th>\u6b66\u5668</th><th>\u6570\u91cf</th><th>\u5747\u5206</th><th>\u5747\u4f30\u503c</th><th>\u6700\u4f18\u54c1</th><th>\u7efc\u5408</th></tr></thead>'
+        '<tbody>' + "".join(heatmap_rows) + '</tbody></table></div>'
+    ) if len(by_type) >= 2 else ""
+
+    # ---- Top 10 Table ----
+    market_note = ""
+    if market_th < 55:
+        market_note = ' <span style="font-size:12px;color:var(--yellow);">(\u5927\u76d8TH=' + str(market_th) + ' \u504f\u5f31\uff0c\u4ec5\u5c55\u793a\u9ad8\u5206\u4f4e\u4f30\u54c1)</span>'
+
+    lines = [
+        f'<div class="card"><div class="card-header"><span class="card-title">\U0001f50d Top 10 \u9ad8\u5206\u9970\u54c1</span>'
+        f'<span class="card-subtitle">\u5df2\u626b\u63cf {ok_count} \u4e2a\u9970\u54c1\uff0c\u5c55\u793a\u524d10{market_note}'
+        f' <button class="btn btn-sm btn-outline" onclick="refreshDiscover()" style="margin-left:8px;">\U0001f504 \u5237\u65b0</button></span></div>'
+        f'<div class="card-body" style="padding:0;"><table class="data-table" style="width:100%;">'
+        f'<thead><tr><th>#</th><th>\u8bc4\u7ea7</th><th>\u540d\u79f0</th><th>\u4ef7\u683c</th><th>\u8bc4\u5206</th><th>\u7efc\u5408</th><th>%\u4f4d</th><th>\u5468\u671f</th><th>\u64cd\u4f5c</th></tr></thead><tbody>'
+    ]
+    for idx, r in enumerate(top10):
+        if r.get("error"):
+            lines.append(f'<tr><td colspan="9" style="color:var(--danger);padding:12px 16px;">{r["name"]}: {r["error"]}</td></tr>')
+            continue
+        g = r.get("grade", "Z")
+        grade_cls = {"S":"grade-s","A":"grade-a","B":"grade-b","C":"grade-c"}.get(g, "grade-z")
+        fusion = r.get("fusion", {}) or {}
+        action = fusion.get("action", "") if isinstance(fusion, dict) else ""
+        cp = r.get("cycle_label", "") or r.get("cycle_phase", "")
+        pct = r.get("percentile_90d", 50)
+        pct_clr = "green" if pct <= 25 else ("yellow" if pct <= 50 else "red")
+        comp = r.get("composite", 0) or r.get("score", 0)
+        rank_style = "font-weight:800;font-size:16px;" + ("color:#ffd700;" if idx == 0 else "color:var(--text-muted);")
+        esc_name = r["name"].replace("'", "\\'").replace('"', '&quot;')
+        lines.append(
+            f'<tr><td style="{rank_style}">{idx+1}</td>'
+            f'<td><span class="{grade_cls}">{g}</span></td>'
+            f'<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{r["name"]}</td>'
+            f'<td>\u00a5{r.get("price_rmb",0):.2f}</td>'
+            f'<td>{r.get("score",0):.1f}</td>'
+            f'<td style="font-weight:600;">{comp:.1f}</td>'
+            f'<td class="{pct_clr}">{pct:.0f}%</td>'
+            f'<td style="font-size:12px;">{cp}</td>'
+            f'<td><button class="btn btn-xs btn-outline" onclick="addToWatchlist(\'{esc_name}\')" title="\u52a0\u5165\u81ea\u9009">+</button></td></tr>'
+        )
+    lines.append("</tbody></table></div></div>")
+    return heatmap_html + "\n".join(lines)
+
+@app.post("/api/items/discover")
+@app.post("/api/discover/scan-all")
+async def api_discover_scan_all(request: Request):
+    import time as _time
+    task_id = f"discover_{int(_time.time())}"
+    _discover_progress[task_id] = {"current": 0, "total": 999, "name": "", "done": False, "html": "", "results": []}
+    asyncio.create_task(_run_discover_scan_all_task(task_id))
+    return {"task_id": task_id}
+
+async def _run_discover_scan_all_task(task_id: str):
+    """Full discover pipeline: search all weapon types, analyze results."""
+    from pipeline.collector_csqaq import _get_browser, CSQAQ_WEB
+    from collections import defaultdict
+    pw, browser = await _get_browser()
+    if not browser:
+        _discover_progress[task_id]["done"] = True
+        _discover_progress[task_id]["html"] = '<div class="card" style="padding:20px;color:var(--danger);">\u65e0\u6cd5\u542f\u52a8\u6d4f\u89c8\u5668</div>'
+        return
+    all_items = []
+    page = None
+    try:
+        page = await browser.new_page()
+        seen = set()
+        try:
+            total_wt = len(DISCOVER_WEAPONS)
+            for wt_idx, wt in enumerate(DISCOVER_WEAPONS):
+                suggest = {}
+                async def _on_suggest(response):
+                    if "search/suggest" in response.url and response.ok:
+                        try:
+                            import json as _js
+                            body = await response.text()
+                            d = _js.loads(body)
+                            if d.get("code") == 200 and d.get("data"):
+                                suggest["items"] = d["data"]
+                        except Exception:
+                            pass
+                page.on("response", _on_suggest)
+                await page.goto(CSQAQ_WEB, wait_until="domcontentloaded", timeout=30000)
+                await page.wait_for_timeout(1200)
+                js = "async(q)=>{const el=document.querySelector('#rc_select_0');if(!el)return;const fk=Object.keys(el).find(k=>k.startsWith('__reactFiber'));if(!fk)return;const f=el[fk];let n=f,t=0;while(n&&t<30){const p=n.memoizedProps;if(p&&(p.onChange||p.onSearch)){const s=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set;s.call(el,q);if(p.onChange)p.onChange({target:{value:q}});else if(p.onSearch)p.onSearch(q);return}n=n.return||n.stateNode;t++}}"
+                await page.evaluate(js, wt)
+                await page.wait_for_timeout(2000)
+                for sd in suggest.get("items", []):
+                    try:
+                        gid = int(sd.get("id", 0))
+                        name = sd.get("value", "")
+                        if gid > 0 and name and name not in seen:
+                            if "\u5d2d\u65b0\u51fa\u5382" in name and "StatTrak" not in name and "\u7eaa\u5ff5\u54c1" not in name:
+                                seen.add(name)
+                                all_items.append((gid, name, 0))
+                    except (ValueError, TypeError):
+                        continue
+                page.remove_listener("response", _on_suggest)
+                _discover_progress[task_id]["current"] = wt_idx + 1
+                _discover_progress[task_id]["name"] = f"\u641c\u7d22: {wt} ({wt_idx+1}/{total_wt})"
+        finally:
+            await page.close()
+    except Exception as e:
+        _web_log.error(f"Discover scan-all error: {e}")
+        _discover_progress[task_id]["done"] = True
+        _discover_progress[task_id]["html"] = f'<div class="card" style="padding:20px;color:var(--danger);">\u641c\u7d22\u5931\u8d25: {str(e)[:200]}</div>'
+        return
+
+    if not all_items:
+        _discover_progress[task_id]["done"] = True
+        _discover_progress[task_id]["html"] = '<div class="card" style="padding:20px;">\u672a\u627e\u5230\u9970\u54c1</div>'
+        return
+
+    by_type = defaultdict(list)
+    for gid, name, price in all_items:
+        key = name.split(" |")[0] if "|" in name else "unknown"
+        by_type[key].append((gid, name, price))
+    capped = []
+    for wt_items in by_type.values():
+        capped.extend(wt_items[:3])
+    capped = capped[:24]
+
+    _discover_progress[task_id]["total"] = len(capped)
+    _discover_progress[task_id]["current"] = 0
+    await _run_discover_task(task_id, capped)
+
+    # Save cache for re-viewing
+    import json as _json_cache
+    from pathlib import Path as _Path_cache
+    _cache_path = _Path_cache(__file__).resolve().parent.parent / 'data' / 'discover_latest.json'
+    _cache_path.parent.mkdir(parents=True, exist_ok=True)
+    _cache_data = {'time': __import__('datetime').datetime.now().isoformat(), 'html': _discover_progress[task_id].get('html', '')}
+    _cache_path.write_text(_json_cache.dumps(_cache_data, ensure_ascii=False), encoding='utf-8')
+
+
+@app.get("/api/discover/latest")
+async def api_discover_latest():
+    """Return cached discover result if available and < 24h old."""
+    from pathlib import Path as _P
+    import json as _J
+    from datetime import datetime, timedelta
+    cache_path = _P(__file__).resolve().parent.parent / "data" / "discover_latest.json"
+    if not cache_path.exists():
+        return {"found": False}
+    try:
+        data = _J.loads(cache_path.read_text(encoding="utf-8"))
+        return {"found": True, "time": data["time"], "html": data.get("html", "")}
+    except Exception:
+        return {"found": False}
+
+@app.get("/api/items/discover-progress/{task_id}")
+async def api_discover_progress(task_id: str):
+    p = _discover_progress.get(task_id)
+    if not p:
+        return {"error": "not found"}
+    return {"current": p["current"], "total": p["total"], "name": p.get("name", ""), "done": p["done"], "html": p.get("html", ""), "results": p.get("results", []) if p["done"] else []}

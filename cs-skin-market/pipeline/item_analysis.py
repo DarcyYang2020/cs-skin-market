@@ -12,6 +12,7 @@ from .trend_health import compute_trend_health, trend_health_summary, compute_fu
 from .valuation import compute_valuation_grid, valuation_grid_summary
 from .supply import analyze_supply, supply_summary
 from .market_context import build_market_context, context_summary
+from .market_macro import compute_sentiment_factor, compute_sentiment_score, event_risk_coefficient
 from dataclasses import dataclass, field
 
 # ============================================================
@@ -216,6 +217,9 @@ class ItemAnalysisResult:
     fusion_decision: dict = field(default_factory=dict)
     price_zones: dict = field(default_factory=dict)
     valuation_grid: dict = field(default_factory=dict)
+    risk_level: str = "C"
+    risk_label: str = ""
+    bid_support: dict = field(default_factory=dict)
 
 
 # ============================================================
@@ -305,7 +309,7 @@ def _analyze_position(prices):
 #  Helper: Cycle Detection (4-phase)
 # ============================================================
 
-def _analyze_cycle(prices, volumes=None):
+def _analyze_cycle(prices, volumes=None, sentiment_factor=0.0):
     """Four-phase market cycle detection."""
     cyc = CycleAnalysis()
     n = len(prices)
@@ -389,6 +393,15 @@ def _analyze_cycle(prices, volumes=None):
         cyc.phase_description = "震荡整理中"
         cyc.phase_strategy = "保持观望"
         cyc.phase_confidence = 45
+
+    # Sentiment-based confidence adjustment: fear → accumulation confidence up
+    if sentiment_factor != 0.0:
+        if cyc.phase == "accumulation":
+            cyc.phase_confidence = min(90, cyc.phase_confidence + sentiment_factor * 10)
+        elif cyc.phase == "distribution":
+            cyc.phase_confidence = min(90, cyc.phase_confidence - sentiment_factor * 10)
+        elif cyc.phase == "consolidation":
+            cyc.phase_confidence = min(90, cyc.phase_confidence + sentiment_factor * 5)
 
     # --- Volume confirmation for markup phase ---
     if cyc.phase == "markup" and volumes and len(volumes) >= 20:
@@ -510,7 +523,7 @@ def score_liquidity(prices, volumes, volume_total):
 #  Helper: Probability Prediction (Z-score mean-reversion)
 # ============================================================
 
-def analyze_probability(prices, trend_score=None, whale_prob=0, cycle_phase="unknown", market_pct=50):
+def analyze_probability(prices, trend_score=None, whale_prob=0, cycle_phase="unknown", market_pct=50, sentiment_factor=0.0):
     """Probability of price direction 3d/7d/30d based on Z-score reversion."""
     prob = ProbPrediction()
     if not prices or len(prices) < 5:
@@ -885,6 +898,59 @@ def detect_signal_conflicts(position, cycle, th_score, whale_prob):
     return conflicts, certainty
 
 
+
+def compute_bid_support(order_book):
+    """0-100 求购承接信号：真实买盘意愿快照，仅辅助修正不开仓。
+
+    三维评分：
+      - 断层宽度 0-35：<=3% 承接强；>15% 流动性断层
+      - 断层收窄/扩张 vs 30日均值 0-30
+      - 求购价 7/30 日趋势 0-35
+    """
+    if not order_book or not isinstance(order_book, dict):
+        return {"score": 50, "signals": [], "note": "无订单簿数据"}
+    score = 0
+    signals = []
+    spread_pct = order_book.get("spread_pct")
+
+    # 1. 断层宽度 (0-35)
+    if spread_pct is not None:
+        if spread_pct <= 3:
+            score += 35
+            signals.append(f"断层窄{spread_pct:.1f}%")
+        elif spread_pct <= 8:
+            score += 25
+        elif spread_pct <= 15:
+            score += 15
+            signals.append("断层偏宽")
+        else:
+            signals.append("流动性断层")
+
+    # 2. 断层收窄/扩张 vs 30日均值 (0-30)
+    spread_avg = order_book.get("spread_avg")
+    if spread_avg and spread_pct is not None and spread_avg > 0:
+        if spread_pct < spread_avg * 0.9:
+            score += 30
+            signals.append("断层收窄")
+        elif spread_pct < spread_avg:
+            score += 18
+        elif spread_pct > spread_avg * 1.15:
+            score += 5
+            signals.append("断层扩张")
+
+    # 3. 求购价 7/30 日趋势 (0-35)
+    bid7 = order_book.get("bid_7d_chg")
+    bid30 = order_book.get("bid_30d_chg")
+    if bid7 is not None and bid30 is not None:
+        trend = bid7 * 0.6 + bid30 * 0.4
+        score += max(0, min(35, int(35 * (trend + 10) / 20)))
+        if trend > 1:
+            signals.append("求购价上行")
+        elif trend < -3:
+            signals.append("求购价走弱")
+
+    return {"score": min(100, score), "signals": signals, "note": ""}
+
 def run_item_analysis(
     name: str,
     prices: list,
@@ -931,6 +997,9 @@ def run_item_analysis(
             data_quality="insufficient" if n < 2 else "low",
         )
 
+    # Default risk labels
+    risk_level, risk_label = "C", "较高风险·谨慎介入"
+
     current = prices[-1]
     vol_total = supply_hist[-1] if supply_hist else 0
     vol_day = max(1, sum(volumes[-7:]) // 7) if volumes and len(volumes) >= 7 else max(1, vol_total // 20)
@@ -959,7 +1028,7 @@ def run_item_analysis(
 
     # ---- Core Analyses ----
     position = _analyze_position(prices)
-    cycle = _analyze_cycle(prices, volumes)
+    cycle = _analyze_cycle(prices, volumes, sentiment_factor=compute_sentiment_factor())
     liquidity = score_liquidity(prices, volumes, vol_total)
 
     # ---- Trend Health (with category params + cycle/whale/lock/liquidity corrections) ----
@@ -992,12 +1061,25 @@ def run_item_analysis(
         th_dict = trend_health_summary(th)
 
     # ---- Probability (multi-feature: uses TH, whale, cycle, market) ----
-    probability = analyze_probability(prices, trend_score=th.score, whale_prob=whale.probability, cycle_phase=cycle.phase, market_pct=market_pct_90d)
+    probability = analyze_probability(prices, trend_score=th.score, whale_prob=whale.probability, cycle_phase=cycle.phase, market_pct=market_pct_90d, sentiment_factor=compute_sentiment_factor())
 
     # ---- Value Score ----
     value = compute_value_score(position, cycle, liquidity, probability)
 
-    fd = compute_fusion_decision(position.percentile_90d, th, liquidity.score, position.zscore_90d, cycle_phase=cycle.phase, event_risk_discount=event_risk_coefficient(), prices=prices)
+    fd = compute_fusion_decision(position.percentile_90d, th, liquidity.score, position.zscore_90d, cycle_phase=cycle.phase, event_risk_discount=event_risk_coefficient(), prices=prices, sentiment_score=compute_sentiment_score())
+
+    # ---- Bid support (v4.6): real buy-side willingness snapshot ----
+    bid_support = compute_bid_support(order_book)
+    bid_score = bid_support["score"]
+    if bid_score <= 25 and fd.action == "buy":
+        fd.action = "watch"
+        fd.action_label = "🟡 求购承接弱·观望"
+        fd.action_detail = f"求购承接弱(score={bid_score})，买盘意愿不足，暂缓建仓"
+        fd.deduction_sources.append("bid_support_weak")
+    elif bid_score >= 75 and fd.action == "watch" and position.percentile_90d <= 30:
+        fd.action_label = "🟡 底部观察·承接增强"
+        fd.action_detail = "低位但求购承接增强，可轻仓试探"
+        fd.position_limit = max(fd.position_limit, 0.08)
 
     # Market cycle filter: during market distribution, downgrade buy signals
     if market_cycle == "distribution" and fd.action in ("buy", "hold"):
@@ -1006,7 +1088,67 @@ def run_item_analysis(
         fd.action_detail = fd.action_detail + "（大盘处于出货期，建仓/持有信号降级为观望）"
         fd.deduction_sources.append("market_distribution_filter")
 
+
+    # ---- Item-level Z-gate: tighten buy at shallow dips ----
+    if fd.action == "buy" and position.zscore_90d is not None:
+        item_z_gates = {"accumulation": -0.5, "consolidation": -1.0, "distribution": -1.5, "markup": 0, "unknown": -1.0}
+        item_z_threshold = item_z_gates.get(cycle.phase, -1.0)
+        if position.zscore_90d > item_z_threshold:
+            fd.action = "watch"
+            fd.action_label = "🟡 Z偏高·等待更优入场"
+            fd.action_detail = f"Z={position.zscore_90d} 要求≤{item_z_threshold}，估值未达极端低位"
+            fd.deduction_sources.append("item_z_gate")
+
+
+    # ---- Consecutive buy suppression (3-day cooldown) ----
+    if fd.action == "buy" and n >= 7 and position.percentile_90d > 5:
+        price_3d = prices[-4]
+        chg_3d = (current - price_3d) / price_3d * 100
+        if abs(chg_3d) < 1.5:
+            fd.action = "watch"
+            fd.action_label = "🟡 已在买入区·等待回调"
+            fd.action_detail = f"3日价格变动{chg_3d:+.1f}%，无需重复触发买入"
+            fd.deduction_sources.append("consecutive_buy")
+
+    # ---- Position limit (graded by value + sentiment) ----
+    sentiment_score = compute_sentiment_score()
+    if fd.action in ("buy", "hold"):
+        pl_score = value.score
+        if sentiment_score >= 75:
+            pl_score += 2.0
+        elif sentiment_score <= 30:
+            pl_score -= 1.5
+        if pl_score >= 8.5:
+            fd.position_limit = 0.30
+        elif pl_score >= 7.0:
+            fd.position_limit = 0.20
+        elif pl_score >= 5.0:
+            fd.position_limit = 0.12
+        elif pl_score >= 3.0:
+            fd.position_limit = 0.05
+        else:
+            fd.position_limit = 0.0
+    else:
+        fd.position_limit = 0.0
+
+    # ---- Risk level label (A/B/C/D) ----
+    risk_score = 0
+    risk_score += 3 if th.score >= 55 else (2 if th.score >= 40 else 1)
+    if position.zscore_90d is not None:
+        risk_score += 3 if position.zscore_90d <= -1.5 else (2 if position.zscore_90d <= -0.5 else 1)
+    risk_score += 3 if liquidity.score >= 50 else (2 if liquidity.score >= 30 else 1)
+    risk_score += 3 if whale.level in ("none", "accumulation") else 1
+    if risk_score >= 12:
+        risk_level, risk_label = "A", "低风险·可关注"
+    elif risk_score >= 9:
+        risk_level, risk_label = "B", "中等风险·正常操作"
+    elif risk_score >= 6:
+        risk_level, risk_label = "C", "较高风险·谨慎介入"
+    else:
+        risk_level, risk_label = "D", "极度危险·回避"
+
     fd_dict = fusion_decision_summary(fd)
+
 
     # ---- Valuation Grid (3x4) ----
     # Signal conflict detection
@@ -1209,6 +1351,9 @@ def run_item_analysis(
         valuation_grid=vg_dict,
         supply_analysis=supply_dict,
         market_context=context_summary(market_ctx) if market_ctx else {},
+        risk_level=risk_level,
+        bid_support=bid_support,
+        risk_label={"A":"低风险·可关注","B":"中等风险·正常操作","C":"较高风险·谨慎介入","D":"极度危险·回避"}.get(risk_level, ""),
         price_zones=price_zones,
     )
 

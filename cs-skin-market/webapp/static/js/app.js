@@ -7,7 +7,14 @@ function openModal(id) {
 }
 function closeModal(id) {
   var el = document.getElementById(id);
-  if (el) el.style.display = 'none';
+  if (!el) return;
+  // Don't close analysis modal while an analysis is running (spinner visible).
+  // The modal content will update when htmx completes; user can dismiss after.
+  if (id === 'analysis-modal') {
+    var body = document.getElementById('modal-body');
+    if (body && body.querySelector('.spinner')) return;
+  }
+  el.style.display = 'none';
 }
 
 // ---- Close modal on overlay click ----

@@ -1,0 +1,108 @@
+﻿{% extends "base.html" %}
+{% block title %}CS-Market 发现高分品{% endblock %}
+{% block head %}
+<style>
+.discover-hero { text-align:center; padding:40px 20px; }
+.discover-hero h2 { font-size:24px; margin-bottom:12px; }
+.discover-hero p { color:var(--text-muted); font-size:14px; max-width:500px; margin:0 auto 24px; }
+.btn-scan { padding:12px 40px; font-size:16px; border-radius:8px; }
+.top10-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:16px; margin-top:20px; }
+.top10-card { border:1px solid var(--border); border-radius:10px; padding:16px; background:var(--card-bg); }
+.top10-card .rank { font-size:20px; font-weight:800; color:var(--accent); margin-right:10px; }
+.top10-card .name { font-weight:600; font-size:14px; }
+.top10-card .meta { font-size:12px; color:var(--text-muted); margin-top:6px; }
+.top10-card .score { font-size:18px; font-weight:700; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="discover-hero">
+  <h2>🔍 发现高分品</h2>
+  <p>自动扫描多个热门武器类型，筛选全网崭新出厂高评分饰品，排除匕首贴纸</p>
+  
+</div>
+
+<div id="discover-progress" style="display:none;" class="card">
+  <div class="card-header"><span class="card-title">📊 扫描进度</span></div>
+  <div class="card-body">
+    <div class="row-flex" style="gap:8px;align-items:center;margin-bottom:10px;">
+      <div class="spinner" style="width:18px;height:18px;border:2px solid #e5e7eb;border-top-color:#3b82f6;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>
+      <span id="discover-status" style="font-size:14px;color:var(--text-muted);">正在准备...</span>
+    </div>
+    <div style="height:6px;background:var(--bg-input);border-radius:3px;overflow:hidden;">
+      <div id="discover-bar" style="height:100%;width:0%;background:var(--accent);border-radius:3px;transition:width 0.5s;"></div>
+    </div>
+    <div id="discover-detail" style="font-size:12px;color:var(--text-muted);margin-top:8px;"></div>
+  </div>
+</div>
+
+<div id="discover-results"></div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+fetch("/api/discover/latest")
+.then(function(r) { return r.json(); })
+.then(function(d) {
+  if (d.found && d.html) {
+    document.getElementById("discover-results").innerHTML = d.html;
+  }
+});
+
+function refreshDiscover() { startScan(); }
+
+function addToWatchlist(name) {
+  var formData = new FormData();
+  formData.append("name", name);
+  formData.append("holding", "0");
+  formData.append("avg_cost", "0");
+  formData.append("quantity", "0");
+  fetch("/api/watchlist/add", {method:"POST", body: formData})
+  .then(function(r) { return r.text(); })
+  .then(function(html) {
+    if (html.indexOf("success") > -1 || html.indexOf("成功") > -1) {
+      alert("已添加到自选: " + name);
+    } else {
+      alert("添加失败，可能已存在");
+    }
+  })
+  .catch(function() { alert("请求失败"); });
+}
+
+function startScan() {
+  var mainBtn = document.getElementById("btn-main-scan");
+  var progress = document.getElementById("discover-progress");
+  var status = document.getElementById("discover-status");
+  var bar = document.getElementById("discover-bar");
+  var detail = document.getElementById("discover-detail");
+  var results = document.getElementById("discover-results");
+  if (mainBtn) { mainBtn.disabled = true; mainBtn.textContent = "扫描中..."; }
+  progress.style.display = "block";
+  status.textContent = "正在搜索热门武器类型...";
+  bar.style.width = "0%";
+  results.innerHTML = "";
+  fetch("/api/discover/scan-all", {method:"POST"})
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.error) { status.textContent = "❌ " + d.error; if (mainBtn) { mainBtn.disabled = false; mainBtn.textContent = "🔄 刷新扫描"; } return; }
+    var poll = setInterval(function() {
+      fetch("/api/items/discover-progress/" + d.task_id)
+        .then(function(r) { return r.json(); })
+        .then(function(pd) {
+          if (pd.error) { clearInterval(poll); status.textContent = "❌ 分析失败"; if (mainBtn) { mainBtn.disabled = false; mainBtn.textContent = "🔄 刷新扫描"; } return; }
+          if (pd.html) {
+            results.innerHTML = pd.html;
+            progress.style.display = "none";
+            if (mainBtn) { mainBtn.disabled = false; mainBtn.textContent = "🔄 刷新扫描"; }
+            clearInterval(poll);
+          } else {
+            status.textContent = "分析进度 " + pd.current + "/" + pd.total;
+            detail.textContent = "当前: " + (pd.name || "");
+            bar.style.width = (pd.current / pd.total * 100) + "%";
+          }
+        });
+    }, 1500);
+  })
+  .catch(function(err) { status.textContent = "❌ 请求失败: " + err; if (mainBtn) { mainBtn.disabled = false; mainBtn.textContent = "🔄 刷新扫描"; } });
+}
+</script>
+{% endblock %}

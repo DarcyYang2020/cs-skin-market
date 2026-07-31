@@ -1,295 +1,165 @@
 ﻿{% if analysis and analysis.has_data %}
-<!-- ====== Position Intelligence ====== -->
-<div class="card">
-  <div class="card-header">
-    <span class="card-title">🎯 点位智能判断</span>
-    <span class="badge {% if analysis.position.valuation_tier == 'undervalued' %}badge-s{% elif analysis.position.valuation_tier == 'bubble' %}badge-c{% elif analysis.position.valuation_tier == 'overvalued' %}badge-b{% else %}badge-b{% endif %}">
-      {{ analysis.position.tier_label }}
-    </span>
-  </div>
 
-  <!-- Strategy 估值区间 (from trading-strategies.md) -->
-  <div style="margin-bottom: 16px; padding: 14px 16px; border-radius: 8px; border: 1px solid {% if analysis.position.strategy_zone == 'entry' %}rgba(34,197,94,0.4){% elif analysis.position.strategy_zone == 'exit' %}rgba(239,68,68,0.4){% else %}var(--border){% endif %}; background: {% if analysis.position.strategy_zone == 'entry' %}rgba(34,197,94,0.08){% elif analysis.position.strategy_zone == 'exit' %}rgba(239,68,68,0.08){% else %}rgba(255,255,255,0.02){% endif %};">
-    <div style="font-size: 18px; font-weight: 700; margin-bottom: 6px;">{{ analysis.position.zone_label }}</div>
-    <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">{{ analysis.position.zone_action }}</div>
-  </div>
-
-  <div class="stat-grid">
-    <div class="stat-item">
-      <div class="stat-value" style="font-size: 20px;">{{ "%.1f"|format(analysis.position.percentile_90d) }}%</div>
-      <div class="stat-label">90日百分位（≤30%入场）</div>
-    </div>
-    <div class="stat-item">
-      <div class="stat-value" style="font-size: 20px;">{{ "%.2f"|format(analysis.position.zscore_90d) }}</div>
-      <div class="stat-label">Z-Score（≤-1.5入场 | ≥+2离场）</div>
-    </div>
-    <div class="stat-item">
-      <div class="stat-value" style="font-size: 18px;">{{ analysis.position.short_term_label }}</div>
-      <div class="stat-label">短线信号（Z反转）</div>
-    </div>
-    <div class="stat-item">
-      <div class="stat-value" style="font-size: 18px;">{{ analysis.position.mid_term_label }}</div>
-      <div class="stat-label">中线信号（百分位区间）</div>
-    </div>
-    <div class="stat-item">
-      <div class="stat-value" style="font-size: 18px;">{{ analysis.position.long_term_label }}</div>
-      <div class="stat-label">长线信号（≤25%布局 ≥75%退出）</div>
-    </div>
-  </div>
-
-  <div style="margin-top: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-    <div>
-      <div class="card-subtitle" style="margin-bottom: 4px;">🟢 支撑位</div>
-      {% if analysis.position.support_levels %}
-        {% for lvl in analysis.position.support_levels %}
-        <span style="display: inline-block; padding: 2px 8px; background: var(--green-bg); color: var(--green); border-radius: 4px; font-size: 12px; margin: 2px 4px 2px 0;">{{ "%.2f"|format(lvl) }}</span>
-        {% endfor %}
-      {% else %}<span style="color: var(--text-muted); font-size: 12px;">--</span>{% endif %}
-    </div>
-    <div>
-      <div class="card-subtitle" style="margin-bottom: 4px;">🔴 压力位</div>
-      {% if analysis.position.resistance_levels %}
-        {% for lvl in analysis.position.resistance_levels %}
-        <span style="display: inline-block; padding: 2px 8px; background: var(--red-bg); color: var(--red); border-radius: 4px; font-size: 12px; margin: 2px 4px 2px 0;">{{ "%.2f"|format(lvl) }}</span>
-        {% endfor %}
-      {% else %}<span style="color: var(--text-muted); font-size: 12px;">--</span>{% endif %}
-    </div>
-  </div>
-</div>
-
-<!-- ====== Probability + Cycle + Value Score ====== -->
-<div class="analysis-grid">
-  <!-- Prob Prediction -->
-  <div class="card">
-    <div class="card-header">
-      <span class="card-title">📊 涨跌概率预测</span>
-      <span style="font-size: 12px; color: var(--text-muted);">均值回归 · 波动: {{ analysis.probability.volatility_regime }}</span>
-    </div>
-    <table>
-      <tr><td style="color: var(--text-muted);">3日上涨</td><td><div style="display: flex; align-items: center; gap: 8px;"><div style="flex: 1; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden;"><div style="height: 100%; width: {{ analysis.probability.prob_up_3d }}%; background: {{ '#22c55e' if analysis.probability.prob_up_3d >= 50 else '#ef4444' }}; border-radius: 3px;"></div></div><span style="font-size: 13px; width: 45px; text-align: right; font-weight: 600;" class="{{ 'up' if analysis.probability.prob_up_3d >= 50 else 'down' }}">{{ "%.0f"|format(analysis.probability.prob_up_3d) }}%</span></div></td></tr>
-      <tr><td style="color: var(--text-muted);">7日上涨</td><td><div style="display: flex; align-items: center; gap: 8px;"><div style="flex: 1; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden;"><div style="height: 100%; width: {{ analysis.probability.prob_up_7d }}%; background: {{ '#22c55e' if analysis.probability.prob_up_7d >= 50 else '#ef4444' }}; border-radius: 3px;"></div></div><span style="font-size: 13px; width: 45px; text-align: right; font-weight: 600;" class="{{ 'up' if analysis.probability.prob_up_7d >= 50 else 'down' }}">{{ "%.0f"|format(analysis.probability.prob_up_7d) }}%</span></div></td></tr>
-      <tr><td style="color: var(--text-muted);">30日上涨</td><td><div style="display: flex; align-items: center; gap: 8px;"><div style="flex: 1; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden;"><div style="height: 100%; width: {{ analysis.probability.prob_up_30d }}%; background: {{ '#22c55e' if analysis.probability.prob_up_30d >= 50 else '#ef4444' }}; border-radius: 3px;"></div></div><span style="font-size: 13px; width: 45px; text-align: right; font-weight: 600;" class="{{ 'up' if analysis.probability.prob_up_30d >= 50 else 'down' }}">{{ "%.0f"|format(analysis.probability.prob_up_30d) }}%</span></div></td></tr>
-    </table>
-    <div style="margin-top: 12px; display: flex; gap: 16px; font-size: 12px;">
-      <span>🟢 支撑: <strong style="color: var(--green);">{{ "%.2f"|format(analysis.probability.key_support) }}</strong></span>
-      <span>🔴 压力: <strong style="color: var(--red);">{{ "%.2f"|format(analysis.probability.key_resistance) }}</strong></span>
-    </div>
-    <div style="margin-top: 8px; font-size: 12px; color: var(--text-muted);">
-      预期收益: 3日 {{ "%+.2f%%"|format(analysis.probability.expected_return_3d) }} | 7日 {{ "%+.2f%%"|format(analysis.probability.expected_return_7d) }} | 30日 {{ "%+.2f%%"|format(analysis.probability.expected_return_30d) }}
-    </div>
-  </div>
-
-  <!-- Cycle Analysis (strategy-aligned) -->
-  <div class="card">
-    <div class="card-header">
-      <span class="card-title">🔄 周期阶段</span>
-      <span style="font-size: 20px;">{{ analysis.cycle.phase_label }}</span>
-    </div>
-    <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; line-height: 1.6;">{{ analysis.cycle.phase_description }}</p>
-    <div style="padding: 8px 12px; background: rgba(59,130,246,0.08); border-radius: 6px; font-size: 13px; color: var(--accent); margin-bottom: 12px; font-weight: 600;">
-      🎯 操作：{{ analysis.cycle.phase_strategy }}
-    </div>
-    <table>
-      <tr><td style="color: var(--text-muted);">置信度</td><td><div style="display: flex; align-items: center; gap: 8px;"><div style="flex: 1; height: 4px; background: rgba(255,255,255,0.05); border-radius: 2px; overflow: hidden;"><div style="height: 100%; width: {{ (analysis.cycle.phase_confidence * 100)|int }}%; background: var(--accent); border-radius: 2px;"></div></div><span style="font-size: 12px;">{{ "%.0f"|format(analysis.cycle.phase_confidence * 100) }}%</span></div></td></tr>
-    </table>
-    <div style="margin-top: 12px; padding: 8px 12px; background: rgba(255,255,255,0.03); border-radius: 6px; font-size: 12px; color: var(--text-muted);">🔮 下一阶段：{{ analysis.cycle.next_phase_trigger }}</div>
-  </div>
-
-  <!-- Value Score (strategy-aligned) -->
-  <div class="card" style="grid-column: 1 / -1;">
-    <div class="card-header">
-      <span class="card-title">⭐ 投资性价比评分</span>
-      <span style="font-size: 36px; font-weight: 800;" class="{{ 'up' if analysis.value_score.score >= 7 else ('down' if analysis.value_score.score < 4 else 'neutral') }}">{{ analysis.value_score.score }}/10</span>
-    </div>
-    <div class="score-bar-wrap"><span style="width: 65px; font-size: 13px; color: var(--text-secondary);">入场接近度</span><div class="score-bar"><div class="score-bar-fill {{ 'high' if analysis.value_score.entry_proximity >= 2.0 else 'medium' }}" style="width: {{ (analysis.value_score.entry_proximity / 2.5 * 100)|int }}%;"></div></div><span style="font-size: 13px; width: 40px; text-align: right;">{{ "%.1f"|format(analysis.value_score.entry_proximity) }}</span></div>
-    <div class="score-bar-wrap"><span style="width: 65px; font-size: 13px; color: var(--text-secondary);">风险度</span><div class="score-bar"><div class="score-bar-fill {{ 'high' if analysis.value_score.risk_score >= 2.0 else 'medium' }}" style="width: {{ (analysis.value_score.risk_score / 2.5 * 100)|int }}%;"></div></div><span style="font-size: 13px; width: 40px; text-align: right;">{{ "%.1f"|format(analysis.value_score.risk_score) }}</span></div>
-    <div class="score-bar-wrap"><span style="width: 65px; font-size: 13px; color: var(--text-secondary);">周期对齐</span><div class="score-bar"><div class="score-bar-fill {{ 'high' if analysis.value_score.cycle_score >= 2.0 else 'medium' }}" style="width: {{ (analysis.value_score.cycle_score / 2.5 * 100)|int }}%;"></div></div><span style="font-size: 13px; width: 40px; text-align: right;">{{ "%.1f"|format(analysis.value_score.cycle_score) }}</span></div>
-    <div class="score-bar-wrap"><span style="width: 65px; font-size: 13px; color: var(--text-secondary);">逆向情绪</span><div class="score-bar"><div class="score-bar-fill {{ 'high' if analysis.value_score.sentiment_score >= 2.0 else 'medium' }}" style="width: {{ (analysis.value_score.sentiment_score / 2.5 * 100)|int }}%;"></div></div><span style="font-size: 13px; width: 40px; text-align: right;">{{ "%.1f"|format(analysis.value_score.sentiment_score) }}</span></div>
-    <div style="margin-top: 14px; font-size: 14px; font-weight: 700; color: var(--text-primary);">{{ analysis.value_score.position_advice }}</div>
-    <div style="margin-top: 4px; font-size: 12px; color: var(--text-muted);">{{ analysis.value_score.recommendation }}</div>
-  </div>
-</div>
-
-
-<!-- ====== 周期概率分布 (v4) ====== -->
-{% if analysis.cycle_probability %}
-<div class="card">
-  <div class="card-header">
-    <span class="card-title">周期概率分布</span>
-    <span class="badge badge-s">{{ analysis.cycle_probability.accumulation }}% 吸筹</span>
-  </div>
-  <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
-    <div style="text-align: center; padding: 10px; background: rgba(34,197,94,0.08); border-radius: 6px;">
-      <div style="font-size: 22px; font-weight: 800; color: var(--green);">{{ analysis.cycle_probability.accumulation }}%</div>
-      <div style="font-size: 11px; color: var(--text-muted);">吸筹期</div>
-    </div>
-    <div style="text-align: center; padding: 10px; background: rgba(255,255,255,0.03); border-radius: 6px;">
-      <div style="font-size: 22px; font-weight: 800; color: var(--yellow);">{{ analysis.cycle_probability.consolidation }}%</div>
-      <div style="font-size: 11px; color: var(--text-muted);">洗盘期</div>
-    </div>
-    <div style="text-align: center; padding: 10px; background: rgba(59,130,246,0.08); border-radius: 6px;">
-      <div style="font-size: 22px; font-weight: 800; color: var(--accent);">{{ analysis.cycle_probability.markup }}%</div>
-      <div style="font-size: 11px; color: var(--text-muted);">拉升期</div>
-    </div>
-    <div style="text-align: center; padding: 10px; background: rgba(239,68,68,0.08); border-radius: 6px;">
-      <div style="font-size: 22px; font-weight: 800; color: var(--red);">{{ analysis.cycle_probability.distribution }}%</div>
-      <div style="font-size: 11px; color: var(--text-muted);">出货期</div>
-    </div>
-  </div>
-</div>
-{% endif %}
-
-<!-- ====== Bottom-Fishing Signal (v4) ====== -->
-{% if analysis.bottom_signal %}
-<div class="card">
-  <div class="card-header">
-    <span class="card-title">抄底就绪度</span>
-    <span style="font-size: 28px; font-weight: 800;">{{ analysis.bottom_signal.score }}/100</span>
-  </div>
-  <div style="margin-bottom: 12px; padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; background: rgba(255,255,255,0.03);">
-    {{ analysis.bottom_signal.level_label }}: {{ analysis.bottom_signal.action }}
-  </div>
-  <div class="score-bar-wrap"><span style="width: 60px; font-size: 12px; color: var(--text-muted);">价格超跌</span><div class="score-bar"><div class="score-bar-fill high" style="width: {{ (analysis.bottom_signal.percentile_contrib / 25 * 100)|int }}%;"></div></div><span style="font-size: 12px; width: 30px; text-align: right;">{{ analysis.bottom_signal.percentile_contrib }}</span></div>
-  <div class="score-bar-wrap"><span style="width: 60px; font-size: 12px; color: var(--text-muted);">偏离极端</span><div class="score-bar"><div class="score-bar-fill high" style="width: {{ (analysis.bottom_signal.zscore_contrib / 20 * 100)|int }}%;"></div></div><span style="font-size: 12px; width: 30px; text-align: right;">{{ analysis.bottom_signal.zscore_contrib }}</span></div>
-  <div class="score-bar-wrap"><span style="width: 60px; font-size: 12px; color: var(--text-muted);">广度恐慌</span><div class="score-bar"><div class="score-bar-fill high" style="width: {{ (analysis.bottom_signal.breadth_contrib / 20 * 100)|int }}%;"></div></div><span style="font-size: 12px; width: 30px; text-align: right;">{{ analysis.bottom_signal.breadth_contrib }}</span></div>
-  <div class="score-bar-wrap"><span style="width: 60px; font-size: 12px; color: var(--text-muted);">情绪冰点</span><div class="score-bar"><div class="score-bar-fill high" style="width: {{ (analysis.bottom_signal.sentiment_contrib / 20 * 100)|int }}%;"></div></div><span style="font-size: 12px; width: 30px; text-align: right;">{{ analysis.bottom_signal.sentiment_contrib }}</span></div>
-  <div class="score-bar-wrap"><span style="width: 60px; font-size: 12px; color: var(--text-muted);">跌速衰竭</span><div class="score-bar"><div class="score-bar-fill high" style="width: {{ (analysis.bottom_signal.deceleration_contrib / 15 * 100)|int }}%;"></div></div><span style="font-size: 12px; width: 30px; text-align: right;">{{ analysis.bottom_signal.deceleration_contrib }}</span></div>
-</div>
-{% endif %}
-
-<!-- ====== 宏观环境 (v4) ====== -->
-{% if analysis.macro_context %}
-<div class="card">
-  <div class="card-header">
-    <span class="card-title">宏观环境</span>
-  </div>
-  <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
-    <div style="padding: 10px; background: rgba(255,255,255,0.03); border-radius: 6px; text-align: center;">
-      <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 3px;">广度(7日)</div>
-      <div style="font-size: 18px; font-weight: 700;">{{ analysis.macro_context.breadth_7d_label }}</div>
-      <div style="font-size: 12px; color: var(--text-muted);">{{ "%.0f"|format(analysis.macro_context.breadth_7d) }}</div>
-    </div>
-    <div style="padding: 10px; background: rgba(255,255,255,0.03); border-radius: 6px; text-align: center;">
-      <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 3px;">广度(90日)</div>
-      <div style="font-size: 18px; font-weight: 700;">{{ analysis.macro_context.breadth_90d_label }}</div>
-      <div style="font-size: 12px; color: var(--text-muted);">{{ "%.0f"|format(analysis.macro_context.breadth_90d) }}</div>
-    </div>
-    <div style="padding: 10px; background: rgba(255,255,255,0.03); border-radius: 6px; text-align: center;">
-      <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 3px;">贪婪指数</div>
-      <div style="font-size: 18px; font-weight: 700;">{{ analysis.macro_context.sentiment_label }}</div>
-      <div style="font-size: 12px; color: var(--text-muted);">{{ "%.0f"|format(analysis.macro_context.greedy_current) }}</div>
-    </div>
-    <div style="padding: 10px; background: rgba(255,255,255,0.03); border-radius: 6px; text-align: center;">
-      <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 3px;">在线人数</div>
-      <div style="font-size: 18px; font-weight: 700;">{{ analysis.macro_context.online_label }}</div>
-      <div style="font-size: 12px; color: var(--text-muted);">{{ analysis.macro_context.online_current }}</div>
-    </div>
-    <div style="padding: 10px; background: rgba(255,255,255,0.03); border-radius: 6px; text-align: center;">
-      <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 3px;">在线趋势</div>
-      <div style="font-size: 18px; font-weight: 700;">{{ "%.0f"|format(analysis.macro_context.online_score) }}</div>
-      <div style="font-size: 12px; color: var(--text-muted);">/100</div>
-    </div>
-    <div style="padding: 10px; background: rgba(255,255,255,0.03); border-radius: 6px; text-align: center;">
-      <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 3px;">充值卡价</div>
-      <div style="font-size: 18px; font-weight: 700;">{{ analysis.macro_context.card_label }}</div>
-      <div style="font-size: 12px; color: var(--text-muted);">{{ "%.0f"|format(analysis.macro_context.card_score) }}/100</div>
-    </div>
-  </div>
-</div>
-{% endif %}
-
-<!-- ====== 大盘趋势健康度 (P0) ====== -->
-{% if analysis.market_trend_health and analysis.market_trend_health.score %}
-<div class="card" style="grid-column: 1 / -1;">
-  <div class="card-header">
-    <span class="card-title">大盘趋势健康度</span>
-    <span style="font-size: 36px; font-weight: 800;">{{ analysis.market_trend_health.score }}/100</span>
-  </div>
-  <div style="margin-bottom: 16px; padding: 10px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; background: rgba(255,255,255,0.05);">
-    {{ analysis.market_trend_health.level_label }} | 方向: {{ analysis.market_trend_health.direction }}
-    {% if analysis.market_trend_health.volume_divergence %}
-    <span style="margin-left: 8px; padding: 2px 8px; background: rgba(239,68,68,0.15); border-radius: 4px; color: var(--red);">{{ analysis.market_trend_health.volume_divergence_label }}</span>
-    {% endif %}
-  </div>
-  <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 12px;">
-    <div style="text-align: center; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
-      <div style="font-size: 18px; font-weight: 700;">{{ analysis.market_trend_health.persistence_score }}</div>
-      <div style="font-size: 11px; color: var(--text-muted);">趋势持续</div>
-    </div>
-    <div style="text-align: center; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
-      <div style="font-size: 18px; font-weight: 700;">{{ analysis.market_trend_health.steepness_score }}</div>
-      <div style="font-size: 11px; color: var(--text-muted);">趋势陡度</div>
-    </div>
-    <div style="text-align: center; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
-      <div style="font-size: 18px; font-weight: 700;">{{ analysis.market_trend_health.structure_score }}</div>
-      <div style="font-size: 11px; color: var(--text-muted);">均线结构</div>
-    </div>
-    <div style="text-align: center; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
-      <div style="font-size: 18px; font-weight: 700;">{{ analysis.market_trend_health.volume_score }}</div>
-      <div style="font-size: 11px; color: var(--text-muted);">量价配合</div>
-    </div>
-    <div style="text-align: center; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
-      <div style="font-size: 18px; font-weight: 700;">{{ analysis.market_trend_health.anomaly_score }}</div>
-      <div style="font-size: 11px; color: var(--text-muted);">异常缺口</div>
-    </div>
-    <div style="text-align: center; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
-    </div>
-  </div>
-  {% if analysis.market_trend_health.deduction_sources %}
-  <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">
-    扣分来源:
-    {% for src in analysis.market_trend_health.deduction_sources %}
-    <span style="display: inline-block; padding: 1px 6px; background: rgba(239,68,68,0.1); border-radius: 3px; margin: 2px;">{{ src }}</span>
-    {% endfor %}
-  </div>
-  {% endif %}
-  <div style="font-size: 11px; color: var(--text-muted);">
-    MA: {{ analysis.market_trend_health.ma_structure }} | Cross: {{ analysis.market_trend_health.ma_cross_type }} | Steep: {{ analysis.market_trend_health.steepness_signal }} | Vol: {{ analysis.market_trend_health.volume_signal }}
-  </div>
-</div>
-{% endif %}
-
-<!-- ====== 大盘融合决策 (P0) ====== -->
+<!-- ====== 核心决策：仓位上限 ====== -->
 {% if analysis.market_fusion_decision and analysis.market_fusion_decision.action %}
-<div class="card" style="grid-column: 1 / -1;">
+<div class="card" style="border:2px solid {% if analysis.market_fusion_decision.action == "buy" %}var(--green){% elif analysis.market_fusion_decision.action == "watch" %}var(--yellow){% elif analysis.market_fusion_decision.action == "avoid" %}var(--red){% else %}var(--border){% endif %};">
   <div class="card-header">
-    <span class="card-title">大盘融合决策</span>
-    <span style="font-size: 24px; font-weight: 800;">{{ analysis.market_fusion_decision.action_label }}</span>
+    <span class="card-title">🎯 决策</span>
   </div>
-  <div style="margin-bottom: 16px; padding: 12px 16px; border-radius: 8px; background: rgba(255,255,255,0.03); font-size: 14px; line-height: 1.6; color: var(--text-secondary);">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+    <div style="display:flex;align-items:baseline;gap:12px;">
+      <span style="font-size:28px;font-weight:800;">{{ analysis.market_fusion_decision.action_label }}</span>
+      <span style="font-size:16px;color:var(--text-muted);">{{ analysis.market_fusion_decision.zone_label }}</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:20px;">
+      <div style="text-align:center;">
+        <div style="font-size:24px;font-weight:700;">{{ "%.0f"|format(analysis.market_fusion_decision.global_position_limit * 100) }}%</div>
+        <div style="font-size:11px;color:var(--text-muted);">仓位上限</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:24px;font-weight:700;">{{ "%.0f"|format(analysis.market_fusion_decision.corrected_th_score) }}</div>
+        <div style="font-size:11px;color:var(--text-muted);">趋势健康</div>
+      </div>
+    </div>
+  </div>
+  <div style="margin-top:12px;padding:10px 14px;background:rgba(255,255,255,0.03);border-radius:6px;font-size:13px;line-height:1.6;color:var(--text-secondary);">
     {{ analysis.market_fusion_decision.action_detail }}
   </div>
-  <div class="stat-grid">
-    <div class="stat-item">
-      <div class="stat-value">{{ "%.1f"|format(analysis.market_fusion_decision.percentile_90d) }}%</div>
-      <div class="stat-label">90日百分位</div>
+</div>
+{% endif %}
+
+<!-- ====== 关键指标四宫格 ====== -->
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
+  <div class="card" style="padding:14px;text-align:center;">
+    <div style="font-size:24px;font-weight:700;
+      {% if analysis.position.percentile_90d <= 30 %}color:var(--green)
+      {% elif analysis.position.percentile_90d >= 70 %}color:var(--red)
+      {% else %}color:var(--yellow){% endif %};">
+      {{ "%.1f"|format(analysis.position.percentile_90d) }}%
     </div>
-    <div class="stat-item">
-      <div class="stat-value">{{ analysis.market_fusion_decision.raw_th_score }} -> {{ analysis.market_fusion_decision.corrected_th_score }}</div>
-      <div class="stat-label">TH分(原始>修正)</div>
-    </div>
-    <div class="stat-item">
-      <div class="stat-value">{{ analysis.market_fusion_decision.zone_label }}</div>
-      <div class="stat-label">估值区间</div>
-    </div>
-    <div class="stat-item">
-      <div class="stat-value" style="font-size: 28px; font-weight: 800;">{{ "%.0f"|format(analysis.market_fusion_decision.global_position_limit * 100) }}%</div>
-      <div class="stat-label">仓位上限</div>
-    </div>
+    <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">90日百分位<br><span style="font-size:10px;">≤30%=低估 70%=高估</span></div>
   </div>
-  {% if analysis.market_fusion_decision.deduction_sources %}
-  <div style="margin-top: 12px; font-size: 11px; color: var(--text-muted);">
-    来源:
-    {% for src in analysis.market_fusion_decision.deduction_sources %}
-    <span style="display: inline-block; padding: 1px 6px; background: rgba(239,68,68,0.1); border-radius: 3px; margin: 2px;">{{ src }}</span>
-    {% endfor %}
+  <div class="card" style="padding:14px;text-align:center;">
+    <div style="font-size:24px;font-weight:700;
+      {% if analysis.position.zscore_90d <= -1.5 %}color:var(--green)
+      {% elif analysis.position.zscore_90d >= 2 %}color:var(--red)
+      {% else %}color:var(--text-primary){% endif %};">
+      {{ "%.2f"|format(analysis.position.zscore_90d) }}
+    </div>
+    <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Z-Score<br><span style="font-size:10px;">≤-1.5=低估 ≥2=泡沫</span></div>
   </div>
-  {% endif %}
+  <div class="card" style="padding:14px;text-align:center;">
+    <div style="font-size:24px;font-weight:700;
+      {% set th = analysis.market_trend_health.score if analysis.market_trend_health else 50 %}
+      {% if th >= 55 %}color:var(--green){% elif th >= 35 %}color:var(--yellow){% else %}color:var(--red){% endif %};">
+      {{ "%.0f"|format(th) }}
+    </div>
+    <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">趋势健康TH<br><span style="font-size:10px;">≥55=健康 35=中性</span></div>
+  </div>
+  <div class="card" style="padding:14px;text-align:center;">
+    {% set senti = analysis.macro_context.sentiment_score if analysis.macro_context else 50 %}
+    <div style="font-size:20px;font-weight:600;
+      {% if senti >= 70 %}color:var(--green)
+      {% elif senti <= 35 %}color:var(--red)
+      {% else %}color:var(--yellow){% endif %};">
+      {{ analysis.macro_context.sentiment_label if analysis.macro_context else "中性" }}
+    </div>
+    <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">市场情绪<br><span style="font-size:10px;">恐惧=买点 贪婪=谨慎</span></div>
+  </div>
 </div>
 
+<!-- ====== 抛压衰竭信号（熊市底部先行指标） ====== -->
+{% if analysis.selling_pressure and analysis.selling_pressure.score is defined %}
+<div class="card" style="margin-top:12px;border-color:{% if analysis.selling_pressure.score >= 70 %}rgba(16,185,129,0.5){% elif analysis.selling_pressure.score >= 50 %}rgba(245,158,11,0.5){% else %}var(--border){% endif %};">
+  <div class="card-header" style="padding:8px 14px;">
+    <span class="card-title">📉 抛压衰竭 <span style="font-size:11px;color:var(--text-muted);font-weight:400;">熊市底部先行指标</span></span>
+    <div class="row-flex" style="gap:6px;">
+      <span style="font-size:22px;font-weight:800;
+        {% if analysis.selling_pressure.score >= 70 %}color:var(--green)
+        {% elif analysis.selling_pressure.score >= 50 %}color:var(--yellow)
+        {% else %}color:var(--red){% endif %};">
+        {{ analysis.selling_pressure.score }}
+      </span>
+      <span style="font-size:12px;color:var(--text-muted);">/100</span>
+      <span style="font-size:13px;font-weight:600;{% if analysis.selling_pressure.score >= 70 %}color:var(--green){% elif analysis.selling_pressure.score >= 50 %}color:var(--yellow){% else %}color:var(--text-secondary){% endif %};">{{ analysis.selling_pressure.label }}</span>
+    </div>
+  </div>
+  <div style="padding:8px 14px;font-size:12px;color:var(--text-secondary);line-height:1.6;">
+    卖家抛压枯竭+止跌企稳，是熊市 V 型底部的先行信号（需叠加 20 日真实跌幅验证，避免下跌中继误判）。≥70 进入底部观察。
+  </div>
+</div>
+{% endif %}
 
+<!-- ====== 市场状态 ====== -->
+{% if analysis.market_state %}
+<div class="card" style="margin-top:12px;padding:16px;">
+  <div class="card-header" style="padding:0;border:0;margin-bottom:12px;">
+    <span class="card-title">📊 市场状态</span>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+    <div style="text-align:center;">
+      <div style="font-size:22px;">{{ analysis.market_state.regime_label }}</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">市场阶段</div>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-size:22px;font-weight:700;
+        {% if analysis.market_state.pct <= 20 %}color:var(--green)
+        {% elif analysis.market_state.pct <= 45 %}color:var(--yellow)
+        {% elif analysis.market_state.pct <= 75 %}color:var(--text-secondary)
+        {% else %}color:var(--red){% endif %};">
+        {{ analysis.market_state.val_label }}
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">估值 · {{ analysis.market_state.pct }}%分位</div>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-size:18px;">{{ analysis.market_state.sent_label }}</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">情绪 · {{ analysis.market_state.sent }}分</div>
+    </div>
+  </div>
+  <div style="margin-top:12px;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-muted);">
+    <span>Z-score: {{ "%.2f"|format(analysis.market_state.zscore) }}</span>
+    <span>|</span>
+    <span>TH: {{ analysis.market_state.th }}</span>
+    <span>|</span>
+    <span>性价比: 
+      <span style="font-weight:600;
+        {% if analysis.value_score and analysis.value_score.score >= 6.5 %}color:var(--green)
+        {% elif analysis.value_score and analysis.value_score.score >= 4.5 %}color:var(--yellow)
+        {% else %}color:var(--red){% endif %};">
+        {% if analysis.value_score %}{{ "%.1f"|format(analysis.value_score.score) }}{% else %}-{% endif %}
+      </span>
+    </span>
+  </div>
+</div>
+{% endif %}
+
+<!-- ====== 宏观环境（精简） ====== -->
+{% if analysis.macro_context %}
+<div class="card" style="margin-top:12px;">
+  <div class="card-header" style="padding:10px 14px;border-bottom:1px solid var(--border);">
+    <span class="card-title">🌍 宏观环境</span>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:10px 14px;">
+    <div style="text-align:center;">
+      <div style="font-size:16px;font-weight:600;">{{ "%.0f"|format(analysis.macro_context.breadth_7d) }}</div>
+      <div style="font-size:10px;color:var(--text-muted);">广度</div>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-size:16px;font-weight:600;">{{ "%.0f"|format(analysis.macro_context.sentiment_score) }}</div>
+      <div style="font-size:10px;color:var(--text-muted);">情绪(恐惧↑)</div>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-size:16px;font-weight:600;">{{ "%.0f"|format(analysis.macro_context.online_score) }}</div>
+      <div style="font-size:10px;color:var(--text-muted);">在线趋势</div>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-size:16px;font-weight:600;">{{ "%.0f"|format(analysis.macro_context.card_score) }}</div>
+      <div style="font-size:10px;color:var(--text-muted);">充值卡</div>
+    </div>
+  </div>
+</div>
+{% endif %}
 
 {% elif not analysis or not analysis.has_data %}
 <div class="card"><div class="empty-state"><div class="icon">🔍</div><h3>暂无大盘分析数据</h3><p>点击上方「刷新数据」获取最新分析</p></div></div>
-{% endif %}
 {% endif %}

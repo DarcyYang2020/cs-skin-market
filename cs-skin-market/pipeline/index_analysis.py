@@ -669,6 +669,11 @@ def analyze_cycle_probability(prices, pct_90d, zscore_90d) -> dict:
         scores["distribution"] += 12
     elif sentiment <= 45:
         scores["distribution"] += 6
+    # Direct sentiment boost (P0): extreme fear = accumulate, extreme greed = distribute
+    if sentiment >= 85:
+        scores["accumulation"] += 8
+    if sentiment <= 20:
+        scores["distribution"] += 8
 
     # Slow distribution: high pct + flat topping + moderate Z
     if pct_90d > 65:
@@ -848,6 +853,58 @@ def compute_bottom_signal_wrapper(prices, pct_90d, zscore_90d, cycle_probability
     summary["cycle_contrib"] = bs.cycle_contrib
     return summary
 
+def compute_micro_th(prices, window=14):
+    """Quick short-term trend score (0-100) for catching V-reversals within big trends."""
+    if len(prices) < window:
+        return 50
+    p = prices[-window:]
+    ret = (p[-1] - p[0]) / p[0] * 100
+    ma7 = sum(p[-7:]) / min(7, len(p))
+    ma14 = sum(p) / len(p)
+    ma_cross = ma7 > ma14
+    p3d = (p[-1] - p[-4]) / p[-4] * 100 if len(p) >= 4 else 0
+    low_14d = min(p)
+    from_low = (p[-1] - low_14d) / low_14d * 100 if low_14d > 0 else 0
+    vol = (max(p) - min(p)) / min(p) * 100 if min(p) > 0 else 0
+    score = 50
+    if ret > 10: score = 75
+    elif ret > 6: score = 65
+    elif ret > 3: score = 60
+    elif ret > 1: score = 55
+    elif ret > -2: score = 50
+    elif ret > -5: score = 40
+    elif ret > -8: score = 30
+    else: score = 20
+    if from_low > 5 and ret > 0 and vol > 8:
+        score = min(score + 15, 85)
+    if p[-1] <= low_14d * 1.01:
+        score = max(score - 10, 5)
+    if ma_cross and p3d > 0:
+        score = min(score + 5, 90)
+    # ---- Capitulation detection: extreme drop-based oversold ----
+    if len(prices) >= 30:
+        cur = prices[-1]
+        peak_30d = max(prices[-30:])
+        drop = (cur - peak_30d) / peak_30d * 100
+        _md = statistics.median(sorted(prices)) if len(prices) >= 3 else 0
+        _devs = sorted(abs(v - _md) for v in prices) if len(prices) >= 3 else [1]
+        _mad = statistics.median(_devs) or (__import__("statistics").stdev(prices) * 0.6745) or 1
+        _z = (cur - _md) / (_mad * 1.4826) if _mad > 0 else 0
+        near_low = cur <= min(prices[-14:]) * 1.05 if len(prices) >= 14 else False
+        at_low = cur <= min(prices[-14:]) * 1.02 if len(prices) >= 14 else False
+        if drop < -20 and near_low:
+            score = max(score, 55)
+        if drop < -25 and at_low:
+            score = max(score, 65)
+        if drop < -15 and _z < -1.5 and near_low:
+            score = max(score, 50)
+        if drop < -12 and at_low:
+            chg1d = (prices[-1] - prices[-2]) / prices[-2] * 100
+            chg3d = (prices[-1] - prices[-4]) / prices[-4] * 100 if len(prices) >= 4 else chg1d
+            if chg1d > chg3d / 2 and chg1d > -3:
+                score = max(score, 50)
+
+    return max(0, min(100, score))
 # ============================================================
 #  Extended analysis with Market Trend Health + Fusion Decision
 # ============================================================
@@ -855,6 +912,63 @@ def compute_bottom_signal_wrapper(prices, pct_90d, zscore_90d, cycle_probability
 def analyze_cycle_sector_recommendation(cycle_phase, accumulation_prob=0.0):
     """Removed - was unused. Returns empty result."""
     return {"cycle_phase": cycle_phase, "sectors": [], "core_sectors": [], "secondary_sectors": [], "avoid_sectors": []}
+
+
+def compute_selling_pressure_exhaustion(prices):
+    """0-100 抛压衰竭先行信号：卖方力量枯竭 + 止跌企稳。
+
+    三个子信号（累加）：
+      - 3日跌速衰减 0-40：近3日跌幅 < 前段3日跌幅一半 / 转涨
+      - 3日无新低   0-30：恐慌抛售枯竭
+      - 高点抬高/企稳 0-30：止跌结构
+    门控：20日跌幅 < -7% 允许观察级(>=70)；< -12% 深度恐慌不限分；否则封顶55。
+    """
+    n = len(prices)
+    if n < 8:
+        return {"score": 0, "signals": [], "drop20": 0.0, "note": "数据不足"}
+    score = 0
+    signals = []
+
+    # 子信号1: 3日跌速衰减 (0-40)
+    if n >= 6:
+        prev3 = (prices[-3] / prices[-6] - 1) * 100   # 前段3日跌幅（负）
+        last3 = (prices[-1] / prices[-3] - 1) * 100   # 近3日跌幅（负/正）
+        if last3 >= 0:
+            score += 40
+            signals.append("3日转涨")
+        elif prev3 < 0:
+            decay_ratio = max(0.0, min(1.0, last3 / prev3))  # 0=完全衰竭 1=未衰减
+            score += int(40 * (1 - decay_ratio))
+            signals.append("跌速衰减")
+
+    # 子信号2: 3日无新低 (0-30)
+    if n >= 8:
+        base = prices[max(0, n - 23):n - 3] if n >= 23 else prices[:max(1, n - 6)]
+        if base and min(prices[-3:]) >= min(base):
+            score += 30
+            signals.append("3日无新低")
+
+    # 子信号3: 高点抬高/企稳 (0-30)
+    if n >= 10:
+        high_prev = max(prices[-10:-3])
+        high_recent = max(prices[-3:])
+        if high_recent > high_prev:
+            score += 30
+            signals.append("高点抬高")
+        elif prices[-1] >= prices[-4] * 0.995:
+            score += 15
+            signals.append("短期企稳")
+
+    # 门控: 20日跌幅
+    drop20 = (prices[-1] / prices[-21] - 1) * 100 if n >= 21 else 0.0
+    if drop20 > -7:
+        score = min(score, 55)
+        note = "20日跌幅不足，封顶55"
+    elif drop20 <= -12:
+        note = "深度恐慌，不限分"
+    else:
+        note = "跌幅达标"
+    return {"score": score, "signals": signals, "drop20": round(drop20, 1), "note": note}
 
 def analyze_index_full(index_history: list) -> dict:
     """Enhanced index analysis with market trend health and fusion decision."""
@@ -871,7 +985,7 @@ def analyze_index_full(index_history: list) -> dict:
             compute_market_trend_health, market_th_summary,
             compute_market_fusion_decision, market_fd_summary,
         )
-        from .market_macro import event_risk_coefficient
+        from .market_macro import event_risk_coefficient, compute_sentiment_score
 
         # Compute daily volumes from K-line if available
         # For market index K-line from csQAQ, we approximate volumes from price changes
@@ -896,6 +1010,8 @@ def analyze_index_full(index_history: list) -> dict:
             volumes=volumes[-90:] if volumes else None,
             cycle_phase=cycle_phase,
             event_risk_discount=event_risk_coefficient(),
+            zscore_90d=z,
+            percentile_90d=pct,
         )
 
         # Compute percentile trend (7d direction)
@@ -912,15 +1028,83 @@ def analyze_index_full(index_history: list) -> dict:
             elif values[-1] < values[-2] * 0.99:
                 pct_trend = "falling"
 
+        micro_th = compute_micro_th(values)
+        # Compute V7 smart bear filter signals
+        is_bear = False
+        cap_triggered = False
+        rally_decay = False
+        if len(values) >= 90:
+            ma30 = sum(values[-30:]) / 30
+            ma90 = sum(values[-90:]) / 90
+            # Bear persistence: MA30 must fully cross above MA90 to exit bear (filters V-bottom false flips)
+            is_bear = ma30 < ma90 and values[-1] < ma90
+        if len(values) >= 30 and micro_th >= 50:
+            max30 = max(values[-30:])
+            drop30 = (values[-1] - max30) / max30 * 100
+            if len(values) >= 14:
+                near_low = values[-1] <= min(values[-14:]) * 1.05
+                at_low = values[-1] <= min(values[-14:]) * 1.02
+            else:
+                near_low = at_low = False
+            cap_triggered = (drop30 < -20 and near_low) or (drop30 < -25 and at_low)
+        # Rally decay: check if bounce momentum is fading
+        if is_bear and micro_th >= 60 and len(values) >= 21:
+            p21 = values[-21:]
+            low21 = min(p21)
+            bounce = (p21[-1] - low21) / low21 * 100
+            if bounce >= 5:
+                peak_prev = max(p21[:-7]) if len(p21) >= 14 else max(p21[:-3])
+                peak_recent = max(p21[-7:])
+                failed_new_high = peak_recent < peak_prev * 0.995
+                d_gains = [p21[j] - p21[j-1] for j in range(-6, 0)]
+                gains_abs = [abs(g) for g in d_gains if g > 0]
+                narrowing = False
+                if len(gains_abs) >= 3:
+                    narrowing = gains_abs[-1] < gains_abs[0] * 0.5 and gains_abs[-1] < gains_abs[-2]
+                rally_decay = failed_new_high or narrowing
+        # Compute sentiment score (0-100, high=fear) for fusion decision
+        sentiment_score = compute_sentiment_score()
+        sp_exhaust = compute_selling_pressure_exhaustion(values)
+        sp_score = sp_exhaust["score"]
+        from .market_th import compute_market_regime
+        mkt_regime, mkt_regime_label, _, _ = compute_market_regime(values)
         mfd = compute_market_fusion_decision(
+            selling_pressure_score=sp_score,
+            market_regime=mkt_regime,
+            volatility_regime=result.get("probability", {}).get("volatility_regime", "normal"),
             percentile_90d=pct,
             th=mth,
             zscore_90d=z,
             cycle_phase=result.get("cycle", {}).get("phase", "unknown"),
             event_risk_discount=event_risk_coefficient(),
             percentile_trend=pct_trend,
+            micro_th_score=micro_th,
+            is_bear=is_bear,
+            cap_triggered=cap_triggered,
+            rally_decay=rally_decay,
+            sentiment_score=sentiment_score,
         )
 
+        result["selling_pressure_exhaustion"] = sp_exhaust
+        sp_exhaust["label"] = ("抛压枯竭·底部观察" if sp_score >= 70
+                               else ("抛压衰减" if sp_score >= 50 else "抛压未竭"))
+        result["selling_pressure"] = sp_exhaust
+
+        # 三合一市场状态卡（阶段 + 估值 + 情绪）
+        from .market_macro import sentiment_label as _sent_label
+        tier_label_map = {
+            "undervalued": "低估", "fair": "合理",
+            "overvalued": "高估", "bubble": "泡沫",
+        }
+        result["market_state"] = {
+            "regime_label": mkt_regime_label,
+            "pct": round(pct, 1),
+            "val_label": tier_label_map.get(result["position"].get("valuation_tier", ""), result["position"].get("tier_label", "")),
+            "sent_label": _sent_label(sentiment_score),
+            "sent": round(sentiment_score, 0),
+            "zscore": round(z, 2),
+            "th": mth.score,
+        }
         result["market_trend_health"] = market_th_summary(mth)
         result["market_fusion_decision"] = market_fd_summary(mfd)
         # --- New: enhanced analysis (v4) ---

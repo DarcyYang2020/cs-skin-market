@@ -17,6 +17,7 @@ from typing import Optional
 
 from .config import CSQAQ_BASE, API_TOKEN, API_RATE_LIMIT, DATA_DIR
 import logging
+_log = logging.getLogger(__name__)
 
 TZ_BJ = timezone(timedelta(hours=8))
 

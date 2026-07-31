@@ -32,7 +32,9 @@ run_item_analysis(name, prices, volumes, supply_hist, order_book, index_change_7
 | 估值宫格 | compute_valuation_grid (valuation.py) | 3×4 宫格（价格分位 × 趋势方向）+ 仓位建议 |
 | 信号冲突 | detect_signal_conflicts | 跨模块矛盾检测（周期 vs 融合、估值 vs 趋势等） |
 
-### 大盘分析引擎 (index_analysis.py)
+### 大盘分析引擎 (index_analysis.py)  v4.7
+熊市持久性判定：is_bear = MA30 < MA90 且现价 < MA90（V型反弹后 MA30 必须完全站上 MA90 才出熊），
+修复 6 月反弹末端假信号（回测 37→14 信号，14d 胜率 76%→86%）。
 
 analyze_index_full(value, change_7d, mood, kline_data) 协调：
 
@@ -56,7 +58,9 @@ cd cs-skin-market && python run_server.py
 | 页面 | 路由 | 说明 |
 |---|---|---|
 | 大盘仪表盘 | / | 大盘指数 + 市场宏观 + 融合决策 |
-| 单品分析 | /search | 搜索 + 分析，结果持久化（localStorage） |
+| 单品分析 | /search | 搜索 + 分析，结果持久化 |
+| 持仓管理 | /watchlist | 自选列表 + 持仓管理 + 批量扫描 |
+| 发现高分品 | /discover | 扫描全武器类型崭新出厂品，筛选 Top 10 |
 | 自选管理 | /watchlist | 自选列表 + 持仓管理 |
 
 **API 路由**:
@@ -69,14 +73,20 @@ cd cs-skin-market && python run_server.py
 | GET  | /api/watchlist/{id}/analyze | 自选单品分析 |
 | GET  | /api/watchlist/{id}/report | 查看历史报告 |
 | POST | /api/watchlist/assets | 设置资产规模 |
+| POST | /api/watchlist/batch-scan-selected | 批量扫描自选 |
+| GET  | /api/watchlist/batch-scan-progress/{scan_id} | 批量扫描进度轮询 |
+| POST | /api/discover/scan-all | 扫描全武器类型，异步分析 |
+| GET  | /api/items/discover-progress/{task_id} | 发现高分品进度轮询 |
+| GET  | /api/discover/latest | 获取上次扫描缓存结果 |
 
 **模板结构**:
 `
 webapp/templates/
   base.html              -- 公共布局（左侧栏 + Modal）
   dashboard.html         -- 大盘仪表盘页
-  search.html            -- 单品分析页（localStorage 持久化）
-  watchlist.html         -- 自选管理页
+  search.html            -- 单品分析页
+  watchlist.html         -- 持仓管理页（自选+批量扫描）
+  discover.html          -- 发现高分品页（全武器扫描 Top 10）
   partials/
     analysis.html        -- 单品分析结果部分
     index_analysis.html  -- 大盘分析结果部分
@@ -90,12 +100,39 @@ webapp/templates/
 - TH_NEUTRAL = 35 (TH>=35 为中性偏强)
 - 百分位分档: <=30% 低估 / 30-70% 中性 / >70% 高估
 
+### 发现高分品 (2026-07-28)
+新页面 /discover，自动扫描 8 个热门武器类型的崭新出厂品：
+- **扫描武器**：AK-47 / AWP / 沙漠之鹰 / M4A4 / USP / MP7 / SSG 08 / 法玛斯
+- **过滤**：仅崭新出厂，排除 StatTrak/纪念品/匕首
+- **去重**：每个武器类型最多 3 个 → 总计 ~20-24 个品
+- **排序**：按评分降序取 Top 10
+- **缓存**：结果存 data/discover_latest.json，24h 内可反复查看
+- **异步**：搜索和分析都在后台执行，点击立即返回进度条
+
 ### 超跌买入例外 (P0, 2026-07-21)
 当标准融合决策无法触发 buy 时，额外检查:
 - 条件: pct<=15% + Z<=-2.0
 - 跌速衰减: 最后2日不创新低 + 3日正收益
 - 命中信号: 超跌反弹·分批建仓
 - 回测: 2025-11~2026-07, buy信号16次, 14d胜率88%, 均收益+9.65%
+
+### 抛压衰竭信号 (v4.6, 2026-07-31)
+
+`compute_selling_pressure_exhaustion(prices)` (index_analysis.py)，熊市 V 型底部先行信号：
+- 三维打分：3日跌速衰减（0-40）+ 3日无新低（0-30）+ 止跌企稳（0-30）
+- **硬性门控**：20日跌幅 < -7% 才可触发 ≥70 观察级，< -12% 深度恐慌不限分
+- 回测（2025-11-02 起）：8 触发/4 波段，30d 胜率 100%，均收益 +6.14%
+- 融合决策：sp≥70 + 百分位≤20 → 🟡 抛压衰竭·底部观察；sp≥85 + 百分位≤15 + microTH≥55 → 🟢 分批建仓
+- 大盘仪表盘 📉 抛压衰竭卡片
+
+### 求购承接信号 (v4.6, 2026-07-31)
+
+`compute_bid_support(order_book)` (item_analysis.py)，单品真实买盘意愿快照：
+- 从页面原生「求购价」图表抓取 buy_price 序列（修复原直连 401 导致 order_book 恒为空的问题）
+- order_book 扩展：spread_pct / highest_buy / bid_7d_chg / bid_30d_chg / spread_avg
+- 三维评分（0-100）：断层宽度 + 断层收窄/扩张 vs 均值 + 求购价趋势
+- 融合修正：≤25 且 buy → 🟡 求购承接弱·观望；≥75 + watch 低估 → 🟡 底部观察·承接增强
+- 单品报告 🛒 求购承接卡片
 
 ## 文件结构
 
@@ -104,7 +141,9 @@ cs-skin-market/
   AGENTS.md              -- 本文件
   SKILL.md               -- Codex Skill 元数据
   run_server.py          -- Web 服务启动脚本
+  run_backtest.py        -- 大盘回测脚本（python run_backtest.py [--start 2025-11-02]）
   data/market.db         -- SQLite 数据库
+  data/discover_latest.json -- 发现高分品缓存
   pipeline/
     config.py            -- 配置（TOKEN/BASE_URL/权重/参数）
     collector.py         -- csQAQ HTTP 采集（大盘指数/品类/搜索）

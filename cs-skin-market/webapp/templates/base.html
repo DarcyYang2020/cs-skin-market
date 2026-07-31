@@ -27,6 +27,9 @@
       <a href="/watchlist" class="{% if active_page == 'watchlist' %}active{% endif %}">
         <span class="nav-icon">⭐</span> 持仓管理
       </a>
+      <a href="/discover" class="{% if active_page == 'discover' %}active{% endif %}">
+        <span class="nav-icon">🔍</span> 发现高分品
+      </a>
           </div>
     <div class="sidebar-footer">v3.0 · csQAQ</div>
   </div>
@@ -48,14 +51,20 @@
       </div>
       <div class="modal-body-scroll" id="modal-body"></div>
     </div>
-  </div>
 <script>
 function openModal(id) { document.getElementById(id).style.display = 'flex'; }
-function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-// Close modal on overlay click
+function closeModal(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  if (id === 'analysis-modal') {
+    var body = document.getElementById('modal-body');
+    if (body && body.querySelector('.spinner')) return;
+  }
+  el.style.display = 'none';
+}
 document.addEventListener('click', function(e) {
   if (e.target.classList.contains('modal-overlay')) {
-    e.target.style.display = 'none';
+    closeModal(e.target.id);
   }
 });
 </script>

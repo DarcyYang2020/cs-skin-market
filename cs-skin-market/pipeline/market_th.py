@@ -55,16 +55,22 @@ class MarketTrendHealth:
     bubble_breadth: float = 0.0
 
     bubble_breadth_label: str = ""
-
-
-
-
+    drop_from_peak_pct: float = 0.0
+    pct_30d_ago: float = 50.0
 
 def compute_market_trend_health(prices, volumes=None, cycle_phase="unknown",
 
                                  event_risk_discount=1.0,
 
-                                 volume_divergence_discount=1.0, bubble_breadth_discount=1.0):
+                                 volume_divergence_discount=1.0, bubble_breadth_discount=1.0, pct_30d_ago=50.0,
+                                 zscore_90d=None, percentile_90d=None):
+
+# Compute 21-day peak drop before trend health (uses original prices)
+    drop_from_peak_pct = 0.0
+    if len(prices) >= 21:
+        peak_21d = max(prices[-21:])
+        if peak_21d > 0:
+            drop_from_peak_pct = round((prices[-1] / peak_21d - 1) * 100, 1)
 
     th = compute_trend_health(prices=prices, volumes=volumes, cycle_phase=cycle_phase,
 
@@ -92,7 +98,14 @@ def compute_market_trend_health(prices, volumes=None, cycle_phase="unknown",
 
         deductions.append("泡沫广度折价 x{:.1f}".format(bubble_breadth_discount))
 
+    th.z_floor_applied = False
     if th.raw_direction == "down":
+        # Oversold TH floor: when Z is extreme and percentile rock-bottom,
+        # TH should not collapse completely - extreme value IS the signal
+        if zscore_90d is not None and zscore_90d <= -2.0 and percentile_90d is not None and percentile_90d <= 20:
+            z_floor = 15 + abs(zscore_90d + 2.0) * 15  # z=-2.0->15, z=-2.5->22, z=-3.0->30
+            th.z_floor_applied = th.score < z_floor
+            th.score = max(th.score, min(round(z_floor), 35))
 
         th.score = min(th.score, 45)
 
@@ -101,6 +114,7 @@ def compute_market_trend_health(prices, volumes=None, cycle_phase="unknown",
         th.score = min(th.score, 65)
 
     th.score = max(0, min(100, th.score))
+
 
     if th.score >= T["TH_STRONG"]:
 
@@ -140,6 +154,9 @@ def compute_market_trend_health(prices, volumes=None, cycle_phase="unknown",
 
         volume_divergence_label="\u65e0\u91cf\u62c9\u5347" if volume_divergence_discount < 1.0 else "",
 
+        drop_from_peak_pct=drop_from_peak_pct,
+        pct_30d_ago=pct_30d_ago,
+
     )
 
 
@@ -170,6 +187,9 @@ def market_th_summary(mth):
                 steepness_signal=mth.steepness_signal,
 
                 volume_signal=mth.volume_signal,
+
+                drop_from_peak_pct=mth.drop_from_peak_pct,
+                pct_30d_ago=mth.pct_30d_ago,
 
                 has_anomaly=mth.has_anomaly,
 
@@ -217,6 +237,16 @@ class MarketFusionDecision:
     global_position_limit: float = 1.0
 
     percentile_trend: str = "flat"
+    drop_from_peak_pct: float = 0.0
+    pct_30d_ago: float = 50.0
+    micro_th_score: int = 50
+    is_bear: bool = False
+    cap_triggered: bool = False
+    rally_decay: bool = False
+    market_regime: str = "sideways"
+    selling_pressure_score: int = 50
+    volatility_regime: str = "normal"
+
 
     rebound_late: bool = False
 
@@ -228,7 +258,7 @@ class MarketFusionDecision:
 
 
 
-def compute_market_fusion_decision(percentile_90d, th, zscore_90d=0.0, cycle_phase="unknown", event_risk_discount=1.0, percentile_trend="flat"):
+def compute_market_fusion_decision(percentile_90d, th, zscore_90d=0.0, cycle_phase="unknown", event_risk_discount=1.0, percentile_trend="flat", micro_th_score=None, is_bear=False, cap_triggered=False, rally_decay=False, sentiment_score=50, market_regime="sideways", selling_pressure_score=50, volatility_regime="normal"):
 
     fd = MarketFusionDecision(percentile_90d=percentile_90d,
 
@@ -237,6 +267,15 @@ def compute_market_fusion_decision(percentile_90d, th, zscore_90d=0.0, cycle_pha
         deduction_sources=th.deduction_sources)
 
     fd.percentile_trend = percentile_trend
+    fd.drop_from_peak_pct = th.drop_from_peak_pct
+    fd.pct_30d_ago = th.pct_30d_ago
+    fd.micro_th_score = micro_th_score if micro_th_score is not None else 50
+    fd.is_bear = is_bear
+    fd.cap_triggered = cap_triggered
+    fd.rally_decay = rally_decay
+    fd.market_regime = market_regime
+    fd.selling_pressure_score = selling_pressure_score
+    fd.volatility_regime = volatility_regime
 
     score = th.score
 
@@ -258,7 +297,7 @@ def compute_market_fusion_decision(percentile_90d, th, zscore_90d=0.0, cycle_pha
 
     if 25 <= percentile_90d <= 32 and percentile_trend == "rising":
 
-        effective_pct = 72  # keep in fair zone
+        effective_pct = 28  # keep in undervalued zone (hysteresis: delay fair transition when rising)
 
         hysteresis_applied = True
 
@@ -304,47 +343,64 @@ def compute_market_fusion_decision(percentile_90d, th, zscore_90d=0.0, cycle_pha
 
     fd.maturing_detail = maturing_detail
 
-    if effective_pct <= 30:
+    # ---- Sentiment resonance/conflict/bubble rules (P0) ----
+    sent_boost = 0
+    sentiment_conflict = False
+    bubble_resonance = False
+    sent_detail = ""
 
-        fd.zone = "undervalued"; fd.zone_label = "\u4f4e\u4f30\u533a\u95f4"
+    # Resonance: extreme fear + deep undervalue
+    if sentiment_score >= 85 and percentile_90d <= 20:
+        sent_boost = 3
+        sent_detail = "极度恐惧+深度低估共振, TH+3"
+    # Conflict: undervalue + mild greed
+    if percentile_90d <= 25 and sentiment_score <= 35:
+        sent_boost = -2
+        sentiment_conflict = True
+        sent_detail = "低估+轻度贪婪冲突, TH-2"
+    # Bubble hard cap: extreme greed + bubble
+    if percentile_90d >= 90 and sentiment_score <= 20:
+        bubble_resonance = True
 
-        if score >= T["TH_STRONG"]:
+    if sent_boost != 0:
+        score = score + sent_boost
+        fd.deduction_sources = list(fd.deduction_sources or [])
+        fd.deduction_sources.append(sent_detail)
 
+    if effective_pct <= 45:
+
+        fd.zone = "undervalued"; fd.zone_label = "低估区间"
+
+        # S25-45: context-aware buy (p≤45 + TH≥35 + Z≤0.5 + 30天前市场健康)
+        if score >= T["TH_NEUTRAL"] + 5 and zscore_90d <= 0.5 and fd.pct_30d_ago > 50:
+            fd.action = "buy"; fd.action_label = "🟢 低估区间·分批建仓"
+            fd.action_detail = "大盘低估+趋势中性偏强，近期市场环境健康，分批建仓"
+            fd.global_position_limit = 0.30
+
+        # Original: deep undervalue + strong trend (p≤30 + TH≥55 + Z≤0)
+        elif effective_pct <= 30 and score >= T["TH_STRONG"] and zscore_90d <= 0:
             if rebound_late:
-
-                fd.action = "watch"; fd.action_label = "\U0001f7e1 \u53cd\u5f39\u672b\u671f\u00b7\u8f7b\u4ed3\u8bd5\u63a2"
-
-                fd.action_detail = "\u4f4e\u4f30+\u8d8b\u52bf\u5065\u5eb7\u4f46\u5904\u4e8e\u53cd\u5f39\u540e\u534a\u6bb5\uff0c\u8f7b\u4ed3\u8bd5\u63a2\uff0c\u4e25\u683c\u6b62\u635f"
-
+                fd.action = "watch"; fd.action_label = "🟡 反弹末期·轻仓试探"
+                fd.action_detail = "低估+趋势健康但处于反弹后半段，轻仓试探，严格止损"
                 fd.global_position_limit = 0.15
-
             else:
-
-                fd.action = "buy"; fd.action_label = "\U0001f7e2 \u5efa\u4ed3\u533a\u57df"
-
-                fd.action_detail = "\u5927\u76d8\u4f4e\u4f30+\u8d8b\u52bf\u5065\u5eb7\uff0c\u9002\u5408\u5206\u6279\u5efa\u4ed3"
-
+                fd.action = "buy"; fd.action_label = "🟢 建仓区域"
+                fd.action_detail = "大盘低估+趋势健康，适合分批建仓"
                 fd.global_position_limit = 0.30
 
-        elif score >= T["TH_NEUTRAL"]:
-
+        # TH≥35 at p≤30: watch/bottom watch
+        elif effective_pct <= 30 and score >= T["TH_NEUTRAL"] + 10:
             if rebound_late:
-
-                fd.action = "watch"; fd.action_label = "\U0001f7e1 \u53cd\u5f39\u5c3e\u58f0\u00b7\u89c2\u671b"
-
-                fd.action_detail = "\u4f4e\u4f30\u4f46\u53cd\u5f39\u5df2\u8fd1\u5c3e\u58f0\uff0c\u4e0d\u8ffd\u6da8\uff0c\u7b49\u5f85\u56de\u8c03\u673a\u4f1a"
-
+                fd.action = "watch"; fd.action_label = "🟡 反弹尾声·观望"
+                fd.action_detail = "低估但反弹已近尾声，不追涨，等待回调机会"
                 fd.global_position_limit = 0.10
-
             else:
+                fd.action = "watch"; fd.action_label = "🟡 筑底观察"
+                fd.action_detail = "大盘低估但趋势偏弱，等待趋势确认"
+                fd.global_position_limit = 0.15
 
-                fd.action = "watch"; fd.action_label = "\U0001f7e1 \u7b51\u5e95\u89c2\u5bdf"
-
-                fd.action_detail = "\u5927\u76d8\u4f4e\u4f30\u4f46\u8d8b\u52bf\u504f\u5f31\uff0c\u7b49\u5f85\u8d8b\u52bf\u786e\u8ba4"
-
-            fd.global_position_limit = 0.15
-
-        else:
+        # TH<35 at p≤30: avoid unless accumulation
+        elif effective_pct <= 30:
             if cycle_phase == "accumulation":
                 fd.action = "watch"; fd.action_label = "🟡 筑底观察"
                 fd.action_detail = "大盘低估+吸筹期，趋势弱但底部特征明显，可轻仓参与，分批建仓"
@@ -353,6 +409,21 @@ def compute_market_fusion_decision(percentile_90d, th, zscore_90d=0.0, cycle_pha
                 fd.action = "avoid"; fd.action_label = "🔴 下跌中继"
                 fd.action_detail = "大盘低估但趋势极弱，暂不参与"
                 fd.global_position_limit = 0.05
+
+        # p30-45 + S25-45 not met: based on trend
+        else:
+            if score >= T["TH_STRONG"]:
+                fd.action = "hold"; fd.action_label = "🟢 健康持有"
+                fd.action_detail = "大盘趋势健康，持仓不动"
+                fd.global_position_limit = 0.25
+            elif score >= T["TH_NEUTRAL"]:
+                fd.action = "watch"; fd.action_label = "🟡 震荡观望"
+                fd.action_detail = "大盘合理区间但趋势中性"
+                fd.global_position_limit = 0.15
+            else:
+                fd.action = "reduce"; fd.action_label = "🟡 回调关注"
+                fd.action_detail = "大盘趋势转弱，注意回调"
+                fd.global_position_limit = 0.10
 
     elif effective_pct <= 70:
 
@@ -368,11 +439,17 @@ def compute_market_fusion_decision(percentile_90d, th, zscore_90d=0.0, cycle_pha
 
         elif score >= T["TH_NEUTRAL"]:
 
-            fd.action = "watch"; fd.action_label = "\U0001f7e1 \u9707\u8361\u89c2\u671b"
+            # Drop-triggered buy: catches bull market pullbacks before full recovery
+            if th.drop_from_peak_pct <= -12 and zscore_90d <= 0.5:
+                fd.action = "buy"; fd.action_label = "\U0001f7e2 \u56de\u8c03\u786e\u8ba4\u00b7\u5206\u6279\u4ecb\u5165"
+                fd.action_detail = f"\u5927\u76d8\u4ece\u8fd121\u65e5\u9ad8\u70b9\u56de\u843d{th.drop_from_peak_pct:.0f}%\uff0c\u8d8b\u52bf\u5df2\u7a33\u5b9a\u5c5e\u56de\u8c03\u786e\u8ba4\u4e70\u70b9\uff0c\u5206\u6279\u4ecb\u5165"
+                fd.global_position_limit = 0.20
+            else:
+                fd.action = "watch"; fd.action_label = "\U0001f7e1 \u9707\u8361\u89c2\u671b"
 
-            fd.action_detail = "\u5927\u76d8\u5408\u7406\u533a\u95f4\u4f46\u8d8b\u52bf\u4e2d\u6027"
+                fd.action_detail = "\u5927\u76d8\u5408\u7406\u533a\u95f4\u4f46\u8d8b\u52bf\u4e2d\u6027"
 
-            fd.global_position_limit = 0.15
+                fd.global_position_limit = 0.15
 
         else:
 
@@ -417,6 +494,87 @@ def compute_market_fusion_decision(percentile_90d, th, zscore_90d=0.0, cycle_pha
             fd.action_detail = "\u5927\u76d8\u9ad8\u4f4d\u8d8b\u52bf\u5d29\u584c\uff0c\u65e0\u6761\u4ef6\u79bb\u573a"
 
             fd.global_position_limit = 0.0
+    # ---- Micro TH override: catch small cycles within big trend ----
+    if micro_th_score is not None and micro_th_score > 0:
+        micro_up = {"low_volatile": 45, "high_volatile": 55}.get(volatility_regime, 50)
+        micro_strong = {"low_volatile": 60, "high_volatile": 70}.get(volatility_regime, 65)
+        micro_down = {"low_volatile": 30, "high_volatile": 40}.get(volatility_regime, 35)
+        if fd.action in ("avoid",) and micro_th_score >= micro_up and fd.zone == "undervalued":
+            fd.action = "watch"
+            fd.action_label = "🟡 短期反转·观察"
+            fd.action_detail = "大盘长期仍弱，但短期反转确认，可轻仓尝试"
+            fd.global_position_limit = max(fd.global_position_limit, 0.12)
+        if fd.action in ("watch",) and fd.zone == "undervalued" and micro_th_score >= micro_strong:
+            if (is_bear and not cap_triggered) or fd.rally_decay:
+                fd.action = "watch"
+                fd.action_label = "🟡 短期反转·观察"
+                fd.action_detail = "熊市反弹，动能衰减，暂缓建仓"
+            else:
+                fd.action = "buy"
+                fd.action_label = "🟢 短期反转·分批建仓"
+                fd.action_detail = "大盘短期反转强劲，可分批建仓"
+                fd.global_position_limit = max(fd.global_position_limit, 0.20)
+        if micro_th_score < micro_down and fd.action in ("hold", "buy") and fd.zone in ("fair", "undervalued"):
+            fd.action = "reduce"
+            fd.action_label = "🟡 短期衰减·减仓"
+            fd.action_detail = "短期动能衰减，注意回调"
+            fd.global_position_limit = min(fd.global_position_limit, 0.10)
+    if fd.rally_decay:
+        # Downgrade buy/watch signals when rally momentum is decaying.
+        # Exception: fresh V-bottom where zscore is still deeply negative.
+        if fd.action in ("watch", "buy") and fd.zone in ("fair", "undervalued"):
+            is_fresh_vbottom = (fd.corrected_th_score >= T["TH_STRONG"]
+                                and fd.zone == "undervalued"
+                                and fd.percentile_90d <= 30
+                                and zscore_90d <= -1.0)
+            if is_fresh_vbottom:
+                pass  # True V-bottom: zscore still deeply negative, rally just starting
+            else:
+                fd.action = "reduce"
+                fd.action_label = "🟡 反弹衰竭·减仓"
+                fd.action_detail = "反弹动能衰竭，注意回调风险"
+                fd.global_position_limit = min(fd.global_position_limit, 0.10)
+
+    # ---- Selling pressure exhaustion override (v4.6) ----
+    if selling_pressure_score >= 70:
+        if fd.action in ("avoid", "sell", "reduce") and percentile_90d <= 20:
+            fd.action = "watch"
+            fd.action_label = "🟡 抛压衰竭·底部观察"
+            fd.action_detail = "卖方力量枯竭+止跌企稳，底部特征显现，轻仓观察"
+            fd.global_position_limit = max(fd.global_position_limit, 0.10)
+        if selling_pressure_score >= 85 and percentile_90d <= 15 and (micro_th_score or 0) >= 55:
+            fd.action = "buy"
+            fd.action_label = "🟢 抛压衰竭·分批建仓"
+            fd.action_detail = "深度恐慌后卖方枯竭，短期企稳，可分批建仓"
+            fd.global_position_limit = max(fd.global_position_limit, 0.15)
+
+    # ---- Sentiment conflict cap: undervalue + mild greed -> 5% max ----
+    if sentiment_conflict:
+        if fd.global_position_limit > 0.05:
+            fd.global_position_limit = 0.05
+
+
+    # ---- Bubble resonance hard cap: override everything ----
+    if bubble_resonance:
+        fd.action = "avoid"
+        fd.action_label = "🔴 泡沫共振·禁止开仓"
+        fd.action_detail = "极度贪婪+估值泡沫，全局禁止新开多仓"
+        fd.global_position_limit = 0.0
+        return fd
+
+    # ---- Extreme oversold override: V-bottom detection ----
+    if fd.action == "avoid" and sentiment_score >= 85 and percentile_90d <= 5 and zscore_90d <= -2.0 and (th.z_floor_applied or score < 25):
+        fd.action = "watch"
+        fd.action_label = "🟡 极限超跌·底部观察"
+        fd.action_detail = "极度恐惧+深度超卖，V型底部特征明显，轻仓观察"
+        fd.global_position_limit = max(fd.global_position_limit, 0.10)
+
+    # Bear market safety net: weak buy without capitulation + falling price -> hold
+    if fd.action == "buy" and fd.is_bear and not fd.cap_triggered:
+        if fd.corrected_th_score < 65 and fd.percentile_trend == "falling":
+            fd.action = "hold"
+            fd.action_label = "\U0001f7e1 \u718a\u5e02\u4e0d\u8ffd\u00b7\u6301\u4ed3\u89c2\u671b"
+            fd.action_detail = "\u718a\u5e02\u4e2d\u6ca1\u6709\u66b4\u8dcc\u6b62\u8dcc\u4fe1\u53f7\uff0c\u6682\u4e0d\u5efa\u4ed3"
 
     return fd
 
@@ -424,13 +582,34 @@ def compute_market_fusion_decision(percentile_90d, th, zscore_90d=0.0, cycle_pha
 
 
 
+
+def compute_market_regime(prices):
+    """Determine market regime: bull / sideways / bear.
+    Based on MA30 vs MA90 relationship + MA90 trend confirmation.
+    Bull requires BOTH MA30>MA90 AND MA90 rising (filters bear market bounces).
+    Returns: (regime: str, label: str, class: str, detail: str)
+    """
+    if len(prices) < 90:
+        return ("sideways", "不足", "", "数据不足无法判断")
+    ma30 = sum(prices[-30:]) / 30
+    ma90 = sum(prices[-90:]) / 90
+    ratio = ma30 / ma90 - 1
+    # MA90 trend: is the 90d average rising?
+    ma90_rising = sum(prices[-30:]) / 30 > sum(prices[-120:-90]) / 30 if len(prices) >= 120 else True
+    if ratio < -0.03:
+        return ("bear", "🐴 熊市", "bear", f"MA30较MA90低{abs(ratio)*100:.0f}%，下跌趋势")
+    elif ratio > 0.03 and ma90_rising:
+        return ("bull", "🐂 牛市", "bull", f"MA30较MA90高{ratio*100:.0f}%，上升趋势")
+    else:
+        return ("sideways", "📊 震荡", "sideways", f"MA30较MA90{ratio*100:+.1f}%，无明显方向")
+
 def market_fd_summary(fd):
 
     return dict(percentile_90d=fd.percentile_90d, raw_th_score=fd.raw_th_score,
 
                 corrected_th_score=fd.corrected_th_score, zone=fd.zone,
 
-                zone_label=fd.zone_label, action=fd.action,
+                zone_label=fd.zone_label, action=fd.action, drop_from_peak_pct=fd.drop_from_peak_pct,
 
                 action_label=fd.action_label, action_detail=fd.action_detail,
 
@@ -444,7 +623,12 @@ def market_fd_summary(fd):
 
                 hysteresis_applied=fd.hysteresis_applied,
 
-                maturing_detail=fd.maturing_detail)
+                maturing_detail=fd.maturing_detail,
+                micro_th_score=fd.micro_th_score,
+                is_bear=fd.is_bear,
+                cap_triggered=fd.cap_triggered,
+                rally_decay=fd.rally_decay,
+                pct_30d_ago=fd.pct_30d_ago)
 
 
 

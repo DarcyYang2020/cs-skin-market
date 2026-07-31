@@ -86,6 +86,7 @@ class FusionDecision:
     deduction_sources: list = field(default_factory=list)
     liquidity_filtered: bool = False
     market_relative_strength: bool = False
+    position_limit: float = 1.0
 
 
 # ============================================================
@@ -685,7 +686,7 @@ def trend_health_summary(th):
 #  Fusion Decision Engine
 # ============================================================
 
-def compute_fusion_decision(percentile_90d, th, liquidity_score=50, zscore_90d=0.0, cycle_phase="unknown", market_cycle="unknown", market_30d_change=0.0, item_7d_change=0.0, event_risk_discount=1.0, prices=None):
+def compute_fusion_decision(percentile_90d, th, liquidity_score=50, zscore_90d=0.0, cycle_phase="unknown", market_cycle="unknown", market_30d_change=0.0, item_7d_change=0.0, event_risk_discount=1.0, prices=None, sentiment_score=50.0):
     """Combine percentile + corrected trend health -> action.
 
     When market is weak (bear/distribution) but item shows independent strength
@@ -715,13 +716,20 @@ def compute_fusion_decision(percentile_90d, th, liquidity_score=50, zscore_90d=0
         fd.deduction_sources = th.deduction_sources
         return fd
 
+    # Sentiment-adjusted trend health: fear→small boost, greed→small dampen
+    sentiment_adjustment = (sentiment_score - 50) / 50 * 3
+    ts = min(100, max(0, ts + sentiment_adjustment))
+
     if   pct <= 30: fd.zone = "undervalued"; fd.zone_label = "🟢 低估区 (0-30%)"
     elif pct <= 70: fd.zone = "中性无序";      fd.zone_label = "🟡 中性区 (30-70%)"
     else:           fd.zone = "overvalued";   fd.zone_label = "🔴 高估泡沫区 (70-100%)"
 
     # Decision matrix
     if fd.zone == "undervalued":
-        if ts >= T["TH_STRONG"]:
+        # Dynamic Z-gate: bear/consolidation=strict(≤0), accumulation=mild(≤0.5), markup=loose(≤1.0), distribution=strictest(≤-0.5)
+        cycle_z_gates = {"bear": 0, "consolidation": 0, "accumulation": 0.5, "markup": 1.0, "distribution": -0.5}
+        z_threshold = cycle_z_gates.get(market_cycle, 0)
+        if ts >= T["TH_STRONG"] and zscore_90d <= z_threshold:
             fd.action = "buy"
             fd.action_label = "\U0001f7e2 \u5206\u6279\u5efa\u4ed3"
             fd.action_detail = "\u4f4e\u4f4d\u4f4e\u4f30 + \u8d8b\u52bf\u5065\u5eb7\uff0c\u5b89\u5168\u8fb9\u9645\u6700\u9ad8\uff0c\u5efa\u8bae\u5206\u6279\u4ecb\u5165"
@@ -926,6 +934,7 @@ def fusion_decision_summary(fd):
         "action_detail": fd.action_detail,
         "deduction_sources": fd.deduction_sources,
         "liquidity_filtered": fd.liquidity_filtered,
+        "position_limit": fd.position_limit,
     }
 
 # === Market Index Trend Health ===

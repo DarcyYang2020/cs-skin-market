@@ -1,46 +1,43 @@
 ﻿<div class="card" id="index-card">
   <div class="card-header">
     <span class="card-title">📈 csQAQ 综合指数</span>
-    <span class="card-subtitle">数据更新：{{ last_update }}</span>
+    <span class="card-subtitle" style="font-size:12px;color:var(--text-muted);">{{ last_update }}</span>
     <button class="btn btn-outline btn-sm"
             hx-post="/api/market/refresh"
             hx-target="#dashboard-content"
             hx-swap="innerHTML"
-            hx-indicator="this">
-      <span class="htmx-indicator spinner"></span>
-      🔧 刷新数据
+            hx-indicator="#refresh-spinner">
+      <span id="refresh-spinner" class="htmx-indicator">⏳</span>
+      <span>🔄 刷新</span>
     </button>
   </div>
-  <div class="stat-grid">
+  <div class="stat-grid" style="grid-template-columns: repeat(4, 1fr);">
     <div class="stat-item">
-      <div class="stat-value">{{ "%.2f"|format(index.value) if index else "--" }}</div>
-      <div class="stat-label">当前指数</div>
+      <div class="stat-value">{{ "%.0f"|format(index.value) if index else "--" }}</div>
+      <div class="stat-label">指数</div>
     </div>
     <div class="stat-item">
       <div class="stat-value {{ 'up' if index and index.change_7d > 0 else ('down' if index and index.change_7d < 0 else 'neutral') }}">
         {{ "%+.2f%%"|format(index.change_7d) if index else "--" }}
       </div>
-      <div class="stat-label">7日涨跌</div>
+      <div class="stat-label">7日</div>
     </div>
     <div class="stat-item">
-      <div class="stat-value" style="font-size:20px;">
-        {{ index.mood if index else "--" }}
-      </div>
-      <div class="stat-label">市场情绪</div>
+      <div class="stat-value" style="font-size:20px;">{{ index.mood if index else "--" }}</div>
+      <div class="stat-label">情绪</div>
     </div>
     {% if regime_label %}
     <div class="stat-item">
-      <div class="stat-value" style="font-size:20px;">
+      <div class="stat-value" style="font-size:18px;">
         <span class="regime-badge {{ regime_class }}">{{ regime_label }}</span>
       </div>
-      <div class="stat-label">推荐仓位：{{ regime_position }}</div>
+      <div class="stat-label">策略</div>
     </div>
     {% endif %}
   </div>
-
   {% if regime_strategy %}
-  <div style="margin-top: 12px; padding: 10px 14px; background: rgba(255,255,255,0.03); border-radius: 6px; font-size: 13px; color: var(--text-secondary);">
-    💡 {{ regime_strategy }}
+  <div style="margin-top:8px;padding:8px 12px;background:rgba(255,255,255,0.03);border-radius:6px;font-size:13px;color:var(--text-secondary);">
+    {{ regime_strategy }}
   </div>
   {% endif %}
 </div>

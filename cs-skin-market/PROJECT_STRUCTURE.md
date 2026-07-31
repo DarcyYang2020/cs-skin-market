@@ -5,6 +5,7 @@
 ```
 cs-skin-market/
 ├── run_server.py              # Web 服务入口
+├── run_backtest.py             # 大盘回测脚本（低层引擎逐日回放）
 ├── start_webapp.bat            # Windows 一键启动脚本
 ├── AGENTS.md                   # Agent 指令（SKILL 配套）
 ├── SKILL.md                    # Codex Skill 定义
@@ -24,7 +25,8 @@ cs-skin-market/
 │   ├── market_th.py            # 大盘趋势健康度
 │   ├── valuation.py            # 历史估值分位（百分位+Z-score）
 │   ├── supply.py               # 供给端追踪（吸筹/派发检测）
-│   └── batch_scan.py         # 自选批量扫描
+│   ├── batch_scan.py         # 自选批量扫描
+│   └── factor_monitor.py     # 因子衰减监控
 ├── webapp/                     # Web 前端
 │   ├── main.py                 # FastAPI 路由（全端点+HTML渲染）
 │   ├── static/
@@ -35,6 +37,7 @@ cs-skin-market/
 │       ├── dashboard.html      # 首页仪表盘
 │       ├── search.html         # 单品搜索/分析页
 │       ├── watchlist.html      # 自选+持仓管理页
+│       ├── discover.html       # 发现高分品页（全武器扫描 TOP10）
 │       └── partials/           # HTMX 局部刷新组件
 │           ├── analysis.html        # 单品分析报告片段
 │           ├── index_analysis.html  # 大盘分析报告片段
@@ -134,6 +137,28 @@ cs-skin-market/
 | `dashboard_refresh.html` | 首页刷新片段 |
 
 ---
+
+## 发现高分品模块 (/discover)
+
+- 收敛范围：AK-47 / AWP / 沙漠之鹰 / M4A4 / USP / MP7 / SSG 08 / 法玛斯（仅崭新出厂）
+- 预评分过滤：pct_quick > 75 直接跳过；大盘 TH<55 且 score<6 且 composite<5 过滤
+- 综合排序：composite = score × (1 - pct/200) 估值折扣
+- 缓存：data/discover_latest.json，可反复查看上次结果
+- 异步：搜索+分析后台执行，前端轮询进度
+
+## 批量扫描 (/watchlist)
+
+- 选中自选物品 → POST /api/watchlist/batch-scan-selected 异步扫描
+- 进度轮询 /api/watchlist/batch-scan-progress/{scan_id}
+- 每个物品保存快照到 snapshots 表（覆盖老数据），报告可反复查看
+- 持仓个性化建议：_portfolio_advice() 基于成本/数量/现价生成
+
+## 回测工具 (run_backtest.py)
+
+- 用法：`python run_backtest.py [--start 2025-11-02] [--end YYYY-MM-DD]`
+- 逐日回放低层引擎函数，输出 buy 信号 + 14d/30d 前瞻收益 + 胜率
+- 与真实引擎对齐：is_bear 直接计算（熊市持久性）、rally_decay/cap_triggered/selling_pressure 同逻辑
+- 最新结果：14 信号 / 14d 胜率 86% / 均收益 +15.0%
 
 ## 数据流总览
 

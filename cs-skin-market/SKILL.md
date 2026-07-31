@@ -17,10 +17,12 @@ description: "CS 饰品市场投资策略全流程辅助。覆盖行情趋势分
 ### 大盘数据
 - csQAQ API: GET /api/v1/current_data?type=init → 指数/品类排名/市场情绪
 - csQAQ API: GET /api/v1/current_data?type=kline → 大盘 K 线
+- **抛压衰竭**：compute_selling_pressure_exhaustion() 三维打分（跌速衰减/无新低/止跌企稳），20日跌幅门控防下跌中继误报，≥70 进入底部观察
 
 ### 单品数据
 - csQAQ Playwright: 导航 goods/{id} → 拦截 info/chart API (90日日线)
 - csQAQ Playwright: 拦截 info/good?id= API → 详情 (steam_name, 价格)
+- csQAQ Playwright: **求购价图表**（出售价下拉→求购价）→ buy_price 90日序列 → order_book 价差/趋势
 - steamdt Playwright: 导航 /cs2/{market_hash_name} → 拦截 K线 API → 真实成交量
 
 ### 成交量合并
@@ -54,6 +56,19 @@ csQAQ chart API 提供 price + in_sale_count (不含真实成交量)。成交量
 | 庄盘识别 | 四因子检测 | 价格异常/供给控盘/量价/波动 |
 | 趋势健康度 | 六维 0-100 | 短期/长期/均线/波动/量价/回撤 |
 | 融合决策 | 百分位+TH+周期 | 操作指令 |
+| 求购承接 (v4.6) | 断层+价差趋势 0-100 | spread_pct / bid7d_chg / bid30d_chg / spread_avg |
+
+## 新增信号 (v4.6)
+
+### 大盘抛压衰竭
+- 熊市 V 侧底部先行信号，不依赖均线金叉
+- 三维打分（跌速衰减 0-40 + 无新低 0-30 + 止跌企稳 0-30），回测 30d 胜率 100%
+- 20 日跌幅硬门控（< -7%）杜绝下跌中继反弹误报
+
+### 单品求购承接
+- 实时买盘意愿快照，从页面「求购价」图表抓取完整历史
+- 断层宽度/收窄扩张/求购价趋势三维，承接弱（≤25）强制降级 buy→观望
+- order_book 价差深度已修复（原 401 导致恒为 0）
 
 ## 常见问题
 
