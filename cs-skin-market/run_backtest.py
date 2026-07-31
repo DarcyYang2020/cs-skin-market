@@ -108,6 +108,7 @@ def run(start_date="2025-11-02", end_date=None):
             rally_decay=rally_decay, sentiment_score=sent,
             cap_triggered=cap_triggered,
             selling_pressure_score=sp_score,
+            prices=vals_only,
         )
 
         if fd.action in ("buy", "oversold_buy"):

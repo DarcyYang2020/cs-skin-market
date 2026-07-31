@@ -1083,6 +1083,7 @@ def analyze_index_full(index_history: list) -> dict:
             cap_triggered=cap_triggered,
             rally_decay=rally_decay,
             sentiment_score=sentiment_score,
+            prices=values,
         )
 
         result["selling_pressure_exhaustion"] = sp_exhaust

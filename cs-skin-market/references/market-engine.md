@@ -348,6 +348,7 @@ order_book 字段扩展：`spread_pct / highest_buy / bid_7d_chg / bid_30d_chg /
 |---|---|---|
 | 2026-07-31 | v4.7 | 熊市持久性修复：is_bear 需 MA30 完全站上 MA90 才出熊；回测 37→14 信号、14d 胜率 86%；回测脚本与真实引擎对齐（rally_decay/is_bear/cap_triggered/selling_pressure） |
 | 2026-07-30 | v4.6 | 新增抛压衰竭信号 compute_selling_pressure_exhaustion（3日跌速衰减+3日无新低+高点抬高，20日跌幅门控）；融合决策接入 selling_pressure_score（≥70 底部观察 / ≥85 分批建仓）；新增市场状态判定 compute_market_regime（MA30/MA90 比率+MA90 趋势确认）；microTH 阈值表按波动率自适应 |
+| 2026-08-01 | v4.8 | 建仓区域假底部过滤(V5): 「建仓区域」buy需30日深跌≤-20%或14日急跌≤-10%放行, 否则降级假底部·观望; 回测buy 6次全胜(14d/30d 100%, 均+29.7%), 拦截2月六连发+6月假底 |
 | 2026-07-28 | v4.5 | 新增 V7 智能熊市过滤器（microTH + 恐慌抛售识别 + 反弹衰减拦截 + 熊市安全网）；移除非必要武器类型；新增发现高分品缓存 |
 | 2026-07-23 | v4.4 | 新增情绪因子全链路六层传导(compute_sentiment_factor); 情绪修正系数5→3(数据验证); 更新情绪数据源说明(greedy数值序列替代greedy_status三档) |
 | 2026-07-21 | v4.3 | 新增迟滞带防抖(方向A)+反弹末期买入降级(方向B)；更新大盘融合决策文档 |

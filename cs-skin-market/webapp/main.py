@@ -396,6 +396,8 @@ async def api_items_search(request: Request, query: str = Form(...)):
             daily_bars[-1].volume = steamdt_vol  # fill latest bar with real volume
 
         price_history = [k.close for k in daily_bars if k.close > 0] if daily_bars else []
+        if not price_history:
+            return HTMLResponse(_ae("K线数据获取失败，请稍后重试（csQAQ 图表采集偶发为空，已自动重试仍失败）"))
         volume_history = [k.volume for k in daily_bars] if daily_bars else []
         supply_history = [k.in_sale_count for k in daily_bars] if daily_bars else []
 

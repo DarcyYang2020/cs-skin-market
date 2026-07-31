@@ -258,7 +258,7 @@ class MarketFusionDecision:
 
 
 
-def compute_market_fusion_decision(percentile_90d, th, zscore_90d=0.0, cycle_phase="unknown", event_risk_discount=1.0, percentile_trend="flat", micro_th_score=None, is_bear=False, cap_triggered=False, rally_decay=False, sentiment_score=50, market_regime="sideways", selling_pressure_score=50, volatility_regime="normal"):
+def compute_market_fusion_decision(percentile_90d, th, zscore_90d=0.0, cycle_phase="unknown", event_risk_discount=1.0, percentile_trend="flat", micro_th_score=None, is_bear=False, cap_triggered=False, rally_decay=False, sentiment_score=50, market_regime="sideways", selling_pressure_score=50, volatility_regime="normal", prices=None):
 
     fd = MarketFusionDecision(percentile_90d=percentile_90d,
 
@@ -384,9 +384,21 @@ def compute_market_fusion_decision(percentile_90d, th, zscore_90d=0.0, cycle_pha
                 fd.action_detail = "低估+趋势健康但处于反弹后半段，轻仓试探，严格止损"
                 fd.global_position_limit = 0.15
             else:
-                fd.action = "buy"; fd.action_label = "🟢 建仓区域"
-                fd.action_detail = "大盘低估+趋势健康，适合分批建仓"
-                fd.global_position_limit = 0.30
+                # V5 fake-bottom gate (2026-07 数据验证): 建仓区域需 30日深跌 OR 14日急跌
+                if prices is None:
+                    deep_ok = True
+                else:
+                    chg30 = (prices[-1] / prices[-31] - 1) * 100 if len(prices) >= 31 else None
+                    chg14 = (prices[-1] / prices[-15] - 1) * 100 if len(prices) >= 15 else None
+                    deep_ok = (chg30 is not None and chg30 <= -20) or (chg14 is not None and chg14 <= -10)
+                if not deep_ok:
+                    fd.action = "watch"; fd.action_label = "🟡 假底部·观望"
+                    fd.action_detail = "低估+趋势健康但 30日未深跌/近期无急跌，疑似反弹末端或假底部，观望"
+                    fd.global_position_limit = 0.10
+                else:
+                    fd.action = "buy"; fd.action_label = "🟢 建仓区域"
+                    fd.action_detail = "大盘低估+趋势健康，适合分批建仓"
+                    fd.global_position_limit = 0.30
 
         # TH≥35 at p≤30: watch/bottom watch
         elif effective_pct <= 30 and score >= T["TH_NEUTRAL"] + 10:

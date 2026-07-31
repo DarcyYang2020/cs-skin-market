@@ -289,6 +289,17 @@ async def _modify_chart_route(route, request, platform=2):
         await route.continue_()
 
 async def fetch_item_detail(good_id: int):
+    """Fetch item detail + 90-day K-line with retry (csQAQ chart API is flaky)."""
+    for attempt in range(3):
+        item = await _fetch_item_detail_once(good_id)
+        if item and len(item.kline_90d) > 0:
+            return item
+        if attempt < 2:
+            await asyncio.sleep(1.5)
+    return item
+
+
+async def _fetch_item_detail_once(good_id: int):
     """Async: Fetch item detail + 90-day K-line from csqaq.com/goods/{good_id}."""
     item = ItemData()
     item.good_id = good_id
@@ -325,7 +336,7 @@ async def fetch_item_detail(good_id: int):
                 await route.continue_()
         page.on('response', on_response)
         await page.route('**/info/chart**', modify_chart)
-        await page.goto(f'{CSQAQ_WEB}/goods/{good_id}', wait_until='domcontentloaded', timeout=15000)
+        await page.goto(f'{CSQAQ_WEB}/goods/{good_id}', wait_until='domcontentloaded', timeout=25000)
         await page.wait_for_timeout(1500)
         # Extract youyoupin listing price from page DOM
         try:
@@ -371,7 +382,7 @@ async def fetch_item_detail(good_id: int):
             _csq_log.info(f"Empty chart from platform=2, retrying with platform=1 (Buff) good_id={good_id}")
             try:
                 await page.route('**/info/chart**', lambda r, req: _modify_chart_route(r, req, platform=1))
-                await page.goto(f'{CSQAQ_WEB}/goods/{good_id}', wait_until='domcontentloaded', timeout=15000)
+                await page.goto(f'{CSQAQ_WEB}/goods/{good_id}', wait_until='domcontentloaded', timeout=25000)
                 await page.wait_for_timeout(1500)
                 if captured['chart']:
                     data2 = json.loads(captured['chart'])
