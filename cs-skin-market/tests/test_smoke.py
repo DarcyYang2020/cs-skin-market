@@ -193,6 +193,46 @@ def t_panic():
          ia.event_risk_coefficient, ia.compute_fusion_decision, ia.compute_micro_th) = orig
 check('panic-resonance upgrade + micro-TH confirm', t_panic)
 
+print('[Analysis: Item price_zones sentiment-adaptive stop/take]')
+def t_zones():
+    from types import SimpleNamespace
+    import pipeline.item_analysis as ia
+    pos = SimpleNamespace(percentile_90d=5.0, zscore_90d=-2.0, high_90d=100.0,
+                          low_90d=50.0, mean_90d=80.0, median_90d=82.0,
+                          current_price=55.0, data_points=90, valuation_tier='undervalued')
+    orig = (ia._analyze_position, ia.compute_sentiment_score, ia.compute_sentiment_factor,
+            ia.event_risk_coefficient, ia.compute_fusion_decision, ia.compute_micro_th)
+    ia._analyze_position = lambda prices: pos
+    ia.compute_sentiment_factor = lambda: 0.0
+    ia.event_risk_coefficient = lambda: 1.0
+    ia.compute_micro_th = lambda prices: 65
+    def fake_fd(*a, **k):
+        return SimpleNamespace(action='buy', action_label='x', action_detail='', deduction_sources=[],
+                               zone='undervalued', zone_label='low', liquidity_filtered=False,
+                               percentile_90d=5.0, raw_th_score=40, corrected_th_score=40, position_limit=None)
+    ia.compute_fusion_decision = fake_fd
+    kw = dict(name='Test', prices=[60.0] * 86 + [58.0, 57.0, 56.0, 58.0], volumes=[0] * 90, market_pct_90d=5.0,
+              market_cycle='consolidation', market_zscore=-2.0, market_th_score=50,
+              market_30d_change=-10.0, recent_buy_dates=[], signal_date='2026-05-25')
+    try:
+        # fear: stop widened to -30%
+        ia.compute_sentiment_score = lambda: 80
+        pz = ia.run_item_analysis(**kw).price_zones
+        assert abs(pz['stop_loss'] - 58.0 * 0.70) < 0.01, pz['stop_loss']
+        assert '\u6050\u614c' in pz['strategy'] or 'stop' in pz['strategy'], pz['strategy']
+        # neutral: no sentiment note
+        ia.compute_sentiment_score = lambda: 50
+        pz = ia.run_item_analysis(**kw).price_zones
+        assert '\u6050\u614c' not in pz['strategy'], pz['strategy']
+        # greed: take profit note present
+        ia.compute_sentiment_score = lambda: 25
+        pz = ia.run_item_analysis(**kw).price_zones
+        assert '\u8d2a\u5a6a' in pz['strategy'], pz['strategy']
+    finally:
+        (ia._analyze_position, ia.compute_sentiment_score, ia.compute_sentiment_factor,
+         ia.event_risk_coefficient, ia.compute_fusion_decision, ia.compute_micro_th) = orig
+check('price_zones sentiment-adaptive stop/take', t_zones)
+
 print('[Analysis: Trend Health]')
 def t_th():
     from pipeline.trend_health import compute_trend_health

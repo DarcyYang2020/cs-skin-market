@@ -1385,6 +1385,20 @@ def run_item_analysis(
             exit_low = round(current * (1 + atr_pct * 0.3), 2)
             exit_high = round(current * (1 + atr_pct * 0.8), 2)
 
+        # ---- Sentiment-adaptive stop/take (2026-08-01 data: fear window -20%+ dips) ----
+        # Backtest 5/22-5/27: sent>=75 buys see deep shakeouts (-21%~-28%) in 3-5 days
+        # before the rally; tight stops cut winners. Greed windows: take profit early.
+        stop_loss_note = ""
+        if sentiment_score >= 75:
+            stop_loss = round(current * 0.70, 2)
+            take_profit = round(current * 1.30, 2)
+            stop_loss_note = ("\u6781\u5ea6\u6050\u614c\u7a97\u53e3\u5e38\u73b0-20%+\u6df1\u6d17\u76d8(\u56de\u6d4b5/22\u4e70\u5165\u540e3-5\u65e5\u56de\u64a4-21%~-28%\u518d\u53cd\u5f39)\uff0c"
+                              "\u6b62\u635f\u653e\u5bbd\u81f3-30%\u907f\u514d\u88ab\u6d17")
+        elif sentiment_score <= 30:
+            take_profit = round(current * (1 + atr_pct * 1.5), 2)
+            stop_loss = round(current * 0.92, 2)
+            stop_loss_note = "\u60c5\u7eea\u8d2a\u5a6a\u7a97\u53e3\u53ca\u65f6\u6b62\u76c8\u3001\u6536\u7d27\u6b62\u635f\u81f3-8%\u843d\u888b"
+
         # ---- ATH override ----
         ath_mode = current > hist_high * 0.98
         if ath_mode:
@@ -1419,6 +1433,8 @@ def run_item_analysis(
                 strat.append('趋势偏弱(' + str(th_score) + '分)')
             if whale_prob >= 40:
                 strat.append('庄家风险' + str(whale_prob) + '%')
+            if stop_loss_note:
+                strat.append(stop_loss_note)
 
             price_zones = {
                 "entry": {"low": entry_low, "high": entry_high},
