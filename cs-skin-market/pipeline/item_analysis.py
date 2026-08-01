@@ -1404,7 +1404,8 @@ def run_item_analysis(
         exit_high = max(exit_high, exit_low + 0.01)
 
         # ---- Downtrend guard: suppress buy zone when falling ----
-        if th_score < 40 or cycle_phase == 'distribution':
+        # 融合决策最终为 buy（如恐慌共振升级）时保留买入区间，避免与决策条矛盾
+        if (th_score < 40 or cycle_phase == 'distribution') and fd.action != 'buy':
             entry_low = 0
             entry_high = 0
             stop_loss = 0
