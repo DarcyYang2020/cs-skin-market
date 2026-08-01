@@ -390,7 +390,12 @@ def compute_market_fusion_decision(percentile_90d, th, zscore_90d=0.0, cycle_pha
                 else:
                     chg30 = (prices[-1] / prices[-31] - 1) * 100 if len(prices) >= 31 else None
                     chg14 = (prices[-1] / prices[-15] - 1) * 100 if len(prices) >= 15 else None
-                    deep_ok = (chg30 is not None and chg30 <= -20) or (chg14 is not None and chg14 <= -10)
+                    chg21 = (prices[-1] / prices[-22] - 1) * 100 if len(prices) >= 22 else None
+                    # V5.1 (2026-08 数据验证): 深跌确认 OR 低位温和反弹(21日涨幅0~8%)放行
+                    # 拦截 6/15(+20.1% 追高)/6/18(+9.8%)/6/30(-8.1% 中继), 放行 2月小牛六连发(14d全胜)
+                    deep_ok = ((chg30 is not None and chg30 <= -20)
+                               or (chg14 is not None and chg14 <= -10)
+                               or (chg21 is not None and 0 <= chg21 <= 8))
                 if not deep_ok:
                     fd.action = "watch"; fd.action_label = "🟡 假底部·观望"
                     fd.action_detail = "低估+趋势健康但 30日未深跌/近期无急跌，疑似反弹末端或假底部，观望"
