@@ -193,6 +193,18 @@ def _init_schema(conn: sqlite3.Connection) -> None:
     except sqlite3.OperationalError:
         pass  # column already exists
 
+    # Migrate: add action (fusion decision) for 7-day signal clustering
+    try:
+        conn.execute("ALTER TABLE snapshots ADD COLUMN action TEXT DEFAULT ''")
+    except sqlite3.OperationalError:
+        pass  # column already exists
+
+    conn.execute("""CREATE TABLE IF NOT EXISTS macro_history (
+        date TEXT PRIMARY KEY,
+        greedy_index REAL,
+        card_price REAL,
+        created_at TEXT DEFAULT (datetime('now','localtime')))""")
+
 
     conn.execute("""CREATE TABLE IF NOT EXISTS positions (
 
@@ -330,6 +342,30 @@ def save_market_index(conn, value, change_7d, mood=""):
 
                  (_today(), value, change_7d, mood))
 
+
+
+
+def save_macro_snapshot(conn, date, greedy_index=None, card_price=None):
+    """Persist daily macro snapshot (greedy index / card price) for historical backtests."""
+    conn.execute(
+        "INSERT OR REPLACE INTO macro_history (date, greedy_index, card_price) VALUES (?,?,?)",
+        (date, greedy_index, card_price),
+    )
+
+
+
+def get_greedy_history(conn, start=None):
+    """Return [(date, greedy_index)] ascending; empty until daily collection accumulates."""
+    if start:
+        rows = conn.execute(
+            "SELECT date, greedy_index AS value FROM macro_history WHERE date >= ? AND greedy_index IS NOT NULL ORDER BY date",
+            (start,),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT date, greedy_index AS value FROM macro_history WHERE greedy_index IS NOT NULL ORDER BY date"
+        ).fetchall()
+    return [(r["date"], float(r["value"])) for r in rows]
 
 
 
@@ -669,7 +705,7 @@ def get_latest_snapshot_report(conn, item_id):
 
 
 
-def cleanup_old_data(conn, retention_days=90):
+def cleanup_old_data(conn, retention_days=365):
 
     from datetime import timedelta
 

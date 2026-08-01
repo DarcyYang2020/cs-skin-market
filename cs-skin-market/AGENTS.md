@@ -128,6 +128,14 @@ webapp/templates/
 - 命中信号: 超跌反弹·分批建仓
 - 回测: 2025-11~2026-07, buy信号16次, 14d胜率88%, 均收益+9.65%
 
+### 单品买入硬过滤 (P0, 2026-08-01)
+在融合决策输出 buy 后追加三层数据验证过滤器（`run_item_analysis`）：
+- 大盘环境硬过滤: 大盘TH<45 且 大盘30日跌幅<0 → 🟡 大盘走弱·观望（2026-07 单品信号全灭的根因修复）
+- 情绪贪婪禁买: sentiment≤30（贪婪）→ 🟡 情绪贪婪·禁止追买（回测 30d 胜率 0%）
+- 半山腰降级: pct 25~40 且无恐慌共振(sent<85) → 🟡 半山腰·观望（回测 14d 胜率仅 28%）
+- 7日信号聚类: 7 日内已触发 buy 的同品 → 🟡 已在买点区·等待回调（消除重复信号，依赖 snapshots.action 列）
+- 回测（2025-11-02 起, warmup=30）: 67信号 → 18 独立信号, 14d 胜率 72%（均+14.9%）, 30d 胜率 65%（均+26.6%）
+
 ### 抛压衰竭信号 (v4.6, 2026-07-31)
 
 `compute_selling_pressure_exhaustion(prices)` (index_analysis.py)，熊市 V 型底部先行信号：
@@ -156,9 +164,9 @@ python run_item_backtest.py --items "AWP | 冥界之河 (崭新出厂);AK-47 | �
 ```
 
 - 数据源: `price_history`（2026-04-21 起，按日期取最新采集去重）+ `market_index`（2025-11-02 起）
-- 情绪: 离线回测用大盘价格近似（与 run_backtest.py 同一 approx_sentiment），实时引擎仍用贪婪指数
+- 情绪: 离线回测优先用持久化贪婪指数（macro_history 表，P1-1），无历史时回退大盘价格近似；实时引擎仍用贪婪指数
 - 缺失成交量/在售/盘口历史 → 回测用中性默认值，信号带 data_quality 标注
-- warmup=30 结果（2026-05-21~07-31, 67信号）: 14d胜率60.9%/均+15.7%, 30d胜率77%/均+29.3%
+- warmup=30 结果（2026-05-21~07-31, P0 过滤后 18 信号）: 14d胜率72%/均+14.9%, 30d胜率65%/均+26.6%（旧版 67 信号含重复: 14d 61%/30d 77%）
 - 分层结论（支撑补仓阈值）: pct≤25&th≥40 → 14d胜率75%; pct 25~40(半山腰) → 14d胜率28%; 市场贪婪(sent≤30) → 30d胜率0%
 - 输出: 控制台明细 + data/item_backtest_latest.json
 
@@ -180,6 +188,7 @@ cs-skin-market/
   SKILL.md               -- Codex Skill 元数据
   run_server.py          -- Web 服务启动脚本
   run_backtest.py        -- 大盘回测脚本（python run_backtest.py [--start 2025-11-02]）
+  run_item_backtest.py   -- 单品回测脚本（--all/--items/--warmup/--stratify）
   data/market.db         -- SQLite 数据库
   data/discover_latest.json -- 发现高分品缓存
   pipeline/
@@ -197,6 +206,7 @@ cs-skin-market/
     market_context.py    -- 大盘上下文构建（供单品分析参考）
     supply.py            -- 供给端追踪
     batch_scan.py        -- 自选批量扫描
+    backtest_common.py   -- 回测公共模块（approx_sentiment/patch_sentiment/build_market_context）
   webapp/
     main.py              -- FastAPI 应用
     templates/           -- Jinja2 模板
@@ -212,9 +222,10 @@ cs-skin-market/
 | items | 自选/持仓物品 | name, steam_name, good_id, rarity, source, in_watchlist, holding |
 | market_index | 大盘指数历史 | date, value, change_7d, mood |
 | price_history | 单品价格历史 | item_id, date, price_rmb, volume_day |
-| snapshots | 分析报告存档 | item_id, date, grade, total_score, report_html, report_md |
+| snapshots | 分析报告存档 | item_id, date, grade, total_score, report_html, report_md, action |
 | positions | 持仓记录 | item_id, buy_price, quantity, closed, close_price |
 | settings | 配置键值对 | key, value |
+| macro_history | 每日宏观快照（贪婪指数/点卡价，P1-1） | date, greedy_index, card_price |
 | backtest_results | 回测结果 | strategy, sharpe_ratio, max_drawdown_pct |
 
 ## 常见问题

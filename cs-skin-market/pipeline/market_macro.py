@@ -30,7 +30,29 @@ def _fetch_macro():
     resp = _api_get("/current_data?type=volume")
     _cache_data = resp.get("data", {})
     _cache_ts = now
+    _persist_macro(_cache_data)
     return _cache_data
+
+
+def _persist_macro(d: dict):
+    """Write-through: persist today greedy/card_price so backtests can use real history."""
+    try:
+        greedy = d.get("greedy", [])
+        card = d.get("card_price", [])
+        greedy_val = float(greedy[-1][1]) if greedy and isinstance(greedy[-1], list) and len(greedy[-1]) > 1 else None
+        card_val = float(card[-1][1]) if card and isinstance(card[-1], list) and len(card[-1]) > 1 else None
+        if greedy_val is None:
+            return
+        from datetime import datetime
+        from .db import get_conn, save_macro_snapshot
+        conn = get_conn()
+        try:
+            save_macro_snapshot(conn, datetime.now().strftime("%Y-%m-%d"), greedy_index=greedy_val, card_price=card_val)
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception:
+        pass  # persistence is best-effort, never break live analysis
 
 
 # ============================================================
@@ -85,17 +107,12 @@ def breadth_label(score: float) -> str:
 #  Greed/Fear Sentiment Score (0-100, contrarian)
 # ============================================================
 
-def compute_sentiment_score() -> float:
-    """Compute contrarian sentiment 0-100 from greedy index.
+def greedy_to_sentiment(current: float) -> float:
+    """Map raw greedy index -> contrarian sentiment 0-100.
 
     0 = extreme greed (danger, contrarian sell).
     100 = extreme fear (opportunity, contrarian buy).
     """
-    d = _fetch_macro()
-    greedy = d.get("greedy", [])
-    if not greedy:
-        return 50.0
-    current = float(greedy[-1][1]) if isinstance(greedy[-1], list) and len(greedy[-1]) > 1 else 100.0
     if current >= 150:
         return 5.0
     elif current >= 130:
@@ -116,6 +133,16 @@ def compute_sentiment_score() -> float:
         return 90.0
     else:
         return 95.0
+
+
+def compute_sentiment_score() -> float:
+    """Current contrarian sentiment 0-100 from greedy index (live fetch, 10min cache)."""
+    d = _fetch_macro()
+    greedy = d.get("greedy", [])
+    if not greedy:
+        return 50.0
+    current = float(greedy[-1][1]) if isinstance(greedy[-1], list) and len(greedy[-1]) > 1 else 100.0
+    return greedy_to_sentiment(current)
 
 
 def sentiment_label(score: float) -> str:
@@ -415,3 +442,13 @@ def event_risk_coefficient() -> float:
             conn.close()
     except Exception:
         return 1.0
+
+
+def get_greedy_history(start=None):
+    """Persisted greedy index [(date, value)] ascending for backtests; empty until daily collection."""
+    from .db import get_conn, get_greedy_history as _db_greedy
+    conn = get_conn()
+    try:
+        return _db_greedy(conn, start=start)
+    finally:
+        conn.close()

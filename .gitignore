@@ -33,3 +33,6 @@ data/_debug_*
 
 # Node (if any)
 node_modules/
+
+# runtime caches
+data/batch_scan_latest.json

@@ -11,16 +11,9 @@ from pipeline.index_analysis import (
 from pipeline.market_th import (
     compute_market_trend_health, compute_market_fusion_decision
 )
+from pipeline.backtest_common import approx_sentiment, patch_sentiment
 
-def approx_sentiment(values, idx):
-    """Approximate sentiment from price action: big drops = fear (high score)."""
-    if idx < 14:
-        return 50
-    chg7 = (values[idx] / values[idx - 7] - 1) * 100 if idx >= 7 else 0
-    chg14 = (values[idx] / values[idx - 14] - 1) * 100 if idx >= 14 else 0
-    return max(10, min(90, 50 - chg7 * 2 - chg14))
-
-def run(start_date="2025-11-02", end_date=None):
+def run(start_date="2025-11-02", end_date=None, cluster_days=3):
     from datetime import datetime as _dt, timedelta as _td
     warmup_start = (_dt.strptime(start_date, "%Y-%m-%d") - _td(days=120)).strftime("%Y-%m-%d")
     conn = db.get_conn()
@@ -100,6 +93,7 @@ def run(start_date="2025-11-02", end_date=None):
         sp_score = sp["score"] if isinstance(sp, dict) else 50
 
         sent = approx_sentiment(raw_values, i)
+        patch_sentiment(sent)  # deterministic: cycle/other modules use the same historical sentiment
 
         fd = compute_market_fusion_decision(
             percentile_90d=pct, th=mth,
@@ -119,7 +113,9 @@ def run(start_date="2025-11-02", end_date=None):
                 dd = min(dd, (raw_values[j] / current_value - 1) * 100)
 
             th_score = mth.corrected_score if hasattr(mth, "corrected_score") else mth.score
-            signals.append({
+            if signals and (_dt.strptime(current_date, "%Y-%m-%d") - _dt.strptime(signals[-1]["date"], "%Y-%m-%d")).days < cluster_days:
+                continue  # cluster: same 7-day window counts once
+            signals.append({
                 "date": current_date, "pct": round(pct, 1), "zscore": round(zscore, 2),
                 "th": round(th_score, 1), "sentiment": round(sent, 1),
                 "action_label": fd.action_label,
@@ -135,9 +131,10 @@ if __name__ == "__main__":
     p.add_argument("--start", default="2025-11-02")
     p.add_argument("--warmup", type=int, default=90)
     p.add_argument("--end", default=None)
+    p.add_argument("--cluster", type=int, default=3, help="merge signals within N days into one")
     args = p.parse_args()
 
-    signals = run(args.start, args.end)
+    signals = run(args.start, args.end, cluster_days=args.cluster)
     print(f"\nSignals: {len(signals)}")
     for s in signals:
         print(f"  {s['date']}: {s['action_label']} | pct={s['pct']:.0f}% z={s['zscore']:.2f} th={s['th']:.0f} | fwd14={s['fwd14']}% fwd30={s['fwd30']}%")

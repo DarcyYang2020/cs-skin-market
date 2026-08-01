@@ -963,6 +963,9 @@ def run_item_analysis(
     market_cycle: str = "unknown",
     market_zscore: float = 0,
     market_th_score: int = 50,
+    market_30d_change: float = 0,
+    recent_buy_dates: list = None,
+    signal_date: str = None,
     item_meta: dict = None,
 ):
     """
@@ -1066,7 +1069,55 @@ def run_item_analysis(
     # ---- Value Score ----
     value = compute_value_score(position, cycle, liquidity, probability)
 
-    fd = compute_fusion_decision(position.percentile_90d, th, liquidity.score, position.zscore_90d, cycle_phase=cycle.phase, event_risk_discount=event_risk_coefficient(), prices=prices, sentiment_score=compute_sentiment_score())
+    sentiment_score = compute_sentiment_score()
+    fd = compute_fusion_decision(
+        position.percentile_90d, th, liquidity.score, position.zscore_90d,
+        cycle_phase=cycle.phase,
+        market_cycle=market_cycle,
+        market_30d_change=market_30d_change,
+        item_7d_change=index_change_7d,
+        event_risk_discount=event_risk_coefficient(),
+        prices=prices,
+        sentiment_score=sentiment_score,
+    )
+
+    # ---- P0-1: Market environment hard filter (2026-07 item signals all lost in bear market) ----
+    if fd.action == "buy":
+        if market_th_score < 45 and market_30d_change < 0:
+            fd.action = "watch"
+            fd.action_label = "🟡 大盘走弱·观望"
+            fd.action_detail = f"大盘TH={market_th_score}且30日跌幅{market_30d_change:.1f}%，弱势环境禁止新开仓"
+            fd.deduction_sources.append("market_weak_filter")
+        elif sentiment_score <= 30:
+            fd.action = "watch"
+            fd.action_label = "🟡 情绪贪婪·禁止追买"
+            fd.action_detail = f"市场情绪贪婪(sent={sentiment_score:.0f})，追买期望为负"
+            fd.deduction_sources.append("greedy_no_buy")
+
+    # ---- P0-3: Half-way downgrade (pct 25~40 non-resonance: backtest 14d win 28%) ----
+    if fd.action == "buy" and position.percentile_90d is not None:
+        if 25 <= position.percentile_90d <= 40 and sentiment_score < 85:
+            fd.action = "watch"
+            fd.action_label = "🟡 半山腰·观望"
+            fd.action_detail = f"pct={position.percentile_90d:.0f}%处于半山腰且无恐慌共振，回测14d胜率仅28%"
+            fd.deduction_sources.append("halfway_downgrade")
+
+    # ---- P0-2: 7-day signal clustering (same item, avoid repeat buy spam) ----
+    if fd.action == "buy" and recent_buy_dates:
+        from datetime import datetime as _dt
+        if signal_date is None:
+            signal_date = _dt.now().strftime("%Y-%m-%d")
+        for d0 in recent_buy_dates:
+            try:
+                gap = (_dt.strptime(signal_date[:10], "%Y-%m-%d") - _dt.strptime(d0[:10], "%Y-%m-%d")).days
+            except ValueError:
+                continue
+            if 0 <= gap <= 7:
+                fd.action = "watch"
+                fd.action_label = "🟡 已在买点区·等待回调"
+                fd.action_detail = f"7日内({d0[:10]})已触发买入信号，避免重复建仓"
+                fd.deduction_sources.append("buy_cluster_dedup")
+                break
 
     # ---- Bid support (v4.6): real buy-side willingness snapshot ----
     bid_support = compute_bid_support(order_book)
@@ -1111,7 +1162,6 @@ def run_item_analysis(
             fd.deduction_sources.append("consecutive_buy")
 
     # ---- Position limit (graded by value + sentiment) ----
-    sentiment_score = compute_sentiment_score()
     if fd.action in ("buy", "hold"):
         pl_score = value.score
         if sentiment_score >= 75:

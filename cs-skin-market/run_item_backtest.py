@@ -15,66 +15,8 @@ Notes:
 import sys, json, argparse
 sys.path.insert(0, ".")
 from pipeline import db
-from pipeline.index_analysis import analyze_index, compute_micro_th, analyze_cycle_probability
-from pipeline.market_th import compute_market_trend_health
 import pipeline.item_analysis as ia
-
-
-def approx_sentiment(values, idx):
-    """Approximate sentiment from market price action: big drops = fear (high score)."""
-    if idx < 14:
-        return 50
-    chg7 = (values[idx] / values[idx - 7] - 1) * 100 if idx >= 7 else 0
-    chg14 = (values[idx] / values[idx - 14] - 1) * 100 if idx >= 14 else 0
-    return max(10, min(90, 50 - chg7 * 2 - chg14))
-
-
-_SENT = {"value": 50.0}
-
-
-def _sentiment_factor_from_score(s):
-    if s >= 85: return 0.6
-    if s >= 70: return 0.3
-    if s >= 50: return 0.0
-    if s >= 30: return -0.3
-    return -0.6
-
-
-def patch_sentiment():
-    ia.compute_sentiment_score = lambda: _SENT["value"]
-    ia.compute_sentiment_factor = lambda: _sentiment_factor_from_score(_SENT["value"])
-
-
-def build_market_context(start="2025-11-02"):
-    """date -> dict(pct, z, cycle, th, sentiment) computed like run_backtest.py."""
-    from datetime import datetime as dt, timedelta as td
-    warmup_start = (dt.strptime(start, "%Y-%m-%d") - td(days=120)).strftime("%Y-%m-%d")
-    conn = db.get_conn()
-    rows = conn.execute(
-        "SELECT date, value FROM market_index WHERE date >= ? ORDER BY date", (warmup_start,)
-    ).fetchall()
-    conn.close()
-    dates = [r["date"] for r in rows]
-    values = [r["value"] for r in rows]
-    ctx = {}
-    for i in range(90, len(values)):
-        d = dates[i]
-        if d < start:
-            continue
-        window = values[i - 90:i + 1]
-        result = analyze_index([(dates[j], values[j]) for j in range(i - 90, i + 1)])
-        if not result.get("has_data"):
-            continue
-        pos = result["position"]
-        pct = pos.get("percentile_90d", 50)
-        z = pos.get("zscore_90d", 0)
-        mth = compute_market_trend_health(window, volumes=None)
-        th = mth.corrected_score if hasattr(mth, "corrected_score") else mth.score
-        cycle = analyze_cycle_probability(window, pct, z)
-        phase = cycle.get("phase", "unknown") if isinstance(cycle, dict) else "unknown"
-        sent = approx_sentiment(values, i)
-        ctx[d] = {"pct": pct, "z": z, "cycle": phase, "th": th, "sentiment": sent}
-    return ctx
+from pipeline.backtest_common import approx_sentiment, patch_sentiment, build_market_context
 
 
 def load_item_series(item_id):
@@ -107,6 +49,7 @@ def backtest_item(item_id, name, start, end, warmup, market_ctx):
                 "signals": [], "error": "not enough history"}
     n = len(prices)
     signals = []
+    recent_buys = []
     for i in range(warmup, n):
         d = dates[i]
         if end and d > end:
@@ -116,7 +59,7 @@ def backtest_item(item_id, name, start, end, warmup, market_ctx):
         if d not in market_ctx:
             continue
         mc = market_ctx[d]
-        _SENT["value"] = mc["sentiment"]
+        patch_sentiment(mc["sentiment"])
         prefix = prices[:i + 1]
         try:
             res = ia.run_item_analysis(
@@ -128,6 +71,9 @@ def backtest_item(item_id, name, start, end, warmup, market_ctx):
                 market_cycle=mc["cycle"],
                 market_zscore=mc["z"],
                 market_th_score=mc["th"],
+                market_30d_change=mc.get("chg30", 0),
+                recent_buy_dates=recent_buys,
+                signal_date=d,
             )
         except Exception as exc:
             signals.append({"date": d, "error": str(exc)})
@@ -136,6 +82,7 @@ def backtest_item(item_id, name, start, end, warmup, market_ctx):
         action = fd.get("action", "")
         if action not in ("buy", "oversold_buy"):
             continue
+        recent_buys.append(d)
         fwd14 = (prices[i + 14] / prices[i] - 1) * 100 if i + 14 < n else None
         fwd30 = (prices[i + 30] / prices[i] - 1) * 100 if i + 30 < n else None
         dd = 0.0
@@ -143,6 +90,7 @@ def backtest_item(item_id, name, start, end, warmup, market_ctx):
             dd = min(dd, (prices[j] / prices[i] - 1) * 100)
         th = res.trend_health or {}
         signals.append({
+            "name": name,
             "date": d,
             "action": action,
             "action_label": fd.get("action_label", action),
@@ -205,7 +153,7 @@ if __name__ == "__main__":
     p.add_argument("--stratify", action="store_true", help="print win-rate stratification by pct/z/th/sentiment/mth")
     args = p.parse_args()
 
-    patch_sentiment()
+    patch_sentiment(50.0)
     market_ctx = build_market_context(args.start)
     print(f"market context dates: {len(market_ctx)} ({args.start} ~ {max(market_ctx) if market_ctx else '-'})")
 

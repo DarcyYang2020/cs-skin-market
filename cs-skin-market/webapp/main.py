@@ -52,6 +52,136 @@ def _today_str() -> str:
     return datetime.now(TZ_BJ).strftime("%Y-%m-%d")
 
 
+def _market_snapshot():
+    """Market context from stored index history (pct/z/cycle/th/chg7/chg30/sentiment)."""
+    conn = db.get_conn()
+    market_history = []
+    market_pct = 50
+    market_z = 0.0
+    market_cycle = "unknown"
+    market_th = 50
+    market_7d_change = 0.0
+    market_30d_change = 0.0
+    try:
+        rows = conn.execute(
+            "SELECT date, value FROM market_index ORDER BY date ASC"
+        ).fetchall()
+        market_history = [(r["date"], float(r["value"])) for r in rows] if rows else []
+        values = [v for _, v in market_history if v > 0]
+        if len(values) >= 30:
+            current_m = values[-1]
+            market_pct = round(sum(1 for v in values if v < current_m) / len(values) * 100, 1)
+            mean_m = sum(values) / len(values)
+            std_m = (sum((v - mean_m) ** 2 for v in values) / len(values)) ** 0.5
+            market_z = round((current_m - mean_m) / std_m, 2) if std_m > 0 else 0
+            m7 = values[-7] if len(values) >= 7 else values[0]
+            m30 = values[-30] if len(values) >= 30 else values[0]
+            market_7d_change = round((current_m - m7) / m7 * 100, 1) if m7 > 0 else 0
+            market_30d_change = round((current_m - m30) / m30 * 100, 1) if m30 > 0 else 0
+            vol_7d = 0.0
+            if len(values) >= 7:
+                vol_7d = (sum((v - mean_m) ** 2 for v in values[-7:]) / 7) ** 0.5 / mean_m * 100 if mean_m > 0 else 0
+            if market_30d_change > 5 and market_7d_change > 1:
+                market_cycle = "bull"
+            elif market_30d_change < -5 and market_7d_change < -1:
+                market_cycle = "bear"
+            elif vol_7d > 3:
+                market_cycle = "volatile"
+            elif abs(market_30d_change) <= 3 and abs(market_7d_change) <= 1:
+                market_cycle = "sideways"
+            elif market_30d_change < -2:
+                market_cycle = "distribution" if market_7d_change < 0 else "accumulation"
+            else:
+                market_cycle = "sideways"
+            market_th = max(0, min(100, 50 + market_30d_change * 3))
+    finally:
+        conn.close()
+    try:
+        from pipeline.market_macro import compute_sentiment_score
+        sentiment = float(compute_sentiment_score() or 50)
+    except Exception:
+        sentiment = 50.0
+    return {
+        "history": market_history,
+        "pct": market_pct, "z": market_z, "cycle": market_cycle,
+        "th": market_th, "chg7": market_7d_change, "chg30": market_30d_change,
+        "sentiment": sentiment,
+    }
+
+
+def _recent_buy_dates(conn, item_id, days=7):
+    """Snapshot buy-signal dates within the last N days (for 7-day signal clustering)."""
+    cutoff = (datetime.now(TZ_BJ) - timedelta(days=days)).strftime("%Y-%m-%d")
+    rows = conn.execute(
+        "SELECT date FROM snapshots WHERE item_id=? AND action IN ('buy','oversold_buy') AND date >= ? ORDER BY date DESC",
+        (item_id, cutoff),
+    ).fetchall()
+    return [r["date"][:10] for r in rows]
+
+
+def _save_item_snapshot(conn, item_id, analysis, price_rmb, today=None):
+    """Render + upsert today report into snapshots; records fusion action for 7-day buy dedup."""
+    if today is None:
+        today = _now_str()
+    report_html = templates.get_template("partials/analysis.html").render({
+        "name": analysis.name,
+        "price_rmb": analysis.price_rmb,
+        "volume_day": analysis.volume_day,
+        "volume_total": analysis.volume_total,
+        "position": analysis.position,
+        "aux": analysis.aux,
+        "cycle": analysis.cycle,
+        "liquidity": analysis.liquidity,
+        "probability": analysis.probability,
+        "value": analysis.value,
+        "whale": analysis.whale,
+        "data_quality": analysis.data_quality,
+        "trend_health": analysis.trend_health,
+        "fusion_decision": analysis.fusion_decision,
+        "error": None,
+        "oob_price": "",
+        "oob_grade": "",
+        "price_zones": analysis.price_zones,
+        "analysis_time": _now_str(),
+    })
+    score = analysis.value.score
+    grade = analysis.value.grade
+    action = ""
+    if isinstance(getattr(analysis, "fusion_decision", None), dict):
+        action = analysis.fusion_decision.get("action", "")
+    summary_json = json.dumps({
+        "valuation_tier": getattr(analysis.position, "valuation_tier", "") if hasattr(analysis, "position") else "",
+        "percentile_90d": getattr(analysis.position, "percentile_90d", 50) if hasattr(analysis, "position") else 50,
+        "cycle_phase": getattr(analysis.cycle, "phase", "") if hasattr(analysis, "cycle") else "",
+        "fusion_action": action,
+        "score": score, "grade": grade,
+    }, ensure_ascii=False)
+    existing = conn.execute(
+        "SELECT id FROM snapshots WHERE item_id=? AND date=?", (item_id, today)
+    ).fetchone()
+    if existing:
+        conn.execute(
+            "UPDATE snapshots SET report_html=?, total_score=?, grade=?, price_rmb=?, score_scarcity=?, score_volume=?, score_market=?, score_liquidity=?, recommendation=?, action=? WHERE id=?",
+            (report_html, score, grade, price_rmb,
+             analysis.value.scarcity if hasattr(analysis.value, "scarcity") else 0,
+             analysis.value.volume if hasattr(analysis.value, "volume") else 0,
+             analysis.value.market_sentiment if hasattr(analysis.value, "market_sentiment") else 0,
+             analysis.value.liquidity if hasattr(analysis.value, "liquidity") else 0,
+             summary_json, action, existing["id"]),
+        )
+    else:
+        conn.execute(
+            "INSERT INTO snapshots (item_id, date, report_html, total_score, grade, price_rmb, score_scarcity, score_volume, score_market, score_liquidity, recommendation, action) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+            (item_id, today, report_html, score, grade, price_rmb,
+             analysis.value.scarcity if hasattr(analysis.value, "scarcity") else 0,
+             analysis.value.volume if hasattr(analysis.value, "volume") else 0,
+             analysis.value.market_sentiment if hasattr(analysis.value, "market_sentiment") else 0,
+             analysis.value.liquidity if hasattr(analysis.value, "liquidity") else 0,
+             summary_json, action),
+        )
+    conn.commit()
+
+
 def _verify_item_name(query: str, item_name: str) -> bool:
     """Check if the returned item name is related to the query."""
     if not item_name:
@@ -402,26 +532,21 @@ async def api_items_search(request: Request, query: str = Form(...)):
         supply_history = [k.in_sale_count for k in daily_bars] if daily_bars else []
 
         # Build market context
-        conn_m = db.get_conn()
-        market_history = []
-        market_pct = 50
-        market_z = 0.0
+        ms = _market_snapshot()
+        market_history = ms["history"]
+
+        # Upsert item first: needed for recent buy dates + snapshot report
+        conn_p = db.get_conn()
         try:
-            rows = conn_m.execute(
-                "SELECT date, value FROM market_index ORDER BY date ASC"
-            ).fetchall()
-            market_history = [(r["date"], float(r["value"])) for r in rows] if rows else []
-            if market_history:
-                values = [v for _, v in market_history if v > 0]
-                if len(values) >= 30:
-                    current_m = values[-1]
-                    below = sum(1 for v in values if v < current_m)
-                    market_pct = round(below / len(values) * 100, 1)
-                    mean_m = sum(values) / len(values)
-                    std_m = (sum((v - mean_m) ** 2 for v in values) / len(values)) ** 0.5
-                    market_z = round((current_m - mean_m) / std_m, 2) if std_m > 0 else 0
+            pid = db.upsert_item(conn_p, name=exact_name, good_id=good_id, in_watchlist=1)
+            conn_p.commit()
         finally:
-            conn_m.close()
+            conn_p.close()
+        conn_r = db.get_conn()
+        try:
+            recent_buys = _recent_buy_dates(conn_r, pid)
+        finally:
+            conn_r.close()
 
         analysis = item_analysis.run_item_analysis(
             name=exact_name,
@@ -431,8 +556,13 @@ async def api_items_search(request: Request, query: str = Form(...)):
             order_book=item.order_book,
             index_change_7d=idx.change_7d,
             market_history=market_history,
-            market_pct_90d=market_pct,
-            market_zscore=market_z,
+            market_pct_90d=ms["pct"],
+            market_zscore=ms["z"],
+            market_cycle=ms["cycle"],
+            market_th_score=ms["th"],
+            market_30d_change=ms["chg30"],
+            recent_buy_dates=recent_buys,
+            signal_date=_today_str(),
         )
         analysis.volume_day = volume_day
         analysis.volume_total = volume_total
@@ -440,16 +570,22 @@ async def api_items_search(request: Request, query: str = Form(...)):
             analysis.aux.turnover_rate = round(volume_day / volume_total * 100, 3) if volume_total > 0 else 0
             analysis.aux.mean_volume_7d = volume_day
     
-        # Persist 90-day kline data to price_history table
-        if daily_bars:
-            try:
-                conn_p = db.get_conn()
-                pid = db.upsert_item(conn_p, name=exact_name, good_id=good_id, in_watchlist=1)
+        # Persist 90-day kline data (pid already upserted above)
+        conn_p = db.get_conn()
+        try:
+            if daily_bars:
                 db.save_price_history_batch(conn_p, pid, daily_bars)
-                conn_p.commit()
-                conn_p.close()
-            except Exception as _pe:
-                _web_log.warning("kline persist failed: " + str(_pe))
+            conn_p.commit()
+        except Exception as _pe:
+            _web_log.warning("kline persist failed: " + str(_pe))
+        finally:
+            conn_p.close()
+        # Record snapshot so reports + 7-day buy dedup stay in sync
+        conn_s = db.get_conn()
+        try:
+            _save_item_snapshot(conn_s, pid, analysis, price_rmb)
+        finally:
+            conn_s.close()
 
         # Save to analysis_results table
         th = analysis.trend_health or {}
@@ -578,26 +714,21 @@ async def api_items_analyze(
         supply_history = [k.in_sale_count for k in daily_bars] if daily_bars else []
 
         # Build market context
-        conn_m = db.get_conn()
-        market_history = []
-        market_pct = 50
-        market_z = 0.0
+        ms = _market_snapshot()
+        market_history = ms["history"]
+
+        # Upsert item first: needed for recent buy dates + snapshot report
+        conn_p = db.get_conn()
         try:
-            rows = conn_m.execute(
-                "SELECT date, value FROM market_index ORDER BY date ASC"
-            ).fetchall()
-            market_history = [(r["date"], float(r["value"])) for r in rows] if rows else []
-            if market_history:
-                values = [v for _, v in market_history if v > 0]
-                if len(values) >= 30:
-                    current_m = values[-1]
-                    below = sum(1 for v in values if v < current_m)
-                    market_pct = round(below / len(values) * 100, 1)
-                    mean_m = sum(values) / len(values)
-                    std_m = (sum((v - mean_m) ** 2 for v in values) / len(values)) ** 0.5
-                    market_z = round((current_m - mean_m) / std_m, 2) if std_m > 0 else 0
+            pid = db.upsert_item(conn_p, name=exact_name, good_id=good_id, in_watchlist=1)
+            conn_p.commit()
         finally:
-            conn_m.close()
+            conn_p.close()
+        conn_r = db.get_conn()
+        try:
+            recent_buys = _recent_buy_dates(conn_r, pid)
+        finally:
+            conn_r.close()
 
         analysis = item_analysis.run_item_analysis(
             name=exact_name,
@@ -607,24 +738,35 @@ async def api_items_analyze(
             order_book=item.order_book,
             index_change_7d=idx.change_7d,
             market_history=market_history,
-            market_pct_90d=market_pct,
-            market_zscore=market_z,
+            market_pct_90d=ms["pct"],
+            market_zscore=ms["z"],
+            market_cycle=ms["cycle"],
+            market_th_score=ms["th"],
+            market_30d_change=ms["chg30"],
+            recent_buy_dates=recent_buys,
+            signal_date=_today_str(),
         )
         analysis.volume_day = volume_day
         analysis.volume_total = volume_total
         if hasattr(analysis, 'aux') and analysis.aux:
             analysis.aux.turnover_rate = round(volume_day / volume_total * 100, 3) if volume_total > 0 else 0
             analysis.aux.mean_volume_7d = volume_day
-    # Persist 90-day kline data
-        if daily_bars:
-            try:
-                conn_p = db.get_conn()
-                pid = db.upsert_item(conn_p, name=exact_name, good_id=good_id, in_watchlist=1)
+        # Persist 90-day kline data (pid already upserted above)
+        conn_p = db.get_conn()
+        try:
+            if daily_bars:
                 db.save_price_history_batch(conn_p, pid, daily_bars)
-                conn_p.commit()
-                conn_p.close()
-            except Exception as _pe:
-                _web_log.warning("kline persist failed: " + str(_pe))
+            conn_p.commit()
+        except Exception as _pe:
+            _web_log.warning("kline persist failed: " + str(_pe))
+        finally:
+            conn_p.close()
+        # Record snapshot so reports + 7-day buy dedup stay in sync
+        conn_s = db.get_conn()
+        try:
+            _save_item_snapshot(conn_s, pid, analysis, price_rmb)
+        finally:
+            conn_s.close()
 
 
         ctx = {
@@ -764,53 +906,13 @@ async def api_watchlist_analyze(request: Request, item_id: int):
         volumes = [k.volume for k in daily_bars] if daily_bars else []
 
         # Build market context from stored index history
-        conn_m = db.get_conn()
-        market_history = []
-        market_pct = 50
-        market_z = 0.0
-        market_cycle = "unknown"
-        market_th = 50
-        market_7d_change = 0.0
-        market_30d_change = 0.0
+        ms = _market_snapshot()
+        market_history = ms["history"]
+        conn_r = db.get_conn()
         try:
-            rows = conn_m.execute(
-                "SELECT date, value FROM market_index ORDER BY date ASC"
-            ).fetchall()
-            market_history = [(r["date"], float(r["value"])) for r in rows] if rows else []
-            if market_history:
-                values = [v for _, v in market_history if v > 0]
-                if len(values) >= 30:
-                    current_m = values[-1]
-                    below = sum(1 for v in values if v < current_m)
-                    market_pct = round(below / len(values) * 100, 1)
-                    mean_m = sum(values) / len(values)
-                    std_m = (sum((v - mean_m) ** 2 for v in values) / len(values)) ** 0.5
-                    market_z = round((current_m - mean_m) / std_m, 2) if std_m > 0 else 0
-                    # Compute market 7d and 30d change
-                    m7 = values[-7] if len(values) >= 7 else values[0]
-                    m30 = values[-30] if len(values) >= 30 else values[0]
-                    market_7d_change = round((current_m - m7) / m7 * 100, 1) if m7 > 0 else 0
-                    market_30d_change = round((current_m - m30) / m30 * 100, 1) if m30 > 0 else 0
-                    # Determine market cycle
-                    vol_7d = 0.0
-                    if len(values) >= 7:
-                        vol_7d = (sum((v - mean_m) ** 2 for v in values[-7:]) / 7) ** 0.5 / mean_m * 100 if mean_m > 0 else 0
-                    if market_30d_change > 5 and market_7d_change > 1:
-                        market_cycle = "bull"
-                    elif market_30d_change < -5 and market_7d_change < -1:
-                        market_cycle = "bear"
-                    elif vol_7d > 3:
-                        market_cycle = "volatile"
-                    elif abs(market_30d_change) <= 3 and abs(market_7d_change) <= 1:
-                        market_cycle = "sideways"
-                    elif market_30d_change < -2:
-                        market_cycle = "distribution" if market_7d_change < 0 else "accumulation"
-                    else:
-                        market_cycle = "sideways"
-                    # Market trend health: normalize 30d change to 0-100 score
-                    market_th = max(0, min(100, 50 + market_30d_change * 3))
+            recent_buys = _recent_buy_dates(conn_r, item_id)
         finally:
-            conn_m.close()
+            conn_r.close()
 
         analysis = item_analysis.run_item_analysis(
             name=exact_name,
@@ -820,10 +922,13 @@ async def api_watchlist_analyze(request: Request, item_id: int):
             order_book=item.order_book,
             index_change_7d=idx.change_7d,
             market_history=market_history,
-            market_pct_90d=market_pct,
-            market_zscore=market_z,
-            market_cycle=market_cycle,
-            market_th_score=market_th,
+            market_pct_90d=ms["pct"],
+            market_zscore=ms["z"],
+            market_cycle=ms["cycle"],
+            market_th_score=ms["th"],
+            market_30d_change=ms["chg30"],
+            recent_buy_dates=recent_buys,
+            signal_date=_today_str(),
         )
         analysis.volume_day = volume_day
         analysis.volume_total = volume_total
@@ -848,52 +953,7 @@ async def api_watchlist_analyze(request: Request, item_id: int):
         # Save report to snapshots for "report" button
         conn_save = db.get_conn()
         try:
-            from datetime import datetime as _dt
-            today = _dt.now().strftime('%Y-%m-%d %H:%M:%S')
-            # Check if snapshot exists for today, update or insert
-            existing = conn_save.execute(
-                "SELECT id FROM snapshots WHERE item_id=? AND date=?",
-                (item_id, today)
-            ).fetchone()
-            report_html = templates.get_template("partials/analysis.html").render({
-                "name": analysis.name,
-                "price_rmb": analysis.price_rmb,
-                "volume_day": analysis.volume_day,
-                "volume_total": analysis.volume_total,
-                "position": analysis.position,
-                "aux": analysis.aux,
-                "cycle": analysis.cycle,
-                "liquidity": analysis.liquidity,
-                "probability": analysis.probability,
-                "value": analysis.value,
-                "whale": analysis.whale,
-                "data_quality": analysis.data_quality,
-                "trend_health": analysis.trend_health,
-                "fusion_decision": analysis.fusion_decision,
-                    "error": None,"oob_price":"","oob_grade":"",
-                "price_zones": analysis.price_zones,
-                "analysis_time": __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M"),
-            })
-            if existing:
-                conn_save.execute(
-                    "UPDATE snapshots SET report_html=?, total_score=?, grade=?, price_rmb=?, score_scarcity=?, score_volume=?, score_market=?, score_liquidity=?, report_md=? WHERE id=?",
-                    (report_html, score, grade, analysis.price_rmb,
-                     analysis.value.scarcity if hasattr(analysis.value, "scarcity") else 0,
-                     analysis.value.volume if hasattr(analysis.value, "volume") else 0,
-                     analysis.value.market_sentiment if hasattr(analysis.value, "market_sentiment") else 0,
-                     analysis.value.liquidity if hasattr(analysis.value, "liquidity") else 0,
-                     "", existing["id"])
-                )
-            else:
-                conn_save.execute(
-                    "INSERT INTO snapshots (item_id, date, report_html, total_score, grade, price_rmb, score_scarcity, score_volume, score_market, score_liquidity) VALUES (?,?,?,?,?,?,?,?,?,?)",
-                    (item_id, today, report_html, score, grade, analysis.price_rmb,
-                     analysis.value.scarcity if hasattr(analysis.value, "scarcity") else 0,
-                     analysis.value.volume if hasattr(analysis.value, "volume") else 0,
-                     analysis.value.market_sentiment if hasattr(analysis.value, "market_sentiment") else 0,
-                     analysis.value.liquidity if hasattr(analysis.value, "liquidity") else 0)
-                )
-            conn_save.commit()
+            _save_item_snapshot(conn_save, item_id, analysis, price_rmb)
         except Exception as _se:
             import traceback as _tb
             with open("snapshot_error.log", "a", encoding="utf-8") as _ef:
@@ -901,6 +961,7 @@ async def api_watchlist_analyze(request: Request, item_id: int):
             _web_log.warning(f"Failed to save snapshot: {_se}")
         finally:
             conn_save.close()
+
 
         ctx = {
             "name": analysis.name,
@@ -1070,21 +1131,9 @@ async def _run_batch_scan_task(scan_id: str, rows: list):
     if idx is None or idx.value == 0:
         idx = type("obj", (object,), {"value": 0, "change_7d": 0})()
     # Compute market TH + sentiment once for resonance-aware portfolio advice
-    market_th_score = 50
-    sentiment_score = 50.0
-    try:
-        conn_m = db.get_conn()
-        rows_m = conn_m.execute('SELECT value FROM market_index ORDER BY date DESC LIMIT 90').fetchall()
-        conn_m.close()
-        if len(rows_m) >= 14:
-            vals_m = [r['value'] for r in reversed(rows_m)]
-            from pipeline.market_th import compute_market_trend_health
-            mth_m = compute_market_trend_health(vals_m)
-            market_th_score = mth_m.corrected_score if hasattr(mth_m, 'corrected_score') else mth_m.score
-        from pipeline.market_macro import compute_sentiment_score
-        sentiment_score = float(compute_sentiment_score() or 50)
-    except Exception:
-        pass
+    ms = _market_snapshot()
+    market_th_score = ms["th"]
+    sentiment_score = ms["sentiment"]
     results = []
     total = len(rows)
     for i, row in enumerate(rows):
@@ -1114,10 +1163,20 @@ async def _run_batch_scan_task(scan_id: str, rows: list):
                 except Exception:
                     pass
             volume_day = steamdt_vol if steamdt_vol > 0 else max(1, (item.volume_total or 0) // 20)
+            conn_r = db.get_conn()
+            try:
+                recent_buys = _recent_buy_dates(conn_r, item_id)
+            finally:
+                conn_r.close()
             analysis = item_analysis.run_item_analysis(
                 name=exact_name, prices=prices, volumes=volumes or None,
                 supply_hist=supply_hist or None, order_book=item.order_book,
                 index_change_7d=getattr(idx, "change_7d", 0),
+                market_cycle=ms["cycle"],
+                market_th_score=ms["th"],
+                market_30d_change=ms["chg30"],
+                recent_buy_dates=recent_buys,
+                signal_date=_today_str(),
             )
             analysis.volume_day = volume_day
             analysis.volume_total = item.volume_total or 0
@@ -1141,34 +1200,7 @@ async def _run_batch_scan_task(scan_id: str, rows: list):
             # Snapshot + summary
             conn_s = db.get_conn()
             try:
-                today = __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                report_html = templates.get_template("partials/analysis.html").render({
-                    "name": analysis.name, "price_rmb": item.price_rmb,
-                    "volume_day": analysis.volume_day, "volume_total": item.volume_total or 0,
-                    "position": analysis.position, "aux": analysis.aux,
-                    "cycle": analysis.cycle, "liquidity": analysis.liquidity,
-                    "probability": analysis.probability, "value": analysis.value,
-                    "whale": analysis.whale, "data_quality": analysis.data_quality,
-                    "trend_health": analysis.trend_health, "fusion_decision": analysis.fusion_decision,
-                    "error": None, "oob_price": "", "oob_grade": "",
-                    "price_zones": analysis.price_zones,
-                    "analysis_time": __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M"),
-                })
-                score = analysis.value.score
-                grade = analysis.value.grade
-                summary_json = _json.dumps({
-                    "valuation_tier": getattr(analysis.position, "valuation_tier", "") if hasattr(analysis, "position") else "",
-                    "percentile_90d": getattr(analysis.position, "percentile_90d", 50) if hasattr(analysis, "position") else 50,
-                    "cycle_phase": getattr(analysis.cycle, "phase", "") if hasattr(analysis, "cycle") else "",
-                    "fusion_action": analysis.fusion_decision.get("action", "") if isinstance(getattr(analysis, "fusion_decision", None), dict) else "",
-                    "score": score, "grade": grade,
-                }, ensure_ascii=False)
-                existing = conn_s.execute("SELECT id FROM snapshots WHERE item_id=? AND date=?", (item_id, today)).fetchone()
-                if existing:
-                    conn_s.execute("UPDATE snapshots SET report_html=?, total_score=?, grade=?, price_rmb=?, recommendation=? WHERE id=?", (report_html, score, grade, item.price_rmb, summary_json, existing["id"]))
-                else:
-                    conn_s.execute("INSERT INTO snapshots (item_id, date, report_html, total_score, grade, price_rmb, recommendation) VALUES (?,?,?,?,?,?,?)", (item_id, today, report_html, score, grade, item.price_rmb, summary_json))
-                conn_s.commit()
+                _save_item_snapshot(conn_s, item_id, analysis, item.price_rmb)
                 db.set_setting(conn_s, f"th_{pid}", _json.dumps(analysis.trend_health, ensure_ascii=False) if analysis.trend_health else "")
                 conn_s.commit()
             except Exception as _se:
@@ -1178,6 +1210,7 @@ async def _run_batch_scan_task(scan_id: str, rows: list):
                 _web_log.warning(f"Batch save error: {_se}")
             finally:
                 conn_s.close()
+
         except Exception as e:
             _web_log.error(f"batch scan item failed: {name}: {e}")
             results.append(dict(name=name, holding=holding, error=str(e)[:100]))
@@ -1300,18 +1333,8 @@ async def _run_discover_task(task_id: str, items: list):
     """Background: search each item via shared browser, analyze, sort by composite score."""
     from pipeline import collector_csqaq, collector_steamdt, item_analysis as _ia
     # Get market TH for context-aware filtering
-    market_th = 50
-    try:
-        conn_m = db.get_conn()
-        rows_m = conn_m.execute('SELECT value FROM market_index ORDER BY date DESC LIMIT 90').fetchall()
-        conn_m.close()
-        if len(rows_m) >= 14:
-            vals_m = [r['value'] for r in reversed(rows_m)]
-            from pipeline.market_th import compute_market_trend_health
-            mth_m = compute_market_trend_health(vals_m)
-            market_th = mth_m.corrected_score if hasattr(mth_m, 'corrected_score') else mth_m.score
-    except Exception:
-        pass
+    ms = _market_snapshot()
+    market_th = ms["th"]
     results = []
     total = len(items)
     skipped = 0
@@ -1352,6 +1375,9 @@ async def _run_discover_task(task_id: str, items: list):
                 name=exact_name, prices=prices, volumes=volumes or None,
                 supply_hist=supply_hist or None, order_book=item.order_book,
                 index_change_7d=0,
+                market_cycle=ms["cycle"],
+                market_th_score=ms["th"],
+                market_30d_change=ms["chg30"],
             )
 
             pos = analysis.position if hasattr(analysis, "position") else {}

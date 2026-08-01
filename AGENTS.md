@@ -129,7 +129,7 @@ csQAQ chart API 提供 price + in_sale_count（不含真实成交量）。成交
 
 ## 数据保留策略
 
-- price_history、snapshots、market_index：保留 90 天
+- price_history、snapshots、market_index：保留 365 天（延长前为 90 天，解锁更长回测）
 - scan_*.md 报告：保留 90 天
 - debug 文件（_debug_*）：保留 7 天
 - 批量扫描自动执行清理 + VACUUM
