@@ -29,7 +29,10 @@
 
 {% block scripts %}
 <script>
-function showLoadingAndOpen() { showAnalysisLoading(); }
+function showLoadingAndOpen() {
+  document.getElementById("modal-body").innerHTML = '<div style="text-align:center;padding:40px;"><div class="spinner" style="margin:0 auto 16px;width:32px;height:32px;"></div><p style="color:var(--text-muted);font-size:14px;">正在分析中，请耐心等待...</p></div>';
+  openModal("analysis-modal");
+}
 
 function viewReportHtml(btn) {
   var id = btn.getAttribute("data-report");

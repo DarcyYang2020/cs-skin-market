@@ -1,4 +1,3 @@
-<div id="analysis-report">
 {% if error %}
 <div class="card" style="border-color: rgba(239,68,68,0.5);">
   <div class="card-header"><span class="card-title">⚠️ 分析失败</span></div>
@@ -12,13 +11,13 @@
 {% if fusion_decision and fusion_decision.action %}
 <div class="card" style="border:2px solid {% if fusion_decision.action == 'buy' %}var(--green){% elif fusion_decision.action in ('sell','avoid') %}var(--red){% elif fusion_decision.action == 'reduce' %}var(--yellow){% else %}var(--border){% endif %};margin-bottom:12px;">
   <div class="card-header" style="padding:10px 14px;">
-    <span class="fusion-label" style="font-size:22px;font-weight:800;color:{% if fusion_decision.action == 'buy' %}var(--green){% elif fusion_decision.action in ('sell','avoid') %}var(--red){% elif fusion_decision.action == 'reduce' %}var(--yellow){% else %}var(--text-primary){% endif %};">
+    <span style="font-size:22px;font-weight:800;color:{% if fusion_decision.action == 'buy' %}var(--green){% elif fusion_decision.action in ('sell','avoid') %}var(--red){% elif fusion_decision.action == 'reduce' %}var(--yellow){% else %}var(--text-primary){% endif %};">
       {{ fusion_decision.action_label }}
     </span>
     <span style="font-size:14px;color:var(--text-muted);margin-left:8px;">{{ fusion_decision.zone_label }}</span>
   </div>
   {% if fusion_decision.action_detail %}
-  <div class="fusion-detail" style="padding:8px 14px;font-size:13px;line-height:1.5;color:var(--text-secondary);">
+  <div style="padding:8px 14px;font-size:13px;line-height:1.5;color:var(--text-secondary);">
     {{ fusion_decision.action_detail }}
   </div>
   {% endif %}
@@ -27,27 +26,27 @@
 
 {# ====== 关键指标条 ====== #}
 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px;">
-  <div class="card key-card" style="padding:10px;text-align:center;">
+  <div class="card" style="padding:10px;text-align:center;">
     <div style="font-size:20px;font-weight:700;color:{% if trend_health and trend_health.score >= 55 %}var(--green){% elif trend_health and trend_health.score >= 35 %}var(--yellow){% else %}var(--red){% endif %};">
       {{ trend_health.score if trend_health else '-' }}
     </div>
     <div style="font-size:11px;color:var(--text-muted);">趋势健康TH</div>
   </div>
-  <div class="card key-card" style="padding:10px;text-align:center;">
+  <div class="card" style="padding:10px;text-align:center;">
     <div style="font-size:20px;font-weight:700;color:{% if position and position.percentile_90d <= 30 %}var(--green){% elif position and position.percentile_90d >= 70 %}var(--red){% else %}var(--yellow){% endif %};">
       {{ "%.1f"|format(position.percentile_90d) if position else '-' }}%
     </div>
     <div style="font-size:11px;color:var(--text-muted);">百分位</div>
   </div>
-  <div class="card key-card" style="padding:10px;text-align:center;">
+  <div class="card" style="padding:10px;text-align:center;">
     <div style="font-size:20px;font-weight:700;color:{% if position and position.zscore_90d <= -1.5 %}var(--green){% elif position and position.zscore_90d >= 2 %}var(--red){% else %}var(--text-primary){% endif %};">
       {{ "%+.2f"|format(position.zscore_90d) if position else '-' }}
     </div>
     <div style="font-size:11px;color:var(--text-muted);">Z-Score</div>
   </div>
-  <div class="card key-card" style="padding:10px;text-align:center;">
+  <div class="card" style="padding:10px;text-align:center;">
     <div style="font-size:18px;font-weight:700;color:var(--accent);">
-      ¥{{ price_rmb|thousand(2) if price_rmb else '-' }}
+      ¥{{ "%.2f"|format(price_rmb) if price_rmb else '-' }}
     </div>
     <div style="font-size:11px;color:var(--text-muted);">当前价</div>
   </div>
@@ -56,17 +55,17 @@
 {# ====== 买卖参考区间 ====== #}
 {% if price_zones and price_zones.entry %}
 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
-  <div class="price-zone" style="background:#f0fdf4;padding:10px;border-radius:8px;text-align:center;">
+  <div style="background:#f0fdf4;padding:10px;border-radius:8px;text-align:center;">
     <div style="font-weight:600;color:#16a34a;margin-bottom:4px;">买入区间</div>
     {% if price_zones.entry.low > 0 %}
     <div style="font-size:14px;font-weight:600;">¥{{ "%.2f"|format(price_zones.entry.low) }} ~ ¥{{ "%.2f"|format(price_zones.entry.high) }}</div>
     {% else %}<div style="color:#999;">不建议买入</div>{% endif %}
   </div>
-  <div class="price-zone" style="background:#fef2f2;padding:10px;border-radius:8px;text-align:center;">
+  <div style="background:#fef2f2;padding:10px;border-radius:8px;text-align:center;">
     <div style="font-weight:600;color:#dc2626;margin-bottom:4px;">卖出区间</div>
     <div style="font-size:14px;font-weight:600;">¥{{ "%.2f"|format(price_zones.exit.low) }} ~ ¥{{ "%.2f"|format(price_zones.exit.high) }}</div>
   </div>
-  <div class="price-zone" style="background:#fef9c3;padding:10px;border-radius:8px;text-align:center;">
+  <div style="background:#fef9c3;padding:10px;border-radius:8px;text-align:center;">
     <div style="font-weight:600;color:#ca8a04;margin-bottom:4px;">止损参考</div>
     {% if price_zones.stop_loss is mapping %}
     <div style="font-size:14px;font-weight:600;">¥{{ "%.2f"|format(price_zones.stop_loss.low) }}</div>
@@ -77,32 +76,8 @@
 </div>
 {% endif %}
 
-{# ====== TH 分项 ====== #}
-{% if trend_health %}
-<div style="margin-top:12px;">
-  <div style="font-size:13px;font-weight:700;margin-bottom:8px;">🧭 趋势健康分项</div>
-  <div class="th-dim-row"><span class="th-dim-name">持续性</span><div class="th-dim-bar"><div class="th-dim-fill" style="width:{{ trend_health.persistence_score }}%;background:var(--green);"></div></div><span class="th-dim-val">{{ trend_health.persistence_score }}</span></div>
-  <div class="th-dim-row"><span class="th-dim-name">陡度</span><div class="th-dim-bar"><div class="th-dim-fill" style="width:{{ trend_health.steepness_score }}%;background:var(--blue);"></div></div><span class="th-dim-val">{{ trend_health.steepness_score }}</span></div>
-  <div class="th-dim-row"><span class="th-dim-name">均线结构</span><div class="th-dim-bar"><div class="th-dim-fill" style="width:{{ trend_health.structure_score }}%;background:var(--purple);"></div></div><span class="th-dim-val">{{ trend_health.structure_score }}</span></div>
-  <div class="th-dim-row"><span class="th-dim-name">量价</span><div class="th-dim-bar"><div class="th-dim-fill" style="width:{{ trend_health.volume_score }}%;background:var(--yellow);"></div></div><span class="th-dim-val">{{ trend_health.volume_score }}</span></div>
-  <div class="th-dim-row"><span class="th-dim-name">异常缺口</span><div class="th-dim-bar"><div class="th-dim-fill" style="width:{{ trend_health.anomaly_score }}%;background:var(--red);"></div></div><span class="th-dim-val">{{ trend_health.anomaly_score }}</span></div>
-</div>
-{% endif %}
-
-{# ====== 引擎回测参考 ====== #}
-{% if engine_backtest %}
-<div style="margin-top:10px;padding:10px 14px;background:var(--bg-input);border-radius:8px;font-size:12px;color:var(--text-secondary);line-height:1.7;">
-  📊 引擎回测参考（{{ engine_backtest.window }}）：{{ engine_backtest.signals }} 信号 · 14d 胜率 {{ engine_backtest.win14_pct }}%（均 {{ engine_backtest.avg14 }}%）· 30d 胜率 {{ engine_backtest.win30_pct }}%（均 {{ engine_backtest.avg30 }}%）
-  <br><span style="color:var(--text-muted);">全引擎历史回测统计，非个股保证，仅供仓位参考</span>
-</div>
-{% endif %}
-
-{# ====== 底部工具条 ====== #}
-<div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;flex-wrap:wrap;gap:8px;">
-  <button class="btn btn-outline btn-sm" onclick="copySummary(this)">📋 复制摘要</button>
-  <div style="font-size:12px;color:var(--text-muted);">
-    报告时间: {{ analysis_time if analysis_time else 'N/A' }}
-  </div>
-</div>
+{# ====== 报告时间 ====== #}
+<div style="text-align:right;font-size:12px;color:var(--text-muted);">
+  报告时间: {{ analysis_time if analysis_time else 'N/A' }}
 </div>
 {% endif %}

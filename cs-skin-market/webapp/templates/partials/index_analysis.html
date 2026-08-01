@@ -1,21 +1,5 @@
 ﻿{% if analysis and analysis.has_data %}
 
-<!-- ====== 行动摘要条（决策优先） ====== -->
-{% if analysis.market_fusion_decision and analysis.market_fusion_decision.action %}
-<div class="action-summary {% if analysis.market_fusion_decision.action == 'buy' %}action-summary-buy{% elif analysis.market_fusion_decision.action == 'watch' %}action-summary-watch{% elif analysis.market_fusion_decision.action in ('sell','avoid') %}action-summary-avoid{% elif analysis.market_fusion_decision.action == 'reduce' %}action-summary-reduce{% else %}action-summary-hold{% endif %}">
-  <div class="action-summary-main">
-    {{ analysis.market_fusion_decision.action_label }}
-    {% if analysis.market_state and analysis.market_state.regime_label %}· {{ analysis.market_state.regime_label }}{% endif %}
-    {% if analysis.market_state and analysis.market_state.val_label %}· {{ analysis.market_state.val_label }}{% endif %}
-  </div>
-  <div class="action-summary-sub">
-    {{ analysis.market_fusion_decision.action_detail }}
-    <span class="action-summary-meta">仓位上限 {{ "%.0f"|format(analysis.market_fusion_decision.global_position_limit * 100) }}%</span>
-    {% if analysis.market_state %}<span class="action-summary-meta">TH {{ analysis.market_state.th }}</span><span class="action-summary-meta">情绪 {{ analysis.market_state.sent }}分</span>{% endif %}
-  </div>
-</div>
-{% endif %}
-
 <!-- ====== 核心决策：仓位上限 ====== -->
 {% if analysis.market_fusion_decision and analysis.market_fusion_decision.action %}
 <div class="card" style="border:2px solid {% if analysis.market_fusion_decision.action == "buy" %}var(--green){% elif analysis.market_fusion_decision.action == "watch" %}var(--yellow){% elif analysis.market_fusion_decision.action == "avoid" %}var(--red){% else %}var(--border){% endif %};">
@@ -83,10 +67,6 @@
     <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">市场情绪<br><span style="font-size:10px;">恐惧=买点 贪婪=谨慎</span></div>
   </div>
 </div>
-
-<!-- ====== 详细分析（可折叠） ====== -->
-<details class="details-panel">
-  <summary>📂 详细分析：抛压衰竭 / 市场状态 / 宏观环境</summary>
 
 <!-- ====== 抛压衰竭信号（熊市底部先行指标） ====== -->
 {% if analysis.selling_pressure and analysis.selling_pressure.score is defined %}
@@ -180,7 +160,6 @@
 </div>
 {% endif %}
 
-</details>
 {% elif not analysis or not analysis.has_data %}
 <div class="card"><div class="empty-state"><div class="icon">🔍</div><h3>暂无大盘分析数据</h3><p>点击上方「刷新数据」获取最新分析</p></div></div>
 {% endif %}

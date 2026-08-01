@@ -13,7 +13,7 @@
   </div>
   <div class="stat-grid" style="grid-template-columns: repeat(4, 1fr);">
     <div class="stat-item">
-      <div class="stat-value">{{ index.value|thousand(0) if index else "--" }}</div>
+      <div class="stat-value">{{ "%.0f"|format(index.value) if index else "--" }}</div>
       <div class="stat-label">指数</div>
     </div>
     <div class="stat-item">

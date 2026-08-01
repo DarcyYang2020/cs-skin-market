@@ -78,7 +78,7 @@
           <td><strong>{{ item.name }}</strong></td>
           <td><span>{% if item.holding %}✅{% else %}⬜{% endif %}</span></td>
           <td class="{% if item.pnl and item.pnl > 0 %}green{% elif item.pnl and item.pnl < 0 %}red{% endif %}">
-            <span id="wl-price-{{ item.id }}">{% if item.latest_price %}¥{{ item.latest_price|thousand(2) }}{% else %}<span class="muted">--</span>{% endif %}</span>
+            <span id="wl-price-{{ item.id }}">{% if item.latest_price %}¥{{ "%.2f"|format(item.latest_price) }}{% else %}<span class="muted">--</span>{% endif %}</span>
           </td>
           <td><span id="wl-grade-{{ item.id }}">{% if item.latest_grade %}<span class="badge badge-{{ item.latest_grade|lower }}">{{ item.latest_grade }}</span>{% else %}<span class="badge badge-unknown">--</span>{% endif %}
             {% if item.analysis_summary %}
@@ -219,7 +219,7 @@
 <!-- 批量扫描结果 -->
 <div class="batch-scan-section" id="batch-scan-section" style="display:none;">
   <div class="page-header" style="margin-top:24px;">
-    <h2 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">📋 批量扫描结果 <span id="batch-scan-time" style="font-size:12px;color:var(--text-muted);font-weight:400;"></span> <button class="btn btn-sm btn-outline" onclick="clearScanCache()" style="font-size:12px;">✕ 清除</button></h2>
+    <h2 style="display:flex;align-items:center;gap:10px;">📋 批量扫描结果 <button class="btn btn-sm btn-outline" onclick="clearScanCache()" style="font-size:12px;">✕ 清除</button></h2>
   </div>
   <div id="batch-scan-result"></div>
 </div>
@@ -303,7 +303,10 @@ document.addEventListener('click', function(e) {
 
 
 // ---- Add ----
-function showLoadingAndOpen() { showAnalysisLoading(); }
+function showLoadingAndOpen() {
+  document.getElementById('modal-body').innerHTML = '<div style="text-align:center;padding:40px;"><div class="spinner" style="margin:0 auto 16px;width:32px;height:32px;"></div><p style="color:var(--text-muted);font-size:14px;">正在分析中，请耐心等待...</p></div>';
+  openModal('analysis-modal');
+}
 function openAddModal() {
   document.getElementById('add-form').reset();
   document.getElementById('add-avgcost').disabled = true;
@@ -463,8 +466,6 @@ fetch("/api/watchlist/batch-scan-latest")
   if (d.found && d.html) {
     document.getElementById("batch-scan-section").style.display = "block";
     document.getElementById("batch-scan-result").innerHTML = d.html;
-    var tEl = document.getElementById("batch-scan-time");
-    if (tEl && d.time) tEl.textContent = "上次扫描: " + d.time.replace("T", " ").slice(0, 16);
   }
 });
 
@@ -483,8 +484,6 @@ fetch("/api/watchlist/batch-scan-latest")
   if (d.found && d.html) {
     document.getElementById("batch-scan-section").style.display = "block";
     document.getElementById("batch-scan-result").innerHTML = d.html;
-    var tEl = document.getElementById("batch-scan-time");
-    if (tEl && d.time) tEl.textContent = "上次扫描: " + d.time.replace("T", " ").slice(0, 16);
   }
 });
 
