@@ -304,6 +304,49 @@ def _save_item_snapshot(conn, item_id, analysis, price_rmb, today=None):
     conn.commit()
 
 
+def _save_analysis_result(analysis, kline_stale_days=None, kline_stale_date="", oob_price="", oob_grade=""):
+    """渲染简洁报告并 upsert 到 analysis_results（单品分析/批量扫描共用，按 name 覆盖老数据）。"""
+    try:
+        grade = analysis.value.grade
+        th = analysis.trend_health or {}
+        trend_dir = th.get("trend_direction", "")
+        trend_score = th.get("score", 0)
+        report_html = templates.get_template("partials/analysis.html").render({
+            "name": analysis.name,
+            "price_rmb": analysis.price_rmb,
+            "volume_day": analysis.volume_day,
+            "volume_total": analysis.volume_total,
+            "position": analysis.position,
+            "aux": analysis.aux,
+            "cycle": analysis.cycle,
+            "liquidity": analysis.liquidity,
+            "probability": analysis.probability,
+            "value": analysis.value,
+            "whale": analysis.whale,
+            "data_quality": analysis.data_quality,
+            "trend_health": analysis.trend_health,
+            "fusion_decision": analysis.fusion_decision,
+            "error": None,
+            "oob_price": oob_price,
+            "oob_grade": oob_grade,
+            "kline_stale_days": kline_stale_days,
+            "kline_stale_date": kline_stale_date,
+            "price_zones": analysis.price_zones,
+            "analysis_time": _now_str(),
+        })
+        conn_save = db.get_conn()
+        try:
+            conn_save.execute("""
+                INSERT OR REPLACE INTO analysis_results (name, price_rmb, grade, trend_dir, trend_score, report_html, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, datetime('now','localtime'))
+            """, (analysis.name, analysis.price_rmb, grade, trend_dir, trend_score, report_html))
+            conn_save.commit()
+        finally:
+            conn_save.close()
+    except Exception as _e:
+        _web_log.warning(f"Failed to save analysis result: {_e}")
+
+
 def _verify_item_name(query: str, item_name: str) -> bool:
     """Check if the returned item name is related to the query."""
     if not item_name:
@@ -662,12 +705,12 @@ async def api_items_search(request: Request, query: str = Form(...)):
 
         daily_bars = item.kline_90d if hasattr(item, "kline_90d") and item.kline_90d else []
         # Fetch real daily volume from youpin (csqaq K-line has no volume data)
-        steamdt_vol, vol_map = await _fetch_volume_cached(good_id, item)
+        vol_today, vol_map = await _fetch_volume_cached(good_id, item)
         _apply_volume_map(daily_bars, vol_map)
 
-        volume_day = steamdt_vol if steamdt_vol > 0 else max(1, volume_total // 20)
-        if steamdt_vol > 0 and daily_bars and len(daily_bars) > 0:
-            daily_bars[-1].volume = steamdt_vol
+        volume_day = vol_today if vol_today > 0 else max(1, volume_total // 20)
+        if vol_today > 0 and daily_bars and len(daily_bars) > 0:
+            daily_bars[-1].volume = vol_today
 
         price_history = [k.close for k in daily_bars if k.close > 0] if daily_bars else []
         kline_stale_days = None
@@ -739,42 +782,11 @@ async def api_items_search(request: Request, query: str = Form(...)):
             _save_item_snapshot(conn_s, pid, analysis, price_rmb)
         finally:
             conn_s.close()
+        # Save to analysis_results (同步至单品报告)
+        _save_analysis_result(analysis, kline_stale_days, kline_stale_date)
 
         # Save to analysis_results table
-        grade = analysis.value.grade
-        th = analysis.trend_health or {}
-        trend_dir = th.get("trend_direction", "")
-        trend_score = th.get("score", 0)
-        report_html = templates.get_template("partials/analysis.html").render({
-            "name": analysis.name,
-            "price_rmb": analysis.price_rmb,
-            "volume_day": analysis.volume_day,
-            "volume_total": analysis.volume_total,
-            "position": analysis.position,
-            "aux": analysis.aux,
-            "cycle": analysis.cycle,
-            "liquidity": analysis.liquidity,
-            "probability": analysis.probability,
-            "value": analysis.value,
-            "whale": analysis.whale,
-            "data_quality": analysis.data_quality,
-            "trend_health": analysis.trend_health,
-            "fusion_decision": analysis.fusion_decision,
-            "error": None,"oob_price":"","oob_grade":"",
-            "kline_stale_days": kline_stale_days,
-            "kline_stale_date": kline_stale_date,
-            "price_zones": analysis.price_zones,
-        })
-        try:
-            conn_save = db.get_conn()
-            conn_save.execute("""
-                INSERT OR REPLACE INTO analysis_results (name, price_rmb, grade, trend_dir, trend_score, report_html, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, datetime('now','localtime'))
-            """, (analysis.name, analysis.price_rmb, grade, trend_dir, trend_score, report_html))
-            conn_save.commit()
-            conn_save.close()
-        except Exception as _e:
-            _web_log.warning(f"Failed to save analysis result: {_e}")
+        _save_analysis_result(analysis, kline_stale_days, kline_stale_date)
 
         ctx = {
             "name": analysis.name,
@@ -852,12 +864,12 @@ async def api_items_analyze(
 
         daily_bars = item.kline_90d if hasattr(item, "kline_90d") and item.kline_90d else []
         # Fetch real daily volume from youpin (csqaq K-line has no volume data)
-        steamdt_vol, vol_map = await _fetch_volume_cached(good_id, item)
+        vol_today, vol_map = await _fetch_volume_cached(good_id, item)
         _apply_volume_map(daily_bars, vol_map)
 
-        volume_day = steamdt_vol if steamdt_vol > 0 else max(1, volume_total // 20)
-        if steamdt_vol > 0 and daily_bars and len(daily_bars) > 0:
-            daily_bars[-1].volume = steamdt_vol
+        volume_day = vol_today if vol_today > 0 else max(1, volume_total // 20)
+        if vol_today > 0 and daily_bars and len(daily_bars) > 0:
+            daily_bars[-1].volume = vol_today
 
         price_history = [k.close for k in daily_bars if k.close > 0] if daily_bars else []
         kline_stale_days = None
@@ -1061,11 +1073,11 @@ async def api_watchlist_analyze(request: Request, item_id: int):
         supply_hist = [k.in_sale_count for k in daily_bars] if daily_bars else []
         prices = [k.close for k in daily_bars if k.close > 0] if daily_bars else []
         # Fetch real daily volume from youpin (csqaq K-line has no volume data)
-        steamdt_vol, vol_map = await _fetch_volume_cached(good_id, item)
+        vol_today, vol_map = await _fetch_volume_cached(good_id, item)
         _apply_volume_map(daily_bars, vol_map)
-        volume_day = steamdt_vol if steamdt_vol > 0 else max(1, volume_total // 20)
-        if steamdt_vol > 0 and daily_bars and len(daily_bars) > 0:
-            daily_bars[-1].volume = steamdt_vol
+        volume_day = vol_today if vol_today > 0 else max(1, volume_total // 20)
+        if vol_today > 0 and daily_bars and len(daily_bars) > 0:
+            daily_bars[-1].volume = vol_today
         volumes = [k.volume for k in daily_bars] if daily_bars else []
 
         # Build market context from stored index history
@@ -1124,6 +1136,8 @@ async def api_watchlist_analyze(request: Request, item_id: int):
             _web_log.warning(f"Failed to save snapshot: {_se}")
         finally:
             conn_save.close()
+        # Save to analysis_results (同步至单品报告)
+        _save_analysis_result(analysis, kline_stale_days, kline_stale_date)
 
 
         ctx = {
@@ -1321,11 +1335,11 @@ async def _run_batch_scan_task(scan_id: str, rows: list):
                 if _db_bars:
                     daily_bars = _db_bars
             prices = [k.close for k in daily_bars if k.close > 0] if daily_bars else [item.price_rmb]
-            steamdt_vol, vol_map = await _fetch_volume_cached(good_id, item)
+            vol_today, vol_map = await _fetch_volume_cached(good_id, item)
             _apply_volume_map(daily_bars, vol_map)
             volumes = [k.volume for k in daily_bars] if daily_bars else []
             supply_hist = [k.in_sale_count for k in daily_bars] if daily_bars else []
-            volume_day = steamdt_vol if steamdt_vol > 0 else max(1, (item.volume_total or 0) // 20)
+            volume_day = vol_today if vol_today > 0 else max(1, (item.volume_total or 0) // 20)
             conn_r = db.get_conn()
             try:
                 recent_buys = _recent_buy_dates(conn_r, item_id)
@@ -1352,6 +1366,8 @@ async def _run_batch_scan_task(scan_id: str, rows: list):
                 percentile_90d=getattr(analysis.position, "percentile_90d", 50) if hasattr(analysis, "position") else 50,
                 error=None,
             ))
+            # Save to analysis_results (同步至单品报告)
+            _save_analysis_result(analysis)
             # Persist
             conn_p = db.get_conn()
             try:
@@ -1529,12 +1545,12 @@ async def _run_discover_task(task_id: str, items: list):
                 skipped += 1
                 continue
 
-            steamdt_vol, vol_map = await _fetch_volume_cached(good_id, item)
+            vol_today, vol_map = await _fetch_volume_cached(good_id, item)
             _apply_volume_map(daily_bars, vol_map)
             volumes = [k.volume for k in daily_bars] if daily_bars else []
             supply_hist = [k.in_sale_count for k in daily_bars] if daily_bars else []
 
-            volume_day = steamdt_vol if steamdt_vol > 0 else max(1, (item.volume_total or 0) // 20)
+            volume_day = vol_today if vol_today > 0 else max(1, (item.volume_total or 0) // 20)
 
             analysis = _ia.run_item_analysis(
                 name=exact_name, prices=prices, volumes=volumes or None,

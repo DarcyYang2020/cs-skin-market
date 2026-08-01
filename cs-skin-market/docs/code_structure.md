@@ -4,7 +4,7 @@
 
 ## 项目概述
 CS饰品投资分析系统，提供大盘分析、单品分析、持仓管理三大功能模块。
-基于 FastAPI + Playwright(csqaq/steamdt) + SQLite 技术栈，运行在 http://127.0.0.1:8000/。
+基于 FastAPI + Playwright(csqaq) + 悠悠有品HTTP + SQLite 技术栈，运行在 http://127.0.0.1:8000/。
 
 ---
 
@@ -31,9 +31,9 @@ CS饰品投资分析系统，提供大盘分析、单品分析、持仓管理三
 - fetch_kline_90d(good_id) -> 单独获取 90日 K 线
 - 数据源：悠悠有品（platform=2），自动过滤 StatTrak/纪念品
 
-### collector_steamdt.py — steam.douyu 成交量采集（Playwright）
-- fetch_steamdt_volume(steam_name) -> 获取当日推算成交量
-- merge_daily_volume(daily_bars, steamdt_vol) -> 合并成交量到K线
+### collector_youpin.py — 悠悠有品成交量采集（HTTP，登录态 headers）
+- fetch_youpin_volume(template_id, days=90) -> 近90日逐笔成交按日聚合
+- 认证文件 data/uu_headers.json（浏览器登录态，约10天过期，不入库）
 
 ### item_analysis.py — 单品分析引擎（主入口+各模块汇总）
 - run_item_analysis() 完整分析管线（10大模块）
@@ -129,7 +129,7 @@ CS饰品投资分析系统，提供大盘分析、单品分析、持仓管理三
 `
 用户操作 → webapp/main.py (FastAPI端点)
   → collector_csqaq.py (csqaq搜索+K线+详情)
-    collector_steamdt.py (成交量补充)
+    collector_youpin.py (悠悠有品成交量)
     collector.py (大盘指数)
   → item_analysis.py / index_analysis.py (分析编排)
     ├─ scorer.py (评分)

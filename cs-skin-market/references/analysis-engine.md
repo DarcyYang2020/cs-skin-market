@@ -1,6 +1,6 @@
 # CS-Market 单品分析引擎文档
 
-> 最后更新: 2026-07-31 | 版本: v4.2
+> 最后更新: 2026-08-01 | 版本: v4.2
 
 ---
 
@@ -8,7 +8,7 @@
 | 输入 | 来源 | 说明 |
 |---|---|---|
 | 90日K线 (prices) | csQAQ Playwright 拦截 info/chart API (period=90, platform=2) | 每日收盘价数组，约80个数据点 |
-| 日成交量 (volumes) | steamdt Playwright 拦截 K线API → 聚合日线 tx_count | 与 prices 等长 |
+| 日成交量 (volumes) | 悠悠有品 price/trend/data API（登录态 headers）→ 逐笔成交按日聚合 | 与 prices 等长 |
 | 在售数量 (supply_hist) | csQAQ K线 num_data 字段 | 与 daily_bars 等长 |
 | 总存世量 (volume_total) | csQAQ 详情页 goods_info.in_sale_count | 单品当前在售总量 |
 | 订单簿 (order_book) | csQAQ 详情页 | spread_pct, bid_depth, ask_depth |
@@ -21,13 +21,13 @@
 用户点击分析
   → csQAQ search_good_id(name)       # 搜索物品 good_id
   → csQAQ fetch_item_detail(good_id)  # 获取详情+K线+在售数(platform=2 悠悠有品)
-  → steamdt fetch_steamdt_volume(steam_name)  # 获取Steam真实成交量
-  → merge_daily_volume(daily_bars, steamdt_vol) # 合并成交量到K线
+  → youpin fetch_youpin_volume(yyyp_id)      # 悠悠近90日逐笔成交按日聚合
+  → _apply_volume_map(daily_bars, vol_map)     # 按日期回填K线成交量
   → run_item_analysis()              # 执行分析管线
 `
 
 注意事项:
-- bar.date 必须为 YYYY-MM-DD 格式，否则 steamdt 成交量合并失效
+- bar.date 必须为 YYYY-MM-DD 格式，否则悠悠逐日成交量回填失效；token 约10天过期需更新 data/uu_headers.json
 - steam_name 从 csQAQ goods_info.market_hash_name 获取
 - StatTrak™/纪念品自动过滤
 
