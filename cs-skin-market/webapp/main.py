@@ -35,6 +35,35 @@ app = FastAPI(title="CS-Market")
 BASE_DIR = Path(__file__).resolve().parent
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+
+def _fmt_thousand(value, nd=2):
+    """Format number with thousand separators (Jinja filter)."""
+    try:
+        return f"{float(value):,.{nd}f}"
+    except (TypeError, ValueError):
+        return value
+
+templates.env.filters["thousand"] = _fmt_thousand
+
+def _engine_backtest_ref():
+    """Read latest item backtest snapshot for report reference."""
+    try:
+        p = BASE_DIR.parent / "data" / "item_backtest_latest.json"
+        if not p.exists():
+            return None
+        d = json.loads(p.read_text(encoding="utf-8"))
+        agg = d.get("aggregate", d) if isinstance(d, dict) else {}
+        return {
+            "window": "2026-05-21 ~ 07-31 回测",
+            "signals": agg.get("signals", 0),
+            "win14_pct": agg.get("win14_pct", 0),
+            "avg14": agg.get("avg14", 0),
+            "win30_pct": agg.get("win30_pct", 0),
+            "avg30": agg.get("avg30", 0),
+        }
+    except Exception:
+        return None
+
 TZ_BJ = timezone(timedelta(hours=8))
 
 
@@ -287,6 +316,71 @@ _migrate_db()
 
 
 # ---- Dashboard context ----
+
+
+def _market_signal_markers(chart_tuple):
+    """Compute historical buy-signal markers for the index chart (lru-cached).
+    chart_tuple: tuple of (date, value) sorted ascending."""
+    from pipeline.index_analysis import (
+        analyze_index, compute_micro_th, analyze_cycle_probability,
+        compute_selling_pressure_exhaustion
+    )
+    from pipeline.market_th import compute_market_trend_health, compute_market_fusion_decision
+    from pipeline.backtest_common import approx_sentiment, patch_sentiment
+    rows = list(chart_tuple)
+    dates = [r[0] for r in rows]
+    vals = [float(r[1]) for r in rows]
+    markers = []
+    for i in range(90, len(vals)):
+        v = vals[max(0, i - 90):i + 1]
+        window = rows[max(0, i - 90):i + 1]
+        r = analyze_index(window)
+        if not r.get("has_data"):
+            continue
+        pos = r["position"]
+        pct = pos.get("percentile_90d", 50)
+        z = pos.get("zscore_90d", 0)
+        mth = compute_market_trend_health(v, None)
+        if not hasattr(mth, "z_floor_applied"):
+            mth.z_floor_applied = False
+        micro = compute_micro_th(v)
+        is_bear = (sum(v[-30:]) / 30) < (sum(v[-90:]) / 90) and v[-1] < (sum(v[-90:]) / 90)
+        cycle = analyze_cycle_probability(v, pct, z)
+        phase = cycle.get("phase", "unknown") if isinstance(cycle, dict) else "unknown"
+        rally = False
+        if is_bear and micro >= 60 and len(v) >= 21:
+            p21 = v[-21:]; low21 = min(p21); bounce = (p21[-1] - low21) / low21 * 100
+            if bounce >= 5:
+                peak_prev = max(p21[:-7]) if len(p21) >= 14 else max(p21[:-3])
+                peak_recent = max(p21[-7:])
+                failed = peak_recent < peak_prev * 0.995
+                dg = [p21[j] - p21[j - 1] for j in range(-6, 0)]
+                ga = [abs(g) for g in dg if g > 0]
+                narrowing = False
+                if len(ga) >= 3:
+                    narrowing = ga[-1] < ga[0] * 0.5 and ga[-1] < ga[-2]
+                rally = failed or narrowing
+        cap = False
+        if len(v) >= 30 and micro >= 50:
+            max30 = max(v[-30:]); drop = (v[-1] - max30) / max30 * 100
+            near = v[-1] <= min(v[-14:]) * 1.05; at = v[-1] <= min(v[-14:]) * 1.02
+            cap = (drop < -20 and near) or (drop < -25 and at)
+        sp = compute_selling_pressure_exhaustion(v)
+        sps = sp["score"] if isinstance(sp, dict) else 50
+        sent = approx_sentiment(vals, i)
+        patch_sentiment(sent)
+        fd = compute_market_fusion_decision(
+            percentile_90d=pct, th=mth, zscore_90d=z, cycle_phase=phase,
+            micro_th_score=micro, is_bear=is_bear, rally_decay=rally,
+            sentiment_score=sent, cap_triggered=cap,
+            selling_pressure_score=sps, prices=v,
+        )
+        if dates[i] < "2025-11-02":
+            continue
+        if fd.action in ("buy", "oversold_buy"):
+            markers.append([dates[i], round(vals[i], 2)])
+    return markers
+
 def _dashboard_context():
     conn = db.get_conn()
     try:
@@ -320,6 +414,8 @@ async def page_dashboard(request: Request):
         "last_update": last_update,
         "chart_data": chart_data,
         "analysis": analysis_data,
+        "chart_json": json.dumps(chart_data),
+        "markers_json": json.dumps(_market_signal_markers(tuple(chart_data))),
     })
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     return response
@@ -638,6 +734,7 @@ async def api_items_search(request: Request, query: str = Form(...)):
             "error": None,"oob_price":"","oob_grade":"",
             "price_zones": analysis.price_zones,
             "analysis_time": __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "engine_backtest": _engine_backtest_ref(),
         }
         return templates.TemplateResponse(request, "partials/analysis.html", ctx)
 

@@ -23,7 +23,7 @@
           {% for r in analysis_results %}
           <tr>
             <td><strong>{{ r.name }}</strong><br><span style="font-size:11px;color:var(--text-muted);">{{ r.created_at }}</span></td>
-            <td>{% if r.price_rmb %}¥{{ "%.2f"|format(r.price_rmb) }}{% else %}--{% endif %}</td>
+            <td>{% if r.price_rmb %}¥{{ r.price_rmb|thousand(2) }}{% else %}--{% endif %}</td>
             <td>{% if r.grade %}<span class="badge badge-{{ r.grade.lower() }}">{{ r.grade }}</span>{% else %}--{% endif %}</td>
             <td>
               {% if r.trend_dir == "up" %}<span style="color:var(--green);">📈 {{ r.trend_score }}</span>
