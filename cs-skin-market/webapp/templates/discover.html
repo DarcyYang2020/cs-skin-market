@@ -63,12 +63,12 @@ function addToWatchlist(name) {
   .then(function(r) { return r.text(); })
   .then(function(html) {
     if (html.indexOf("success") > -1 || html.indexOf("成功") > -1) {
-      alert("已添加到自选: " + name);
+      showToast("✅ 已添加到自选: " + name);
     } else {
-      alert("添加失败，可能已存在");
+      showToast("添加失败，可能已存在", "error");
     }
   })
-  .catch(function() { alert("请求失败"); });
+  .catch(function() { showToast("请求失败", "error"); });
 }
 
 function startScan() {

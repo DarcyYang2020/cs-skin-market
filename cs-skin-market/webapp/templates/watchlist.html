@@ -263,8 +263,7 @@
 @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 
-<!-- Toast Notification -->
-<div id="toast" style="position:fixed;top:20px;right:20px;z-index:9999;display:none;background:var(--card-bg);border:1px solid var(--border);border-radius:8px;padding:12px 20px;box-shadow:0 4px 12px rgba(0,0,0,0.15);font-size:14px;"></div>
+
 <script>
 // ---- Watchlist Data ----
 var wlData = [];
@@ -378,8 +377,8 @@ async function doAdd(e) {
   try {
     var r = await fetch('/api/watchlist/add', {method:'POST', body:fd});
     if (r.ok) { closeModal('add-modal'); location.href = '/watchlist?_=' + Date.now(); }
-    else { alert(await r.text()); }
-  } catch(e) { alert('添加失败: ' + e); }
+    else { showToast('操作失败: ' + await r.text(), 'error'); }
+  } catch(e) { showToast('添加失败: ' + e, 'error'); }
 }
 
 // ---- Edit ----
@@ -411,8 +410,8 @@ async function doSave(e) {
   try {
     var r = await fetch('/api/watchlist/' + id, {method:'PUT', body:fd});
     if (r.ok) { closeModal('edit-modal'); location.reload(); }
-    else { alert(await r.text()); }
-  } catch(e) { alert('保存失败: ' + e); }
+    else { showToast('操作失败: ' + await r.text(), 'error'); }
+  } catch(e) { showToast('保存失败: ' + e, 'error'); }
 }
 
 // ---- Assets ----
@@ -429,8 +428,8 @@ async function doSetAssets(e) {
       body:'amount=' + encodeURIComponent(document.getElementById('assets-amount').value)
     });
     if (r.ok) { closeModal('assets-modal'); location.reload(); }
-    else { alert(await r.text()); }
-  } catch(err) { alert('设置失败: ' + err); }
+    else { showToast('操作失败: ' + await r.text(), 'error'); }
+  } catch(err) { showToast('设置失败: ' + err, 'error'); }
 }
 
 // ---- HTMX cleanup ----
@@ -485,7 +484,7 @@ function startBatchScan() {
 }
 function batchScanSelectedIds(ids) {
   var modal = document.getElementById('loading-modal');
-  if (!modal) { alert('加载窗体未找到'); return; }
+  if (!modal) { showToast('加载窗体未找到', 'error'); return; }
   var status = document.getElementById('loading-status');
   var bar = document.getElementById('loading-bar');
   modal.style.display = 'flex';
@@ -497,7 +496,7 @@ function batchScanSelectedIds(ids) {
   xhr.onload = function() {
     if (xhr.status === 200) {
       var sec = document.getElementById('batch-scan-section'); if (sec) sec.style.display = 'block';
-      var res = document.getElementById('batch-scan-result'); if (res) res.innerHTML = xhr.responseText; else { modal.style.display = 'none'; alert('页面元素缺失，请刷新页面后重试'); return; }
+      var res = document.getElementById('batch-scan-result'); if (res) res.innerHTML = xhr.responseText; else { modal.style.display = 'none'; showToast('页面元素缺失，请刷新页面后重试', 'error'); return; }
       var parser = new DOMParser();
       var doc = parser.parseFromString(xhr.responseText, 'text/html');
       var el = doc.querySelector('[data-scanid]');
@@ -534,13 +533,7 @@ function batchScanSelectedIds(ids) {
   xhr.send(JSON.stringify({ids: ids}));
 }
 
-// ---- Toast notification ----
-function showToast(msg) {
-  var el = document.getElementById('toast');
-  el.textContent = msg;
-  el.style.display = 'block';
-  setTimeout(function() { el.style.display = 'none'; }, 4000);
-}
+
 
 
 

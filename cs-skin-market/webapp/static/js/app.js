@@ -27,10 +27,12 @@ document.addEventListener('click', function(e) {
 // ---- Toast Helper ----
 function showToast(message, type) {
   type = type || 'success';
+  var container = document.getElementById('toast-container');
+  if (!container) return;
   var toast = document.createElement('div');
   toast.className = 'toast toast-' + type;
   toast.textContent = message;
-  document.body.appendChild(toast);
+  container.appendChild(toast);
   setTimeout(function() {
     toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s';
     setTimeout(function() { toast.remove(); }, 300);
@@ -60,4 +62,27 @@ document.addEventListener('DOMContentLoaded', function() {
       setTimeout(function() { f.remove(); }, 500);
     });
   }, 3000);
+});
+
+
+// ===== UX: 全局确认弹窗（替换 hx-confirm 原生弹窗） =====
+var __confirmCb = null;
+function showConfirmModal(message, onConfirm) {
+  __confirmCb = onConfirm;
+  var el = document.getElementById('confirm-modal');
+  if (!el) return;
+  document.getElementById('confirm-message').textContent = message;
+  el.style.display = 'flex';
+}
+function closeConfirmModal(ok) {
+  var el = document.getElementById('confirm-modal');
+  if (el) el.style.display = 'none';
+  if (ok && __confirmCb) { var cb = __confirmCb; __confirmCb = null; cb(); }
+  else __confirmCb = null;
+}
+document.addEventListener('htmx:confirm', function(evt) {
+  var msg = evt.detail.question;
+  if (!msg) return;
+  evt.preventDefault();
+  showConfirmModal(msg, function() { evt.detail.issueRequest(true); });
 });
