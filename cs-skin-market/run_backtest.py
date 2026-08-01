@@ -29,6 +29,8 @@ def run(start_date="2025-11-02", end_date=None, cluster_days=3):
     signals = []
     for i in range(90, len(raw_values)):
         current_date = dates[i]
+        if current_date < start_date:
+            continue
         if end_date and current_date > end_date:
             break
 
@@ -115,7 +117,8 @@ def run(start_date="2025-11-02", end_date=None, cluster_days=3):
             th_score = mth.corrected_score if hasattr(mth, "corrected_score") else mth.score
             if signals and (_dt.strptime(current_date, "%Y-%m-%d") - _dt.strptime(signals[-1]["date"], "%Y-%m-%d")).days < cluster_days:
                 continue  # cluster: same 7-day window counts once
-            signals.append({
+            signals.append({
+
                 "date": current_date, "pct": round(pct, 1), "zscore": round(zscore, 2),
                 "th": round(th_score, 1), "sentiment": round(sent, 1),
                 "action_label": fd.action_label,
