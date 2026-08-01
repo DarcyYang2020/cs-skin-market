@@ -469,6 +469,8 @@ async def page_watchlist(request: Request):
     finally:
         conn.close()
 
+# ---- Market refresh ----
+@app.post("/api/market/refresh")
 async def api_market_refresh(request: Request):
     try:
         idx = collector.fetch_market_index()
