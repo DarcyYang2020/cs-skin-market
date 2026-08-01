@@ -134,11 +134,16 @@ def _save_steamdt_volume(good_id, vol):
         conn.close()
 
 
-async def _fetch_volume_cached(good_id, steam_name):
-    """SteamDT 成交量：当天缓存命中直接复用，否则采集并写缓存。"""
+async def _fetch_volume_cached(good_id, item):
+    """单品成交量：info/good 的 Steam 日成交量(turnover_number) 秒拿 → 当日缓存 → SteamDT 采集兜底。"""
     vol = _cached_steamdt_volume(good_id)
     if vol > 0:
         return vol
+    turnover = getattr(item, "turnover_number", 0) or 0
+    if turnover > 0:
+        _save_steamdt_volume(good_id, turnover)
+        return turnover
+    steam_name = getattr(item, "steam_name", "") or ""
     if not steam_name:
         return 0
     try:
@@ -640,7 +645,7 @@ async def api_items_search(request: Request, query: str = Form(...)):
 
         daily_bars = item.kline_90d if hasattr(item, "kline_90d") and item.kline_90d else []
         # Fetch steamdt "??????" as real daily volume (csqaq K-line has no volume data)
-        steamdt_vol = await _fetch_volume_cached(good_id, item.steam_name if hasattr(item, 'steam_name') else None)
+        steamdt_vol = await _fetch_volume_cached(good_id, item)
 
         volume_day = steamdt_vol if steamdt_vol > 0 else max(1, volume_total // 20)
         if steamdt_vol > 0 and daily_bars and len(daily_bars) > 0:
@@ -831,7 +836,7 @@ async def api_items_analyze(
 
         daily_bars = item.kline_90d if hasattr(item, "kline_90d") and item.kline_90d else []
         # Fetch steamdt volume (csqaq K-line has no volume data)
-        steamdt_vol = await _fetch_volume_cached(good_id, item.steam_name if hasattr(item, 'steam_name') else None)
+        steamdt_vol = await _fetch_volume_cached(good_id, item)
 
         volume_day = steamdt_vol if steamdt_vol > 0 else max(1, volume_total // 20)
         if steamdt_vol > 0 and daily_bars and len(daily_bars) > 0:
@@ -1041,7 +1046,7 @@ async def api_watchlist_analyze(request: Request, item_id: int):
         supply_hist = [k.in_sale_count for k in daily_bars] if daily_bars else []
         prices = [k.close for k in daily_bars if k.close > 0] if daily_bars else []
         # Fetch steamdt volume (csqaq K-line has no volume data)
-        steamdt_vol = await _fetch_volume_cached(good_id, item.steam_name if hasattr(item, 'steam_name') else None)
+        steamdt_vol = await _fetch_volume_cached(good_id, item)
         volume_day = steamdt_vol if steamdt_vol > 0 else max(1, volume_total // 20)
         if steamdt_vol > 0 and daily_bars and len(daily_bars) > 0:
             daily_bars[-1].volume = steamdt_vol
@@ -1302,7 +1307,7 @@ async def _run_batch_scan_task(scan_id: str, rows: list):
             prices = [k.close for k in daily_bars if k.close > 0] if daily_bars else [item.price_rmb]
             volumes = [k.volume for k in daily_bars] if daily_bars else []
             supply_hist = [k.in_sale_count for k in daily_bars] if daily_bars else []
-            steamdt_vol = await _fetch_volume_cached(good_id, item.steam_name if hasattr(item, "steam_name") else None)
+            steamdt_vol = await _fetch_volume_cached(good_id, item)
             volume_day = steamdt_vol if steamdt_vol > 0 else max(1, (item.volume_total or 0) // 20)
             conn_r = db.get_conn()
             try:
@@ -1510,7 +1515,7 @@ async def _run_discover_task(task_id: str, items: list):
             volumes = [k.volume for k in daily_bars] if daily_bars else []
             supply_hist = [k.in_sale_count for k in daily_bars] if daily_bars else []
 
-            steamdt_vol = await _fetch_volume_cached(good_id, item.steam_name if hasattr(item, "steam_name") else None)
+            steamdt_vol = await _fetch_volume_cached(good_id, item)
             volume_day = steamdt_vol if steamdt_vol > 0 else max(1, (item.volume_total or 0) // 20)
 
             analysis = _ia.run_item_analysis(

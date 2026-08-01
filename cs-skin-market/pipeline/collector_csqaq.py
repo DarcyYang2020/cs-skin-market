@@ -69,6 +69,7 @@ class ItemData:
         self.price_steam: float = 0.0
         self.volume_day: int = 0
         self.volume_total: int = 0
+        self.turnover_number: int = 0  # Steam market daily volume (from info/good)
         self.in_sale_count: int = 0
         self.order_book: Optional[dict] = None
         self.kline_90d: list = []
@@ -440,6 +441,7 @@ async def _fetch_item_detail_once(good_id: int):
                         except (TypeError, ValueError):
                             pass
                     item.in_sale_count = int(gi.get('in_sale_count', gi.get('sale_num', gi.get('buff_sell_num', 0))) or 0)
+                    item.turnover_number = int(gi.get('turnover_number', 0) or 0)
             except Exception:
                 pass
         # Build order_book from the page native 求购价 chart (uses browser session,
