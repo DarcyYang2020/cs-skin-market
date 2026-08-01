@@ -231,7 +231,10 @@ async def search_good_id(query: str) -> tuple[int, str]:
     
     try:
         await page.goto(CSQAQ_WEB, wait_until="domcontentloaded", timeout=30000)
-        await page.wait_for_timeout(3000)
+        try:
+            await page.wait_for_selector("#rc_select_0", timeout=6000)
+        except Exception:
+            pass
         
         # Trigger autocomplete via React fiber
         result = await page.evaluate("""
@@ -263,7 +266,10 @@ async def search_good_id(query: str) -> tuple[int, str]:
             }
         """, query)
         
-        await page.wait_for_timeout(3000)
+        try:
+            await page.wait_for_selector(".ant-select-dropdown:not(.ant-select-dropdown-hidden)", timeout=6000)
+        except Exception:
+            pass
         
         dropdown = await page.query_selector(".ant-select-dropdown:not(.ant-select-dropdown-hidden)")
         if not dropdown:
@@ -290,7 +296,10 @@ async def search_good_id(query: str) -> tuple[int, str]:
         
         best_title, best_item = candidates[0]
         await best_item.click()
-        await page.wait_for_timeout(5000)
+        try:
+            await page.wait_for_url("**/goods/**", timeout=8000)
+        except Exception:
+            pass
         
         url_match = re.search(r"/goods/(\d+)", page.url)
         if url_match:
@@ -304,6 +313,15 @@ async def search_good_id(query: str) -> tuple[int, str]:
     finally:
         await page.close()
 
+
+
+async def _wait_chart(page, captured, timeout=2.5):
+    """Wait briefly for the chart API response to be captured (poll, no fixed sleep)."""
+    for _ in range(int(timeout * 10)):
+        if captured.get("chart"):
+            return True
+        await asyncio.sleep(0.1)
+    return False
 
 
 async def _modify_chart_route(route, request, platform=2):
@@ -372,7 +390,7 @@ async def _fetch_item_detail_once(good_id: int):
             await page.goto(f'{CSQAQ_WEB}/goods/{good_id}', wait_until='domcontentloaded', timeout=25000)
         except Exception as _ge:
             _csq_log.warning(f"goto goods/{good_id} failed: {_ge}")
-        await page.wait_for_timeout(1500)
+        await _wait_chart(page, captured)
         # Extract youyoupin listing price from page DOM
         try:
             yyyp_price = await page.evaluate("() => { const el = document.querySelector('.ant-statistic-content-value'); if (el) return el.innerText.trim(); return ''; }")
@@ -396,7 +414,7 @@ async def _fetch_item_detail_once(good_id: int):
                 captured['chart'] = None
                 await page.route('**/info/chart**', lambda r, req, p=fb_platform: _modify_chart_route(r, req, platform=p))
                 await page.goto(f'{CSQAQ_WEB}/goods/{good_id}', wait_until='domcontentloaded', timeout=25000)
-                await page.wait_for_timeout(1500)
+                await _wait_chart(page, captured)
                 if captured['chart']:
                     _extract_chart(item, json.loads(captured['chart']))
                     _csq_log.info(f"{fb_name} platform returned {len(item.kline_90d)} bars")
@@ -523,7 +541,7 @@ async def fetch_kline_90d(good_id: int):
             await page.goto(f'{CSQAQ_WEB}/goods/{good_id}', wait_until='domcontentloaded', timeout=15000)
         except Exception as _ge:
             _csq_log.warning(f"fetch_kline_90d goto goods/{good_id} failed: {_ge}")
-        await page.wait_for_timeout(1500)
+        await _wait_chart(page, captured)
         ohlc, raw = [], []
         if captured['chart']:
             data = json.loads(captured['chart'])
@@ -541,7 +559,7 @@ async def fetch_kline_90d(good_id: int):
                 captured['chart'] = None
                 await page.route('**/info/chart**', lambda r, req, p=fb_platform: _modify_chart_route(r, req, platform=p))
                 await page.goto(f'{CSQAQ_WEB}/goods/{good_id}', wait_until='domcontentloaded', timeout=15000)
-                await page.wait_for_timeout(1500)
+                await _wait_chart(page, captured)
                 if captured['chart']:
                     data2 = json.loads(captured['chart'])
                     if data2.get('code') == 200 and data2.get('data'):

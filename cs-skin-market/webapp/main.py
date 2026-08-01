@@ -87,6 +87,71 @@ def _db_kline_fallback(good_id, name):
         conn.close()
 
 
+async def _resolve_good_id(query):
+    """定位 good_id：DB 已知（分析过的品秒回）→ Playwright 搜索兜底。Returns (good_id, page_title)."""
+    try:
+        conn = db.get_conn()
+        try:
+            row = db.find_item(conn, query)
+            if row and row["good_id"]:
+                return row["good_id"], row["name"]
+        finally:
+            conn.close()
+    except Exception:
+        pass
+    return await collector_csqaq.search_good_id(query)
+
+
+def _cached_steamdt_volume(good_id):
+    """当天 SteamDT 成交量缓存（settings 表），命中返回 >0 否则 0。"""
+    if not good_id:
+        return 0
+    conn = db.get_conn()
+    try:
+        raw = db.get_setting(conn, f"stdt_vol_{good_id}")
+        if not raw:
+            return 0
+        data = json.loads(raw)
+        if data.get("date") == _today_str():
+            return float(data.get("vol") or 0)
+    except Exception:
+        pass
+    finally:
+        conn.close()
+    return 0
+
+
+def _save_steamdt_volume(good_id, vol):
+    if not good_id or vol <= 0:
+        return
+    conn = db.get_conn()
+    try:
+        db.set_setting(conn, f"stdt_vol_{good_id}", json.dumps({"date": _today_str(), "vol": vol}))
+        conn.commit()
+    except Exception as _e:
+        _web_log.warning(f"stdt cache save failed: {_e}")
+    finally:
+        conn.close()
+
+
+async def _fetch_volume_cached(good_id, steam_name):
+    """SteamDT 成交量：当天缓存命中直接复用，否则采集并写缓存。"""
+    vol = _cached_steamdt_volume(good_id)
+    if vol > 0:
+        return vol
+    if not steam_name:
+        return 0
+    try:
+        sv = await collector_steamdt.fetch_steamdt_volume(steam_name)
+        if isinstance(sv, dict) and sv:
+            vol = list(sv.values())[0]
+            if vol > 0:
+                _save_steamdt_volume(good_id, vol)
+    except Exception as _e:
+        _web_log.warning(f"steamdt volume failed: {_e}")
+    return vol
+
+
 def _market_snapshot():
     """Market context from stored index history (pct/z/cycle/th/chg7/chg30/sentiment)."""
     conn = db.get_conn()
@@ -548,18 +613,10 @@ async def api_items_search(request: Request, query: str = Form(...)):
         return HTMLResponse('<div class="card"><div class="empty-state" style="text-align:center;padding:40px;color:var(--text-muted);">请输入至少2个字符</div></div>')
 
     try:
-        # Step 1: Search via Playwright
-        good_id, page_title = await collector_csqaq.search_good_id(query)
+        # Step 1: Search good_id (API 优先，毫秒级)
+        good_id, page_title = await _resolve_good_id(query)
         if good_id == 0:
-            items = collector.search_items(query)
-            if not items:
-                return HTMLResponse('<div class="card"><div class="empty-state" style="text-align:center;padding:40px;color:var(--text-muted);">未找到相关饰品，请尝试简化关键词</div></div>')
-            # Multiple results via API - pick first and continue
-            name = items[0].name
-            good_id2, _ = await collector_csqaq.search_good_id(name)
-            if good_id2 == 0:
-                return HTMLResponse('<div class="card"><div class="empty-state" style="text-align:center;padding:40px;color:var(--text-muted);">未找到相关饰品</div></div>')
-            good_id = good_id2
+            return HTMLResponse('<div class="card"><div class="empty-state" style="text-align:center;padding:40px;color:var(--text-muted);">未找到相关饰品，请尝试简化关键词</div></div>')
 
         # Step 2: Fetch detail
         item = await collector_csqaq.fetch_item_detail(good_id)
@@ -583,14 +640,7 @@ async def api_items_search(request: Request, query: str = Form(...)):
 
         daily_bars = item.kline_90d if hasattr(item, "kline_90d") and item.kline_90d else []
         # Fetch steamdt "??????" as real daily volume (csqaq K-line has no volume data)
-        steamdt_vol = 0
-        if hasattr(item, 'steam_name') and item.steam_name:
-            try:
-                sv = await collector_steamdt.fetch_steamdt_volume(item.steam_name)
-                if isinstance(sv, dict) and sv:
-                    steamdt_vol = list(sv.values())[0]
-            except Exception:
-                pass
+        steamdt_vol = await _fetch_volume_cached(good_id, item.steam_name if hasattr(item, 'steam_name') else None)
 
         volume_day = steamdt_vol if steamdt_vol > 0 else max(1, volume_total // 20)
         if steamdt_vol > 0 and daily_bars and len(daily_bars) > 0:
@@ -750,7 +800,7 @@ async def api_items_analyze(
         if idx is None or idx.value == 0:
             idx = collector.MarketIndex(value=0, change_7d=0, mood="neutral")
 
-        good_id, page_title = await collector_csqaq.search_good_id(name)
+        good_id, page_title = await _resolve_good_id(name)
         if good_id == 0:
             return HTMLResponse(_ae("未找到物品: " + name))
 
@@ -781,14 +831,7 @@ async def api_items_analyze(
 
         daily_bars = item.kline_90d if hasattr(item, "kline_90d") and item.kline_90d else []
         # Fetch steamdt volume (csqaq K-line has no volume data)
-        steamdt_vol = 0
-        if hasattr(item, 'steam_name') and item.steam_name:
-            try:
-                sv = await collector_steamdt.fetch_steamdt_volume(item.steam_name)
-                if isinstance(sv, dict) and sv:
-                    steamdt_vol = list(sv.values())[0]
-            except Exception as _vol_err:
-                _web_log.warning(f"steamdt volume failed: {_vol_err}")
+        steamdt_vol = await _fetch_volume_cached(good_id, item.steam_name if hasattr(item, 'steam_name') else None)
 
         volume_day = steamdt_vol if steamdt_vol > 0 else max(1, volume_total // 20)
         if steamdt_vol > 0 and daily_bars and len(daily_bars) > 0:
@@ -972,7 +1015,7 @@ async def api_watchlist_analyze(request: Request, item_id: int):
         if idx is None or idx.value == 0:
             idx = collector.MarketIndex(value=0, change_7d=0, mood="neutral")
 
-        good_id, page_title = await collector_csqaq.search_good_id(name)
+        good_id, page_title = await _resolve_good_id(name)
         if good_id == 0:
             return HTMLResponse(_ae(f"未找到: {name}"))
 
@@ -998,14 +1041,7 @@ async def api_watchlist_analyze(request: Request, item_id: int):
         supply_hist = [k.in_sale_count for k in daily_bars] if daily_bars else []
         prices = [k.close for k in daily_bars if k.close > 0] if daily_bars else []
         # Fetch steamdt volume (csqaq K-line has no volume data)
-        steamdt_vol = 0
-        if hasattr(item, 'steam_name') and item.steam_name:
-            try:
-                sv = await collector_steamdt.fetch_steamdt_volume(item.steam_name)
-                if isinstance(sv, dict) and sv:
-                    steamdt_vol = list(sv.values())[0]
-            except Exception:
-                pass
+        steamdt_vol = await _fetch_volume_cached(good_id, item.steam_name if hasattr(item, 'steam_name') else None)
         volume_day = steamdt_vol if steamdt_vol > 0 else max(1, volume_total // 20)
         if steamdt_vol > 0 and daily_bars and len(daily_bars) > 0:
             daily_bars[-1].volume = steamdt_vol
@@ -1249,7 +1285,7 @@ async def _run_batch_scan_task(scan_id: str, rows: list):
         _scan_progress[scan_id]["current"] = i + 1
         _scan_progress[scan_id]["name"] = name
         try:
-            good_id, _ = await collector_csqaq.search_good_id(name)
+            good_id, _ = await _resolve_good_id(name)
             if good_id == 0:
                 results.append(dict(name=name, holding=holding, error="\u672a\u627e\u5230"))
                 continue
@@ -1266,14 +1302,7 @@ async def _run_batch_scan_task(scan_id: str, rows: list):
             prices = [k.close for k in daily_bars if k.close > 0] if daily_bars else [item.price_rmb]
             volumes = [k.volume for k in daily_bars] if daily_bars else []
             supply_hist = [k.in_sale_count for k in daily_bars] if daily_bars else []
-            steamdt_vol = 0
-            if hasattr(item, "steam_name") and item.steam_name:
-                try:
-                    sv = await collector_steamdt.fetch_steamdt_volume(item.steam_name)
-                    if sv and isinstance(sv, dict):
-                        steamdt_vol = list(sv.values())[0]
-                except Exception:
-                    pass
+            steamdt_vol = await _fetch_volume_cached(good_id, item.steam_name if hasattr(item, "steam_name") else None)
             volume_day = steamdt_vol if steamdt_vol > 0 else max(1, (item.volume_total or 0) // 20)
             conn_r = db.get_conn()
             try:
@@ -1481,14 +1510,7 @@ async def _run_discover_task(task_id: str, items: list):
             volumes = [k.volume for k in daily_bars] if daily_bars else []
             supply_hist = [k.in_sale_count for k in daily_bars] if daily_bars else []
 
-            steamdt_vol = 0
-            if hasattr(item, "steam_name") and item.steam_name:
-                try:
-                    sv = await collector_steamdt.fetch_steamdt_volume(item.steam_name)
-                    if sv and isinstance(sv, dict):
-                        steamdt_vol = list(sv.values())[0]
-                except Exception:
-                    pass
+            steamdt_vol = await _fetch_volume_cached(good_id, item.steam_name if hasattr(item, "steam_name") else None)
             volume_day = steamdt_vol if steamdt_vol > 0 else max(1, (item.volume_total or 0) // 20)
 
             analysis = _ia.run_item_analysis(
