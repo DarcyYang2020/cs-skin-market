@@ -387,21 +387,52 @@ async def page_watchlist(request: Request):
     try:
         items_raw = db.watchlist_list_with_snapshots(conn)
         total_assets = float(db.get_setting(conn, "total_assets", 0) or 0)
-        # Convert sqlite3.Row to dict for .get() access
         all_items = [dict(r) for r in items_raw]
-        total_buy_cost = sum((i.get("avg_cost") or 0) * (i.get("quantity") or 0) for i in all_items)
+
+        # ---- filters from URL params (keep state across pagination) ----
+        wf = request.query_params.get("filter", "all")
+        if wf not in ("all", "holding", "unheld"):
+            wf = "all"
+        wq = (request.query_params.get("q", "") or "").strip().lower()
+        ws = request.query_params.get("sort", "newest")
+        filtered = all_items
+        if wf == "holding":
+            filtered = [i for i in filtered if i.get("holding")]
+        elif wf == "unheld":
+            filtered = [i for i in filtered if not i.get("holding")]
+        if wq:
+            filtered = [i for i in filtered if wq in (i.get("name") or "").lower()]
+        if ws == "name":
+            filtered.sort(key=lambda i: (i.get("name") or "").lower())
+        elif ws == "price_desc":
+            filtered.sort(key=lambda i: i.get("latest_price") or 0, reverse=True)
+        elif ws == "price_asc":
+            filtered.sort(key=lambda i: i.get("latest_price") or 0)
+        elif ws == "grade":
+            _gorder = {"S": 0, "A": 1, "B": 2, "C": 3, "Z": 4}
+            filtered.sort(key=lambda i: _gorder.get(i.get("latest_grade") or "Z", 4))
+
+        # ---- per-item pnl + portfolio totals (holding items only) ----
+        for item in all_items:
+            item["pnl_pct"] = None
+            if item.get("holding") and item.get("avg_cost", 0) > 0 and item.get("latest_price"):
+                item["pnl_pct"] = (item["latest_price"] - item["avg_cost"]) / item["avg_cost"] * 100
+        total_buy_cost = sum((i.get("avg_cost") or 0) * (i.get("quantity") or 0) for i in all_items if i.get("holding"))
+        total_market = sum((i.get("latest_price") or 0) * (i.get("quantity") or 0) for i in all_items if i.get("holding"))
+        total_pnl = total_market - total_buy_cost
+        total_pnl_pct = (total_pnl / total_buy_cost * 100) if total_buy_cost > 0 else 0
         position_ratio = (total_buy_cost / total_assets * 100) if total_assets > 0 else 0
 
-        # Pagination: 10 per page, ordered by add time (id)
+        # ---- pagination on filtered list ----
         PAGE_SIZE = 10
-        total_items = len(all_items)
+        total_items = len(filtered)
         total_pages = max(1, (total_items + PAGE_SIZE - 1) // PAGE_SIZE)
         try:
             page = max(1, int(request.query_params.get("page", 1)))
         except (TypeError, ValueError):
             page = 1
         page = min(page, total_pages)
-        items = all_items[(page - 1) * PAGE_SIZE: page * PAGE_SIZE]
+        items = filtered[(page - 1) * PAGE_SIZE: page * PAGE_SIZE]
 
         # Load trend health + parse latest_summary for each item
         import json as _json
@@ -424,15 +455,20 @@ async def page_watchlist(request: Request):
             "items": items,
             "total_assets": total_assets,
             "total_buy_cost": total_buy_cost,
+            "total_pnl": total_pnl,
+            "total_pnl_pct": total_pnl_pct,
             "position_ratio": position_ratio,
             "pagination": {"page": page, "total_pages": total_pages, "total_items": total_items},
+            "wl_filter": wf,
+            "wl_q": wq,
+            "wl_sort": ws,
+            "all_items_json": json.dumps(
+                [{"id": i["id"], "name": i["name"], "holding": bool(i.get("holding"))} for i in all_items],
+                ensure_ascii=False),
         })
     finally:
         conn.close()
 
-
-# ---- Market refresh ----
-@app.post("/api/market/refresh")
 async def api_market_refresh(request: Request):
     try:
         idx = collector.fetch_market_index()
