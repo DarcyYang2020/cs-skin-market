@@ -23,10 +23,10 @@ description: "CS 饰品市场投资策略全流程辅助。覆盖行情趋势分
 - csQAQ Playwright: 导航 goods/{id} → 拦截 info/chart API (90日日线)
 - csQAQ Playwright: 拦截 info/good?id= API → 详情 (steam_name, 价格)
 - csQAQ Playwright: **求购价图表**（出售价下拉→求购价）→ buy_price 90日序列 → order_book 价差/趋势
-- steamdt Playwright: 导航 /cs2/{market_hash_name} → 拦截 K线 API → 真实成交量
+- 悠悠有品 HTTP: POST price/trend/data（登录态 headers）→ 逐笔成交按日聚合 → 真实成交量
 
 ### 成交量合并
-csQAQ chart API 提供 price + in_sale_count (不含真实成交量)。成交量由 steamdt 单独采集，通过 merge_daily_volume() 按日期 (YYYY-MM-DD) 合并到 K线数据。
+csQAQ chart API 提供 price + in_sale_count (不含真实成交量)。成交量由悠悠有品趋势接口采集（data/uu_headers.json 登录态），按日期 (YYYY-MM-DD) 聚合回填到 K线数据。
 
 ## 工作流程
 
@@ -73,7 +73,7 @@ csQAQ chart API 提供 price + in_sale_count (不含真实成交量)。成交量
 ## 常见问题
 
 - **模板编辑**: 不要用 PowerShell 编辑含中文的 HTML 模板，使用 Python \uXXXX 转义序列生成
-- **成交量正确性**: ar.date 必须为 YYYY-MM-DD 格式才能与 steamdt 合并
+- **成交量正确性**: bar.date 必须为 YYYY-MM-DD 格式才能与悠悠逐日成交量匹配
 - **StatTrak 误匹配**: 检查 _verify_item_name 和 search_good_id 过滤逻辑
 - **分析耗时**: 单次约 30-50 秒，正常范围
 

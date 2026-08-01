@@ -2,7 +2,7 @@
 import asyncio, json, logging, traceback
 from datetime import datetime
 
-from . import collector_csqaq, collector_steamdt, collector, db, item_analysis, index_analysis
+from . import collector_csqaq, collector, db, item_analysis, index_analysis
 
 _log = logging.getLogger("batch_scan")
 

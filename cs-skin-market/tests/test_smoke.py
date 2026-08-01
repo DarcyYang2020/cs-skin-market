@@ -294,6 +294,96 @@ def t_advice():
     assert a['action'] == '趋势走弱，考虑止损', a['action']
 check('portfolio advice 补仓分级 works', t_advice)
 
+print('[Youpin Volume Collector]')
+def t_youpin_aggregation():
+    import asyncio
+    from pipeline import collector_youpin as cy
+    rows = [
+        {"time": 1, "price": "10.0", "localDate": "2026-07-25", "proportion": "1", "sourceType": 0},
+        {"time": 2, "price": "10.1", "localDate": "2026-07-25", "proportion": "0.5", "sourceType": 0},
+        {"time": 3, "price": "10.2", "localDate": "2026-07-26", "proportion": "0.5", "sourceType": 0},
+        {"time": 4, "price": "10.3", "localDate": "2026-07-27", "proportion": "1", "sourceType": 0},
+    ]
+    class FakeResp:
+        def raise_for_status(self):
+            pass
+        def json(self):
+            return {"code": 0, "data": {"tradeDataList": rows}}
+    class FakeClient:
+        def __init__(self, *a, **k):
+            pass
+        async def __aenter__(self):
+            return self
+        async def __aexit__(self, *a):
+            return False
+        async def post(self, url, json=None, headers=None):
+            assert url == cy.API_URL
+            assert headers.get('authorization') == 'test-token'
+            assert json['templateId'] == '49533'
+            assert json['day'] == '90'
+            return FakeResp()
+    orig_headers, orig_client = cy._api_headers, cy.httpx.AsyncClient
+    cy._api_headers = lambda: {'authorization': 'test-token'}
+    cy.httpx.AsyncClient = FakeClient
+    try:
+        result = asyncio.run(cy.fetch_youpin_volume('49533', days=90))
+    finally:
+        cy._api_headers, cy.httpx.AsyncClient = orig_headers, orig_client
+    assert result == {'2026-07-25': 2, '2026-07-26': 1, '2026-07-27': 1}, result
+check('youpin volume aggregates tradeDataList by day', t_youpin_aggregation)
+
+def t_youpin_auth_error():
+    import asyncio
+    from pipeline import collector_youpin as cy
+    class FakeResp:
+        def raise_for_status(self):
+            pass
+        def json(self):
+            return {"code": -1, "msg": "system busy"}
+    class FakeClient:
+        def __init__(self, *a, **k):
+            pass
+        async def __aenter__(self):
+            return self
+        async def __aexit__(self, *a):
+            return False
+        async def post(self, url, json=None, headers=None):
+            return FakeResp()
+    orig_headers, orig_client = cy._api_headers, cy.httpx.AsyncClient
+    cy._api_headers = lambda: {'authorization': 'expired'}
+    cy.httpx.AsyncClient = FakeClient
+    try:
+        result = asyncio.run(cy.fetch_youpin_volume('49533'))
+    finally:
+        cy._api_headers, cy.httpx.AsyncClient = orig_headers, orig_client
+    assert result == {}, result
+check('youpin volume returns {} on auth error', t_youpin_auth_error)
+
+def t_youpin_no_auth():
+    import asyncio
+    from pipeline import collector_youpin as cy
+    orig = cy._api_headers
+    cy._api_headers = lambda: {}
+    try:
+        result = asyncio.run(cy.fetch_youpin_volume('49533'))
+    finally:
+        cy._api_headers = orig
+    assert result == {}, result
+check('youpin volume returns {} without auth', t_youpin_no_auth)
+
+def t_volume_map_fill():
+    from webapp import main as webapp
+    class Bar:
+        def __init__(self, date):
+            self.date = date
+            self.volume = 0
+    vol_map = {'2026-07-25': 2, '2026-07-26': 1}
+    bars = [Bar('2026-07-24'), Bar('2026-07-25'), Bar('2026-07-26'), Bar('2026-07-27')]
+    webapp._apply_volume_map(bars, vol_map)
+    vols = [b.volume for b in bars]
+    assert vols == [0, 2, 1, 0], vols
+check('volume map fills matching daily bars', t_volume_map_fill)
+
 print()
 print(f'=== Results: {passed} passed, {failed} failed ===')
 if failures:

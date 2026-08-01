@@ -14,7 +14,7 @@ from fastapi.templating import Jinja2Templates
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import logging
 from pipeline import config, db, collector, valuation, index_analysis, item_analysis
-from pipeline import collector_csqaq, collector_steamdt
+from pipeline import collector_csqaq, collector_youpin
 
 _web_log = logging.getLogger("webapp")
 
@@ -102,59 +102,76 @@ async def _resolve_good_id(query):
     return await collector_csqaq.search_good_id(query)
 
 
-def _cached_steamdt_volume(good_id):
-    """当天 SteamDT 成交量缓存（settings 表），命中返回 >0 否则 0。"""
+def _cached_youpin_volume(good_id):
+    """当天悠悠成交量缓存（settings 表）。Returns (vol, vol_map, fresh)。"""
     if not good_id:
-        return 0
+        return 0, {}, False
     conn = db.get_conn()
     try:
-        raw = db.get_setting(conn, f"stdt_vol_{good_id}")
+        raw = db.get_setting(conn, f"uu_vol_{good_id}")
         if not raw:
-            return 0
+            return 0, {}, False
         data = json.loads(raw)
         if data.get("date") == _today_str():
-            return float(data.get("vol") or 0)
+            return float(data.get("vol") or 0), data.get("map") or {}, True
     except Exception:
         pass
     finally:
         conn.close()
-    return 0
+    return 0, {}, False
 
 
-def _save_steamdt_volume(good_id, vol):
-    if not good_id or vol <= 0:
+def _save_youpin_volume(good_id, vol, vol_map):
+    if not good_id:
         return
     conn = db.get_conn()
     try:
-        db.set_setting(conn, f"stdt_vol_{good_id}", json.dumps({"date": _today_str(), "vol": vol}))
+        db.set_setting(conn, f"uu_vol_{good_id}", json.dumps({"date": _today_str(), "vol": vol, "map": vol_map}))
         conn.commit()
     except Exception as _e:
-        _web_log.warning(f"stdt cache save failed: {_e}")
+        _web_log.warning(f"youpin cache save failed: {_e}")
     finally:
         conn.close()
 
 
+def _apply_volume_map(daily_bars, vol_map):
+    """用悠悠逐日成交量回填 daily_bars（按 bar.date 匹配）。"""
+    if not daily_bars or not vol_map:
+        return
+    for bar in daily_bars:
+        v = vol_map.get(getattr(bar, "date", ""))
+        if v and v > 0:
+            bar.volume = v
+
+
 async def _fetch_volume_cached(good_id, item):
-    """单品成交量：info/good 的 Steam 日成交量(turnover_number) 秒拿 → 当日缓存 → SteamDT 采集兜底。"""
-    vol = _cached_steamdt_volume(good_id)
-    if vol > 0:
-        return vol
+    """单品成交量：当日缓存 → 悠悠有品逐日成交量(近90天) → info/good turnover_number 兜底。
+
+    Returns:
+        (today_vol, {date: vol})；today_vol 用于当日成交量，vol_map 用于回填全部 K 线 bar。
+    """
+    vol, vol_map, fresh = _cached_youpin_volume(good_id)
+    if fresh and vol > 0:
+        return vol, vol_map
+    if fresh:
+        # 悠悠当日 0 成交：历史仍用 map 回填，当日量兜底 turnover_number
+        turnover = getattr(item, "turnover_number", 0) or 0
+        return (turnover if turnover > 0 else 0), vol_map
+    template_id = getattr(item, "yyyp_id", "") or ""
+    if template_id:
+        try:
+            vol_map = await collector_youpin.fetch_youpin_volume(template_id)
+        except Exception as _e:
+            _web_log.warning(f"youpin volume failed: {_e}")
+            vol_map = {}
+        if vol_map:
+            vol = float(vol_map.get(_today_str(), 0) or 0)
+            _save_youpin_volume(good_id, vol, vol_map)
+            return vol, vol_map
     turnover = getattr(item, "turnover_number", 0) or 0
     if turnover > 0:
-        _save_steamdt_volume(good_id, turnover)
-        return turnover
-    steam_name = getattr(item, "steam_name", "") or ""
-    if not steam_name:
-        return 0
-    try:
-        sv = await collector_steamdt.fetch_steamdt_volume(steam_name)
-        if isinstance(sv, dict) and sv:
-            vol = list(sv.values())[0]
-            if vol > 0:
-                _save_steamdt_volume(good_id, vol)
-    except Exception as _e:
-        _web_log.warning(f"steamdt volume failed: {_e}")
-    return vol
+        return turnover, {}
+    return 0, {}
 
 
 def _market_snapshot():
@@ -644,14 +661,13 @@ async def api_items_search(request: Request, query: str = Form(...)):
             volume_total = item.in_sale_count
 
         daily_bars = item.kline_90d if hasattr(item, "kline_90d") and item.kline_90d else []
-        # Fetch steamdt "??????" as real daily volume (csqaq K-line has no volume data)
-        steamdt_vol = await _fetch_volume_cached(good_id, item)
+        # Fetch real daily volume from youpin (csqaq K-line has no volume data)
+        steamdt_vol, vol_map = await _fetch_volume_cached(good_id, item)
+        _apply_volume_map(daily_bars, vol_map)
 
         volume_day = steamdt_vol if steamdt_vol > 0 else max(1, volume_total // 20)
         if steamdt_vol > 0 and daily_bars and len(daily_bars) > 0:
             daily_bars[-1].volume = steamdt_vol
-        if steamdt_vol > 0 and daily_bars and len(daily_bars) > 0:
-            daily_bars[-1].volume = steamdt_vol  # fill latest bar with real volume
 
         price_history = [k.close for k in daily_bars if k.close > 0] if daily_bars else []
         kline_stale_days = None
@@ -835,14 +851,13 @@ async def api_items_analyze(
             volume_total = item.in_sale_count
 
         daily_bars = item.kline_90d if hasattr(item, "kline_90d") and item.kline_90d else []
-        # Fetch steamdt volume (csqaq K-line has no volume data)
-        steamdt_vol = await _fetch_volume_cached(good_id, item)
+        # Fetch real daily volume from youpin (csqaq K-line has no volume data)
+        steamdt_vol, vol_map = await _fetch_volume_cached(good_id, item)
+        _apply_volume_map(daily_bars, vol_map)
 
         volume_day = steamdt_vol if steamdt_vol > 0 else max(1, volume_total // 20)
         if steamdt_vol > 0 and daily_bars and len(daily_bars) > 0:
             daily_bars[-1].volume = steamdt_vol
-        if steamdt_vol > 0 and daily_bars and len(daily_bars) > 0:
-            daily_bars[-1].volume = steamdt_vol  # fill latest bar with real volume
 
         price_history = [k.close for k in daily_bars if k.close > 0] if daily_bars else []
         kline_stale_days = None
@@ -1045,8 +1060,9 @@ async def api_watchlist_analyze(request: Request, item_id: int):
                 _web_log.warning(f"watchlist kline DB fallback for {exact_name} stale={_stale}d")
         supply_hist = [k.in_sale_count for k in daily_bars] if daily_bars else []
         prices = [k.close for k in daily_bars if k.close > 0] if daily_bars else []
-        # Fetch steamdt volume (csqaq K-line has no volume data)
-        steamdt_vol = await _fetch_volume_cached(good_id, item)
+        # Fetch real daily volume from youpin (csqaq K-line has no volume data)
+        steamdt_vol, vol_map = await _fetch_volume_cached(good_id, item)
+        _apply_volume_map(daily_bars, vol_map)
         volume_day = steamdt_vol if steamdt_vol > 0 else max(1, volume_total // 20)
         if steamdt_vol > 0 and daily_bars and len(daily_bars) > 0:
             daily_bars[-1].volume = steamdt_vol
@@ -1275,7 +1291,7 @@ _scan_progress: dict = {}
 async def _run_batch_scan_task(scan_id: str, rows: list):
     import json as _json
     from pipeline.batch_scan import _portfolio_advice
-    from pipeline import collector_csqaq, collector_steamdt, item_analysis, collector
+    from pipeline import collector_csqaq, item_analysis, collector
     idx = collector.fetch_market_index()
     if idx is None or idx.value == 0:
         idx = type("obj", (object,), {"value": 0, "change_7d": 0})()
@@ -1305,9 +1321,10 @@ async def _run_batch_scan_task(scan_id: str, rows: list):
                 if _db_bars:
                     daily_bars = _db_bars
             prices = [k.close for k in daily_bars if k.close > 0] if daily_bars else [item.price_rmb]
+            steamdt_vol, vol_map = await _fetch_volume_cached(good_id, item)
+            _apply_volume_map(daily_bars, vol_map)
             volumes = [k.volume for k in daily_bars] if daily_bars else []
             supply_hist = [k.in_sale_count for k in daily_bars] if daily_bars else []
-            steamdt_vol = await _fetch_volume_cached(good_id, item)
             volume_day = steamdt_vol if steamdt_vol > 0 else max(1, (item.volume_total or 0) // 20)
             conn_r = db.get_conn()
             try:
@@ -1478,7 +1495,7 @@ DISCOVER_WEAPONS = [
 
 async def _run_discover_task(task_id: str, items: list):
     """Background: search each item via shared browser, analyze, sort by composite score."""
-    from pipeline import collector_csqaq, collector_steamdt, item_analysis as _ia
+    from pipeline import collector_csqaq, item_analysis as _ia
     # Get market TH for context-aware filtering
     ms = _market_snapshot()
     market_th = ms["th"]
@@ -1502,7 +1519,7 @@ async def _run_discover_task(task_id: str, items: list):
                     daily_bars = _db_bars
             prices = [k.close for k in daily_bars if k.close > 0] if daily_bars else [price_rmb]
 
-            # P0-2: 轻量预筛 - K线不足14天直接跳过(节省steamdt+分析耗时)
+            # P0-2: 轻量预筛 - K线不足14天直接跳过(节省采集+分析耗时)
             if len(prices) < 14:
                 skipped += 1
                 continue
@@ -1512,10 +1529,11 @@ async def _run_discover_task(task_id: str, items: list):
                 skipped += 1
                 continue
 
+            steamdt_vol, vol_map = await _fetch_volume_cached(good_id, item)
+            _apply_volume_map(daily_bars, vol_map)
             volumes = [k.volume for k in daily_bars] if daily_bars else []
             supply_hist = [k.in_sale_count for k in daily_bars] if daily_bars else []
 
-            steamdt_vol = await _fetch_volume_cached(good_id, item)
             volume_day = steamdt_vol if steamdt_vol > 0 else max(1, (item.volume_total or 0) // 20)
 
             analysis = _ia.run_item_analysis(

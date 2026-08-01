@@ -36,3 +36,6 @@ node_modules/
 
 # runtime caches
 **/data/batch_scan_latest.json
+
+# Auth / secrets - NEVER commit
+cs-skin-market/data/uu_headers.json

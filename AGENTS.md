@@ -1,6 +1,6 @@
 # cs-skin-market
 
-CS 饰品市场投资分析工具。FastAPI Web 应用，从 csQAQ 采集大盘/单品数据、SteamDT 补成交量，跑六维度评分 + 趋势健康度 + 融合决策模型，输出买卖建议。数据存 SQLite（`cs-skin-market/data/market.db`）。
+CS 饰品市场投资分析工具。FastAPI Web 应用，从 csQAQ 采集大盘/单品数据、悠悠有品补成交量，跑六维度评分 + 趋势健康度 + 融合决策模型，输出买卖建议。数据存 SQLite（`cs-skin-market/data/market.db`）。
 
 ## 唯一入口
 
@@ -22,9 +22,9 @@ CS 饰品市场投资分析工具。FastAPI Web 应用，从 csQAQ 采集大盘/
 | 大盘指数 + 品类排名 | csQAQ `/api/v1/current_data?type=init` | HTTP GET |
 | 大盘 K 线 | csQAQ `/api/v1/current_data?type=kline` | HTTP GET |
 | 单品搜索/详情/90日K线 | csQAQ Playwright 导航 `goods/{id}` | 响应拦截 info/chart API |
-| 真实成交量 | SteamDT Playwright 导航 `/cs2/{name}` | 响应拦截 K线 API |
+| 真实成交量 | 悠悠有品 `price/trend/data` API（登录态 headers） | POST 逐笔成交按日聚合 |
 
-csQAQ chart API 提供 price + in_sale_count（不含真实成交量）。成交量由 SteamDT 单独采集，通过 `merge_daily_volume()` 按日期 (YYYY-MM-DD) 合并到 K线数据。
+csQAQ chart API 提供 price + in_sale_count（不含真实成交量）。成交量由悠悠有品趋势接口采集（`data/uu_headers.json` 登录态，约10天有效），按日期 (YYYY-MM-DD) 聚合回填 K线数据。
 
 ## 命名规则
 
@@ -90,7 +90,7 @@ csQAQ chart API 提供 price + in_sale_count（不含真实成交量）。成交
         config.py              -- 配置（API/权重/评分表/阈值）
         collector.py           -- 大盘指数采集（HTTP）
         collector_csqaq.py     -- 单品采集（Playwright）
-        collector_steamdt.py   -- 成交量采集（Playwright）
+        collector_youpin.py   -- 悠悠有品成交量采集（HTTP）
         db.py                  -- SQLite 存储
         item_analysis.py       -- 单品分析引擎（1051行）
         index_analysis.py      -- 大盘分析引擎（903行）
@@ -139,7 +139,7 @@ csQAQ chart API 提供 price + in_sale_count（不含真实成交量）。成交
 - 英文搜索名可能返回不同皮肤，优先用中文名
 - 文件名不能包含 `|` 等特殊字符，已自动消毒
 - Windows 终端 GBK 编码问题，已设置 stdout UTF-8
-- csQAQ chart API 不含真实成交量，需 SteamDT 单独采集合并
-- `bar.date` 必须为 YYYY-MM-DD 格式才能与 SteamDT 合并
+- csQAQ chart API 不含真实成交量，需悠悠有品采集回填（需 data/uu_headers.json 登录态，token 约10天过期）
+- `bar.date` 必须为 YYYY-MM-DD 格式才能与悠悠逐日成交量匹配
 - 批量扫描需在有网络的环境运行（宿主机直连）
 - 详细模块说明见 `cs-skin-market/AGENTS.md`

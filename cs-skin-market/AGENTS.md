@@ -26,7 +26,7 @@
 
 **定价锚**: 悠悠有品 (platform=2) > Buff > C5GAME，Steam 价格不采用。
 
-**K线数据**: csQAQ chart API 提供 90日日线 OHLCV（price + in_sale_count），成交量由 steamdt 单独采集后通过 merge_daily_volume() 合并。
+**K线数据**: csQAQ chart API 提供 90日日线 OHLCV（price + in_sale_count），成交量由悠悠有品趋势接口采集后按日期聚合回填。
 
 **浏览器复用**: _get_browser() 全局单例，5 分钟超时重建。
 
@@ -221,7 +221,7 @@ python run_item_backtest.py --items "AWP | 冥界之河 (崭新出厂);AK-47 | �
   - 数据质量: good=1.0 / medium=0.85 / low=0.6 / insufficient=0.2（杜绝"没数据排第一"）
   - 融合决策: buy +1.0 / watch +0.5 / hold 0 / reduce -0.5 / avoid -1.0 / sell -1.0
   - 趋势TH: (TH-50)/50 归一化 ±1.0 加权
-- P0-2 覆盖提升: 每类武器扫 6 个(原3), 总量上限 40(原24); K线<14天轻量预筛直接跳过(省 steamdt+分析耗时)
+- P0-2 覆盖提升: 每类武器扫 6 个(原3), 总量上限 40(原24); K线<14天轻量预筛直接跳过(省采集+分析耗时)
 - P1-1 结构化持久化: discover_latest.json 保存 results 明细 + market_th, 前端显示上次扫描时间与成功数
 - P1-2 联动单品报告: Top 表名称点击跳 /search?q=名称 自动触发分析; search 页支持 q 参数预填+自动提交
 
@@ -240,7 +240,7 @@ cs-skin-market/
     config.py            -- 配置（TOKEN/BASE_URL/权重/参数）
     collector.py         -- csQAQ HTTP 采集（大盘指数/品类/搜索）
     collector_csqaq.py   -- csQAQ Playwright 采集（单品搜索/详情/90日K线）
-    collector_steamdt.py -- steamdt Playwright 采集（成交量合并）
+    collector_youpin.py -- 悠悠有品成交量采集（HTTP，登录态）
     db.py                -- SQLite 存储（items/price_history/snapshots/positions/settings）
     item_analysis.py     -- 单品分析主流程（协调10大模块）
     trend_health.py      -- 趋势健康度 + 融合决策
@@ -276,7 +276,7 @@ cs-skin-market/
 ## 常见问题
 
 - **模板中文乱码**: 模板文件必须保存为 UTF-8 编码，不要用 PowerShell 编辑含中文的模板。使用 Python \uXXXX 转义序列生成。
-- **成交量为0**: 检查 bar.date 是否正确设置（必须是 YYYY-MM-DD 格式），steamdt merge 依赖日期匹配。
+- **成交量为0**: 检查 bar.date 是否正确设置（必须是 YYYY-MM-DD 格式），悠悠逐日成交量依赖日期匹配。
 - **分析结果不匹配**: 检查 StatTrak/纪念品过滤是否生效，_verify_item_name 是否正确。
-- **分析耗时长**: 单次分析约 30-50 秒（csQAQ 浏览器 + steamdt 合并），正常现象。
+- **分析耗时长**: 单次分析约 30-60 秒（csQAQ 浏览器采集为主，悠悠成交量 0.1s），正常现象。
 - **庄盘识别偏低**: 算法侧重价格异常和供给控盘，存世量权重较低（大存世量也可能是庄盘）。

@@ -15,7 +15,7 @@ cs-skin-market/
 │   ├── config.py               # 全局配置（权重/代理/评分表/路径）
 │   ├── collector.py            # 大盘/板块数据采集（Playwright）
 │   ├── collector_csqaq.py      # csqaq.com 单品数据采集（搜索+K线+详情）
-│   ├── collector_steamdt.py    # SteamDT 成交量补充采集
+│   ├── collector_youpin.py     # 悠悠有品成交量采集
 │   ├── db.py                   # SQLite 数据库（表结构+CRUD）
 │   ├── item_analysis.py        # 单品分析引擎（主入口+各模块汇总）
 │   ├── index_analysis.py       # 大盘分析引擎（融合决策+多维评分）
@@ -71,7 +71,7 @@ cs-skin-market/
 |---|---|
 | `collector.py` | 大盘指数采集、板块资金流向、市场状态数据，基于 Playwright |
 | `collector_csqaq.py` | **核心采集**：csqaq.com 搜索→详情→K 线全链路。含 StatTrak/纪念品 过滤、90 日 K 线 API 拦截、Nuxt 3 数据解析 |
-| `collector_steamdt.py` | SteamDT 成交量补充采集，通过 Playwright 拦截 K 线 API 获取真实成交量 |
+| `collector_youpin.py` | 悠悠有品成交量采集（HTTP，登录态 headers，10天有效） |
 
 ### 数据存储层
 
@@ -166,7 +166,7 @@ cs-skin-market/
 用户操作 → webapp/main.py (FastAPI端点)
     ↓
 collector_csqaq.py (csqaq搜索+K线+详情)
-collector_steamdt.py (成交量补充)
+collector_youpin.py (悠悠有品成交量采集)
 collector.py (大盘指数)
     ↓
 item_analysis.py / index_analysis.py (分析编排)

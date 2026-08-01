@@ -458,7 +458,7 @@ def score_liquidity(prices, volumes, volume_total):
     if volumes and len(volumes) >= 7:
         vol_day = max(1, sum(volumes[-7:]) // 7)
 
-    # Volume score halved (steamdt volume data has limited accuracy)
+    # Volume score halved (youpin volume data has limited accuracy)
     if vol_day >= 100:
         vol_score = 20
     elif vol_day >= 30:

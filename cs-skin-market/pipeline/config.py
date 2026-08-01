@@ -17,7 +17,7 @@ API_RATE_LIMIT = 1.1  # seconds between calls (1 req/sec)
 
 # ---- Four-factor model weights ----
 WEIGHT_SCARCITY  = 0.35
-WEIGHT_VOLUME    = 0.15  # reduced: steamdt volume data has limited accuracy
+WEIGHT_VOLUME    = 0.15  # reduced: youpin volume data has limited accuracy
 WEIGHT_LIQUIDITY = 0.15
 WEIGHT_MARKET    = 0.25
 WEIGHT_PROBABILITY = 0.10  # added for clarity
