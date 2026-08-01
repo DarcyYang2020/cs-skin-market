@@ -13,6 +13,7 @@ from .valuation import compute_valuation_grid, valuation_grid_summary
 from .supply import analyze_supply, supply_summary
 from .market_context import build_market_context, context_summary
 from .market_macro import compute_sentiment_factor, compute_sentiment_score, event_risk_coefficient
+from .index_analysis import compute_micro_th
 from dataclasses import dataclass, field
 
 # ============================================================
@@ -1130,6 +1131,42 @@ def run_item_analysis(
             fd.action_label = "🟡 飞刀未止跌·观望"
             fd.action_detail = f"Z={position.zscore_90d:.1f}深度超跌但仍在创新低且3日续跌{chg3d:.1f}%，等待止跌确认"
             fd.deduction_sources.append("falling_knife_filter")
+
+    # ---- P0-5: Panic-resonance reversal upgrade (V-bottom capture, 2026-05-22~27) ----
+    # Backtest: watch/avoid missed the 5/22-5/27 capitulation window entirely
+    # (fwd14 +16%~+292%). Deep oversold + 14d reversal + extreme fear is a
+    # high-expected-value entry even when the broad market TH is weak.
+    micro_th = compute_micro_th(prices)
+    if fd.action in ("watch", "avoid") and micro_th >= 60 and sentiment_score >= 75:
+        if (position.percentile_90d is not None and position.percentile_90d <= 15
+                and position.zscore_90d is not None and position.zscore_90d <= -1.5):
+            _dup = False
+            if recent_buy_dates:
+                from datetime import datetime as _dt
+                if signal_date is None:
+                    signal_date = _dt.now().strftime("%Y-%m-%d")
+                for _d0 in recent_buy_dates:
+                    try:
+                        _gap = (_dt.strptime(signal_date[:10], "%Y-%m-%d") - _dt.strptime(_d0[:10], "%Y-%m-%d")).days
+                    except ValueError:
+                        continue
+                    if 0 <= _gap <= 7:
+                        _dup = True
+                        break
+            if not _dup:
+                fd.action = "buy"
+                fd.action_label = "\U0001f7e2 \u6050\u614c\u5171\u632f\u00b7\u5206\u6279\u5efa\u4ed3"
+                fd.action_detail = (f"\u6781\u7aef\u6050\u614c(sent={sentiment_score:.0f})+\u6df1\u5ea6\u8d85\u8dcc("
+                                    f"pct={position.percentile_90d:.0f}%,Z={position.zscore_90d:.1f})+"
+                                    f"\u77ed\u671f\u53cd\u8f6c(microTH={micro_th})")
+                fd.deduction_sources.append("panic_resonance_upgrade")
+
+    # ---- P0-6: Micro-TH buy confirmation (weak short-term momentum blocks buy) ----
+    if fd.action == "buy" and micro_th < 45:
+        fd.action = "watch"
+        fd.action_label = "\U0001f7e1 \u77ed\u671f\u52a8\u80fd\u5f31\u00b7\u89c2\u671b"
+        fd.action_detail = f"14\u65e5\u5fae\u578bTH={micro_th}\uff0c\u77ed\u671f\u52a8\u80fd\u4e0d\u8db3\uff0c\u7b49\u5f85\u53cd\u8f6c\u786e\u8ba4"
+        fd.deduction_sources.append("micro_th_weak")
 
     # ---- Bid support (v4.6): real buy-side willingness snapshot ----
     bid_support = compute_bid_support(order_book)

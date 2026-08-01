@@ -96,13 +96,15 @@ def t_knife():
     pos = SimpleNamespace(percentile_90d=5.0, zscore_90d=-2.8, high_90d=100.0,
                           low_90d=50.0, mean_90d=80.0, median_90d=82.0,
                           current_price=55.0, data_points=90, valuation_tier='undervalued')
-    orig_pos, orig_sent, orig_factor, orig_risk, orig_fd = (
+    orig_pos, orig_sent, orig_factor, orig_risk, orig_fd, orig_micro = (
         ia._analyze_position, ia.compute_sentiment_score,
-        ia.compute_sentiment_factor, ia.event_risk_coefficient, ia.compute_fusion_decision)
+        ia.compute_sentiment_factor, ia.event_risk_coefficient,
+        ia.compute_fusion_decision, ia.compute_micro_th)
     ia._analyze_position = lambda prices: pos
     ia.compute_sentiment_score = lambda: 60
     ia.compute_sentiment_factor = lambda: 0.0
     ia.event_risk_coefficient = lambda: 1.0
+    ia.compute_micro_th = lambda prices: 70
     def fake_fd(*a, **k):
         return SimpleNamespace(action='buy', action_label='\u5468\u671f\u5438\u7b79\u00b7\u5206\u6279\u5efa\u4ed3',
                                action_detail='', deduction_sources=[], zone='undervalued',
@@ -129,8 +131,67 @@ def t_knife():
     finally:
         ia._analyze_position, ia.compute_sentiment_score = orig_pos, orig_sent
         ia.compute_sentiment_factor, ia.event_risk_coefficient = orig_factor, orig_risk
-        ia.compute_fusion_decision = orig_fd
+        ia.compute_fusion_decision, ia.compute_micro_th = orig_fd, orig_micro
 check('falling-knife filter (z<-2 new-low) downgrades buy', t_knife)
+
+print('[Analysis: Item P0-5/P0-6 panic upgrade + micro-TH confirm]')
+def t_panic():
+    from types import SimpleNamespace
+    import pipeline.item_analysis as ia
+    pos = SimpleNamespace(percentile_90d=5.0, zscore_90d=-2.0, high_90d=100.0,
+                          low_90d=50.0, mean_90d=80.0, median_90d=82.0,
+                          current_price=55.0, data_points=90, valuation_tier='undervalued')
+    orig = (ia._analyze_position, ia.compute_sentiment_score, ia.compute_sentiment_factor,
+            ia.event_risk_coefficient, ia.compute_fusion_decision, ia.compute_micro_th)
+    ia._analyze_position = lambda prices: pos
+    ia.compute_sentiment_score = lambda: 80
+    ia.compute_sentiment_factor = lambda: 0.0
+    ia.event_risk_coefficient = lambda: 1.0
+    def fake_fd(action='watch'):
+        return SimpleNamespace(action=action, action_label='', action_detail='',
+                               deduction_sources=[], zone='undervalued', zone_label='\u4f4e\u4f30',
+                               liquidity_filtered=False, percentile_90d=5.0, raw_th_score=40,
+                               corrected_th_score=40, position_limit=None)
+    ia.compute_fusion_decision = lambda *a, **k: fake_fd('watch')
+    kw = dict(name='Test', volumes=[0] * 90, market_pct_90d=5.0,
+              market_cycle='consolidation', market_zscore=-2.0, market_th_score=50,
+              market_30d_change=-10.0, recent_buy_dates=[], signal_date='2026-05-25')
+    kw7 = dict(kw, recent_buy_dates=['2026-05-20'])
+    try:
+        # P0-5: extreme fear + deep oversold + short-term reversal -> buy
+        ia.compute_micro_th = lambda prices: 65
+        res = ia.run_item_analysis(prices=[60.0] * 90, **kw)
+        fd = res.fusion_decision
+        assert fd['action'] == 'buy', fd['action']
+        assert 'panic_resonance_upgrade' in fd['deduction_sources'], fd['deduction_sources']
+        # micro < 60 -> no upgrade
+        ia.compute_micro_th = lambda prices: 55
+        res = ia.run_item_analysis(prices=[60.0] * 90, **kw)
+        assert res.fusion_decision['action'] == 'watch', res.fusion_decision['action']
+        # sentiment < 75 -> no upgrade
+        ia.compute_micro_th = lambda prices: 65
+        ia.compute_sentiment_score = lambda: 70
+        res = ia.run_item_analysis(prices=[60.0] * 90, **kw)
+        assert res.fusion_decision['action'] == 'watch', res.fusion_decision['action']
+        # 7-day cluster blocks repeat upgrade
+        ia.compute_sentiment_score = lambda: 80
+        res = ia.run_item_analysis(prices=[60.0] * 90, **kw7)
+        assert res.fusion_decision['action'] == 'watch', res.fusion_decision['action']
+        # P0-6: buy with weak micro-TH (<45) downgraded
+        ia.compute_micro_th = lambda prices: 40
+        ia.compute_fusion_decision = lambda *a, **k: fake_fd('buy')
+        res = ia.run_item_analysis(prices=[60.0] * 90, **kw)
+        fd = res.fusion_decision
+        assert fd['action'] == 'watch', fd['action']
+        assert 'micro_th_weak' in fd['deduction_sources'], fd['deduction_sources']
+        # buy with strong micro-TH kept
+        ia.compute_micro_th = lambda prices: 60
+        res = ia.run_item_analysis(prices=[60.0] * 90, **kw)
+        assert res.fusion_decision['action'] == 'buy', res.fusion_decision['action']
+    finally:
+        (ia._analyze_position, ia.compute_sentiment_score, ia.compute_sentiment_factor,
+         ia.event_risk_coefficient, ia.compute_fusion_decision, ia.compute_micro_th) = orig
+check('panic-resonance upgrade + micro-TH confirm', t_panic)
 
 print('[Analysis: Trend Health]')
 def t_th():
