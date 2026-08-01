@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 from datetime import datetime, timedelta
 
-SNAPSHOT_DIR = Path(r"C:\Users\81572\Desktop\codex\cs-model\cs-skin-market\data\backtest_snapshots")
+SNAPSHOT_DIR = Path(__file__).resolve().parent.parent / "data" / "backtest_snapshots"
 THRESHOLDS = {"14d_win_rate": 0.70, "30d_win_rate": 0.55}
 
 def _buy_only(signals):
@@ -23,9 +23,10 @@ def stats(signals):
         "count": len(f14),
     }
 
-def check_decay():
+def check_decay(series="backtest_"):
+    """series: "backtest_" (market) or "item_backtest_" (single-item)."""
     SNAPSHOT_DIR.mkdir(parents=True, exist_ok=True)
-    snapshots = sorted(SNAPSHOT_DIR.glob("backtest_*.json"))
+    snapshots = sorted(SNAPSHOT_DIR.glob(series + "*.json"))
     if len(snapshots) < 2:
         print("Not enough snapshots (need >= 2)")
         return
@@ -69,4 +70,9 @@ def check_decay():
         print(f"\nTrend: 14d win rate {'+' if delta>=0 else ''}{delta:.0%}")
 
 if __name__ == "__main__":
-    check_decay()
+    import sys
+    series = sys.argv[1] if len(sys.argv) > 1 else "backtest_"
+    if series not in ("backtest_", "item_backtest_"):
+        print("usage: python pipeline/factor_monitor.py [backtest_|item_backtest_]")
+        sys.exit(1)
+    check_decay(series)

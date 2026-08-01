@@ -13,6 +13,8 @@ Notes:
   the reported data_quality per signal reflects that.
 """
 import sys, json, argparse
+from pathlib import Path
+from datetime import datetime
 sys.path.insert(0, ".")
 from pipeline import db
 import pipeline.item_analysis as ia
@@ -210,8 +212,17 @@ if __name__ == "__main__":
         deep = [s for s in all_sigs if (s.get("pct") if s.get("pct") is not None else 99) <= 25 and (s.get("th") if s.get("th") is not None else 0) >= 40]
         _bucket(deep, -99, 99, "pct", "deep+pct<=25&th>=40")
 
+    sigs_out = [s for r in results for s in r.get("signals", []) if "fwd14" in s]
     with open("data/item_backtest_latest.json", "w", encoding="utf-8") as f:
-        json.dump({"args": vars(args), "aggregate": agg, "per_item": rows, "signals": [
-            s for r in results for s in r.get("signals", []) if "fwd14" in s
-        ]}, f, ensure_ascii=False, indent=2)
+        json.dump({"args": vars(args), "aggregate": agg, "per_item": rows, "signals": sigs_out},
+                  f, ensure_ascii=False, indent=2)
     print("\nsaved: data/item_backtest_latest.json")
+
+    # dated snapshot for factor-decay monitor (factor_monitor.py)
+    snap_dir = Path("data/backtest_snapshots")
+    snap_dir.mkdir(parents=True, exist_ok=True)
+    snap_name = "item_backtest_%s.json" % datetime.now().strftime("%Y%m%d")
+    with open(snap_dir / snap_name, "w", encoding="utf-8") as f:
+        json.dump({"params": vars(args), "aggregate": agg, "signals": sigs_out},
+                  f, ensure_ascii=False, indent=2)
+    print("snapshot:", snap_dir / snap_name)
