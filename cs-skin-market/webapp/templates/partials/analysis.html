@@ -4,6 +4,14 @@
   <p style="color: var(--red);">{{ error }}</p>
 </div>
 {% else %}
+{% if kline_stale_days is defined and kline_stale_days is not none %}
+<div class="card" style="border-color: rgba(245,158,11,0.5);margin-bottom:12px;">
+  <div class="card-header" style="padding:10px 14px;">
+    <span style="font-size:14px;font-weight:700;color:var(--yellow);">⚠️ csQAQ 图表采集失败，已用数据库缓存K线</span>
+  </div>
+  <div style="padding:8px 14px;font-size:12px;color:var(--text-secondary);">数据截至 {{ kline_stale_date }}（过期 {{ kline_stale_days }} 天），仅供参考，建议稍后重新分析。</div>
+</div>
+{% endif %}
 {{ oob_price|safe }}
 {{ oob_grade|safe }}
 

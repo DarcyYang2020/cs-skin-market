@@ -145,6 +145,38 @@ def _chart_to_raw(cd: dict) -> list:
         out.append([ts_arr[i], p, v])
     return out
 
+def _extract_chart(item, data) -> int:
+    """Populate ItemData from csQAQ chart response. Returns number of daily bars."""
+    if not data or data.get('code') != 200 or not data.get('data'):
+        return 0
+    cd = data['data']
+    item._daily_bars = _chart_to_daily_ohlc(cd)
+    item._kline_raw = _chart_to_raw(cd)
+    item.kline_90d = item._daily_bars[:]
+    nums = cd.get('num_data', [])
+    prices = cd.get('main_data', [])
+    if nums and prices:
+        try:
+            item.volume_day = max(int(float(nums[-1])), 0) if nums[-1] else 0
+        except (TypeError, ValueError):
+            item.volume_day = 0
+    if item._daily_bars:
+        try:
+            item.price_rmb = item._daily_bars[-1].close
+        except (TypeError, ValueError, IndexError):
+            item.price_rmb = 0.0
+    elif prices:
+        try:
+            item.price_rmb = float(prices[-1])
+        except (TypeError, ValueError):
+            item.price_rmb = 0.0
+    if nums:
+        try:
+            item.volume_total = max((int(float(v)) if v else 0) for v in nums)
+        except (TypeError, ValueError):
+            item.volume_total = 0
+    return len(item.kline_90d)
+
 # ============================================================
 # Search for good_id by name
 # ============================================================
@@ -336,7 +368,10 @@ async def _fetch_item_detail_once(good_id: int):
                 await route.continue_()
         page.on('response', on_response)
         await page.route('**/info/chart**', modify_chart)
-        await page.goto(f'{CSQAQ_WEB}/goods/{good_id}', wait_until='domcontentloaded', timeout=25000)
+        try:
+            await page.goto(f'{CSQAQ_WEB}/goods/{good_id}', wait_until='domcontentloaded', timeout=25000)
+        except Exception as _ge:
+            _csq_log.warning(f"goto goods/{good_id} failed: {_ge}")
         await page.wait_for_timeout(1500)
         # Extract youyoupin listing price from page DOM
         try:
@@ -348,66 +383,25 @@ async def _fetch_item_detail_once(good_id: int):
         except Exception:
             pass
         if captured['chart']:
-            data = json.loads(captured['chart'])
-            if data.get('code') == 200 and data.get('data'):
-                cd = data['data']
-                item._daily_bars = _chart_to_daily_ohlc(cd)
-                item._kline_raw = _chart_to_raw(cd)
-                item.kline_90d = item._daily_bars[:]
-                ts = cd.get('timestamp', [])
-                prices = cd.get('main_data', [])
-                nums = cd.get('num_data', [])
-                if nums and prices:
-                    try:
-                        item.volume_day = max(int(float(nums[-1])), 0) if nums[-1] else 0
-                    except (TypeError, ValueError):
-                        item.volume_day = 0
-                if item._daily_bars:
-                    try:
-                        item.price_rmb = item._daily_bars[-1].close
-                    except (TypeError, ValueError, IndexError):
-                        item.price_rmb = 0.0
-                elif prices:
-                    try:
-                        item.price_rmb = float(prices[-1])
-                    except (TypeError, ValueError):
-                        item.price_rmb = 0.0
-                if nums:
-                    try:
-                        item.volume_total = max((int(float(v)) if v else 0) for v in nums)
-                    except (TypeError, ValueError):
-                        item.volume_total = 0
-        # Retry with Buff platform if no chart data from YouYouPin
-        if (not captured['chart'] or not item.kline_90d) and good_id:
-            _csq_log.info(f"Empty chart from platform=2, retrying with platform=1 (Buff) good_id={good_id}")
             try:
-                await page.route('**/info/chart**', lambda r, req: _modify_chart_route(r, req, platform=1))
+                _extract_chart(item, json.loads(captured['chart']))
+            except Exception:
+                pass
+        # Retry with Buff (platform=1) / C5GAME (platform=3) if chart still empty
+        for fb_platform, fb_name in ((1, "Buff"), (3, "C5GAME")):
+            if item.kline_90d:
+                break
+            _csq_log.info(f"Empty chart from platform=2, retrying with platform={fb_platform} ({fb_name}) good_id={good_id}")
+            try:
+                captured['chart'] = None
+                await page.route('**/info/chart**', lambda r, req, p=fb_platform: _modify_chart_route(r, req, platform=p))
                 await page.goto(f'{CSQAQ_WEB}/goods/{good_id}', wait_until='domcontentloaded', timeout=25000)
                 await page.wait_for_timeout(1500)
                 if captured['chart']:
-                    data2 = json.loads(captured['chart'])
-                    if data2.get('code') == 200 and data2.get('data'):
-                        cd2 = data2['data']
-                        item._daily_bars = _chart_to_daily_ohlc(cd2)
-                        item._kline_raw = _chart_to_raw(cd2)
-                        item.kline_90d = item._daily_bars[:]
-                        p2 = cd2.get('main_data', [])
-                        n2 = cd2.get('num_data', [])
-                        if n2 and p2:
-                            try: item.volume_day = max(int(float(n2[-1])), 0) if n2[-1] else 0
-                            except: pass
-                        if item._daily_bars:
-                            try: item.price_rmb = item._daily_bars[-1].close
-                            except: pass
-                        elif p2:
-                            try: item.price_rmb = float(p2[-1])
-                            except: pass
-                        if n2:
-                            try: item.volume_total = max((int(float(v)) if v else 0) for v in n2)
-                            except: pass
-                        _csq_log.info(f"Buff platform returned {len(item.kline_90d)} bars")
+                    _extract_chart(item, json.loads(captured['chart']))
+                    _csq_log.info(f"{fb_name} platform returned {len(item.kline_90d)} bars")
             except Exception as e2:
-                _csq_log.warning(f"Buff retry failed: {e2}")
+                _csq_log.warning(f"{fb_name} retry failed: {e2}")
 
         if captured['detail']:
             try:
@@ -525,7 +519,10 @@ async def fetch_kline_90d(good_id: int):
                 await route.continue_()
         page.on('response', on_response)
         await page.route('**/info/chart**', modify_chart)
-        await page.goto(f'{CSQAQ_WEB}/goods/{good_id}', wait_until='domcontentloaded', timeout=15000)
+        try:
+            await page.goto(f'{CSQAQ_WEB}/goods/{good_id}', wait_until='domcontentloaded', timeout=15000)
+        except Exception as _ge:
+            _csq_log.warning(f"fetch_kline_90d goto goods/{good_id} failed: {_ge}")
         await page.wait_for_timeout(1500)
         ohlc, raw = [], []
         if captured['chart']:
@@ -535,11 +532,14 @@ async def fetch_kline_90d(good_id: int):
                 ohlc = _chart_to_daily_ohlc(cd)
                 raw = _chart_to_raw(cd)
 
-        # Retry with Buff platform if no chart data
-        if (not captured['chart'] or not ohlc) and good_id:
-            _csq_log.info(f"fetch_kline_90d: empty from platform=2, retry platform=1 (Buff) good_id={good_id}")
+        # Retry with Buff (platform=1) / C5GAME (platform=3) if chart still empty
+        for fb_platform, fb_name in ((1, "Buff"), (3, "C5GAME")):
+            if ohlc:
+                break
+            _csq_log.info(f"fetch_kline_90d: empty from platform=2, retry platform={fb_platform} ({fb_name}) good_id={good_id}")
             try:
-                await page.route('**/info/chart**', lambda r, req: _modify_chart_route(r, req, platform=1))
+                captured['chart'] = None
+                await page.route('**/info/chart**', lambda r, req, p=fb_platform: _modify_chart_route(r, req, platform=p))
                 await page.goto(f'{CSQAQ_WEB}/goods/{good_id}', wait_until='domcontentloaded', timeout=15000)
                 await page.wait_for_timeout(1500)
                 if captured['chart']:
@@ -548,9 +548,9 @@ async def fetch_kline_90d(good_id: int):
                         cd2 = data2['data']
                         ohlc = _chart_to_daily_ohlc(cd2)
                         raw = _chart_to_raw(cd2)
-                        _csq_log.info(f"fetch_kline_90d Buff returned {len(ohlc)} bars")
+                        _csq_log.info(f"fetch_kline_90d {fb_name} returned {len(ohlc)} bars")
             except Exception as e2:
-                _csq_log.warning(f"fetch_kline_90d Buff retry failed: {e2}")
+                _csq_log.warning(f"fetch_kline_90d {fb_name} retry failed: {e2}")
 
         return ohlc, raw
     finally:

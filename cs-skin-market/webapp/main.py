@@ -52,6 +52,41 @@ def _today_str() -> str:
     return datetime.now(TZ_BJ).strftime("%Y-%m-%d")
 
 
+def _db_kline_fallback(good_id, name):
+    """csQAQ 图表采集失败时，用数据库缓存的90日K线兜底。Returns (bars, stale_days, last_date) or (None, None, "")."""
+    import types as _types
+    conn = db.get_conn()
+    try:
+        row = db.find_item(conn, name) if name else None
+        if row is None and good_id:
+            row = conn.execute("SELECT id FROM items WHERE good_id=?", (good_id,)).fetchone()
+        if row is None:
+            return None, None, ""
+        rows = db.get_item_history(conn, row["id"], limit=90)
+        if not rows:
+            return None, None, ""
+        rows = sorted(rows, key=lambda r: r["date"])
+        last_date = rows[-1]["date"]
+        stale = (datetime.now(TZ_BJ).date() - datetime.strptime(last_date, "%Y-%m-%d").date()).days
+        if stale > 14 or len(rows) < 14:
+            return None, None, ""
+        bars = []
+        for r in rows:
+            price = float(r["price_rmb"] or 0)
+            bars.append(_types.SimpleNamespace(
+                ts=0, date=r["date"], close=price, high=price, low=price,
+                volume=float(r["volume_day"] or 0),
+                in_sale_count=int(r["volume_total"] or 0),
+                tx_amount=0, tx_count=0, survive=0,
+            ))
+        return bars, stale, last_date
+    except Exception as _e:
+        _web_log.warning(f"db kline fallback failed: {_e}")
+        return None, None, ""
+    finally:
+        conn.close()
+
+
 def _market_snapshot():
     """Market context from stored index history (pct/z/cycle/th/chg7/chg30/sentiment)."""
     conn = db.get_conn()
@@ -564,8 +599,17 @@ async def api_items_search(request: Request, query: str = Form(...)):
             daily_bars[-1].volume = steamdt_vol  # fill latest bar with real volume
 
         price_history = [k.close for k in daily_bars if k.close > 0] if daily_bars else []
+        kline_stale_days = None
+        kline_stale_date = ""
         if not price_history:
-            return HTMLResponse(_ae("K线数据获取失败，请稍后重试（csQAQ 图表采集偶发为空，已自动重试仍失败）"))
+            _db_bars, _stale, _stale_date = _db_kline_fallback(good_id, exact_name)
+            if _db_bars:
+                daily_bars = _db_bars
+                price_history = [k.close for k in daily_bars if k.close > 0]
+                kline_stale_days, kline_stale_date = _stale, _stale_date
+                _web_log.warning(f"search kline DB fallback for {exact_name} stale={_stale}d")
+            else:
+                return HTMLResponse(_ae("K线数据获取失败，请稍后重试（csQAQ 图表采集偶发为空，已自动重试仍失败）"))
         volume_history = [k.volume for k in daily_bars] if daily_bars else []
         supply_history = [k.in_sale_count for k in daily_bars] if daily_bars else []
 
@@ -626,6 +670,7 @@ async def api_items_search(request: Request, query: str = Form(...)):
             conn_s.close()
 
         # Save to analysis_results table
+        grade = analysis.value.grade
         th = analysis.trend_health or {}
         trend_dir = th.get("trend_direction", "")
         trend_score = th.get("score", 0)
@@ -645,6 +690,8 @@ async def api_items_search(request: Request, query: str = Form(...)):
             "trend_health": analysis.trend_health,
             "fusion_decision": analysis.fusion_decision,
             "error": None,"oob_price":"","oob_grade":"",
+            "kline_stale_days": kline_stale_days,
+            "kline_stale_date": kline_stale_date,
             "price_zones": analysis.price_zones,
         })
         try:
@@ -674,6 +721,8 @@ async def api_items_search(request: Request, query: str = Form(...)):
             "trend_health": analysis.trend_health,
             "fusion_decision": analysis.fusion_decision,
             "error": None,"oob_price":"","oob_grade":"",
+            "kline_stale_days": kline_stale_days,
+            "kline_stale_date": kline_stale_date,
             "price_zones": analysis.price_zones,
             "analysis_time": __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M"),
         }
@@ -748,6 +797,15 @@ async def api_items_analyze(
             daily_bars[-1].volume = steamdt_vol  # fill latest bar with real volume
 
         price_history = [k.close for k in daily_bars if k.close > 0] if daily_bars else []
+        kline_stale_days = None
+        kline_stale_date = ""
+        if not price_history:
+            _db_bars, _stale, _stale_date = _db_kline_fallback(good_id, exact_name)
+            if _db_bars:
+                daily_bars = _db_bars
+                price_history = [k.close for k in daily_bars if k.close > 0]
+                kline_stale_days, kline_stale_date = _stale, _stale_date
+                _web_log.warning(f"analyze kline DB fallback for {exact_name} stale={_stale}d")
         volume_history = [k.volume for k in daily_bars] if daily_bars else []
         supply_history = [k.in_sale_count for k in daily_bars] if daily_bars else []
 
@@ -823,6 +881,8 @@ async def api_items_analyze(
             "trend_health": analysis.trend_health,
             "fusion_decision": analysis.fusion_decision,
             "error": None,"oob_price":"","oob_grade":"",
+            "kline_stale_days": kline_stale_days,
+            "kline_stale_date": kline_stale_date,
             "price_zones": analysis.price_zones,
             "analysis_time": __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M"),
         }
@@ -927,6 +987,14 @@ async def api_watchlist_analyze(request: Request, item_id: int):
             volume_total = item.in_sale_count
 
         daily_bars = item.kline_90d if hasattr(item, "kline_90d") and item.kline_90d else []
+        kline_stale_days = None
+        kline_stale_date = ""
+        if not daily_bars:
+            _db_bars, _stale, _stale_date = _db_kline_fallback(good_id, exact_name)
+            if _db_bars:
+                daily_bars = _db_bars
+                kline_stale_days, kline_stale_date = _stale, _stale_date
+                _web_log.warning(f"watchlist kline DB fallback for {exact_name} stale={_stale}d")
         supply_hist = [k.in_sale_count for k in daily_bars] if daily_bars else []
         prices = [k.close for k in daily_bars if k.close > 0] if daily_bars else []
         # Fetch steamdt volume (csqaq K-line has no volume data)
@@ -1017,6 +1085,8 @@ async def api_watchlist_analyze(request: Request, item_id: int):
             "trend_health": analysis.trend_health,
             "fusion_decision": analysis.fusion_decision,
             "error": None,"oob_price":"","oob_grade":"",
+            "kline_stale_days": kline_stale_days,
+            "kline_stale_date": kline_stale_date,
             "price_zones": analysis.price_zones,
         }
         return templates.TemplateResponse(request, "partials/analysis.html", ctx)
@@ -1189,6 +1259,10 @@ async def _run_batch_scan_task(scan_id: str, rows: list):
                 continue
             exact_name = item.name or name
             daily_bars = item.kline_90d if hasattr(item, "kline_90d") and item.kline_90d else []
+            if not daily_bars:
+                _db_bars, _stale, _stale_date = _db_kline_fallback(good_id, exact_name)
+                if _db_bars:
+                    daily_bars = _db_bars
             prices = [k.close for k in daily_bars if k.close > 0] if daily_bars else [item.price_rmb]
             volumes = [k.volume for k in daily_bars] if daily_bars else []
             supply_hist = [k.in_sale_count for k in daily_bars] if daily_bars else []
@@ -1388,6 +1462,10 @@ async def _run_discover_task(task_id: str, items: list):
                 continue
             exact_name = item.name or name
             daily_bars = item.kline_90d if hasattr(item, "kline_90d") and item.kline_90d else []
+            if not daily_bars:
+                _db_bars, _stale, _stale_date = _db_kline_fallback(good_id, exact_name)
+                if _db_bars:
+                    daily_bars = _db_bars
             prices = [k.close for k in daily_bars if k.close > 0] if daily_bars else [price_rmb]
 
             # P0-2: 轻量预筛 - K线不足14天直接跳过(节省steamdt+分析耗时)
