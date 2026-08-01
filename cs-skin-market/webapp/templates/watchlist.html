@@ -141,6 +141,10 @@
       <button type="button" class="btn btn-outline btn-sm" onclick="closeModal('scan-modal')">✕</button>
     </div>
     <input type="text" id="scan-search" placeholder="搜索要扫描的饰品..." class="form-input" style="width:100%;margin-bottom:10px;" oninput="filterScanList()">
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;user-select:none;margin-bottom:8px;">
+      <input type="checkbox" id="scan-select-all" onchange="toggleScanSelectAll(this)">
+      <span>全选当前列表</span>
+    </label>
     <div id="scan-list" style="max-height:340px;overflow:auto;border:1px solid var(--border);border-radius:8px;padding:4px 0;"></div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;">
       <span id="scan-count" style="font-size:12px;color:var(--text-muted);"></span>
@@ -471,10 +475,30 @@ function toggleScanSel(cb) {
   if (cb.checked) scanSelectedMap[id] = true; else delete scanSelectedMap[id];
   updateScanCount();
 }
+function toggleScanSelectAll(master) {
+  var cbs = document.querySelectorAll('#scan-list .scan-cb');
+  var anyUnchecked = Array.prototype.some.call(cbs, function(cb) { return !cb.checked; });
+  cbs.forEach(function(cb) {
+    var id = parseInt(cb.value);
+    if (anyUnchecked) { cb.checked = true; scanSelectedMap[id] = true; }
+    else { cb.checked = false; delete scanSelectedMap[id]; }
+  });
+  updateScanCount();
+}
+function syncScanSelectAll() {
+  var sa = document.getElementById('scan-select-all');
+  if (!sa) return;
+  var cbs = document.querySelectorAll('#scan-list .scan-cb');
+  var n = cbs.length, checked = 0;
+  cbs.forEach(function(cb) { if (cb.checked) checked++; });
+  sa.checked = n > 0 && checked === n;
+  sa.indeterminate = checked > 0 && checked < n;
+}
 function updateScanCount() {
   var n = Object.keys(scanSelectedMap).length;
   var c1 = document.getElementById('scan-selected-count'); if (c1) c1.textContent = n;
   var c2 = document.getElementById('scan-count'); if (c2) c2.textContent = '已选 ' + n + ' / 共 ' + allWatchlistItems.length + ' 个';
+  syncScanSelectAll();
 }
 function startBatchScan() {
   var ids = Object.keys(scanSelectedMap).map(Number);

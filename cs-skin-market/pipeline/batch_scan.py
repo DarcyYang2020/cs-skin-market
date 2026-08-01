@@ -13,21 +13,25 @@ def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th
       pct<=25 & th>=40: 14d胜率75% | pct 25~40(半山腰): 14d胜率28% | sent<=30(贪婪): 30d胜率0%
     """
     if not holding or avg_cost <= 0:
-        # Non-held: entry advice
-        th = analysis.trend_health or {}
-        th_score = th.get("score", 50)
-        cycle_phase = getattr(analysis.cycle, "phase", "unknown")
-        pct = getattr(analysis.position, "percentile_90d", 50)
-        fusion = getattr(analysis, "fusion_decision", {})
+        # Non-held: entry advice —— 与单品报告决策同源（fusion_decision），统一口径
+        fusion = getattr(analysis, "fusion_decision", {}) or {}
         fusion_action = fusion.get("action", "") if isinstance(fusion, dict) else ""
-
-        if th_score < 30 or cycle_phase in ("distribution", "decline"):
-            return {"action": "暂不建议入场", "reason": "趋势偏弱/出货阶段", "risk": "high"}
-        if pct <= 20:
-            return {"action": "可轻仓试探入场", "reason": f"处于90日低位(pct={pct:.0f}%)", "risk": "medium", "note": "建议分批建仓"}
-        if pct >= 80:
-            return {"action": "偏高估，等待回调", "reason": f"处于90日高位(pct={pct:.0f}%)", "risk": "high"}
-        return {"action": "观望等待机会", "reason": f"估值中等(pct={pct:.0f}%), 趋势得分{th_score}", "risk": "medium"}
+        label = (fusion.get("action_label", "") or "").replace("🟢 ", "").replace("🟡 ", "").replace("🟠 ", "").replace("🔴 ", "").replace("🟤 ", "")
+        action_map = {
+            "buy": "可分批建仓",
+            "watch": "观望等待机会",
+            "hold": "持有观察",
+            "reduce": "暂不建议入场",
+            "sell": "暂不建议入场",
+            "avoid": "暂不建议入场",
+        }
+        action = action_map.get(fusion_action, "观望等待机会")
+        risk = "low" if fusion_action == "buy" else ("high" if fusion_action in ("sell", "avoid", "reduce") else "medium")
+        detail = fusion.get("action_detail") or ""
+        reason = label or "以报告决策为准"
+        if label and detail and detail not in label:
+            reason = f"{label}：{detail}"
+        return {"action": action, "reason": reason, "risk": risk, "fusion_action": fusion_action}
 
     # Held: personalized advice
     cost_total = avg_cost * qty

@@ -161,6 +161,46 @@ def _apply_volume_map(daily_bars, vol_map):
         bar.volume = int(v) if v and v > 0 else 0
 
 
+def _kline_price_sane(daily_bars, item_id):
+    """K线价格合理性校验，防 csQAQ 偶发串品/脏价覆盖历史。
+
+    规则：新采集最新价 vs DB 该品最近历史价 偏差>25%，且新序列内存在单日跳变>30%，
+    判为疑似脏数据（如 2026-08-01 水灵 595 vs 真实 424）。
+    Returns (ok: bool, msg: str)；ok=False 时调用方应跳过落库，保留 DB 旧数据。
+    """
+    if not daily_bars or len(daily_bars) < 3:
+        return True, ""
+    closes = [b.close for b in daily_bars if getattr(b, "close", 0) and b.close > 0]
+    if len(closes) < 3:
+        return True, ""
+    new_last = closes[-1]
+    max_jump = 0.0
+    for i in range(1, len(closes)):
+        if closes[i - 1] > 0:
+            max_jump = max(max_jump, abs(closes[i] / closes[i - 1] - 1))
+    db_last = 0
+    last_date = getattr(daily_bars[-1], "date", "") or "9999-99-99"
+    try:
+        conn = db.get_conn()
+        try:
+            row = conn.execute(
+                "SELECT price_rmb FROM price_history WHERE item_id=? AND date < ? ORDER BY date DESC LIMIT 1",
+                (item_id, last_date),
+            ).fetchone()
+            if row:
+                db_last = row["price_rmb"] or 0
+        finally:
+            conn.close()
+    except Exception:
+        return True, ""
+    if db_last <= 0 or new_last <= 0:
+        return True, ""
+    dev = abs(new_last / db_last - 1)
+    if dev > 0.25 and max_jump > 0.30:
+        return False, "最新价¥%.2f vs DB ¥%.2f 偏差%.0f%%，序列内跳变%.0f%%" % (new_last, db_last, dev * 100, max_jump * 100)
+    return True, ""
+
+
 async def _fetch_volume_cached(good_id, item):
     """单品成交量：当日缓存 → 悠悠有品逐日成交量(近7天真实成交) → info/good turnover_number 兜底。
 
@@ -1381,6 +1421,12 @@ async def _run_batch_scan_task(scan_id: str, rows: list):
             )
             analysis.volume_day = volume_day
             analysis.volume_total = item.volume_total or 0
+            # 价格合理性校验：csQAQ 偶发串品/脏价，脏数据不落库（保留 DB 旧数据）
+            _sane, _sane_msg = _kline_price_sane(daily_bars, item_id)
+            if not _sane:
+                _web_log.warning(f"batch scan skip {exact_name}: {_sane_msg}")
+                results.append(dict(name=exact_name, holding=holding, error="价格校验未通过，保留旧数据"))
+                continue
             pa = _portfolio_advice(holding, avg_cost, qty, item.price_rmb, analysis, market_th=market_th_score, sentiment_score=sentiment_score)
             results.append(dict(
                 name=exact_name, holding=holding, avg_cost=avg_cost, qty=qty,
