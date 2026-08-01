@@ -405,7 +405,7 @@ def _analyze_cycle(prices, volumes=None, sentiment_factor=0.0):
             cyc.phase_confidence = min(90, cyc.phase_confidence + sentiment_factor * 5)
 
     # --- Volume confirmation for markup phase ---
-    if cyc.phase == "markup" and volumes and len(volumes) >= 20:
+    if cyc.phase == "markup" and volumes and sum(1 for v in volumes if v and v > 0) >= 20:
         avg_vol_5d = sum(volumes[-5:]) / 5
         avg_vol_20d = sum(volumes[-20:]) / 20
         if avg_vol_5d < avg_vol_20d * 0.7:
@@ -453,24 +453,48 @@ def score_liquidity(prices, volumes, volume_total):
     liq = LiquidityScore()
     liq.breakdown = {}
 
-    # Volume score (40%)
+    # Volume score (40%): 相对量能——当日/7日均量 vs 30日真实量基准
     vol_day = volume_total // 20 if volume_total > 0 else 1  # rough daily estimate
     if volumes and len(volumes) >= 7:
         vol_day = max(1, sum(volumes[-7:]) // 7)
 
-    # Volume score halved (youpin volume data has limited accuracy)
-    if vol_day >= 100:
-        vol_score = 20
-    elif vol_day >= 30:
-        vol_score = 16
-    elif vol_day >= 10:
-        vol_score = 12
-    elif vol_day >= 3:
-        vol_score = 8
-    elif vol_day >= 1:
-        vol_score = 4
+    # 相对量基准：近 30 日真实成交量均值；真实量不足时用近 7 日均值兜底
+    vol_base = 0
+    recent7 = [v for v in volumes[-7:] if v and v > 0] if volumes else []
+    recent30 = [v for v in volumes[-30:] if v and v > 0] if volumes else []
+    if len(recent30) >= 20:
+        vol_base = statistics.mean(recent30)
+    elif len(recent7) >= 3:
+        vol_base = statistics.mean(recent7)
+
+    if vol_base > 0:
+        vol_ratio = vol_day / vol_base
+        if vol_ratio >= 3:
+            vol_score = 20
+        elif vol_ratio >= 2:
+            vol_score = 16
+        elif vol_ratio >= 1.5:
+            vol_score = 12
+        elif vol_ratio >= 1:
+            vol_score = 8
+        elif vol_ratio >= 0.5:
+            vol_score = 4
+        else:
+            vol_score = 1
     else:
-        vol_score = 1
+        # 无历史真实量：绝对量兜底（低频市场，不参与相对判定）
+        if vol_day >= 100:
+            vol_score = 20
+        elif vol_day >= 30:
+            vol_score = 16
+        elif vol_day >= 10:
+            vol_score = 12
+        elif vol_day >= 3:
+            vol_score = 8
+        elif vol_day >= 1:
+            vol_score = 4
+        else:
+            vol_score = 1
     liq.breakdown["volume"] = vol_score
 
     # Supply depth score (30%)
@@ -711,7 +735,9 @@ def analyze_whale(prices, volumes):
     recent = min(15, n)
 
     # 1. Volume divergence (40%): volume spike without price movement
-    if volumes and len(volumes) >= recent:
+    # 真实量 < 20 天时不参与（避免采样假量干扰）
+    real_vol_days = sum(1 for v in (volumes or []) if v and v > 0)
+    if volumes and len(volumes) >= recent and real_vol_days >= 20:
         vol_recent = volumes[-recent:]
         vol_mean = statistics.mean(vol_recent) if vol_recent else 1
         if vol_mean > 0:

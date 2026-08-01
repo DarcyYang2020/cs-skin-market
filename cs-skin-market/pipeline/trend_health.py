@@ -377,7 +377,9 @@ def _dim_volume(prices, volumes):
     - Sideways + stable vol: medium
     - Extended: 5d/20d vol ratio + consecutive volume trend
     """
-    if not volumes or len(volumes) < 10 or len(prices) < 10:
+    real_days = sum(1 for v in volumes if v and v > 0) if volumes else 0
+    # 真实成交量 < 20 天：长窗口量价项置中性，避免采样假量干扰
+    if not volumes or len(volumes) < 10 or real_days < 20 or len(prices) < 10:
         return 50, "量能中性"
 
     n = min(len(prices), len(volumes))

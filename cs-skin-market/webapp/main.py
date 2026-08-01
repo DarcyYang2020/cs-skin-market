@@ -127,11 +127,21 @@ def _cached_youpin_volume(good_id):
 
 
 def _save_youpin_volume(good_id, vol, vol_map):
+    """滚动累积：新 7 天真实量并入历史 map，不丢旧日期（攒够 20+ 天量能项才激活）。"""
     if not good_id:
         return
     conn = db.get_conn()
     try:
-        db.set_setting(conn, f"uu_vol_{good_id}", json.dumps({"date": _today_str(), "vol": vol, "map": vol_map}))
+        merged = dict(vol_map or {})
+        old_raw = db.get_setting(conn, f"uu_vol_{good_id}")
+        if old_raw:
+            try:
+                old_map = (json.loads(old_raw).get("map") or {})
+                for _d, _v in old_map.items():
+                    merged.setdefault(_d, _v)
+            except Exception:
+                pass
+        db.set_setting(conn, f"uu_vol_{good_id}", json.dumps({"date": _today_str(), "vol": vol, "map": merged}))
         conn.commit()
     except Exception as _e:
         _web_log.warning(f"youpin cache save failed: {_e}")
@@ -140,17 +150,19 @@ def _save_youpin_volume(good_id, vol, vol_map):
 
 
 def _apply_volume_map(daily_bars, vol_map):
-    """用悠悠逐日成交量回填 daily_bars（按 bar.date 匹配）。"""
+    """用悠悠逐日成交量回填 daily_bars（按 bar.date 匹配）。
+
+    未覆盖日期清 0：避免旧采样假量混入长窗口量能判断（真实量天数以非 0 计）。
+    """
     if not daily_bars or not vol_map:
         return
     for bar in daily_bars:
         v = vol_map.get(getattr(bar, "date", ""))
-        if v and v > 0:
-            bar.volume = v
+        bar.volume = int(v) if v and v > 0 else 0
 
 
 async def _fetch_volume_cached(good_id, item):
-    """单品成交量：当日缓存 → 悠悠有品逐日成交量(近90天) → info/good turnover_number 兜底。
+    """单品成交量：当日缓存 → 悠悠有品逐日成交量(近7天真实成交) → info/good turnover_number 兜底。
 
     Returns:
         (today_vol, {date: vol})；today_vol 用于当日成交量，vol_map 用于回填全部 K 线 bar。

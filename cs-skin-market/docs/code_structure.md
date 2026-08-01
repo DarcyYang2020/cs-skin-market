@@ -32,7 +32,7 @@ CS饰品投资分析系统，提供大盘分析、单品分析、持仓管理三
 - 数据源：悠悠有品（platform=2），自动过滤 StatTrak/纪念品
 
 ### collector_youpin.py — 悠悠有品成交量采集（HTTP，登录态 headers）
-- fetch_youpin_volume(template_id, days=90) -> 近90日逐笔成交按日聚合
+- fetch_youpin_volume(template_id, days=7) -> 近7日真实逐笔成交按日聚合（30/90/180 为采样曲线，不能当成交量）
 - 认证文件 data/uu_headers.json（浏览器登录态，约10天过期，不入库）
 
 ### item_analysis.py — 单品分析引擎（主入口+各模块汇总）

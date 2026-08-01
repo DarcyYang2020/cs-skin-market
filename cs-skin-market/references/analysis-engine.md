@@ -21,7 +21,7 @@
 用户点击分析
   → csQAQ search_good_id(name)       # 搜索物品 good_id
   → csQAQ fetch_item_detail(good_id)  # 获取详情+K线+在售数(platform=2 悠悠有品)
-  → youpin fetch_youpin_volume(yyyp_id)      # 悠悠近90日逐笔成交按日聚合
+  → youpin fetch_youpin_volume(yyyp_id)      # 悠悠近7日真实逐笔成交按日聚合（滚动累积）
   → _apply_volume_map(daily_bars, vol_map)     # 按日期回填K线成交量
   → run_item_analysis()              # 执行分析管线
 `

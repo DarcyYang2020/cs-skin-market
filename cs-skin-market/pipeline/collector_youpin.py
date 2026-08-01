@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """悠悠有品 (youpin898.com) 单品日成交量采集器（纯 HTTP，秒级）。
 
-使用悠悠有品 PC 站趋势接口获取单品近 90 日逐笔成交记录，
+使用悠悠有品 PC 站趋势接口获取单品近 7 日逐笔成交记录，
 按 localDate 聚合为 {date: 日成交量}，作为 K 线真实成交量来源
 （csQAQ chart API 无真实成交量，SteamDT 已弃用）。
 
@@ -44,12 +44,15 @@ def _api_headers() -> dict:
         return {}
 
 
-async def fetch_youpin_volume(template_id: str, days: int = 90) -> dict[str, int]:
+async def fetch_youpin_volume(template_id: str, days: int = 7) -> dict[str, int]:
     """获取悠悠有品单品近 days 日成交量。
+
+    注意：仅 day=7 返回真实逐笔成交记录（按日聚合为成交量）；
+    day=30/90/180 是价格走势采样点（每天固定约 3-6 条），不能当成交量用。
 
     Args:
         template_id: 悠悠模板 ID（csqaq goods_info.yyyp_id）。
-        days: 拉取天数，支持 7/30/90/180。
+        days: 拉取天数，默认 7（真实成交）；30/90/180 为采样曲线。
 
     Returns:
         {date(YYYY-MM-DD): 当日成交量}；失败或未认证返回 {}。

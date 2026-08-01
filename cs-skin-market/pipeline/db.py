@@ -152,9 +152,45 @@ def _init_schema(conn: sqlite3.Connection) -> None:
 
         volume_total INTEGER,
 
-        created_at TEXT DEFAULT (datetime('now','localtime')))""")
+        created_at TEXT DEFAULT (datetime('now','localtime')),
+
+        UNIQUE(item_id, date))""")
 
     conn.execute("CREATE INDEX IF NOT EXISTS idx_price_history_item_date ON price_history(item_id, date)")
+
+
+
+    # 迁移：price_history (item_id,date) 唯一化——清重复行(保留最新) + 唯一索引(幂等)
+
+    try:
+
+        _has_uq = conn.execute(
+
+            "SELECT 1 FROM sqlite_master WHERE type='index' AND name='uq_price_history_item_date'"
+
+        ).fetchone()
+
+        if not _has_uq:
+
+            conn.execute(
+
+                "DELETE FROM price_history WHERE id NOT IN "
+
+                "(SELECT MAX(id) FROM price_history GROUP BY item_id, date)"
+
+            )
+
+            conn.execute(
+
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_price_history_item_date ON price_history(item_id, date)"
+
+            )
+
+            conn.commit()
+
+    except sqlite3.OperationalError:
+
+        pass  # 并发/锁冲突时跳过，下轮启动再迁移
 
     conn.execute("""CREATE TABLE IF NOT EXISTS snapshots (
 
