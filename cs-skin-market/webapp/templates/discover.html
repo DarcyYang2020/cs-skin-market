@@ -46,8 +46,15 @@
 fetch("/api/discover/latest")
 .then(function(r) { return r.json(); })
 .then(function(d) {
+  var el = document.getElementById("discover-results");
   if (d.found && d.html) {
-    document.getElementById("discover-results").innerHTML = d.html;
+    el.innerHTML = d.html;
+    var n = (d.results || []).filter(function(x){ return !x.error; }).length;
+    var t = d.time ? d.time.replace("T", " ").slice(0, 16) : "";
+    var note = document.createElement("div");
+    note.style.cssText = "font-size:12px;color:var(--text-muted);margin:10px 0 4px;";
+    note.textContent = "\u4e0a\u6b21\u626b\u63cf: " + t + " (\u6210\u529f " + n + " \u4e2a)";
+    el.insertBefore(note, el.firstChild);
   }
 });
 

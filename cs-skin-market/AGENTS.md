@@ -215,6 +215,16 @@ python run_item_backtest.py --items "AWP | 冥界之河 (崭新出厂);AK-47 | �
 - pct≤25 但大盘TH<45 → 暂缓，等大盘共振
 - 单品TH<30 → 止损优先（风险预算原则）
 
+## 发现高分品模块优化 (2026-08-01)
+
+- P0-1 综合分重排: composite = (评分 + 融合决策加权 + 趋势TH加权) x 估值折价 x 数据质量系数
+  - 数据质量: good=1.0 / medium=0.85 / low=0.6 / insufficient=0.2（杜绝"没数据排第一"）
+  - 融合决策: buy +1.0 / watch +0.5 / hold 0 / reduce -0.5 / avoid -1.0 / sell -1.0
+  - 趋势TH: (TH-50)/50 归一化 ±1.0 加权
+- P0-2 覆盖提升: 每类武器扫 6 个(原3), 总量上限 40(原24); K线<14天轻量预筛直接跳过(省 steamdt+分析耗时)
+- P1-1 结构化持久化: discover_latest.json 保存 results 明细 + market_th, 前端显示上次扫描时间与成功数
+- P1-2 联动单品报告: Top 表名称点击跳 /search?q=名称 自动触发分析; search 页支持 q 参数预填+自动提交
+
 ## 文件结构
 
 `

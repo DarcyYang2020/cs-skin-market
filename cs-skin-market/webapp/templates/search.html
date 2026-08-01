@@ -9,7 +9,7 @@
 
 <div class="card" style="padding:16px;">
   <form id="search-form" hx-post="/api/items/search" hx-target="#modal-body" hx-swap="innerHTML" hx-indicator="#search-spinner" onsubmit="showLoadingAndOpen()" style="gap:8px;display:flex;">
-    <input type="text" id="search-input" name="query" placeholder="输入饰品名称..." class="form-input" style="flex:1;" required minlength="2" autofocus>
+    <input type="text" id="search-input" name="query" placeholder="输入饰品名称..." class="form-input" style="flex:1;" required minlength="2" autofocus value="{{ query }}">
     <button type="submit" class="btn btn-primary">
       <span class="htmx-indicator spinner" id="search-spinner"></span>
       🔍 分析
@@ -50,6 +50,14 @@ function reanalyzeItem(name) {
   document.getElementById("search-input").value = name;
   document.getElementById("search-form").requestSubmit();
 }
+
+(function() {
+  var q = new URLSearchParams(window.location.search).get("q");
+  if (q && q.trim().length >= 2) {
+    document.getElementById("search-input").value = q;
+    document.getElementById("search-form").requestSubmit();
+  }
+})();
 
 </script>
 {% endblock %}

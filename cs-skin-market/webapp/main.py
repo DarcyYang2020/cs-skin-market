@@ -1311,7 +1311,8 @@ async def api_batch_scan_latest():
         return {"found": False}
     try:
         data = _J.loads(cache_path.read_text(encoding="utf-8"))
-        return {"found": True, "time": data["time"], "html": data.get("html", "")}
+        return {"found": True, "time": data["time"], "html": data.get("html", ""),
+                "results": data.get("results", []), "market_th": data.get("market_th")}
     except Exception:
         return {"found": False}
 
@@ -1373,6 +1374,7 @@ async def _run_discover_task(task_id: str, items: list):
     # Get market TH for context-aware filtering
     ms = _market_snapshot()
     market_th = ms["th"]
+    _discover_progress[task_id]["market_th"] = market_th
     results = []
     total = len(items)
     skipped = 0
@@ -1388,13 +1390,15 @@ async def _run_discover_task(task_id: str, items: list):
             daily_bars = item.kline_90d if hasattr(item, "kline_90d") and item.kline_90d else []
             prices = [k.close for k in daily_bars if k.close > 0] if daily_bars else [price_rmb]
 
-            # P0: Pre-filter - skip items with high percentile (overvalued)
-            if len(prices) >= 14:
-                current_p = prices[-1]
-                pct_quick = sum(1 for p in prices if p < current_p) / len(prices) * 100
-                if pct_quick > 75:
-                    skipped += 1
-                    continue
+            # P0-2: 轻量预筛 - K线不足14天直接跳过(节省steamdt+分析耗时)
+            if len(prices) < 14:
+                skipped += 1
+                continue
+            current_p = prices[-1]
+            pct_quick = sum(1 for p in prices if p < current_p) / len(prices) * 100
+            if pct_quick > 75:
+                skipped += 1
+                continue
 
             volumes = [k.volume for k in daily_bars] if daily_bars else []
             supply_hist = [k.in_sale_count for k in daily_bars] if daily_bars else []
@@ -1423,9 +1427,14 @@ async def _run_discover_task(task_id: str, items: list):
             z_val = getattr(pos, "zscore_90d", 0) if hasattr(pos, "zscore_90d") else 0
             score = analysis.value.score
 
-            # P1: Composite score = score * valuation discount
+            # P0-1 (2026-08): 综合分重排 - 数据质量 x 估值折价 x (评分+融合决策+趋势加权)
+            dq_factor = {"good": 1.0, "medium": 0.85, "low": 0.6, "insufficient": 0.2}.get(getattr(analysis, "data_quality", "low"), 0.4)
+            fd_action = (analysis.fusion_decision or {}).get("action", "") if isinstance(analysis.fusion_decision, dict) else ""
+            action_bonus = {"buy": 1.0, "watch": 0.5, "hold": 0.0, "reduce": -0.5, "avoid": -1.0, "sell": -1.0}.get(fd_action, 0.0)
+            th_score = (analysis.trend_health or {}).get("score", 50) if isinstance(analysis.trend_health, dict) else 50
+            th_bonus = (th_score - 50) / 50 * 1.0  # TH 100 -> +1.0, TH 0 -> -1.0
             valuation_discount = max(0.5, 1.0 - pct_val / 200)
-            composite = round(score * valuation_discount, 1)
+            composite = round((score + action_bonus + th_bonus) * valuation_discount * dq_factor, 1)
 
             # P3: Market-linked filter
             if market_th < 55 and score < 6.0 and composite < 5.0:
@@ -1435,6 +1444,8 @@ async def _run_discover_task(task_id: str, items: list):
             results.append(dict(
                 name=exact_name, price_rmb=price_rmb or item.price_rmb,
                 grade=analysis.value.grade, score=score, composite=composite,
+                data_quality=getattr(analysis, "data_quality", "low"),
+                fd_action=fd_action, th_score=th_score,
                 percentile_90d=pct_val, zscore_90d=round(z_val, 2),
                 trend=analysis.trend_health,
                 cycle_phase=getattr(analysis.cycle, "phase", "unknown"),
@@ -1524,7 +1535,7 @@ def _render_discover_html(results, market_th=50):
         lines.append(
             f'<tr><td style="{rank_style}">{idx+1}</td>'
             f'<td><span class="{grade_cls}">{g}</span></td>'
-            f'<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{r["name"]}</td>'
+            f'<td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><a href="/search?q={r["name"]}" target="_blank" style="color:var(--accent);text-decoration:none;" title="\u67e5\u770b\u5206\u6790\u62a5\u544a">{r["name"]}</a></td>'
             f'<td>\u00a5{r.get("price_rmb",0):.2f}</td>'
             f'<td>{r.get("score",0):.1f}</td>'
             f'<td style="font-weight:600;">{comp:.1f}</td>'
@@ -1608,10 +1619,11 @@ async def _run_discover_scan_all_task(task_id: str):
     for gid, name, price in all_items:
         key = name.split(" |")[0] if "|" in name else "unknown"
         by_type[key].append((gid, name, price))
+    # P0-2 (2026-08): 每类扫6个(原3), 总量上限40(原24) 提升覆盖
     capped = []
     for wt_items in by_type.values():
-        capped.extend(wt_items[:3])
-    capped = capped[:24]
+        capped.extend(wt_items[:6])
+    capped = capped[:40]
 
     _discover_progress[task_id]["total"] = len(capped)
     _discover_progress[task_id]["current"] = 0
@@ -1622,7 +1634,12 @@ async def _run_discover_scan_all_task(task_id: str):
     from pathlib import Path as _Path_cache
     _cache_path = _Path_cache(__file__).resolve().parent.parent / 'data' / 'discover_latest.json'
     _cache_path.parent.mkdir(parents=True, exist_ok=True)
-    _cache_data = {'time': __import__('datetime').datetime.now().isoformat(), 'html': _discover_progress[task_id].get('html', '')}
+    _cache_data = {
+        'time': __import__('datetime').datetime.now().isoformat(),
+        'html': _discover_progress[task_id].get('html', ''),
+        'results': _discover_progress[task_id].get('results', []),
+        'market_th': _discover_progress[task_id].get('market_th', None),
+    }
     _cache_path.write_text(_json_cache.dumps(_cache_data, ensure_ascii=False), encoding='utf-8')
 
 
