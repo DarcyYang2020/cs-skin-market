@@ -5,18 +5,18 @@
     "start": "2025-11-02",
     "end": null,
     "warmup": 30,
-    "stratify": false
+    "stratify": true
   },
   "aggregate": {
-    "signals": 18,
+    "signals": 16,
     "win14": 13,
-    "n14": 18,
-    "win14_pct": 72.2,
-    "avg14": 14.88,
+    "n14": 16,
+    "win14_pct": 81.2,
+    "avg14": 17.09,
     "win30": 11,
-    "n30": 17,
-    "win30_pct": 64.7,
-    "avg30": 26.64
+    "n30": 16,
+    "win30_pct": 68.8,
+    "avg30": 28.9
   },
   "per_item": [
     {
@@ -231,13 +231,13 @@
     {
       "name": "AK-47 | 精英之作 (战痕累累)",
       "days": 92,
-      "signals": 3,
+      "signals": 1,
       "win14": 1,
-      "f14": 3,
-      "avg14": -1.19,
+      "f14": 1,
+      "avg14": 2.15,
       "win30": 0,
-      "f30": 2,
-      "avg30": -8.06
+      "f30": 1,
+      "avg30": -6.54
     },
     {
       "name": "USP 消音版 | 守护者 (崭新出厂)",
@@ -538,44 +538,6 @@
       "fwd14": 2.15,
       "fwd30": -6.54,
       "max_dd": -2.96
-    },
-    {
-      "name": "AK-47 | 精英之作 (战痕累累)",
-      "date": "2026-06-20",
-      "action": "buy",
-      "action_label": "🟢 周期吸筹·分批建仓",
-      "pct": 3.3,
-      "z": -2.81,
-      "th": 48,
-      "cycle": "accumulation",
-      "value": 9.9,
-      "risk": "C",
-      "data_quality": "good",
-      "market_th": 46,
-      "market_cycle": "unknown",
-      "sentiment": 62.6,
-      "fwd14": -0.74,
-      "fwd30": -9.58,
-      "max_dd": -0.74
-    },
-    {
-      "name": "AK-47 | 精英之作 (战痕累累)",
-      "date": "2026-07-03",
-      "action": "buy",
-      "action_label": "🟢 周期吸筹·分批建仓",
-      "pct": 1.4,
-      "z": -3.04,
-      "th": 41,
-      "cycle": "accumulation",
-      "value": 9.5,
-      "risk": "C",
-      "data_quality": "good",
-      "market_th": 44,
-      "market_cycle": "unknown",
-      "sentiment": 51.1,
-      "fwd14": -4.97,
-      "fwd30": null,
-      "max_dd": -8.99
     },
     {
       "name": "USP 消音版 | 守护者 (崭新出厂)",

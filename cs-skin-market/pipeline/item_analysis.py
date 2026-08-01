@@ -1119,6 +1119,18 @@ def run_item_analysis(
                 fd.deduction_sources.append("buy_cluster_dedup")
                 break
 
+    # ---- P0-4: Extreme oversold falling-knife confirmation (z<-2 must stabilize) ----
+    # Backtest 2025-11~2026-07: z<-2 signals still making new lows lost 100% (0/2).
+    # Keep deep-oversold buys only when decline decelerates (no new low OR 3d up).
+    if fd.action == "buy" and position.zscore_90d is not None and position.zscore_90d < -2 and len(prices) >= 4:
+        low3 = min(prices[-3:])
+        chg3d = (current - prices[-4]) / prices[-4] * 100
+        if current <= low3 and chg3d <= 0:
+            fd.action = "watch"
+            fd.action_label = "🟡 飞刀未止跌·观望"
+            fd.action_detail = f"Z={position.zscore_90d:.1f}深度超跌但仍在创新低且3日续跌{chg3d:.1f}%，等待止跌确认"
+            fd.deduction_sources.append("falling_knife_filter")
+
     # ---- Bid support (v4.6): real buy-side willingness snapshot ----
     bid_support = compute_bid_support(order_book)
     bid_score = bid_support["score"]

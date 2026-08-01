@@ -89,6 +89,49 @@ def t_ia():
     assert callable(run_item_analysis)
 check('item_analysis imports cleanly', t_ia)
 
+print('[Analysis: Item P0-4 falling-knife filter]')
+def t_knife():
+    from types import SimpleNamespace
+    import pipeline.item_analysis as ia
+    pos = SimpleNamespace(percentile_90d=5.0, zscore_90d=-2.8, high_90d=100.0,
+                          low_90d=50.0, mean_90d=80.0, median_90d=82.0,
+                          current_price=55.0, data_points=90, valuation_tier='undervalued')
+    orig_pos, orig_sent, orig_factor, orig_risk, orig_fd = (
+        ia._analyze_position, ia.compute_sentiment_score,
+        ia.compute_sentiment_factor, ia.event_risk_coefficient, ia.compute_fusion_decision)
+    ia._analyze_position = lambda prices: pos
+    ia.compute_sentiment_score = lambda: 60
+    ia.compute_sentiment_factor = lambda: 0.0
+    ia.event_risk_coefficient = lambda: 1.0
+    def fake_fd(*a, **k):
+        return SimpleNamespace(action='buy', action_label='\u5468\u671f\u5438\u7b79\u00b7\u5206\u6279\u5efa\u4ed3',
+                               action_detail='', deduction_sources=[], zone='undervalued',
+                               zone_label='\u4f4e\u4f30', liquidity_filtered=False,
+                               percentile_90d=5.0, raw_th_score=55, corrected_th_score=55,
+                               position_limit=None)
+    ia.compute_fusion_decision = fake_fd
+    kw = dict(name='Test', volumes=[0] * 90, market_pct_90d=5.0,
+              market_cycle='consolidation', market_zscore=-2.8, market_th_score=55,
+              market_30d_change=-5.0, recent_buy_dates=[], signal_date='2026-07-03')
+    try:
+        # falling knife: last day new low + 3d still down -> downgraded to watch
+        prices = [60.0] * 86 + [58.0, 57.0, 56.0, 55.0]
+        res = ia.run_item_analysis(prices=prices, **kw)
+        fd = res.fusion_decision
+        assert fd['action'] == 'watch', fd['action']
+        assert 'falling_knife_filter' in fd['deduction_sources'], fd['deduction_sources']
+        # stabilized: not making new low -> buy preserved
+        prices2 = [60.0] * 86 + [58.0, 57.0, 55.0, 57.0]
+        res2 = ia.run_item_analysis(prices=prices2, **kw)
+        fd2 = res2.fusion_decision
+        assert fd2['action'] == 'buy', fd2['action']
+        assert 'falling_knife_filter' not in fd2['deduction_sources'], fd2['deduction_sources']
+    finally:
+        ia._analyze_position, ia.compute_sentiment_score = orig_pos, orig_sent
+        ia.compute_sentiment_factor, ia.event_risk_coefficient = orig_factor, orig_risk
+        ia.compute_fusion_decision = orig_fd
+check('falling-knife filter (z<-2 new-low) downgrades buy', t_knife)
+
 print('[Analysis: Trend Health]')
 def t_th():
     from pipeline.trend_health import compute_trend_health
