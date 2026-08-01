@@ -253,8 +253,9 @@
 </div>
 {% endblock %}
 
-{% block scripts %}<div id="loading-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:rgba(0,0,0,0.5);justify-content:center;align-items:center;">
-  <div style="background:#fff;border-radius:12px;padding:40px;text-align:center;max-width:400px;box-shadow:0 8px 30px rgba(0,0,0,0.2);">
+{% block scripts %}<div id="loading-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:rgba(0,0,0,0.5);justify-content:center;align-items:center;" onclick="if(event.target===this)hideLoadingModal()">
+  <div style="background:#fff;border-radius:12px;padding:40px;text-align:center;max-width:400px;box-shadow:0 8px 30px rgba(0,0,0,0.2);position:relative;">
+    <button type="button" onclick="hideLoadingModal()" style="position:absolute;top:6px;right:10px;border:none;background:none;font-size:16px;cursor:pointer;color:#9ca3af;" title="关闭弹窗（扫描继续在后台进行）">✕</button>
     <div class="spinner" style="width:40px;height:40px;margin:0 auto 20px;border:3px solid #e5e7eb;border-top-color:#3b82f6;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
     <h3 style="margin-bottom:8px;color:#111;">分析中...</h3>
     <p id="loading-status" style="font-size:13px;color:#6b7280;">正在准备...</p>
@@ -346,7 +347,7 @@ function goPage(p) {
 
 // ---- Modal ----
 function openModal(id) { var el = document.getElementById(id); if (el) el.style.display = 'flex'; }
-function closeModal(id) { var el = document.getElementById(id); if (!el) return; if (id === 'analysis-modal') { var body = document.getElementById('modal-body'); if (body && body.querySelector('.spinner')) return; } el.style.display = 'none'; }
+function closeModal(id) { var el = document.getElementById(id); if (!el) return; el.style.display = 'none'; }
 
 document.addEventListener('click', function(e) {
   if (e.target.classList.contains('modal-overlay')) closeModal(e.target.id);
@@ -505,6 +506,11 @@ function startBatchScan() {
   if (ids.length === 0) { showToast('请先勾选要扫描的饰品'); return; }
   closeModal('scan-modal');
   batchScanSelectedIds(ids);
+}
+function hideLoadingModal() {
+  var m = document.getElementById('loading-modal');
+  if (m) m.style.display = 'none';
+  showToast('扫描继续在后台进行，结果会显示在下方');
 }
 function batchScanSelectedIds(ids) {
   var modal = document.getElementById('loading-modal');

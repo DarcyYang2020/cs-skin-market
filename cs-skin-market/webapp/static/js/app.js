@@ -8,12 +8,7 @@ function openModal(id) {
 function closeModal(id) {
   var el = document.getElementById(id);
   if (!el) return;
-  // Don't close analysis modal while an analysis is running (spinner visible).
-  // The modal content will update when htmx completes; user can dismiss after.
-  if (id === 'analysis-modal') {
-    var body = document.getElementById('modal-body');
-    if (body && body.querySelector('.spinner')) return;
-  }
+  // 允许随时关闭弹窗：分析继续在后台进行，完成后结果保存至报告/分析结果
   el.style.display = 'none';
 }
 

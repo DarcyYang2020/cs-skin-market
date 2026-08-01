@@ -608,6 +608,10 @@ async def api_analysis_clear(request: Request):
         conn.close()
     return await _analysis_results_partial(request)
 
+@app.get("/api/analysis/results")
+async def api_analysis_results(request: Request):
+    return await _analysis_results_partial(request)
+
 
 # ---- Watchlist page ----
 @app.get("/watchlist", response_class=HTMLResponse)
@@ -1256,6 +1260,38 @@ async def api_watchlist_report(request: Request, item_id: int):
         conn.close()
 
 
+# ---- Discover report (existing report, no re-analysis) ----
+@app.get("/api/discover/report")
+async def api_discover_report(request: Request, name: str = Query(...)):
+    """Return saved report by item name without re-running analysis."""
+    conn = db.get_conn()
+    try:
+        row = conn.execute(
+            "SELECT report_html FROM analysis_results WHERE name=? ORDER BY id DESC LIMIT 1",
+            (name,),
+        ).fetchone()
+        if row and row["report_html"]:
+            return HTMLResponse(row["report_html"])
+        item = conn.execute("SELECT id FROM items WHERE name=?", (name,)).fetchone()
+        if item:
+            snap = conn.execute(
+                "SELECT report_html, report_md, date, grade, total_score FROM snapshots WHERE item_id=? ORDER BY date DESC LIMIT 1",
+                (item["id"],),
+            ).fetchone()
+            if snap and (snap["report_html"] or snap["report_md"]):
+                if snap["report_html"]:
+                    return HTMLResponse(snap["report_html"])
+                return HTMLResponse(_render_report_html(snap["report_md"], snap["date"], snap["grade"], snap["total_score"] or 0))
+        return HTMLResponse(
+            '<div class="card" style="border-color: rgba(245,158,11,0.5);">'
+            '<div class="card-header"><span class="card-title">⚠️ 暂无报告</span></div>'
+            '<p style="color: var(--text-secondary);">该饰品尚未生成报告，请先执行「开始扫描」或单品分析。</p>'
+            '</div>'
+        )
+    finally:
+        conn.close()
+
+
 def _render_report_html(report_md, date, grade, total_score):
     """Render markdown report to styled HTML matching analysis template."""
     import re as _re
@@ -1587,6 +1623,7 @@ async def _run_discover_task(task_id: str, items: list):
     market_th = ms["th"]
     _discover_progress[task_id]["market_th"] = market_th
     results = []
+    analysis_objs = {}
     total = len(items)
     skipped = 0
     for i, (good_id, name, price_rmb) in enumerate(items):
@@ -1630,6 +1667,7 @@ async def _run_discover_task(task_id: str, items: list):
                 market_th_score=ms["th"],
                 market_30d_change=ms["chg30"],
             )
+            analysis_objs[exact_name] = analysis
 
             pos = analysis.position if hasattr(analysis, "position") else {}
             pct_val = getattr(pos, "percentile_90d", 50) if hasattr(pos, "percentile_90d") else 50
@@ -1651,7 +1689,7 @@ async def _run_discover_task(task_id: str, items: list):
                 continue
 
             results.append(dict(
-                name=exact_name, price_rmb=price_rmb or item.price_rmb,
+                name=exact_name, good_id=good_id, price_rmb=price_rmb or item.price_rmb,
                 grade=analysis.value.grade, score=score, composite=composite,
                 data_quality=getattr(analysis, "data_quality", "low"),
                 fd_action=fd_action, th_score=th_score,
@@ -1672,6 +1710,35 @@ async def _run_discover_task(task_id: str, items: list):
     results.sort(key=lambda r: r.get("composite", 0) or r.get("score", 0) or 0, reverse=True)
     _discover_progress[task_id]["results"] = results
     _discover_progress[task_id]["done"] = True
+
+    # 保存 top10 报告到 analysis_results + snapshots（查看报告不再重新分析）
+    try:
+        for _r in results[:10]:
+            if _r.get("error"):
+                continue
+            _an = analysis_objs.get(_r.get("name", ""))
+            if _an is None:
+                continue
+            try:
+                _save_analysis_result(_an)
+            except Exception as _se1:
+                _web_log.warning(f"discover save analysis_result failed: {_se1}")
+            try:
+                _conn_d = db.get_conn()
+                try:
+                    _pid_d = db.upsert_item(_conn_d, name=_r["name"], good_id=_r.get("good_id", 0))
+                    _conn_d.commit()
+                finally:
+                    _conn_d.close()
+                _conn_s = db.get_conn()
+                try:
+                    _save_item_snapshot(_conn_s, _pid_d, _an, _an.price_rmb or 0)
+                finally:
+                    _conn_s.close()
+            except Exception as _se2:
+                _web_log.warning(f"discover save snapshot failed: {_se2}")
+    except Exception as _se3:
+        _web_log.warning(f"discover save reports failed: {_se3}")
 
     html = _render_discover_html(results, market_th)
     _discover_progress[task_id]["html"] = html
@@ -1744,7 +1811,7 @@ def _render_discover_html(results, market_th=50):
         lines.append(
             f'<tr><td style="{rank_style}">{idx+1}</td>'
             f'<td><span class="{grade_cls}">{g}</span></td>'
-            f'<td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><a href="/search?q={r["name"]}" target="_blank" style="color:var(--accent);text-decoration:none;" title="\u67e5\u770b\u5206\u6790\u62a5\u544a">{r["name"]}</a></td>'
+            f'<td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><a href="javascript:void(0)" onclick="showDiscoverReport(\'{esc_name}\')" style="color:var(--accent);text-decoration:none;cursor:pointer;" title="\u67e5\u770b\u5206\u6790\u62a5\u544a">{r["name"]}</a></td>'
             f'<td>\u00a5{r.get("price_rmb",0):.2f}</td>'
             f'<td>{r.get("score",0):.1f}</td>'
             f'<td style="font-weight:600;">{comp:.1f}</td>'
@@ -1863,7 +1930,11 @@ async def api_discover_latest():
         return {"found": False}
     try:
         data = _J.loads(cache_path.read_text(encoding="utf-8"))
-        return {"found": True, "time": data["time"], "html": data.get("html", "")}
+        results = data.get("results", [])
+        market_th = data.get("market_th", 50)
+        # 用最新模板重新渲染，保证查看报告走弹窗（不再跳转重新分析）
+        html = _render_discover_html(results, market_th) if results else data.get("html", "")
+        return {"found": True, "time": data["time"], "html": html, "results": results}
     except Exception:
         return {"found": False}
 

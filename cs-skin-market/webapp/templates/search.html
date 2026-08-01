@@ -65,5 +65,22 @@ function reanalyzeItem(name) {
   }
 })();
 
+// 分析完成后刷新下方"分析结果"列表（中途关闭弹窗后仍可从列表查看报告）
+document.addEventListener('htmx:afterSwap', function(evt) {
+  var pi = evt.detail && evt.detail.pathInfo;
+  if (!pi || pi.requestPath !== '/api/items/search') return;
+  fetch('/api/analysis/results')
+    .then(function(r) { return r.text(); })
+    .then(function(html) {
+      var sec = document.getElementById('analysis-results-section');
+      if (!sec || !html) return;
+      var tmp = document.createElement('div');
+      tmp.innerHTML = html;
+      var fresh = tmp.querySelector('#analysis-results-section');
+      if (fresh) sec.replaceWith(fresh);
+    })
+    .catch(function() {});
+});
+
 </script>
 {% endblock %}
