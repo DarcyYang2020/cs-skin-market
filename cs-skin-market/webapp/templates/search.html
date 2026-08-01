@@ -54,8 +54,14 @@ function reanalyzeItem(name) {
 (function() {
   var q = new URLSearchParams(window.location.search).get("q");
   if (q && q.trim().length >= 2) {
-    document.getElementById("search-input").value = q;
-    document.getElementById("search-form").requestSubmit();
+    // 等 DOMContentLoaded: analysis-modal 在 scripts block 之后，需等模态解析完成才能开启
+    document.addEventListener("DOMContentLoaded", function() {
+      var input = document.getElementById("search-input");
+      if (!input) return;
+      input.value = q;
+      var form = document.getElementById("search-form");
+      if (form) form.requestSubmit();
+    });
   }
 })();
 
