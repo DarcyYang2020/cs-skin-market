@@ -23,6 +23,8 @@ API_URL = "https://pc-api.youpin898.com/api/youpin/price/trend/data"
 HEADERS_PATH = Path(__file__).resolve().parent.parent / "data" / "uu_headers.json"
 
 _headers_cache: dict | None = None
+# 84101 登录失效熔断：当天不再重复请求（软过期回退由调用方处理）
+_auth_failed_date: str = ""
 
 
 def _api_headers() -> dict:
@@ -52,10 +54,15 @@ async def fetch_youpin_volume(template_id: str, days: int = 90) -> dict[str, int
     Returns:
         {date(YYYY-MM-DD): 当日成交量}；失败或未认证返回 {}。
     """
+    global _auth_failed_date
     headers = _api_headers()
     template_id = str(template_id or "")
     if not headers or not template_id:
         return {}
+    from datetime import datetime, timezone, timedelta
+    _today = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d")
+    if _auth_failed_date == _today:
+        return {}  # 登录已失效，当天熔断，避免重复请求
     body = {
         "filterTemplateTypeNames": [],
         "templateId": template_id,
@@ -70,7 +77,11 @@ async def fetch_youpin_volume(template_id: str, days: int = 90) -> dict[str, int
             resp.raise_for_status()
             payload = resp.json()
         if payload.get("code") != 0:
-            _log.warning(f"悠悠成交量接口返回 code={payload.get('code')} msg={payload.get('msg')}")
+            if payload.get("code") == 84101:
+                _auth_failed_date = _today
+                _log.warning(f"悠悠登录态失效(code=84101)，当天熔断，改用历史缓存+Steam兜底: {payload.get('msg')}")
+            else:
+                _log.warning(f"悠悠成交量接口返回 code={payload.get('code')} msg={payload.get('msg')}")
             return {}
         rows = (payload.get("data") or {}).get("tradeDataList") or []
         if not rows:

@@ -103,7 +103,10 @@ async def _resolve_good_id(query):
 
 
 def _cached_youpin_volume(good_id):
-    """当天悠悠成交量缓存（settings 表）。Returns (vol, vol_map, fresh)。"""
+    """悠悠成交量缓存（settings 表）。Returns (vol, vol_map, fresh)。
+
+    fresh 表示是否为当天抓取；即使过期也返回最近一次历史 map，供软过期回退。
+    """
     if not good_id:
         return 0, {}, False
     conn = db.get_conn()
@@ -112,8 +115,10 @@ def _cached_youpin_volume(good_id):
         if not raw:
             return 0, {}, False
         data = json.loads(raw)
-        if data.get("date") == _today_str():
-            return float(data.get("vol") or 0), data.get("map") or {}, True
+        vol = float(data.get("vol") or 0)
+        vol_map = data.get("map") or {}
+        fresh = data.get("date") == _today_str()
+        return vol, vol_map, fresh
     except Exception:
         pass
     finally:
@@ -151,12 +156,14 @@ async def _fetch_volume_cached(good_id, item):
         (today_vol, {date: vol})；today_vol 用于当日成交量，vol_map 用于回填全部 K 线 bar。
     """
     vol, vol_map, fresh = _cached_youpin_volume(good_id)
-    if fresh and vol > 0:
-        return vol, vol_map
     if fresh:
-        # 悠悠当日 0 成交：历史仍用 map 回填，当日量兜底 turnover_number
+        # 当天已有缓存：直接复用（当日 0 成交时用 turnover_number 兜底当日量）
+        if vol > 0:
+            return vol, vol_map
         turnover = getattr(item, "turnover_number", 0) or 0
         return (turnover if turnover > 0 else 0), vol_map
+    # 非当天：先保留历史缓存，再尝试抓取最新悠悠数据
+    cached_map = vol_map
     template_id = getattr(item, "yyyp_id", "") or ""
     if template_id:
         try:
@@ -168,6 +175,11 @@ async def _fetch_volume_cached(good_id, item):
             vol = float(vol_map.get(_today_str(), 0) or 0)
             _save_youpin_volume(good_id, vol, vol_map)
             return vol, vol_map
+        # 抓取失败（token 过期/网络）：软过期回退——历史 map 照常回填，当日量 turnover 兜底
+        if cached_map:
+            turnover = getattr(item, "turnover_number", 0) or 0
+            return (turnover if turnover > 0 else 0), cached_map
+        _web_log.warning(f"youpin volume 无缓存且抓取失败: {template_id}")
     turnover = getattr(item, "turnover_number", 0) or 0
     if turnover > 0:
         return turnover, {}
