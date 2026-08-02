@@ -109,7 +109,12 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE items ADD COLUMN good_id INTEGER DEFAULT 0")
 
     except sqlite3.OperationalError:
+        pass  # column already exists
 
+    # Migrate: add yyyp_id if missing
+    try:
+        conn.execute("ALTER TABLE items ADD COLUMN yyyp_id TEXT DEFAULT ''")
+    except sqlite3.OperationalError:
         pass  # column already exists
 
 
@@ -314,44 +319,24 @@ def _init_schema(conn: sqlite3.Connection) -> None:
 
 
 def upsert_item(conn, name, steam_name="", weapon="", skin="", wear="",
-
                 rarity="", source="", is_discontinued=0, discontinued_years=0,
-
-                stat_trak=0, souvenir=0, notes="", in_watchlist=0, good_id=0) -> int:
-
+                stat_trak=0, souvenir=0, notes="", in_watchlist=0, good_id=0, yyyp_id="") -> int:
     cur = conn.execute("SELECT id, in_watchlist FROM items WHERE name = ?", (name,))
-
     row = cur.fetchone()
-
     now = _now()
-
     if row:
-
         conn.execute("""UPDATE items SET steam_name=?,weapon=?,skin=?,wear=?,rarity=?,
-
                      source=?,is_discontinued=?,discontinued_years=?,stat_trak=?,
-
-                     souvenir=?,notes=?,in_watchlist=?,good_id=?,updated_at=? WHERE id=?""",
-
+                     souvenir=?,notes=?,in_watchlist=?,good_id=?,yyyp_id=?,updated_at=? WHERE id=?""",
                      (steam_name, weapon, skin, wear, rarity, source, is_discontinued,
-
-                      discontinued_years, stat_trak, souvenir, notes, in_watchlist, good_id, now, row["id"]))
-
+                      discontinued_years, stat_trak, souvenir, notes, in_watchlist, good_id, yyyp_id, now, row["id"]))
         return row["id"]
-
     cur = conn.execute("""INSERT INTO items (name,steam_name,weapon,skin,wear,rarity,
-
-                       source,is_discontinued,discontinued_years,stat_trak,souvenir,notes,in_watchlist,good_id,created_at,updated_at)
-
-                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-
+                       source,is_discontinued,discontinued_years,stat_trak,souvenir,notes,in_watchlist,good_id,yyyp_id,created_at,updated_at)
+                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                        (name, steam_name, weapon, skin, wear, rarity, source, is_discontinued,
-
-                        discontinued_years, stat_trak, souvenir, notes, in_watchlist, good_id, now, now))
-
+                        discontinued_years, stat_trak, souvenir, notes, in_watchlist, good_id, yyyp_id, now, now))
     return cur.lastrowid
-
-
 
 
 

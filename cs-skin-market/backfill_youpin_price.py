@@ -28,13 +28,14 @@ from pipeline.collector_youpin import _api_headers
 YUPIN_URL = "https://pc-api.youpin898.com/api/youpin/price/trend/data"
 
 
-def load_targets(limit=None):
+def load_targets(limit=None, new_only=False):
     conn = db.get_conn()
-    rows = conn.execute(
-        """SELECT i.id, i.name, i.good_id FROM items i
-           WHERE i.good_id > 0 AND EXISTS (SELECT 1 FROM price_history p WHERE p.item_id = i.id)
-           ORDER BY i.id"""
-    ).fetchall()
+    sql = """SELECT i.id, i.name, i.good_id, i.yyyp_id FROM items i
+             WHERE i.good_id > 0 AND EXISTS (SELECT 1 FROM price_history p WHERE p.item_id = i.id)"""
+    if new_only:
+        sql += """ AND (SELECT MIN(p.date) FROM price_history p WHERE p.item_id = i.id) >= '2026-05-01'"""
+    sql += " ORDER BY i.id"
+    rows = conn.execute(sql).fetchall()
     conn.close()
     return rows[:limit] if limit else rows
 
@@ -64,9 +65,11 @@ async def pull_youpin(template_id):
     return per_day, None
 
 
-async def backfill_one(item_id, name, good_id, dry_run=False):
-    det = await fetch_item_detail(good_id)
-    yyyp = getattr(det, "yyyp_id", "") if det else ""
+async def backfill_one(item_id, name, good_id, dry_run=False, yyyp_id=""):
+    yyyp = yyyp_id
+    if not yyyp:
+        det = await fetch_item_detail(good_id)
+        yyyp = getattr(det, "yyyp_id", "") if det else ""
     if not yyyp:
         return {"name": name, "status": "skip", "reason": "no yyyp_id"}
     yp, err = pull_err = await pull_youpin(yyyp)
@@ -83,6 +86,10 @@ async def backfill_one(item_id, name, good_id, dry_run=False):
             return {"name": name, "status": "skip", "reason": "no overlap for calibration"}
         ratios = [cq[d] / yp[d][1] for d in overlap if yp[d][1] > 0]
         k = statistics.median(ratios)
+        # Quality gate: youpin template must be the same item (calibration factor near 1).
+        if k < 0.85 or k > 1.15:
+            return {"name": name, "status": "skip",
+                    "reason": f"calibration k={k:.4f} out of [0.85,1.15] (template mismatch)"}
         backfill_dates = sorted(set(yp) - set(cq))
         written = 0
         boundary_jump = None
@@ -115,13 +122,14 @@ async def main():
     p = argparse.ArgumentParser()
     p.add_argument("--limit", type=int, default=0)
     p.add_argument("--dry-run", action="store_true")
+    p.add_argument("--new-only", action="store_true", help="only items whose history starts on/after 2026-05-01")
     args = p.parse_args()
-    targets = load_targets(args.limit or None)
+    targets = load_targets(args.limit or None, new_only=args.new_only)
     print(f"targets: {len(targets)}")
     results = []
     ok = skip = 0
-    for i, (item_id, name, good_id) in enumerate(targets, 1):
-        r = await backfill_one(item_id, name, good_id, args.dry_run)
+    for i, (item_id, name, good_id, yyyp_id) in enumerate(targets, 1):
+        r = await backfill_one(item_id, name, good_id, args.dry_run, yyyp_id)
         results.append(r)
         if r["status"] in ("ok", "dry"):
             ok += 1
