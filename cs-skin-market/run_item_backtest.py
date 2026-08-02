@@ -38,11 +38,15 @@ def load_item_series(item_id):
     return dates, prices, in_sale
 
 
+# 庄盘异常品：无真实流通（日均成交≈0.2件、价格2.9~4.4万），价格被操纵，不参与回测
+EXCLUDED_ITEMS = {"AK-47 | 水栽竹 (崭新出厂)"}
+
+
 def load_items(conn=None):
     conn = db.get_conn()
     rows = conn.execute("SELECT id, name FROM items ORDER BY id").fetchall()
     conn.close()
-    return {r["id"]: r["name"] for r in rows}
+    return {r["id"]: r["name"] for r in rows if r["name"] not in EXCLUDED_ITEMS}
 
 
 def backtest_item(item_id, name, start, end, warmup, market_ctx, cost=0.02):

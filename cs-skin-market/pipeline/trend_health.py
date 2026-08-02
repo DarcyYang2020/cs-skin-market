@@ -728,11 +728,9 @@ def compute_fusion_decision(percentile_90d, th, liquidity_score=50, zscore_90d=0
 
     # Decision matrix
     if fd.zone == "undervalued":
-        # Dynamic Z-gate: bear/consolidation/unknown=deep oversold(≤-1.5) to block rebound-top
-        # fake buys (backtest: 42 signals -> 41, 14d win 97.6% -> 100%, avg14 +46.85 -> +48.17);
-        # accumulation=mild(≤0.5), markup=loose(≤1.0), distribution=strictest(≤-0.5)
-        cycle_z_gates = {"bear": -1.5, "consolidation": -1.5, "accumulation": 0.5, "markup": 1.0, "distribution": -0.5}
-        z_threshold = cycle_z_gates.get(market_cycle, -1.5)
+        # Dynamic Z-gate: bear/consolidation=strict(≤0), accumulation=mild(≤0.5), markup=loose(≤1.0), distribution=strictest(≤-0.5)
+        cycle_z_gates = {"bear": 0, "consolidation": 0, "accumulation": 0.5, "markup": 1.0, "distribution": -0.5}
+        z_threshold = cycle_z_gates.get(market_cycle, 0)
         if ts >= T["TH_STRONG"] and zscore_90d <= z_threshold:
             fd.action = "buy"
             fd.action_label = "\U0001f7e2 \u5206\u6279\u5efa\u4ed3"
