@@ -278,6 +278,10 @@ def compute_market_fusion_decision(percentile_90d, th, zscore_90d=0.0, cycle_pha
     fd.volatility_regime = volatility_regime
 
     score = th.score
+    # P1-2 牛熊动态 TH 阈值 (2026-08-02 数据验证: 2025 牛市段回调日 13/13 100% 胜率)
+    th_neutral_eff = T["TH_NEUTRAL"]
+    if market_regime in ("bull", "sideways"):
+        th_neutral_eff = max(30, th_neutral_eff - 5)  # 35->30: 牛市/震荡回调买点提前触发
 
     # --- Hysteresis: debounce threshold boundaries ---
 
@@ -405,6 +409,14 @@ def compute_market_fusion_decision(percentile_90d, th, zscore_90d=0.0, cycle_pha
                     fd.action_detail = "大盘低估+趋势健康，适合分批建仓"
                     fd.global_position_limit = 0.30
 
+        # P1-2 牛市深度回调买点: 非熊市 + 深度回调(drop21<=−12%) + TH>=30 + z<=0.5
+        elif (market_regime == "bull" and score >= 30
+              and zscore_90d <= 0.5 and th.drop_from_peak_pct <= -12):
+            fd.action = "buy"
+            fd.action_label = "🟢 牛市深调·分批介入"
+            fd.action_detail = "牛市深度回调确认，估值低位，可分批介入"
+            fd.global_position_limit = 0.20
+
         # TH≥35 at p≤30: watch/bottom watch
         elif effective_pct <= 30 and score >= T["TH_NEUTRAL"] + 10:
             if rebound_late:
@@ -433,7 +445,7 @@ def compute_market_fusion_decision(percentile_90d, th, zscore_90d=0.0, cycle_pha
                 fd.action = "hold"; fd.action_label = "🟢 健康持有"
                 fd.action_detail = "大盘趋势健康，持仓不动"
                 fd.global_position_limit = 0.25
-            elif score >= T["TH_NEUTRAL"]:
+            elif score >= th_neutral_eff:
                 fd.action = "watch"; fd.action_label = "🟡 震荡观望"
                 fd.action_detail = "大盘合理区间但趋势中性"
                 fd.global_position_limit = 0.15

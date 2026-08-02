@@ -1,12 +1,13 @@
 # CS-Market 大盘分析引擎文档
 
-> 版本: v4.9 | 更新: 2026-08-01
+> 版本: v5.2 | 更新: 2026-08-02
 
 ---
 
 ## 数据源
 | 数据 | 来源 | 说明 |
 |---|---|---|
+| 2026-08-02 | v5.2 | P1-2 牛熊动态 TH 阈值：牛市/震荡 TH_NEUTRAL 35→30 + 新增牛市深调买点(bull+TH>=30+drop21<=-12%)；2025牛市段 cluster=1 3→6 信号 14d/30d 全胜，熊市段无回归 |
 | 大盘K线 (prices) | csQAQ API GET /api/v1/sub/kline?id=1&type=90day | 90日每日收盘价 |
 | 当前指数值 | csQAQ API GET /api/v1/current_data?type=init | 从 main_index.market_index 提取 |
 | 市场情绪(数值) | csQAQ /current_data?type=volume → greedy[] | 60日贪婪指数时间序列(65~150连续值) |
@@ -341,6 +342,28 @@ order_book 字段扩展：`spread_pct / highest_buy / bid_7d_chg / bid_30d_chg /
 
 前端：单品报告「🛒 求购承接」卡片；价差深度恢复正常取值。
 
+
+## 牛熊动态 TH 阈值 + 牛市深调买点 (P1-2, 2026-08-02)
+
+### 背景
+固定 TH_STRONG=55 / TH_NEUTRAL=35 在牛市回调时门槛过高：2025 牛市段（01~10）仅 3 个买点，
+漏掉 10-24 五合一 V 型底（th=38、drop21=-58%、14d +79%）。
+
+### 规则
+1. 牛市/震荡（regime=bull/sideways）：TH_NEUTRAL 35→30，fair 区「回调确认·分批介入」门槛降低，
+   牛市回调买点提前触发；熊市维持 35（保守防假信号）。
+2. 新增「牛市深调·分批介入」路径：regime=bull + TH>=30 + z<=0.5 + 21日跌幅<=-12% → buy（仓位 20%）。
+   仅 bull 放行（sideways 曾误放行 2026-01-24 熊市横盘反抽，14d -1.95%，已收紧排除）。
+
+### 数据验证（2026-08-02）
+- 牛市段 2025-01-01~10-31（cluster=1）：3→6 信号，14d/30d 均 100%（14d 均 +20.4%，30d 均 +25.5%）
+  - 新增：2025-05-15 回调确认 +10.0%、2025-10-24 牛市深调 +79.0%（14d）
+- 熊市段 2025-11-02 起（cluster=3）：6 信号不变，14d 胜率 100%，无回归
+- 组合回测（熊市窗口，SL-20/TP20/30d）：+7.52% / 年化 14.06%，与 P0 完全一致
+
+### 实现
+- `compute_market_fusion_decision()`：新增 th_neutral_eff（bull/sideways 时 30）
+- `run_backtest.py`：回测传入 market_regime（与线上 analyze_index_full 口径一致）
 ## 版本变更记录
 
 

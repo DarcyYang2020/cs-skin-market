@@ -105,6 +105,8 @@ def generate_index_signals(start_date="2025-11-02", end_date=None, cluster_days=
         sent = real_sent.get(current_date, approx_sentiment(raw_values, i))
         patch_sentiment(sent)  # deterministic: cycle/other modules use the same historical sentiment
 
+        regime = compute_market_regime(vals_only)[0]
+
         fd = compute_market_fusion_decision(
             percentile_90d=pct, th=mth,
             zscore_90d=zscore, cycle_phase=cycle_phase,
@@ -112,6 +114,7 @@ def generate_index_signals(start_date="2025-11-02", end_date=None, cluster_days=
             rally_decay=rally_decay, sentiment_score=sent,
             cap_triggered=cap_triggered,
             selling_pressure_score=sp_score,
+            market_regime=regime,
             prices=vals_only,
         )
 
@@ -127,7 +130,6 @@ def generate_index_signals(start_date="2025-11-02", end_date=None, cluster_days=
         dd = 0
         for j in range(i+1, min(i+15, len(raw_values))):
             dd = min(dd, (raw_values[j] / current_value - 1) * 100)
-        regime = compute_market_regime(vals_only)[0]
 
         signals.append({
             "date": current_date, "idx": i, "pct": round(pct, 1), "zscore": round(zscore, 2),
