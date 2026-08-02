@@ -171,13 +171,13 @@ webapp/templates/
 
 - `run_item_backtest.py` 每次回测自动存档快照至 `data/backtest_snapshots/item_backtest_YYYYMMDD.json`（大盘对应 `backtest_YYYYMMDD.json`）
 - `python pipeline/factor_monitor.py item_backtest_` 自动监控信号胜率，14d 胜率 <70% 或 30d <55% 时输出 DECAY / WATCH 警告
-- 当前基线: item_backtest_20260802.json 37 信号, 14d 89%, 30d 76%（含供给扩张过滤后）
+- 当前基线: item_backtest_20260802.json 37 信号, 净14d 86%/30d 74%（含供给扩张过滤后, 扣 2% 双边成本）
 
 ### 供给扩张过滤器 (2026-08-02, 数据验证)
 
 - 回测 in_sale_count（csQAQ chart 在售数历史，`backfill_in_sale.py` 回填）：42 个 buy 信号中，供给扩张(supply_change_30d>5%)的 5 个信号30d 胜率0%，均为负期望
 - 规则：buy/超卖买入信号且 in_sale 30日扩张 >5% → 降级 🟡 供给扩张·观望，position_limit=0
-- 效果：42→37 信号，14d 86.8%→88.9%，30d 74.3%→76.5%，打掉 4 个 30d 负收益（合纵 -16.24% 等）
+- 效果：42→37 信号，14d 86.8%→88.9%，30d 74.3%→76.5%，打掉 4 个 30d 负收益（合纵 -16.24% 等）；回测口径已统一扣 2% 双边成本（--cost 0.02），净胜率14d 86.1%/30d 73.5%
 - 回测切片：`run_item_9grid_backtest.py` 情绪×估值九宫格，恐惧带≥75+深低估 pct<10 为核心格子（14d 95%/30d 83%），贪婪带样本少且非负期望，暂无需新增降级规则
 
 ### 抛压衰竭信号 (v4.6, 2026-07-31)

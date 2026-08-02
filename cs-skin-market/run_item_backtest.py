@@ -45,7 +45,7 @@ def load_items(conn=None):
     return {r["id"]: r["name"] for r in rows}
 
 
-def backtest_item(item_id, name, start, end, warmup, market_ctx):
+def backtest_item(item_id, name, start, end, warmup, market_ctx, cost=0.02):
     dates, prices, in_sale = load_item_series(item_id)
     if len(prices) < warmup + 1:
         return {"item_id": item_id, "name": name, "days": len(dates),
@@ -89,6 +89,9 @@ def backtest_item(item_id, name, start, end, warmup, market_ctx):
         recent_buys.append(d)
         fwd14 = (prices[i + 14] / prices[i] - 1) * 100 if i + 14 < n else None
         fwd30 = (prices[i + 30] / prices[i] - 1) * 100 if i + 30 < n else None
+        # Net returns after round-trip cost (--cost, default 2% = UU 1% fee x2 + slippage)
+        net14 = (fwd14 - cost * 100) if fwd14 is not None else None
+        net30 = (fwd30 - cost * 100) if fwd30 is not None else None
         dd = 0.0
         for j in range(i + 1, min(i + 15, n)):
             dd = min(dd, (prices[j] / prices[i] - 1) * 100)
@@ -117,8 +120,10 @@ def backtest_item(item_id, name, start, end, warmup, market_ctx):
             "market_th": mc["th"],
             "market_cycle": mc["cycle"],
             "sentiment": round(mc["sentiment"], 1),
-            "atr_pct": round(atr_pct, 4),
-            "supply": dict(res.supply_analysis) if res.supply_analysis else {},
+            "fwd14": round(fwd14, 2) if fwd14 is not None else None,
+            "fwd30": round(fwd30, 2) if fwd30 is not None else None,
+            "net14": round(net14, 2) if net14 is not None else None,
+            "net30": round(net30, 2) if net30 is not None else None,
             "fwd14": round(fwd14, 2) if fwd14 is not None else None,
             "fwd30": round(fwd30, 2) if fwd30 is not None else None,
             "max_dd": round(dd, 2),
@@ -133,8 +138,8 @@ def summarize(results):
     rows = []
     for r in results:
         sigs = [s for s in r.get("signals", []) if "fwd14" in s]
-        f14 = [s["fwd14"] for s in sigs if s["fwd14"] is not None]
-        f30 = [s["fwd30"] for s in sigs if s["fwd30"] is not None]
+        f14 = [s.get("net14", s["fwd14"]) for s in sigs if s.get("net14", s["fwd14"]) is not None]
+        f30 = [s.get("net30", s["fwd30"]) for s in sigs if s.get("net30", s["fwd30"]) is not None]
         row = {
             "name": r["name"], "days": r.get("days", 0), "signals": len(sigs),
             "win14": sum(1 for v in f14 if v > 0), "f14": len(f14),
@@ -145,8 +150,8 @@ def summarize(results):
         rows.append(row)
     agg = None
     if total:
-        f14 = [s["fwd14"] for s in total if s["fwd14"] is not None]
-        f30 = [s["fwd30"] for s in total if s["fwd30"] is not None]
+        f14 = [s.get("net14", s["fwd14"]) for s in total if s.get("net14", s["fwd14"]) is not None]
+        f30 = [s.get("net30", s["fwd30"]) for s in total if s.get("net30", s["fwd30"]) is not None]
         agg = {
             "signals": len(total),
             "win14": sum(1 for v in f14 if v > 0), "n14": len(f14),
@@ -167,6 +172,7 @@ if __name__ == "__main__":
     p.add_argument("--end", default=None)
     p.add_argument("--warmup", type=int, default=60, help="min days of item history before signals")
     p.add_argument("--stratify", action="store_true", help="print win-rate stratification by pct/z/th/sentiment/mth")
+    p.add_argument("--cost", type=float, default=0.02, help="round-trip cost (fee+slippage), default 0.02")
     args = p.parse_args()
 
     patch_sentiment(50.0)
@@ -182,7 +188,7 @@ if __name__ == "__main__":
 
     results = []
     for iid, iname in selected.items():
-        r = backtest_item(iid, iname, args.start, args.end, args.warmup, market_ctx)
+        r = backtest_item(iid, iname, args.start, args.end, args.warmup, market_ctx, args.cost)
         results.append(r)
         sigs = [s for s in r.get("signals", []) if "fwd14" in s]
         print(f"\n== {iname} (days={r.get('days')}, signals={len(sigs)}) ==")
@@ -205,8 +211,8 @@ if __name__ == "__main__":
         all_sigs = [s for r in results for s in r.get("signals", []) if "fwd14" in s]
         def _bucket(rows, lo, hi, key, label):
             rows = [s for s in rows if lo <= (s.get(key) if s.get(key) is not None else -99) < hi]
-            f14 = [s["fwd14"] for s in rows if s.get("fwd14") is not None]
-            f30 = [s["fwd30"] for s in rows if s.get("fwd30") is not None]
+            f14 = [s.get("net14", s["fwd14"]) for s in rows if s.get("fwd14") is not None]
+            f30 = [s.get("net30", s["fwd30"]) for s in rows if s.get("fwd30") is not None]
             p14 = (f"14d {sum(1 for v in f14 if v>0)}/{len(f14)}={sum(1 for v in f14 if v>0)/len(f14)*100:.0f}% avg={sum(f14)/len(f14):+.1f}%"
                    if f14 else "14d n/a")
             p30 = (f"30d {sum(1 for v in f30 if v>0)}/{len(f30)}={sum(1 for v in f30 if v>0)/len(f30)*100:.0f}% avg={sum(f30)/len(f30):+.1f}%"

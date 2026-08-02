@@ -254,19 +254,19 @@ ITEM_EXIT_RULES = {
 # Shown next to price zones so investors see the mathematical expectancy of the
 # signal type instead of trading on gut feeling (project principle #1/#2).
 ITEM_EXPECTANCY_STATS = {
-    # ????????? (sent>=75 + pct<=15 + z<=-1.5 + microTH>=60, ????????TH<45??)
+    # 恐慌共振 (sent>=75 + pct<10): 强信号层, 2026-08-02 回测 37信号中切片
     "panic": {
-        "label": "??????",
-        "n": 25,
-        "win14": 90, "avg14": 58.4,   # 14d ??/????
-        "win30": 83, "avg30": 74.6,   # 30d ??/????
+        "label": "恐慌共振",
+        "n": 21,
+        "win14": 95.0, "avg14": 61.4, "ci14_lo": 76.4, "ci14_hi": 99.1,
+        "win30": 83.3, "avg30": 74.6,
     },
-    # ????????? (pct 10-25 ??????, ??TH>=45)
+    # 周期吸笼 (sent<75 或 pct>=10): 中等信号层
     "accumulate": {
-        "label": "????",
-        "n": 17,
-        "win14": 82, "avg14": 14.3,
-        "win30": 65, "avg30": 25.0,
+        "label": "周期吸筹",
+        "n": 16,
+        "win14": 81.2, "avg14": 15.1, "ci14_lo": 57.0, "ci14_hi": 93.4,
+        "win30": 68.8, "avg30": 27.6,
     },
 }
 
