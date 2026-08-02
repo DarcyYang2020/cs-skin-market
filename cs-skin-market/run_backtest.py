@@ -1,4 +1,4 @@
-﻿"""Market index backtest runner using low-level engine functions.
+"""Market index backtest runner using low-level engine functions.
 Usage: python run_backtest.py [--start YYYY-MM-DD] [--end YYYY-MM-DD]
 """
 import sys, json, argparse
@@ -9,11 +9,19 @@ from pipeline.index_analysis import (
     compute_selling_pressure_exhaustion
 )
 from pipeline.market_th import (
-    compute_market_trend_health, compute_market_fusion_decision
+    compute_market_trend_health, compute_market_fusion_decision,
+    compute_market_regime
 )
 from pipeline.backtest_common import approx_sentiment, patch_sentiment
 
-def run(start_date="2025-11-02", end_date=None, cluster_days=3):
+
+def generate_index_signals(start_date="2025-11-02", end_date=None, cluster_days=3):
+    """Replay the market fusion engine day by day.
+
+    Returns (dates, values, signals). Every buy/oversold_buy signal carries the
+    engine position limit (global_position_limit) and the market regime at that
+    date so portfolio-level execution backtests can size positions from it.
+    """
     from datetime import datetime as _dt, timedelta as _td
     warmup_start = (_dt.strptime(start_date, "%Y-%m-%d") - _td(days=120)).strftime("%Y-%m-%d")
     conn = db.get_conn()
@@ -45,7 +53,6 @@ def run(start_date="2025-11-02", end_date=None, cluster_days=3):
         pos = result["position"]
         pct = pos.get("percentile_90d", 50)
         zscore = pos.get("zscore_90d", 0)
-        zone = pos.get("valuation_tier", "fair")
 
         mth = compute_market_trend_health(vals_only, volumes=None)
         if not hasattr(mth, "z_floor_applied"):
@@ -107,27 +114,37 @@ def run(start_date="2025-11-02", end_date=None, cluster_days=3):
             prices=vals_only,
         )
 
-        if fd.action in ("buy", "oversold_buy"):
-            fwd14 = (raw_values[i+14] / current_value - 1) * 100 if i+14 < len(raw_values) else None
-            fwd30 = (raw_values[i+30] / current_value - 1) * 100 if i+30 < len(raw_values) else None
-            dd = 0
-            for j in range(i+1, min(i+15, len(raw_values))):
-                dd = min(dd, (raw_values[j] / current_value - 1) * 100)
+        if fd.action not in ("buy", "oversold_buy"):
+            continue
 
-            th_score = mth.corrected_score if hasattr(mth, "corrected_score") else mth.score
-            if signals and (_dt.strptime(current_date, "%Y-%m-%d") - _dt.strptime(signals[-1]["date"], "%Y-%m-%d")).days < cluster_days:
-                continue  # cluster: same 7-day window counts once
-            signals.append({
+        th_score = mth.corrected_score if hasattr(mth, "corrected_score") else mth.score
+        if signals and (_dt.strptime(current_date, "%Y-%m-%d") - _dt.strptime(signals[-1]["date"], "%Y-%m-%d")).days < cluster_days:
+            continue  # cluster: same 7-day window counts once
 
-                "date": current_date, "pct": round(pct, 1), "zscore": round(zscore, 2),
-                "th": round(th_score, 1), "sentiment": round(sent, 1),
-                "action_label": fd.action_label,
-                "fwd14": round(fwd14, 2) if fwd14 else None,
-                "fwd30": round(fwd30, 2) if fwd30 else None,
-                "max_dd": round(dd, 2),
-            })
+        fwd14 = (raw_values[i+14] / current_value - 1) * 100 if i+14 < len(raw_values) else None
+        fwd30 = (raw_values[i+30] / current_value - 1) * 100 if i+30 < len(raw_values) else None
+        dd = 0
+        for j in range(i+1, min(i+15, len(raw_values))):
+            dd = min(dd, (raw_values[j] / current_value - 1) * 100)
+        regime = compute_market_regime(vals_only)[0]
 
+        signals.append({
+            "date": current_date, "idx": i, "pct": round(pct, 1), "zscore": round(zscore, 2),
+            "th": round(th_score, 1), "sentiment": round(sent, 1),
+            "action": fd.action, "action_label": fd.action_label,
+            "position_limit": fd.global_position_limit, "regime": regime,
+            "fwd14": round(fwd14, 2) if fwd14 is not None else None,
+            "fwd30": round(fwd30, 2) if fwd30 is not None else None,
+            "max_dd": round(dd, 2),
+        })
+
+    return dates, raw_values, signals
+
+
+def run(start_date="2025-11-02", end_date=None, cluster_days=3):
+    _, _, signals = generate_index_signals(start_date, end_date, cluster_days)
     return signals
+
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
@@ -140,7 +157,8 @@ if __name__ == "__main__":
     signals = run(args.start, args.end, cluster_days=args.cluster)
     print(f"\nSignals: {len(signals)}")
     for s in signals:
-        print(f"  {s['date']}: {s['action_label']} | pct={s['pct']:.0f}% z={s['zscore']:.2f} th={s['th']:.0f} | fwd14={s['fwd14']}% fwd30={s['fwd30']}%")
+        print(f"  {s['date']}: {s['action_label']} | pct={s['pct']:.0f}% z={s['zscore']:.2f} th={s['th']:.0f} "
+              f"limit={s['position_limit']:.0%} regime={s['regime']} | fwd14={s['fwd14']}% fwd30={s['fwd30']}%")
 
     if signals:
         f14 = [s["fwd14"] for s in signals if s["fwd14"] is not None]

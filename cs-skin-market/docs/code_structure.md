@@ -1,6 +1,6 @@
 # CS-Skin-Market 项目代码文件说明
 
-> 最后更新: 2026-07-21
+> 最后更新: 2026-08-02
 
 ## 项目概述
 CS饰品投资分析系统，提供大盘分析、单品分析、持仓管理三大功能模块。
@@ -123,6 +123,22 @@ CS饰品投资分析系统，提供大盘分析、单品分析、持仓管理三
 ### start.bat — Windows 一键启动脚本
 
 ---
+
+## 回测工具（根目录脚本）
+
+### run_backtest.py — 大盘信号回测
+- 逐日重放大盘融合引擎，输出 buy/oversold_buy 信号 + fwd14/fwd30/max_dd
+- 每个信号携带 position_limit（全局仓位上限）与市场 regime
+- 用法：`python run_backtest.py [--start 2025-11-02] [--cluster 3]`
+
+### run_portfolio_backtest.py — 组合级执行回测（P0-1/P0-2）
+- 信号 → 引擎仓位 → 止盈/止损/最长持仓/下一信号退出 → 复利资金曲线
+- 输出年化 / 最大回撤 / 夏普 / 盈亏比 / 胜率 / 期望值 / 最长连亏 + 牛熊切片
+- `--scan` 跑退出规则网格（止损 -15~-30 × 止盈 15~30 × 持仓 14/30/60 天）
+- 结果持久化：data/portfolio_backtest_latest.json + backtest_results 表
+
+### run_item_backtest.py — 单品信号回测
+- 逐品重放单品引擎，输出信号 fwd14/fwd30，支持 --all / 指定物品 / 分层统计
 
 ## 数据流总览
 
