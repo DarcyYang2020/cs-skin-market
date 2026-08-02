@@ -512,6 +512,16 @@ function hideLoadingModal() {
   if (m) m.style.display = 'none';
   showToast('扫描继续在后台进行，结果会显示在下方');
 }
+function showItemReport(name) {
+  var body = document.getElementById("modal-body");
+  if (!body) { showToast("弹窗组件缺失，请刷新页面后重试", "error"); return; }
+  body.innerHTML = '<div style="text-align:center;padding:40px;"><div class="spinner" style="margin:0 auto 16px;width:32px;height:32px;"></div><p style="color:var(--text-muted);font-size:14px;">正在加载分析报告...</p></div>';
+  openModal("analysis-modal");
+  fetch("/api/discover/report?name=" + encodeURIComponent(name))
+    .then(function(r) { return r.text(); })
+    .then(function(html) { body.innerHTML = html; })
+    .catch(function() { body.innerHTML = '<div class="card" style="padding:24px;text-align:center;color:var(--red);">报告加载失败，请稍后重试</div>'; });
+}
 function batchScanSelectedIds(ids) {
   var modal = document.getElementById('loading-modal');
   if (!modal) { showToast('加载窗体未找到', 'error'); return; }

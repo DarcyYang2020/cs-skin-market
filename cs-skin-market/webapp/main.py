@@ -1402,6 +1402,12 @@ async def api_watchlist_set_assets(request: Request, amount: float = Form(...)):
 # ---- Batch Scan Progress ----
 _scan_progress: dict = {}
 
+def _item_report_link(name):
+    """批量扫描结果中可点击的名称链接：弹窗查看已存报告（不重新分析）。"""
+    esc = str(name).replace("'", "\\'").replace('"', "&quot;")
+    return ('<a href="javascript:void(0)" onclick="showItemReport(\'' + esc + '\')" '
+            'style="color:var(--accent);text-decoration:none;cursor:pointer;font-weight:600;">' + str(name) + '</a>')
+
 async def _run_batch_scan_task(scan_id: str, rows: list):
     import json as _json
     from pipeline.batch_scan import _portfolio_advice
@@ -1514,7 +1520,7 @@ async def _run_batch_scan_task(scan_id: str, rows: list):
             pa = r.get("portfolio_advice", {})
             pnl_c = "green" if pnl_pct > 5 else ("red" if pnl_pct < -5 else "")
             g = (r.get("grade") or "?").lower()
-            html.append("<tr><td><strong>" + str(r["name"]) + "</strong></td>")
+            html.append("<tr><td>" + _item_report_link(r["name"]) + "</td>")
             html.append("<td>\u00a5" + "%.2f" % r["avg_cost"] + " \u2192 <strong>\u00a5" + "%.2f" % r["price_rmb"] + "</strong></td>")
             html.append("<td class=\"" + pnl_c + "\">" + "%.1f" % pnl_pct + "%</td>")
             html.append("<td><span class=\"badge badge-" + g + "\">" + str(r.get("grade","?")) + "</span></td>")
@@ -1525,7 +1531,7 @@ async def _run_batch_scan_task(scan_id: str, rows: list):
         for r in unheld:
             pa = r.get("portfolio_advice", {})
             g = (r.get("grade") or "?").lower()
-            html.append("<tr><td><strong>" + str(r["name"]) + "</strong></td>")
+            html.append("<tr><td>" + _item_report_link(r["name"]) + "</td>")
             html.append("<td>\u00a5" + "%.2f" % r["price_rmb"] + "</td>")
             html.append("<td><span class=\"badge badge-" + g + "\">" + str(r.get("grade","?")) + "</span></td>")
             html.append("<td style=\"font-size:12px;\">" + str(r.get("valuation_tier","?")) + "<br><span style=\"color:var(--text-muted);\">pct=" + "%.1f" % r.get("percentile_90d",50) + "%</span></td>")
