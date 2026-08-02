@@ -69,7 +69,7 @@
 
 {# ====== 买卖参考区间 ====== #}
 {% if price_zones and price_zones.entry %}
-<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
   <div style="background:#f0fdf4;padding:10px;border-radius:8px;text-align:center;">
     <div style="font-weight:600;color:#16a34a;margin-bottom:4px;">买入区间</div>
     {% if price_zones.entry.low > 0 %}
@@ -86,6 +86,14 @@
     <div style="font-size:14px;font-weight:600;">¥{{ "%.2f"|format(price_zones.stop_loss.low) }}</div>
     {% elif price_zones.stop_loss %}
     <div style="font-size:14px;font-weight:600;">¥{{ "%.2f"|format(price_zones.stop_loss) }}</div>
+    {% else %}<div style="color:#999;">¥--</div>{% endif %}
+  </div>
+  <div style="background:#ecfdf5;padding:10px;border-radius:8px;text-align:center;">
+    <div style="font-weight:600;color:#059669;margin-bottom:4px;">止盈参考</div>
+    {% if price_zones.take_profit is mapping %}
+    <div style="font-size:14px;font-weight:600;">¥{{ "%.2f"|format(price_zones.take_profit.low) }}</div>
+    {% elif price_zones.take_profit %}
+    <div style="font-size:14px;font-weight:600;">¥{{ "%.2f"|format(price_zones.take_profit) }}</div>
     {% else %}<div style="color:#999;">¥--</div>{% endif %}
   </div>
 </div>

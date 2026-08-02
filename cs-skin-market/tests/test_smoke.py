@@ -215,18 +215,22 @@ def t_zones():
               market_cycle='consolidation', market_zscore=-2.0, market_th_score=50,
               market_30d_change=-10.0, recent_buy_dates=[], signal_date='2026-05-25')
     try:
-        # fear: stop widened to -30%
+        # fear: stop -30% / take +40% (P1 fit), hold note present
         ia.compute_sentiment_score = lambda: 80
         pz = ia.run_item_analysis(**kw).price_zones
         assert abs(pz['stop_loss'] - 58.0 * 0.70) < 0.01, pz['stop_loss']
+        assert abs(pz['take_profit'] - 58.0 * 1.40) < 0.01, pz['take_profit']
         assert '\u6050\u614c' in pz['strategy'] or 'stop' in pz['strategy'], pz['strategy']
-        # neutral: no sentiment note
+        assert '\u5efa\u8bae\u6301\u4ed3' in pz['strategy'], pz['strategy']
+        # neutral: ATR stop kept, take +15%
         ia.compute_sentiment_score = lambda: 50
         pz = ia.run_item_analysis(**kw).price_zones
         assert '\u6050\u614c' not in pz['strategy'], pz['strategy']
-        # greed: take profit note present
+        assert abs(pz['take_profit'] - 58.0 * 1.15) < 0.01, pz['take_profit']
+        # greed: stop -8% / take 1.5xATR (unchanged risk rule)
         ia.compute_sentiment_score = lambda: 25
         pz = ia.run_item_analysis(**kw).price_zones
+        assert abs(pz['stop_loss'] - 58.0 * 0.92) < 0.01, pz['stop_loss']
         assert '\u8d2a\u5a6a' in pz['strategy'], pz['strategy']
     finally:
         (ia._analyze_position, ia.compute_sentiment_score, ia.compute_sentiment_factor,

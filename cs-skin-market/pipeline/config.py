@@ -229,6 +229,23 @@ THRESHOLDS = {
 # ============================================================
 ENABLE_MACRO_CONTEXT = False  # market_macro breadth/sentiment/online/card (EXPERIMENTAL)
 
+
+# ============================================================
+#  Item price-zone exit rules (P1 data fit)
+# ============================================================
+# Fitted on 42 item buy signals (2026-04-21 ~ 2026-08-01, run_item_exit_backtest.py).
+# stop/take as price multipliers of current price; hold_days = suggested holding period.
+#   fear   (sent>=75, panic resonance): stop 0.70 / take 1.40 / hold 21d
+#          win 76.0%, expectancy +9.70%/trade (TP+30% has same win rate, lower expectancy)
+#   neutral: stop = 2.5xATR (kept, honors risk-budget principle), take 1.15 / hold 21d
+#          win 76.5%, expectancy +2.68%/trade (old +2.5xATR ~+7% is tighter than optimal)
+#   greed  (sent<=30): stop 0.92 / take 1.5xATR (few samples, keep risk rule unchanged)
+ITEM_EXIT_RULES = {
+    "fear":    {"stop_pct": 0.70, "take_pct": 1.40, "hold_days": 21},
+    "neutral": {"stop_pct": None, "take_pct": 1.15, "hold_days": 21},
+    "greed":   {"stop_pct": 0.92, "take_pct": None, "hold_days": 21},
+}
+
 # ---- Transaction fees ----
 FEE_RATE = 0.01         # 悠悠 1% 手续费
 

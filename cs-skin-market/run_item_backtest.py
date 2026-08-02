@@ -91,11 +91,20 @@ def backtest_item(item_id, name, start, end, warmup, market_ctx):
         for j in range(i + 1, min(i + 15, n)):
             dd = min(dd, (prices[j] / prices[i] - 1) * 100)
         th = res.trend_health or {}
+        # ATR% at signal date (same formula as item_analysis price zones)
+        rets = [(prices[j] - prices[j - 1]) / prices[j - 1]
+                for j in range(max(1, i - 13), i + 1) if prices[j - 1] > 0]
+        atr_pct = (sum(abs(r) for r in rets) / len(rets)) if rets else 0.03
+        atr_pct = max(0.01, min(0.10, atr_pct))
+        # Forward series for exit-rule grid (entry close -> up to 60d after)
+        fwd_series = [round(prices[j], 2) for j in range(i + 1, min(i + 61, n))]
         signals.append({
             "name": name,
             "date": d,
+            "entry_price": round(prices[i], 2),
             "action": action,
             "action_label": fd.get("action_label", action),
+            "position_limit": fd.get("position_limit", 0.0),
             "pct": getattr(res.position, "percentile_90d", None),
             "z": getattr(res.position, "zscore_90d", None),
             "th": th.get("score"),
@@ -106,9 +115,11 @@ def backtest_item(item_id, name, start, end, warmup, market_ctx):
             "market_th": mc["th"],
             "market_cycle": mc["cycle"],
             "sentiment": round(mc["sentiment"], 1),
+            "atr_pct": round(atr_pct, 4),
             "fwd14": round(fwd14, 2) if fwd14 is not None else None,
             "fwd30": round(fwd30, 2) if fwd30 is not None else None,
             "max_dd": round(dd, 2),
+            "fwd_series": fwd_series,
         })
     return {"item_id": item_id, "name": name, "days": len(dates),
             "first_signal_date": dates[warmup], "signals": signals}

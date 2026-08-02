@@ -13,6 +13,7 @@ from .valuation import compute_valuation_grid, valuation_grid_summary
 from .supply import analyze_supply, supply_summary
 from .market_context import build_market_context, context_summary
 from .market_macro import compute_sentiment_factor, compute_sentiment_score, event_risk_coefficient
+from .config import ITEM_EXIT_RULES
 from .index_analysis import compute_micro_th
 from dataclasses import dataclass, field
 
@@ -1412,19 +1413,22 @@ def run_item_analysis(
             exit_low = round(current * (1 + atr_pct * 0.3), 2)
             exit_high = round(current * (1 + atr_pct * 0.8), 2)
 
-        # ---- Sentiment-adaptive stop/take (2026-08-01 data: fear window -20%+ dips) ----
-        # Backtest 5/22-5/27: sent>=75 buys see deep shakeouts (-21%~-28%) in 3-5 days
-        # before the rally; tight stops cut winners. Greed windows: take profit early.
+        # ---- Sentiment-adaptive stop/take (P1 data fit, run_item_exit_backtest.py) ----
+        # 42 buy signals 2026-04-21~08-01: fear window keeps wide -30% stop and raises TP
+        # to +40% (same win rate as +30%, higher expectancy); neutral TP +15% beats the old
+        # +2.5xATR (~+7%) on both win rate and expectancy; greed window unchanged (few data).
         stop_loss_note = ""
         if sentiment_score >= 75:
-            stop_loss = round(current * 0.70, 2)
-            take_profit = round(current * 1.30, 2)
+            stop_loss = round(current * ITEM_EXIT_RULES["fear"]["stop_pct"], 2)
+            take_profit = round(current * ITEM_EXIT_RULES["fear"]["take_pct"], 2)
             stop_loss_note = ("\u6781\u5ea6\u6050\u614c\u7a97\u53e3\u5e38\u73b0-20%+\u6df1\u6d17\u76d8(\u56de\u6d4b5/22\u4e70\u5165\u540e3-5\u65e5\u56de\u64a4-21%~-28%\u518d\u53cd\u5f39)\uff0c"
-                              "\u6b62\u635f\u653e\u5bbd\u81f3-30%\u907f\u514d\u88ab\u6d17")
+                              "\u6b62\u635f\u653e\u5bbd\u81f3-30%\u907f\u514d\u88ab\u6d17\uff1b\u6b62\u76c8\u653e\u5bbd\u81f3+40%\u8ba9\u5229\u6da6\u5954\u8dd1")
         elif sentiment_score <= 30:
             take_profit = round(current * (1 + atr_pct * 1.5), 2)
-            stop_loss = round(current * 0.92, 2)
+            stop_loss = round(current * ITEM_EXIT_RULES["greed"]["stop_pct"], 2)
             stop_loss_note = "\u60c5\u7eea\u8d2a\u5a6a\u7a97\u53e3\u53ca\u65f6\u6b62\u76c8\u3001\u6536\u7d27\u6b62\u635f\u81f3-8%\u843d\u888b"
+        else:
+            take_profit = round(current * ITEM_EXIT_RULES["neutral"]["take_pct"], 2)
 
         # ---- ATH override ----
         ath_mode = current > hist_high * 0.98
@@ -1462,6 +1466,9 @@ def run_item_analysis(
                 strat.append('庄家风险' + str(whale_prob) + '%')
             if stop_loss_note:
                 strat.append(stop_loss_note)
+            if fd.action in ("buy", "hold"):
+                _hold = ITEM_EXIT_RULES["fear" if sentiment_score >= 75 else "neutral"]["hold_days"]
+                strat.append("\u5efa\u8bae\u6301\u4ed3\u7ea6" + str(_hold) + "\u5929(\u56de\u6d4b\u671f\u671b\u6700\u4f18)")
 
             price_zones = {
                 "entry": {"low": entry_low, "high": entry_high},
