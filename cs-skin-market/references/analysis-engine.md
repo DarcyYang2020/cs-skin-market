@@ -326,10 +326,6 @@ spread_pct / highest_buy / bid_7d_chg / bid_30d_chg / spread_avg / bid_count / d
 - 九宫格：`run_item_9grid_backtest.py` 情绪(贪婪<50/中性50-75/恐惧≥75) × 估值(pct<10/10-25/≥25)；恐惧≥75+ pct<10 核心格 21 信号14d 95%/30d 83%；贪婪带仅3 信号非负期望，暂无需新增降级规则
 - 输出: `data/item_9grid_backtest_latest.json`
 
-### 事件日历 (2026-08-02, P1)
-
-- `event_calendar` 表 + `market_macro.event_risk_coefficient()` 优先查询日历窗口，回落 settings.event_active；管理 CLI: `python manage_events.py list|add|del`
-
 ## 回测记录
 
 - **供给扩张过滤后（2026-08-02）**: 37 独立信号, 14d 胜率 88.9% / 均+40.8%, 30d 胜率 76.5% / 均+52.5%（含情绪×估值九宫格切片）

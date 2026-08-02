@@ -445,16 +445,10 @@ def event_risk_coefficient() -> float:
     Checks for known V社 events via settings table.
     """
     import json
-    from datetime import datetime
     try:
         from . import db
         conn = db.get_conn()
         try:
-            # Priority 1: event_calendar windows active today (most restrictive wins)
-            coeff = db.active_event_coefficient(conn, datetime.now().strftime("%Y-%m-%d"))
-            if coeff < 1.0:
-                return coeff
-            # Priority 2: legacy settings.event_active
             evt = db.get_setting(conn, "event_active", "")
             if evt:
                 data = json.loads(evt) if isinstance(evt, str) else evt

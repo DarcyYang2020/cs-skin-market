@@ -244,25 +244,6 @@ def _init_schema(conn: sqlite3.Connection) -> None:
     except sqlite3.OperationalError:
         pass  # column already exists
 
-    conn.execute("""CREATE TABLE IF NOT EXISTS event_calendar (
-
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-        name TEXT NOT NULL,
-
-        start_date TEXT NOT NULL,
-
-        end_date TEXT NOT NULL,
-
-        coefficient REAL NOT NULL DEFAULT 1.0,
-
-        note TEXT DEFAULT '',
-
-        created_at TEXT DEFAULT (datetime('now','localtime')))""")
-
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_event_calendar_dates ON event_calendar(start_date, end_date)")
-
-
     conn.execute("""CREATE TABLE IF NOT EXISTS macro_history (
         date TEXT PRIMARY KEY,
         greedy_index REAL,
@@ -807,32 +788,4 @@ def cleanup_old_data(conn, retention_days=365):
             os.remove(f)
 
     conn.execute("VACUUM")
-
-def add_event(conn, name, start_date, end_date, coefficient=1.0, note=""):
-    """Add a risk event window to the event calendar (1.0 = no risk, 0.7 = major risk)."""
-    coeff = max(0.5, min(1.0, float(coefficient)))
-    cur = conn.execute(
-        "INSERT INTO event_calendar (name, start_date, end_date, coefficient, note) VALUES (?,?,?,?,?)",
-        (name, start_date, end_date, coeff, note),
-    )
-    return cur.lastrowid
-
-
-def list_events(conn):
-    return conn.execute(
-        "SELECT id, name, start_date, end_date, coefficient, note FROM event_calendar ORDER BY start_date"
-    ).fetchall()
-
-
-def delete_event(conn, event_id):
-    conn.execute("DELETE FROM event_calendar WHERE id=?", (event_id,))
-
-
-def active_event_coefficient(conn, date_str):
-    """Most restrictive (lowest) coefficient active on date_str, or 1.0."""
-    row = conn.execute(
-        "SELECT MIN(coefficient) AS coeff FROM event_calendar WHERE ? BETWEEN start_date AND end_date",
-        (date_str,),
-    ).fetchone()
-    return float(row["coeff"]) if row and row["coeff"] is not None else 1.0
 

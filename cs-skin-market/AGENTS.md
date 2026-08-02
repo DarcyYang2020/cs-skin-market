@@ -180,12 +180,6 @@ webapp/templates/
 - 效果：42→37 信号，14d 86.8%→88.9%，30d 74.3%→76.5%，打掉 4 个 30d 负收益（合纵 -16.24% 等）
 - 回测切片：`run_item_9grid_backtest.py` 情绪×估值九宫格，恐惧带≥75+深低估 pct<10 为核心格子（14d 95%/30d 83%），贪婪带样本少且非负期望，暂无需新增降级规则
 
-### 事件日历 (2026-08-02, P1)
-
-- `event_calendar` 表（name/start_date/end_date/coefficient/note），系数 0.5~1.0（越低风险越大），同日多事件取最低系数
-- `market_macro.event_risk_coefficient()` 优先查询日历窗口（<1.0 时返回），否则回落 settings.event_active 旧逻辑
-- 管理: `python manage_events.py list|add "新箱发布" 2026-08-05 2026-08-20 0.85 "说明"|del 3`
-
 ### 抛压衰竭信号 (v4.6, 2026-07-31)
 
 `compute_selling_pressure_exhaustion(prices)` (index_analysis.py)，熊市 V 型底部先行信号：
