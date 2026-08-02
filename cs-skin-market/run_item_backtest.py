@@ -76,6 +76,7 @@ def backtest_item(item_id, name, start, end, warmup, market_ctx, cost=0.02):
                 market_zscore=mc["z"],
                 market_th_score=mc["th"],
                 market_30d_change=mc.get("chg30", 0),
+                market_drop21=mc.get("drop21", 0),
                 recent_buy_dates=recent_buys,
                 signal_date=d,
             )

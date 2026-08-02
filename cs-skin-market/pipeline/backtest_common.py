@@ -89,5 +89,6 @@ def build_market_context(start="2025-11-02", end=None):
         phase = cycle.get("phase", "unknown") if isinstance(cycle, dict) else "unknown"
         sent = real_sent.get(d, approx_sentiment(values, i))
         chg30 = (values[i] / values[i - 30] - 1) * 100 if i >= 30 and values[i - 30] > 0 else 0.0
-        ctx[d] = {"pct": pct, "z": z, "cycle": phase, "th": th, "sentiment": sent, "chg30": chg30}
+        drop21 = (values[i] / values[i - 21] - 1) * 100 if i >= 21 and values[i - 21] > 0 else 0.0
+        ctx[d] = {"pct": pct, "z": z, "cycle": phase, "th": th, "sentiment": sent, "chg30": chg30, "drop21": drop21}
     return ctx

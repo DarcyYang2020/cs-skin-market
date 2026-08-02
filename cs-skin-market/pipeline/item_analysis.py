@@ -993,6 +993,7 @@ def run_item_analysis(
     market_zscore: float = 0,
     market_th_score: int = 50,
     market_30d_change: float = 0,
+    market_drop21: float = 0,
     recent_buy_dates: list = None,
     signal_date: str = None,
     item_meta: dict = None,
@@ -1165,7 +1166,14 @@ def run_item_analysis(
     # (fwd14 +16%~+292%). Deep oversold + 14d reversal + extreme fear is a
     # high-expected-value entry even when the broad market TH is weak.
     micro_th = compute_micro_th(prices)
-    if fd.action in ("watch", "avoid") and micro_th >= 60 and sentiment_score >= 75:
+    # P0-7 (2026-08-02, 181d backtest): panic-resonance item/market filters.
+    # Full-window data: raw resonance 30d 51%; non-sticker + price>=15 + z>=-2.2
+    # + market 21d drop<=-18% -> 14d 100% / 30d 86% (n=14). Filters out the 04-23
+    # half-way bottom (market only -13%) and cold-item traps (deep z, stickers).
+    _pr_item_ok = ("\u5370\u82b1" not in (name or "") and "\u8d34\u7eb8" not in (name or "")
+                   and current >= 15 and position.zscore_90d is not None and position.zscore_90d >= -2.2)
+    _pr_market_ok = market_drop21 <= -18
+    if fd.action in ("watch", "avoid") and micro_th >= 60 and sentiment_score >= 75 and _pr_item_ok and _pr_market_ok:
         if (position.percentile_90d is not None and position.percentile_90d <= 15
                 and position.zscore_90d is not None and position.zscore_90d <= -1.5):
             _dup = False
@@ -1188,6 +1196,18 @@ def run_item_analysis(
                                     f"pct={position.percentile_90d:.0f}%,Z={position.zscore_90d:.1f})+"
                                     f"\u77ed\u671f\u53cd\u8f6c(microTH={micro_th})")
                 fd.deduction_sources.append("panic_resonance_upgrade")
+
+
+    # P0-7b (2026-08-02, 181d backtest): cycle-accumulation buy needs deep market drop too.
+    # Full-window replay: 4 accumulate buys had 30d avg -20% (1/4 positive) because they
+    # fired outside capitulation (03-22/06-11/06-19/07-02, market 21d drop only -3~+8%).
+    if fd.action == "buy" and "\u5438\u7b79" in fd.action_label and market_drop21 > -18:
+        fd.action = "watch"
+        fd.action_label = "\U0001f7e1 \u5468\u671f\u5438\u7b79\u9700\u5927\u76d8\u5171\u632f\u00b7\u89c2\u671b"
+        fd.action_detail = "\u5468\u671f\u5438\u7b79\u4f46\u5927\u76d820\u65e5\u8dcc\u5e45" + str(round(market_drop21, 1)) + "%~18%\uff0c\u7b49\u5927\u76d8\u6df1\u8dcc\u5171\u632f\u518d\u5efa\u4ed3\uff08\u56de\u6d4b\uff1a\u975e\u6df1\u8dcc\u573a\u666f4/4\u4fe1\u53f730d\u8d1f\u671f\u671b\uff09"
+        fd.deduction_sources.append("cycle_accumulation_needs_market_drop")
+        fd.position_limit = 0.0
+        fd_dict = fusion_decision_summary(fd)
 
     # ---- P0-6: Micro-TH buy confirmation (weak short-term momentum blocks buy) ----
     if fd.action == "buy" and micro_th < 45:

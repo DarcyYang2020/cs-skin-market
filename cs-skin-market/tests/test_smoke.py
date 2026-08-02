@@ -114,7 +114,7 @@ def t_knife():
     ia.compute_fusion_decision = fake_fd
     kw = dict(name='Test', volumes=[0] * 90, market_pct_90d=5.0,
               market_cycle='consolidation', market_zscore=-2.8, market_th_score=55,
-              market_30d_change=-5.0, recent_buy_dates=[], signal_date='2026-07-03')
+              market_30d_change=-5.0, market_drop21=-25.0, recent_buy_dates=[], signal_date='2026-07-03')
     try:
         # falling knife: last day new low + 3d still down -> downgraded to watch
         prices = [60.0] * 86 + [58.0, 57.0, 56.0, 55.0]
@@ -155,7 +155,7 @@ def t_panic():
     ia.compute_fusion_decision = lambda *a, **k: fake_fd('watch')
     kw = dict(name='Test', volumes=[0] * 90, market_pct_90d=5.0,
               market_cycle='consolidation', market_zscore=-2.0, market_th_score=50,
-              market_30d_change=-10.0, recent_buy_dates=[], signal_date='2026-05-25')
+              market_30d_change=-10.0, market_drop21=-25.0, recent_buy_dates=[], signal_date='2026-05-25')
     kw7 = dict(kw, recent_buy_dates=['2026-05-20'])
     try:
         # P0-5: extreme fear + deep oversold + short-term reversal -> buy
@@ -213,7 +213,7 @@ def t_zones():
     ia.compute_fusion_decision = fake_fd
     kw = dict(name='Test', prices=[60.0] * 86 + [58.0, 57.0, 56.0, 58.0], volumes=[0] * 90, market_pct_90d=5.0,
               market_cycle='consolidation', market_zscore=-2.0, market_th_score=50,
-              market_30d_change=-10.0, recent_buy_dates=[], signal_date='2026-05-25')
+              market_30d_change=-10.0, market_drop21=-25.0, recent_buy_dates=[], signal_date='2026-05-25')
     try:
         # fear: stop -30% / take +40% (P1 fit), hold note present
         ia.compute_sentiment_score = lambda: 80

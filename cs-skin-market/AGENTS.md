@@ -167,6 +167,15 @@ webapp/templates/
 - **建议持仓 21 天**：buy/hold 信号策略文本展示；前端新增止盈参考卡片。
 - **期望值标签**：buy 信号区间旁显示历史回测胜率/均收益（`config.ITEM_EXPECTANCY_STATS`），恐慌共振 vs 周期吸筹两层分类。
 
+### 样本扩展与恐慌共振过滤 (P0-7, 2026-08-02, 181天数据验证)
+
+- **窗口扩展**: `backfill_youpin_price.py` 用悠悠 day=180 回填历史价（重叠期校准系数 k=median(csqaq/youpin)，仅补缺失日期），单品历史 104天→181天（2026-02-03 起）；仅价格回填，不可作成交量（day=180 为采样曲线）
+- **过拟合实证**: 窗口扩展后 49 信号 14d 66.7%/30d 48.8%（原37信号88.9%/76.5% 是窗口偏差——warmup=30 恰好过滤掉 4-23/5-11 半山腰次）
+- **P0-7 恐慌共振过滤**: 共振升级需满足 ①非印花/贴纸 ②价格≥15 ③ z≥-2.2（深超卖冷门品反而继续阴跌） ④ 大盘 21日跌幅≤-18%（区分 4-23 半山腰 -13% vs 5-22 黄金坑 -19.6%）
+- **P0-7b 周期吸筹过滤**: 吸筹 buy 也需大盘 21日跌幅≤-18%（新样本4信号30d均-20%，全非深跌场景）
+- **效果（49→14 信号）**: 14d 100%/avg+57.1，30d 85.7%/avg+50.5（全部为 5/22-5/26 黄金坑，提示未来再次触发需等下一次恐慌深跌）
+- 大盘 drop21 参数已全链路传递（backtest_common / run_item_backtest / webapp._market_snapshot / item_analysis）
+
 ### 因子衰减监控 (factor_monitor.py, 2026-08-01)
 
 - `run_item_backtest.py` 每次回测自动存档快照至 `data/backtest_snapshots/item_backtest_YYYYMMDD.json`（大盘对应 `backtest_YYYYMMDD.json`）

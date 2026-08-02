@@ -248,6 +248,7 @@ def _market_snapshot():
     market_th = 50
     market_7d_change = 0.0
     market_30d_change = 0.0
+    market_21d_change = 0.0
     try:
         rows = conn.execute(
             "SELECT date, value FROM market_index ORDER BY date ASC"
@@ -264,6 +265,8 @@ def _market_snapshot():
             m30 = values[-30] if len(values) >= 30 else values[0]
             market_7d_change = round((current_m - m7) / m7 * 100, 1) if m7 > 0 else 0
             market_30d_change = round((current_m - m30) / m30 * 100, 1) if m30 > 0 else 0
+            m21 = values[-21] if len(values) >= 21 else values[0]
+            market_21d_change = round((current_m - m21) / m21 * 100, 1) if m21 > 0 else 0
             vol_7d = 0.0
             if len(values) >= 7:
                 vol_7d = (sum((v - mean_m) ** 2 for v in values[-7:]) / 7) ** 0.5 / mean_m * 100 if mean_m > 0 else 0
@@ -291,6 +294,7 @@ def _market_snapshot():
         "history": market_history,
         "pct": market_pct, "z": market_z, "cycle": market_cycle,
         "th": market_th, "chg7": market_7d_change, "chg30": market_30d_change,
+        "drop21": market_21d_change,
         "sentiment": sentiment,
     }
 
@@ -825,6 +829,7 @@ async def api_items_search(request: Request, query: str = Form(...)):
             market_cycle=ms["cycle"],
             market_th_score=ms["th"],
             market_30d_change=ms["chg30"],
+                market_drop21=ms.get("drop21", 0),
             recent_buy_dates=recent_buys,
             signal_date=_today_str(),
         )
@@ -982,6 +987,7 @@ async def api_items_analyze(
             market_cycle=ms["cycle"],
             market_th_score=ms["th"],
             market_30d_change=ms["chg30"],
+                market_drop21=ms.get("drop21", 0),
             recent_buy_dates=recent_buys,
             signal_date=_today_str(),
         )
@@ -1170,6 +1176,7 @@ async def api_watchlist_analyze(request: Request, item_id: int):
             market_cycle=ms["cycle"],
             market_th_score=ms["th"],
             market_30d_change=ms["chg30"],
+                market_drop21=ms.get("drop21", 0),
             recent_buy_dates=recent_buys,
             signal_date=_today_str(),
         )
@@ -1458,6 +1465,7 @@ async def _run_batch_scan_task(scan_id: str, rows: list):
                 market_cycle=ms["cycle"],
                 market_th_score=ms["th"],
                 market_30d_change=ms["chg30"],
+                market_drop21=ms.get("drop21", 0),
                 recent_buy_dates=recent_buys,
                 signal_date=_today_str(),
             )
@@ -1672,6 +1680,7 @@ async def _run_discover_task(task_id: str, items: list):
                 market_cycle=ms["cycle"],
                 market_th_score=ms["th"],
                 market_30d_change=ms["chg30"],
+                market_drop21=ms.get("drop21", 0),
             )
             analysis_objs[exact_name] = analysis
 
