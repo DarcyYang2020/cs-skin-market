@@ -165,6 +165,7 @@ webapp/templates/
 - **中性**：stop_loss = 2.5×ATR（保留），take_profit = 当前价×1.15 (+15%)（回测 17 信号 76.5% 胜率 / 单笔期望 +2.68%）
 - **贪婪 sent≤30**：take_profit = 1.5×atr_pct，stop_loss = 当前价×0.92 (-8%)（样本少，维持风控规则）
 - **建议持仓 21 天**：buy/hold 信号策略文本展示；前端新增止盈参考卡片。
+- **期望值标签**：buy 信号区间旁显示历史回测胜率/均收益（`config.ITEM_EXPECTANCY_STATS`），恐慌共振 vs 周期吸筹两层分类。
 
 ### ?????? (factor_monitor.py, 2026-08-01)
 

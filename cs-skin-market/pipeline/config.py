@@ -246,6 +246,30 @@ ITEM_EXIT_RULES = {
     "greed":   {"stop_pct": 0.92, "take_pct": None, "hold_days": 21},
 }
 
+
+# ============================================================
+#  Item price-zone expectancy labels (P1, backtest-derived)
+# ============================================================
+# 42 item buy signals (2026-04-21 ~ 2026-08-01, run_item_backtest.py --warmup 30).
+# Shown next to price zones so investors see the mathematical expectancy of the
+# signal type instead of trading on gut feeling (project principle #1/#2).
+ITEM_EXPECTANCY_STATS = {
+    # ????????? (sent>=75 + pct<=15 + z<=-1.5 + microTH>=60, ????????TH<45??)
+    "panic": {
+        "label": "??????",
+        "n": 25,
+        "win14": 90, "avg14": 58.4,   # 14d ??/????
+        "win30": 83, "avg30": 74.6,   # 30d ??/????
+    },
+    # ????????? (pct 10-25 ??????, ??TH>=45)
+    "accumulate": {
+        "label": "????",
+        "n": 17,
+        "win14": 82, "avg14": 14.3,
+        "win30": 65, "avg30": 25.0,
+    },
+}
+
 # ---- Transaction fees ----
 FEE_RATE = 0.01         # 悠悠 1% 手续费
 

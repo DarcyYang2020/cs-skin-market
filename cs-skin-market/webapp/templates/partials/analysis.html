@@ -96,6 +96,12 @@
     <div style="font-size:14px;font-weight:600;">¥{{ "%.2f"|format(price_zones.take_profit) }}</div>
     {% else %}<div style="color:#999;">¥--</div>{% endif %}
   </div>
+{% if price_zones and price_zones.expectancy %}
+<div style="background:#eff6ff;border:1px solid #dbeafe;padding:8px 10px;border-radius:8px;margin-bottom:12px;font-size:13px;color:#1e40af;">
+  历史同类信号(<b>{{ price_zones.expectancy.label }}</b>, {{ price_zones.expectancy.n }}个): 14日胜率 {{ price_zones.expectancy.win14 }}% / 均收益 +{{ price_zones.expectancy.avg14 }}% · 30日胜率 {{ price_zones.expectancy.win30 }}% / 均收益 +{{ price_zones.expectancy.avg30 }}%
+  <span style="color:#64748b;font-size:12px;">(回测 2026-04-21~08-01)</span>
+</div>
+{% endif %}
 </div>
 {% endif %}
 

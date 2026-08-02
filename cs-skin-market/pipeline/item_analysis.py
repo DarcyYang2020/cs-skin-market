@@ -14,6 +14,7 @@ from .supply import analyze_supply, supply_summary
 from .market_context import build_market_context, context_summary
 from .market_macro import compute_sentiment_factor, compute_sentiment_score, event_risk_coefficient
 from .config import ITEM_EXIT_RULES
+from .config import ITEM_EXPECTANCY_STATS
 from .index_analysis import compute_micro_th
 from dataclasses import dataclass, field
 
@@ -1430,6 +1431,13 @@ def run_item_analysis(
         else:
             take_profit = round(current * ITEM_EXIT_RULES["neutral"]["take_pct"], 2)
 
+        # ---- Expectancy label (backtest-derived, shown for buy signals) ----
+        expectancy = None
+        if fd.action in ("buy", "oversold_buy"):
+            _is_panic = "\u6050\u614c" in fd.action_label
+            _stats = ITEM_EXPECTANCY_STATS["panic" if _is_panic else "accumulate"]
+            expectancy = dict(_stats)
+
         # ---- ATH override ----
         ath_mode = current > hist_high * 0.98
         if ath_mode:
@@ -1444,6 +1452,7 @@ def run_item_analysis(
                 "ath_price": hist_high,
                 "entry_pct": {"low": 10, "high": 20},
                 "exit_pct": {"low": 75, "high": 90},
+                "expectancy": expectancy,
                 "strategy": "创历史新高(¥" + str(hist_high) + ")，无历史回朔参考区间。基于近期波动率估算: 回调" + str(atr_val) + "可轻仓试多，突破前高" + str(round(current * 1.04, 2)) + "加仓",
             }
         else:
@@ -1478,6 +1487,7 @@ def run_item_analysis(
                 "current": round(current, 2),
                 "entry_pct": {"low": round(entry_low / current * 100, 1), "high": round(entry_high / current * 100, 1)},
                 "exit_pct": {"low": round(exit_low / current * 100, 1), "high": round(exit_high / current * 100, 1)},
+                "expectancy": expectancy,
                 "strategy": " | ".join(strat) if strat else "",
             }
     return ItemAnalysisResult(

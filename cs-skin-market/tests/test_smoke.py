@@ -219,6 +219,8 @@ def t_zones():
         ia.compute_sentiment_score = lambda: 80
         pz = ia.run_item_analysis(**kw).price_zones
         assert abs(pz['stop_loss'] - 58.0 * 0.70) < 0.01, pz['stop_loss']
+        # buy -> expectancy label present (accumulate bucket: label has no panic word)
+        assert pz.get('expectancy') and pz['expectancy']['win14'] > 0, pz.get('expectancy')
         assert abs(pz['take_profit'] - 58.0 * 1.40) < 0.01, pz['take_profit']
         assert '\u6050\u614c' in pz['strategy'] or 'stop' in pz['strategy'], pz['strategy']
         assert '\u5efa\u8bae\u6301\u4ed3' in pz['strategy'], pz['strategy']
