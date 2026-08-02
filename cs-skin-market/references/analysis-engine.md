@@ -180,7 +180,7 @@ if pct <= 15% AND zscore <= -2.0:
 
 触发均记录到 `deduction_sources`（market_weak_filter / greedy_no_buy / halfway_downgrade / buy_cluster_dedup / falling_knife_filter / panic_resonance_upgrade / micro_th_weak），前端可追溯降级原因。
 
-回测（2025-11-02 起, warmup=30）: 67 信号（含重复）→ 33 独立信号；14d 胜率 61%→94%（均+45.5%），30d 77%→82%（均+53.7%，捕捉 5/22-5/27 恐慌共振黄金坑，剔除半山腰、贪婪、飞刀、微型TH弱等负期望区）。
+- **供给扩张过滤后（2026-08-02）**: 37 独立信号, 14d 胜率 88.9% / 均+40.8%, 30d 胜率 76.5% / 均+52.5%（含情绪×估值九宫格切片）
 
 
 | 因子 | 说明 |
@@ -319,25 +319,26 @@ spread_pct / highest_buy / bid_7d_chg / bid_30d_chg / spread_avg / bid_count / d
 - 分层仓位梯度（综合 value.score + 情绪）：>=8.5→30% / 7.0~8.5→20% / 5.0~7.0→12% / 3.0~5.0→5% / <3.0→0%
 - 风险等级 A/B/C/D：TH + Z-score + 流动性 + 庄盘四维累加
 
-## ??????? (2026-08-01, ?????)
+### 供给扩张过滤器 + 情绪×估值九宫格 (2026-08-02, 数据验证)
 
-| ???? | ???? | ?? |
-|---|---|---|
-| ??????????? | 33 buy ?? cycle ??: consolidation 17 ? 14d 100% / accumulation 16 ? 88%??????? P0-5 ?? | ?????? |
-| ????? 1.5 ? | 33 buy ?? conflicts ??: 0 ?????? whale=0?cycle ? distribution?accumulation ?? th ??40? | ?????? |
-| ?????? TH ?? | ?? TH_STRONG 55?45/50?TH_NEUTRAL 35?28/30 ??: ??? 3 ??? | ???????? TH ????????? |
-| ??????? | ???????????bid_count=???0.1 ????? bid_support/supply ???? | ????????? |
-| buy ?????/?? | 33 ?? 30 ?????: ??? avg +53.7% ???SL-8 +32%?TP+10 +19.6% | ?????????????????????????? |
+- 回填 in_sale_count（`backfill_in_sale.py`，csQAQ chart 在售数历史）后回测：42 buy 信号中供给扩张(supply_change_30d>5%) 5 个 30d 胜率0%，均为负期望
+- 规则：buy/超卖买入且 in_sale 30日扩张>5% → 降级 🟡 供给扩张·观望，position_limit=0；效果 42→37 信号，14d 86.8%→88.9%，30d 74.3%→76.5%，打掉合纵 -16.24% 等 4 个 30d 负收益
+- 九宫格：`run_item_9grid_backtest.py` 情绪(贪婪<50/中性50-75/恐惧≥75) × 估值(pct<10/10-25/≥25)；恐惧≥75+ pct<10 核心格 21 信号14d 95%/30d 83%；贪婪带仅3 信号非负期望，暂无需新增降级规则
+- 输出: `data/item_9grid_backtest_latest.json`
+
+### 事件日历 (2026-08-02, P1)
+
+- `event_calendar` 表 + `market_macro.event_risk_coefficient()` 优先查询日历窗口，回落 settings.event_active；管理 CLI: `python manage_events.py list|add|del`
 
 ## 回测记录
 
-- **P0 过滤后（2026-08-01）**: 33 独立信号, 14d 胜率 94% / 均+45.5%, 30d 胜率 82% / 均+53.7%（含飞刀确认 + 恐慌共振升级 + 微型TH确认）
+- **供给扩张过滤后（2026-08-02）**: 37 独立信号, 14d 胜率 88.9% / 均+40.8%, 30d 胜率 76.5% / 均+52.5%（含情绪×估值九宫格切片）
 - 旧版（含重复）: 67 信号, 14d 61% / 均+15.7%, 30d 77% / 均+29.3%
 
 | 文件 | 说明 |
 |---|---|
-| run_item_backtest.py | 单品离线回放, warmup=30: 67信号→33 独立, 14d胜率94%/均+45.5%, 30d胜率82%/均+53.7% (2026-05-21~07-31) |
-| data/item_backtest_latest.json | 单品回测最新明细（信号+分层字段） |
+| run_item_backtest.py | 单品离线回放, warmup=30: 67信号→33→37独立(2026-08-02 供给扩张过滤), 14d胜率88.9%/30d 76.5% |
+| data/item_backtest_latest.json | 单品回测最新明细（信号+分层字段+supply） |
 
 ### 补仓建议阈值（2026-07-31, 数据验证）
 

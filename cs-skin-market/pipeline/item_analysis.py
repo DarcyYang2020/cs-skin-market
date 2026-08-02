@@ -1288,6 +1288,18 @@ def run_item_analysis(
     supply = analyze_supply(prices, supply_hist, vol_total, item_meta)
     supply_dict = supply_summary(supply)
 
+    # ---- Supply-expansion filter (2026-08-02 data fit) ----
+    # 42 buy 信号回测：供给扩张(in_sale 30日变化>5%) 的5个信号30d胜率0%，均为负期望
+    # 过滤后剩 37 个信号，14d 89%/30d 76%；供给扩张时 buy 不开仓
+    if fd.action in ("buy", "oversold_buy") and supply.supply_change_30d and supply.supply_change_30d > 5:
+        fd.action = "watch"
+        fd.action_label = "\U0001f7e1 \u4f9b\u7ed9\u6269\u5f20\u00b7\u89c2\u671b"
+        fd.action_detail = ("\u5728\u552e\u91cf30\u65e5\u6269\u5f20" + str(round(supply.supply_change_30d, 1)) +
+                            "%\uff0c\u629b\u538b\u5806\u79ef\uff0c\u5386\u53f2buy\u4fe1\u53f730d\u80dc\u73870%(\u56de\u6d4b5/5\u8d1f\u671f\u671b)")
+        fd.deduction_sources.append("supply_expansion_filter")
+        fd.position_limit = 0.0
+        fd_dict = fusion_decision_summary(fd)
+
     # ---- Apply fusion decision to value score ----
     if fd.action == "buy":
         value.score = min(10, value.score + 1.5)

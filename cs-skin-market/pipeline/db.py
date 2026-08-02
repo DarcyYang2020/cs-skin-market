@@ -151,6 +151,7 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         volume_day INTEGER,
 
         volume_total INTEGER,
+        in_sale_count INTEGER,
 
         created_at TEXT DEFAULT (datetime('now','localtime')),
 
@@ -158,6 +159,14 @@ def _init_schema(conn: sqlite3.Connection) -> None:
 
     conn.execute("CREATE INDEX IF NOT EXISTS idx_price_history_item_date ON price_history(item_id, date)")
 
+
+    # 迁移：price_history 增加 in_sale_count 列（幂等，兼容旧库）
+    try:
+        _cols = [r[1] for r in conn.execute("PRAGMA table_info(price_history)").fetchall()]
+        if "in_sale_count" not in _cols:
+            conn.execute("ALTER TABLE price_history ADD COLUMN in_sale_count INTEGER")
+    except sqlite3.OperationalError:
+        pass  # 列已存在/锁定冲突时跳过
 
 
     # 迁移：price_history (item_id,date) 唯一化——清重复行(保留最新) + 唯一索引(幂等)
@@ -234,6 +243,25 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE snapshots ADD COLUMN action TEXT DEFAULT ''")
     except sqlite3.OperationalError:
         pass  # column already exists
+
+    conn.execute("""CREATE TABLE IF NOT EXISTS event_calendar (
+
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+        name TEXT NOT NULL,
+
+        start_date TEXT NOT NULL,
+
+        end_date TEXT NOT NULL,
+
+        coefficient REAL NOT NULL DEFAULT 1.0,
+
+        note TEXT DEFAULT '',
+
+        created_at TEXT DEFAULT (datetime('now','localtime')))""")
+
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_event_calendar_dates ON event_calendar(start_date, end_date)")
+
 
     conn.execute("""CREATE TABLE IF NOT EXISTS macro_history (
         date TEXT PRIMARY KEY,
@@ -346,11 +374,11 @@ def upsert_item(conn, name, steam_name="", weapon="", skin="", wear="",
 
 
 
-def save_price(conn, item_id, price_rmb, volume_day=0, volume_total=0):
+def save_price(conn, item_id, price_rmb, volume_day=0, volume_total=0, in_sale_count=0):
 
-    conn.execute("INSERT OR REPLACE INTO price_history (item_id,date,price_rmb,volume_day,volume_total) VALUES (?,?,?,?,?)",
+    conn.execute("INSERT OR REPLACE INTO price_history (item_id,date,price_rmb,volume_day,volume_total,in_sale_count) VALUES (?,?,?,?,?,?)",
 
-                 (item_id, _today(), price_rmb, volume_day, volume_total))
+                 (item_id, _today(), price_rmb, volume_day, volume_total, in_sale_count))
 
 
 
@@ -365,9 +393,10 @@ def save_price_history_batch(conn, item_id, daily_bars):
             continue
         vol_day = int(bar.volume) if bar.volume else 0
         vol_total = int(bar.survive) if bar.survive else 0
+        in_sale = int(bar.in_sale_count) if getattr(bar, "in_sale_count", 0) else 0
         conn.execute(
-            "INSERT OR REPLACE INTO price_history (item_id, date, price_rmb, volume_day, volume_total) VALUES (?,?,?,?,?)",
-            (item_id, bar.date, round(bar.close, 2), vol_day, vol_total)
+            "INSERT OR REPLACE INTO price_history (item_id, date, price_rmb, volume_day, volume_total, in_sale_count) VALUES (?,?,?,?,?,?)",
+            (item_id, bar.date, round(bar.close, 2), vol_day, vol_total, in_sale)
         )
 
 
@@ -778,4 +807,32 @@ def cleanup_old_data(conn, retention_days=365):
             os.remove(f)
 
     conn.execute("VACUUM")
+
+def add_event(conn, name, start_date, end_date, coefficient=1.0, note=""):
+    """Add a risk event window to the event calendar (1.0 = no risk, 0.7 = major risk)."""
+    coeff = max(0.5, min(1.0, float(coefficient)))
+    cur = conn.execute(
+        "INSERT INTO event_calendar (name, start_date, end_date, coefficient, note) VALUES (?,?,?,?,?)",
+        (name, start_date, end_date, coeff, note),
+    )
+    return cur.lastrowid
+
+
+def list_events(conn):
+    return conn.execute(
+        "SELECT id, name, start_date, end_date, coefficient, note FROM event_calendar ORDER BY start_date"
+    ).fetchall()
+
+
+def delete_event(conn, event_id):
+    conn.execute("DELETE FROM event_calendar WHERE id=?", (event_id,))
+
+
+def active_event_coefficient(conn, date_str):
+    """Most restrictive (lowest) coefficient active on date_str, or 1.0."""
+    row = conn.execute(
+        "SELECT MIN(coefficient) AS coeff FROM event_calendar WHERE ? BETWEEN start_date AND end_date",
+        (date_str,),
+    ).fetchone()
+    return float(row["coeff"]) if row and row["coeff"] is not None else 1.0
 

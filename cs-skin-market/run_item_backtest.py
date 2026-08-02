@@ -24,7 +24,7 @@ from pipeline.backtest_common import approx_sentiment, patch_sentiment, build_ma
 def load_item_series(item_id):
     conn = db.get_conn()
     rows = conn.execute(
-        """SELECT p.date, p.price_rmb, p.volume_day
+        """SELECT p.date, p.price_rmb, p.volume_day, p.in_sale_count
            FROM price_history p
            WHERE p.item_id = ? AND p.id IN (
                SELECT MAX(id) FROM price_history WHERE item_id = ? GROUP BY date
@@ -34,7 +34,8 @@ def load_item_series(item_id):
     conn.close()
     dates = [r["date"] for r in rows]
     prices = [r["price_rmb"] for r in rows]
-    return dates, prices
+    in_sale = [r["in_sale_count"] or 0 for r in rows]
+    return dates, prices, in_sale
 
 
 def load_items(conn=None):
@@ -45,7 +46,7 @@ def load_items(conn=None):
 
 
 def backtest_item(item_id, name, start, end, warmup, market_ctx):
-    dates, prices = load_item_series(item_id)
+    dates, prices, in_sale = load_item_series(item_id)
     if len(prices) < warmup + 1:
         return {"item_id": item_id, "name": name, "days": len(dates),
                 "signals": [], "error": "not enough history"}
@@ -68,6 +69,7 @@ def backtest_item(item_id, name, start, end, warmup, market_ctx):
                 name=name,
                 prices=prefix,
                 volumes=[0] * len(prefix),
+                supply_hist=in_sale[:i + 1],
                 market_history=None,
                 market_pct_90d=mc["pct"],
                 market_cycle=mc["cycle"],
@@ -116,6 +118,7 @@ def backtest_item(item_id, name, start, end, warmup, market_ctx):
             "market_cycle": mc["cycle"],
             "sentiment": round(mc["sentiment"], 1),
             "atr_pct": round(atr_pct, 4),
+            "supply": dict(res.supply_analysis) if res.supply_analysis else {},
             "fwd14": round(fwd14, 2) if fwd14 is not None else None,
             "fwd30": round(fwd30, 2) if fwd30 is not None else None,
             "max_dd": round(dd, 2),
