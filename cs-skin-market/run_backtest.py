@@ -12,7 +12,7 @@ from pipeline.market_th import (
     compute_market_trend_health, compute_market_fusion_decision,
     compute_market_regime
 )
-from pipeline.backtest_common import approx_sentiment, patch_sentiment
+from pipeline.backtest_common import approx_sentiment, patch_sentiment, real_greedy_sentiment
 
 
 def generate_index_signals(start_date="2025-11-02", end_date=None, cluster_days=3):
@@ -34,6 +34,7 @@ def generate_index_signals(start_date="2025-11-02", end_date=None, cluster_days=
     dates = [r["date"] for r in rows]
     raw_values = [r["value"] for r in rows]
 
+    real_sent = real_greedy_sentiment()  # real greedy history if collected, else {}
     signals = []
     for i in range(90, len(raw_values)):
         current_date = dates[i]
@@ -101,7 +102,7 @@ def generate_index_signals(start_date="2025-11-02", end_date=None, cluster_days=
         sp = compute_selling_pressure_exhaustion(vals_only)
         sp_score = sp["score"] if isinstance(sp, dict) else 50
 
-        sent = approx_sentiment(raw_values, i)
+        sent = real_sent.get(current_date, approx_sentiment(raw_values, i))
         patch_sentiment(sent)  # deterministic: cycle/other modules use the same historical sentiment
 
         fd = compute_market_fusion_decision(

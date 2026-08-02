@@ -389,6 +389,18 @@ def save_macro_snapshot(conn, date, greedy_index=None, card_price=None):
     )
 
 
+def save_macro_snapshots(conn, rows):
+    """Bulk upsert daily macro snapshots.
+
+    rows: iterable of (date, greedy_index, card_price) tuples; each point carries
+    its own date so the full history from the API can be backfilled at once.
+    """
+    conn.executemany(
+        "INSERT OR REPLACE INTO macro_history (date, greedy_index, card_price) VALUES (?,?,?)",
+        [tuple(r) for r in rows],
+    )
+
+
 
 def get_greedy_history(conn, start=None):
     """Return [(date, greedy_index)] ascending; empty until daily collection accumulates."""

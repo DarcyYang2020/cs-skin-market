@@ -35,19 +35,37 @@ def _fetch_macro():
 
 
 def _persist_macro(d: dict):
-    """Write-through: persist today greedy/card_price so backtests can use real history."""
+    """Write-through: backfill the FULL greedy/card_price history.
+
+    csQAQ returns ~60d of greedy and ~180d of card_price, each point carrying its
+    own date. Persist every point (not just the latest) so backtests can use real
+    historical sentiment instead of the price-action proxy.
+    """
     try:
         greedy = d.get("greedy", [])
         card = d.get("card_price", [])
-        greedy_val = float(greedy[-1][1]) if greedy and isinstance(greedy[-1], list) and len(greedy[-1]) > 1 else None
-        card_val = float(card[-1][1]) if card and isinstance(card[-1], list) and len(card[-1]) > 1 else None
-        if greedy_val is None:
+        rows_by_date = {}
+        for pt in greedy:
+            if isinstance(pt, list) and len(pt) > 1 and pt[0]:
+                try:
+                    date = str(pt[0])[:10]
+                    rows_by_date[date] = [date, float(pt[1]), None]
+                except (TypeError, ValueError):
+                    continue
+        for pt in card:
+            if isinstance(pt, dict) and pt.get("created_at"):
+                date = str(pt["created_at"])[:10]
+                entry = rows_by_date.setdefault(date, [date, None, None])
+                try:
+                    entry[2] = float(pt.get("card_price"))
+                except (TypeError, ValueError):
+                    continue
+        if not rows_by_date:
             return
-        from datetime import datetime
-        from .db import get_conn, save_macro_snapshot
+        from .db import get_conn, save_macro_snapshots
         conn = get_conn()
         try:
-            save_macro_snapshot(conn, datetime.now().strftime("%Y-%m-%d"), greedy_index=greedy_val, card_price=card_val)
+            save_macro_snapshots(conn, rows_by_date.values())
             conn.commit()
         finally:
             conn.close()
