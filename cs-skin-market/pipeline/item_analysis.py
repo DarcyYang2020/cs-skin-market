@@ -1201,12 +1201,25 @@ def run_item_analysis(
     # P0-7b (2026-08-02, 181d backtest): cycle-accumulation buy needs deep market drop too.
     # Full-window replay: 4 accumulate buys had 30d avg -20% (1/4 positive) because they
     # fired outside capitulation (03-22/06-11/06-19/07-02, market 21d drop only -3~+8%).
+    # D-exemption (2026-08-02, 181d replay, ex-珊瑚树): deep-dip low-buy. When the market 21d
+    # drop is not deep enough but the item is in a deep drawdown from its 30d high (dd30<=-22)
+    # with 14d change still weak (chg14<=-6), keep the accumulation buy. Grid-scan (dd30 x chg14)
+    # on the 181d window: -22/-6 is the optimum zone - 14d total exp 2555 (peak 2556), 30d total
+    # exp 2203 (highest in grid), 14d win 88%, PF 7.5 vs baseline 41 signals / 100% / +22%.
     if fd.action == "buy" and "\u5438\u7b79" in fd.action_label and market_drop21 > -18:
-        fd.action = "watch"
-        fd.action_label = "\U0001f7e1 \u5468\u671f\u5438\u7b79\u9700\u5927\u76d8\u5171\u632f\u00b7\u89c2\u671b"
-        fd.action_detail = "\u5468\u671f\u5438\u7b79\u4f46\u5927\u76d820\u65e5\u8dcc\u5e45" + str(round(market_drop21, 1)) + "%~18%\uff0c\u7b49\u5927\u76d8\u6df1\u8dcc\u5171\u632f\u518d\u5efa\u4ed3\uff08\u56de\u6d4b\uff1a\u975e\u6df1\u8dcc\u573a\u666f4/4\u4fe1\u53f730d\u8d1f\u671f\u671b\uff09"
-        fd.deduction_sources.append("cycle_accumulation_needs_market_drop")
-        fd.position_limit = 0.0
+        dd30 = (current / max(prices[-30:]) - 1) * 100 if len(prices) >= 30 else 0.0
+        chg14 = (current / prices[-15] - 1) * 100 if len(prices) >= 15 else 0.0
+        if dd30 <= -22 and chg14 <= -6:
+            fd.action_label = "\U0001f7e2 \u6df1\u5ea6\u56de\u8c03\u4f4e\u5438\u00b7\u5206\u6279\u5efa\u4ed3"
+            fd.action_detail = ("\u5468\u671f\u5438\u7b79\u4f46\u5927\u76d8\u672a\u6df1\u8dcc\uff0c\u5355\u54c1\u6df1\u5ea6\u56de\u8c03"
+                                f"(dd30={dd30:.0f}%,chg14={chg14:.0f}%)\u4e8c\u6b21\u63a2\u5e95\uff0c\u56de\u6d4b14d\u671f\u671b\u6b63\u503c")
+            fd.deduction_sources.append("deep_dip_exemption")
+        else:
+            fd.action = "watch"
+            fd.action_label = "\U0001f7e1 \u5468\u671f\u5438\u7b79\u9700\u5927\u76d8\u5171\u632f\u00b7\u89c2\u671b"
+            fd.action_detail = "\u5468\u671f\u5438\u7b79\u4f46\u5927\u76d820\u65e5\u8dcc\u5e45" + str(round(market_drop21, 1)) + "%~18%\uff0c\u7b49\u5927\u76d8\u6df1\u8dcc\u5171\u632f\u518d\u5efa\u4ed3\uff08\u56de\u6d4b\uff1a\u975e\u6df1\u8dcc\u573a\u666f4/4\u4fe1\u53f730d\u8d1f\u671f\u671b\uff09"
+            fd.deduction_sources.append("cycle_accumulation_needs_market_drop")
+            fd.position_limit = 0.0
         fd_dict = fusion_decision_summary(fd)
 
     # ---- P0-6: Micro-TH buy confirmation (weak short-term momentum blocks buy) ----
@@ -1311,7 +1324,10 @@ def run_item_analysis(
     # ---- Supply-expansion filter (2026-08-02 data fit) ----
     # 42 buy 信号回测：供给扩张(in_sale 30日变化>5%) 的5个信号30d胜率0%，均为负期望
     # 过滤后剩 37 个信号，14d 89%/30d 76%；供给扩张时 buy 不开仓
-    if fd.action in ("buy", "oversold_buy") and supply.supply_change_30d and supply.supply_change_30d > 5:
+    # 深度回调低吸(D方案)例外：恐慌共振供给扩张为负期望，
+    # 但深度回调场景供给扩张反而是正期望(dedup 37信号 14d胜率67.6%均+14.9)
+    if fd.action in ("buy", "oversold_buy") and supply.supply_change_30d and supply.supply_change_30d > 5 \
+            and "deep_dip_exemption" not in fd.deduction_sources:
         fd.action = "watch"
         fd.action_label = "\U0001f7e1 \u4f9b\u7ed9\u6269\u5f20\u00b7\u89c2\u671b"
         fd.action_detail = ("\u5728\u552e\u91cf30\u65e5\u6269\u5f20" + str(round(supply.supply_change_30d, 1)) +
