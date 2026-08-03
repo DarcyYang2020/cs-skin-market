@@ -55,16 +55,14 @@ def build_market_context(start="2025-11-02", end=None):
     Prefers persisted real greedy index; falls back to price approximation so
     the replay stays fully offline and deterministic.
     """
-    from datetime import datetime as dt, timedelta as td
     from pipeline import db
-    from pipeline.index_analysis import analyze_index, analyze_cycle_probability
-    from pipeline.market_th import compute_market_trend_health
+    from pipeline.index_analysis import analyze_index
+    from pipeline.market_th import compute_market_trend_health, derive_market_cycle
 
     real_sent = real_greedy_sentiment()
-    warmup_start = (dt.strptime(start, "%Y-%m-%d") - td(days=120)).strftime("%Y-%m-%d")
     conn = db.get_conn()
     rows = conn.execute(
-        "SELECT date, value FROM market_index WHERE date >= ? ORDER BY date", (warmup_start,)
+        "SELECT date, value FROM market_index ORDER BY date"
     ).fetchall()
     conn.close()
     dates = [r["date"] for r in rows]
@@ -85,8 +83,8 @@ def build_market_context(start="2025-11-02", end=None):
         z = pos.get("zscore_90d", 0)
         mth = compute_market_trend_health(window, volumes=None)
         th = mth.corrected_score if hasattr(mth, "corrected_score") else mth.score
-        cycle = analyze_cycle_probability(window, pct, z)
-        phase = cycle.get("phase", "unknown") if isinstance(cycle, dict) else "unknown"
+        # Live-identical cycle label (fix: analyze_cycle_probability returns probs, no phase)
+        phase = derive_market_cycle(values, i)
         sent = real_sent.get(d, approx_sentiment(values, i))
         chg30 = (values[i] / values[i - 30] - 1) * 100 if i >= 30 and values[i - 30] > 0 else 0.0
         drop21 = (values[i] / values[i - 21] - 1) * 100 if i >= 21 and values[i - 21] > 0 else 0.0

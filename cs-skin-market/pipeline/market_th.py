@@ -58,6 +58,35 @@ class MarketTrendHealth:
     drop_from_peak_pct: float = 0.0
     pct_30d_ago: float = 50.0
 
+
+def derive_market_cycle(values, i):
+    """Classify market cycle label at index i (same rules as webapp._market_snapshot).
+
+    Single source of truth so backtest (build_market_context) and live analysis
+    produce identical market_cycle values. values: full ascending close prices.
+    """
+    cur = values[i]
+    m7 = values[i - 7] if i >= 7 else values[0]
+    m30 = values[i - 30] if i >= 30 else values[0]
+    chg7 = (cur - m7) / m7 * 100 if m7 > 0 else 0.0
+    chg30 = (cur - m30) / m30 * 100 if m30 > 0 else 0.0
+    mean_m = sum(values) / len(values) if values else 1.0
+    vol7 = 0.0
+    if mean_m > 0:
+        recent = values[max(0, i - 6):i + 1]
+        vol7 = (sum((v - mean_m) ** 2 for v in recent) / len(recent)) ** 0.5 / mean_m * 100
+    if chg30 > 5 and chg7 > 1:
+        return "bull"
+    if chg30 < -5 and chg7 < -1:
+        return "bear"
+    if vol7 > 3:
+        return "volatile"
+    if abs(chg30) <= 3 and abs(chg7) <= 1:
+        return "sideways"
+    if chg30 < -2:
+        return "distribution" if chg7 < 0 else "accumulation"
+    return "sideways"
+
 def compute_market_trend_health(prices, volumes=None, cycle_phase="unknown",
 
                                  event_risk_discount=1.0,

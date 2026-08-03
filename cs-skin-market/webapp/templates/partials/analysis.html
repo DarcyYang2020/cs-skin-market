@@ -74,11 +74,17 @@
     <div style="font-weight:600;color:#16a34a;margin-bottom:4px;">买入区间</div>
     {% if price_zones.entry.low > 0 %}
     <div style="font-size:14px;font-weight:600;">¥{{ "%.2f"|format(price_zones.entry.low) }} ~ ¥{{ "%.2f"|format(price_zones.entry.high) }}</div>
+    {% if price_zones.entry_pct and price_zones.entry_pct.high %}
+    <div style="font-size:11px;color:#16a34a;margin-top:2px;">回调 {{ (100 - price_zones.entry_pct.high)|round|int }}%~{{ (100 - price_zones.entry_pct.low)|round|int }}% 触发</div>
+    {% endif %}
     {% else %}<div style="color:#999;">不建议买入</div>{% endif %}
   </div>
   <div style="background:#fef2f2;padding:10px;border-radius:8px;text-align:center;">
     <div style="font-weight:600;color:#dc2626;margin-bottom:4px;">卖出区间</div>
     <div style="font-size:14px;font-weight:600;">¥{{ "%.2f"|format(price_zones.exit.low) }} ~ ¥{{ "%.2f"|format(price_zones.exit.high) }}</div>
+    {% if price_zones.exit_pct and price_zones.exit_pct.high %}
+    <div style="font-size:11px;color:#dc2626;margin-top:2px;">反弹 {{ (price_zones.exit_pct.low - 100)|round|int }}%~{{ (price_zones.exit_pct.high - 100)|round|int }}% 触发</div>
+    {% endif %}
   </div>
   <div style="background:#fef9c3;padding:10px;border-radius:8px;text-align:center;">
     <div style="font-weight:600;color:#ca8a04;margin-bottom:4px;">止损参考</div>
@@ -98,7 +104,7 @@
   </div>
 {% if price_zones and price_zones.expectancy %}
 <div style="background:#eff6ff;border:1px solid #dbeafe;padding:8px 10px;border-radius:8px;margin-bottom:12px;font-size:13px;color:#1e40af;">
-  历史同类信号(<b>{{ price_zones.expectancy.label }}</b>, {{ price_zones.expectancy.n }}个): 14日胜率 {{ price_zones.expectancy.win14 }}% <span style="color:#94a3b8;">(95%CI {{ price_zones.expectancy.ci14_lo }}~{{ price_zones.expectancy.ci14_hi }}%)</span> / 均收益 +{{ price_zones.expectancy.avg14 }}% · 30日胜率 {{ price_zones.expectancy.win30 }}% / 均收益 +{{ price_zones.expectancy.avg30 }}%
+  历史同类信号(<b>{{ price_zones.expectancy.label }}</b>, {{ price_zones.expectancy.n }}个): 14日胜率 {{ price_zones.expectancy.win14 }}% <span style="color:#94a3b8;">(95%CI {{ price_zones.expectancy.ci14_lo }}~{{ price_zones.expectancy.ci14_hi }}%)</span> / 均收益 {{ "%+.1f"|format(price_zones.expectancy.avg14) }}% · 30日胜率 {{ price_zones.expectancy.win30 }}% / 均收益 {{ "%+.1f"|format(price_zones.expectancy.avg30) }}%
   <span style="color:#64748b;font-size:12px;">(回测 2026-04-21~08-01, 毛收益口径)</span>
 </div>
 {% endif %}

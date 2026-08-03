@@ -419,6 +419,31 @@ def t_guidance():
     g5 = signal_guidance("🟢 分批建仓", {"label": "周期吸筹"})
     assert g5["type_label"] == "周期吸筹", g5
 check('signal guidance classifies buy types', t_guidance)
+print('[Market Cycle Sync]')
+def t_market_cycle_sync():
+    from pipeline.backtest_common import build_market_context
+    from pipeline.market_th import derive_market_cycle
+    ctx = build_market_context("2025-11-02")
+    cycles = {v["cycle"] for v in ctx.values()}
+    assert cycles and cycles != {"unknown"}, cycles
+    valid = ("bull", "bear", "volatile", "sideways", "distribution", "accumulation")
+    assert cycles <= set(valid), cycles
+    # 手工牛市段：30日涨幅>5% 且 7日>1%
+    vals = [100.0] * 30 + [100 + 0.5 * i for i in range(1, 31)]
+    assert derive_market_cycle(vals, len(vals) - 1) in ("bull", "volatile"), derive_market_cycle(vals, len(vals) - 1)
+check('backtest market cycle is live-consistent (not unknown)', t_market_cycle_sync)
+
+def t_live_snapshot_sync():
+    from pipeline.backtest_common import build_market_context
+    from webapp.main import _market_snapshot
+    ctx = build_market_context("2025-11-02")
+    today = max(ctx)
+    live = _market_snapshot()
+    assert live["cycle"] == ctx[today]["cycle"], (live["cycle"], ctx[today]["cycle"])
+    assert live["th"] == ctx[today]["th"], (live["th"], ctx[today]["th"])
+    assert abs(live["pct"] - ctx[today]["pct"]) < 1.0, (live["pct"], ctx[today]["pct"])
+    assert abs(live["z"] - ctx[today]["z"]) < 0.05, (live["z"], ctx[today]["z"])
+check('live _market_snapshot matches backtest context (pct/z/th/cycle)', t_live_snapshot_sync)
 
 print()
 print(f'=== Results: {passed} passed, {failed} failed ===')

@@ -257,32 +257,25 @@ def _market_snapshot():
         values = [v for _, v in market_history if v > 0]
         if len(values) >= 30:
             current_m = values[-1]
-            market_pct = round(sum(1 for v in values if v < current_m) / len(values) * 100, 1)
-            mean_m = sum(values) / len(values)
-            std_m = (sum((v - mean_m) ** 2 for v in values) / len(values)) ** 0.5
-            market_z = round((current_m - mean_m) / std_m, 2) if std_m > 0 else 0
+            from pipeline.index_analysis import analyze_index
+            _ires = analyze_index(market_history[-90:])
+            _ipos = _ires.get("position", {}) if isinstance(_ires, dict) else {}
+            market_pct = _ipos.get("percentile_90d", 50)
+            market_z = _ipos.get("zscore_90d", 0)
             m7 = values[-7] if len(values) >= 7 else values[0]
             m30 = values[-30] if len(values) >= 30 else values[0]
             market_7d_change = round((current_m - m7) / m7 * 100, 1) if m7 > 0 else 0
             market_30d_change = round((current_m - m30) / m30 * 100, 1) if m30 > 0 else 0
             m21 = values[-21] if len(values) >= 21 else values[0]
             market_21d_change = round((current_m - m21) / m21 * 100, 1) if m21 > 0 else 0
-            vol_7d = 0.0
-            if len(values) >= 7:
-                vol_7d = (sum((v - mean_m) ** 2 for v in values[-7:]) / 7) ** 0.5 / mean_m * 100 if mean_m > 0 else 0
-            if market_30d_change > 5 and market_7d_change > 1:
-                market_cycle = "bull"
-            elif market_30d_change < -5 and market_7d_change < -1:
-                market_cycle = "bear"
-            elif vol_7d > 3:
-                market_cycle = "volatile"
-            elif abs(market_30d_change) <= 3 and abs(market_7d_change) <= 1:
-                market_cycle = "sideways"
-            elif market_30d_change < -2:
-                market_cycle = "distribution" if market_7d_change < 0 else "accumulation"
-            else:
-                market_cycle = "sideways"
-            market_th = max(0, min(100, 50 + market_30d_change * 3))
+            from pipeline.market_th import derive_market_cycle, compute_market_trend_health
+            market_cycle = derive_market_cycle(values, len(values) - 1)
+            try:
+                _window = values[-90:]
+                _mth = compute_market_trend_health(_window, volumes=None)
+                market_th = _mth.corrected_score if hasattr(_mth, "corrected_score") else _mth.score
+            except Exception:
+                market_th = max(0, min(100, 50 + market_30d_change * 3))
     finally:
         conn.close()
     try:

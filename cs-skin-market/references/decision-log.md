@@ -159,3 +159,26 @@
 - 冒烟测试中因此失败的 2 项大盘数据用例恢复可运行（采集韧性增强，非引擎改动）
 
 **记录口径**：本次为展示层/工程改动，未改变任何信号阈值与参数，不触发「信号数/胜率/期望」重新评估；下次参数/过滤层改动仍按「信号数 / 胜率 / 单笔或总期望增量」三件套记录。
+
+## 跨模块口径统一 + 均线研究（2026-08-03 第二轮，commit 待定）
+
+**发现（跨模块口径核对，均先数据验证再改码）**：
+- 回测 `backtest_common.build_market_context` 的 cycle 恒为 unknown：`analyze_cycle_probability` 只返回 4 相位概率分布、无 `phase` 键 → 「大盘出货期过滤」（item_analysis 中 market_cycle==distribution 降级 buy）在回测中从不生效，回测比实盘宽松
+- 实盘 `webapp.main._market_snapshot` 与回测口径不一致：th 用 `50+chg30*3` 近似（vs 回测 compute_market_trend_health，275 天平均绝对差 17.6 分、91 天差>20 分）；pct/z 用全历史百分位（vs 回测 90 日窗口）→ 实盘「大盘共振」阈值与回测验证的完全对不上
+
+**修复（让实盘=回测，回测基准不变）**：
+- 新增 `market_th.derive_market_cycle(values, i)` 作为 cycle 唯一来源（与实盘旧逻辑逐字一致），回测 build_market_context 与实盘 `_market_snapshot` 共用
+- 实盘 `_market_snapshot`：pct/z 复用 `analyze_index` 90 日窗口、th 用 `compute_market_trend_health`（与回测/仪表盘同源），cycle 用 derive_market_cycle；保留 fallback
+- 验证：正式全量回测 88 信号 / 14d 79.5% / 30d 61.4% 与修复前完全一致（零信号漂移，仅 market_cycle 字段从 unknown 变为真实周期）；当前日实盘与回测 pct/z/th/cycle 四字段一致（test_smoke 新增 2 项断言）
+
+**均线结构得分瓶颈研究结论（不改）**：
+- 回放 2025-11-02 起 275 天：均线分=0（空头排列）的 121 天中 TH 上限 51、无一天 ≥55；TH≥55 的 83 天均线分全部 ≥60（修复反弹 70 天 / 多头排列 13 天）
+- 结论：均线结构是 TH 突破 55 的必要条件，熊市空头排列 0 分是正确约束（配合 z_floor 超跌兜底），不是 bug → 冻结期不动，不放宽
+
+**B 方向并行展示增强（不动参数）**：
+- 单品报告买卖区间卡片：买入区间加「回调 x%~y% 触发」（entry_pct）、卖出区间加「反弹 x%~y% 触发」（exit_pct）
+- 期望标签均收益改 `%+.1f` 带符号显示，修复负值显示 `+-x%` 的隐患
+
+**id=22 核对结论**：`AK-47 | ??? 1337 (????)`，good_id=0，无 price_history/snapshots/positions 引用，纯废记录；与 id=27「抽象派 1337 (崭新出厂)」磨损未知，按「勿乱改」保持不动（不删除、不改名）
+
+**更新搁置待办**：401 风控已通过浏览器兜底解决（commit 8885d25）；剩余：① main.py 5 处 run_item_analysis 前置样板抽取 ② 均线结构研究已出结论（不改）③ 主动扩样本（工程侧短任务，另开会话）
