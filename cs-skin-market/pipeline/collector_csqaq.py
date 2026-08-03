@@ -147,8 +147,11 @@ def _chart_to_raw(cd: dict) -> list:
         out.append([ts_arr[i], p, v])
     return out
 
-def _extract_chart(item, data) -> int:
-    """Populate ItemData from csQAQ chart response. Returns number of daily bars."""
+def _extract_chart(item, data, set_price=True) -> int:
+    """Populate ItemData from csQAQ chart response. Returns number of daily bars.
+    set_price=False: fallback (Buff/C5GAME) chart must NOT overwrite the
+    youpin-anchored price (定价锚: 悠悠 > Buff > C5GAME).
+    """
     if not data or data.get('code') != 200 or not data.get('data'):
         return 0
     cd = data['data']
@@ -162,16 +165,17 @@ def _extract_chart(item, data) -> int:
             item.volume_day = max(int(float(nums[-1])), 0) if nums[-1] else 0
         except (TypeError, ValueError):
             item.volume_day = 0
-    if item._daily_bars:
-        try:
-            item.price_rmb = item._daily_bars[-1].close
-        except (TypeError, ValueError, IndexError):
-            item.price_rmb = 0.0
-    elif prices:
-        try:
-            item.price_rmb = float(prices[-1])
-        except (TypeError, ValueError):
-            item.price_rmb = 0.0
+    if set_price:
+        if item._daily_bars:
+            try:
+                item.price_rmb = item._daily_bars[-1].close
+            except (TypeError, ValueError, IndexError):
+                item.price_rmb = 0.0
+        elif prices:
+            try:
+                item.price_rmb = float(prices[-1])
+            except (TypeError, ValueError):
+                item.price_rmb = 0.0
     if nums:
         try:
             item.volume_total = max((int(float(v)) if v else 0) for v in nums)
@@ -418,7 +422,8 @@ async def _fetch_item_detail_once(good_id: int):
                 await page.goto(f'{CSQAQ_WEB}/goods/{good_id}', wait_until='domcontentloaded', timeout=25000)
                 await _wait_chart(page, captured)
                 if captured['chart']:
-                    _extract_chart(item, json.loads(captured['chart']))
+                    # fallback chart fills K-line only; price stays youpin-anchored
+                    _extract_chart(item, json.loads(captured['chart']), set_price=False)
                     _csq_log.info(f"{fb_name} platform returned {len(item.kline_90d)} bars")
             except Exception as e2:
                 _csq_log.warning(f"{fb_name} retry failed: {e2}")

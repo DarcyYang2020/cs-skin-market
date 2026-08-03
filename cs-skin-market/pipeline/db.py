@@ -677,7 +677,11 @@ def watchlist_list(conn):
 
 
 def watchlist_add(conn, name, holding=0, avg_cost=0.0, quantity=0) -> int:
-    item_id = upsert_item(conn, name, in_watchlist=1)
+    # 保留已有 good_id/yyyp_id：upsert_item 默认 good_id=0 会覆盖清空，导致后续分析需重新搜索
+    existing = conn.execute("SELECT id, good_id, yyyp_id FROM items WHERE name = ?", (name,)).fetchone()
+    keep_good_id = existing["good_id"] if existing else 0
+    keep_yyyp_id = existing["yyyp_id"] if existing else ""
+    item_id = upsert_item(conn, name, in_watchlist=1, good_id=keep_good_id, yyyp_id=keep_yyyp_id)
     if holding:
         conn.execute("UPDATE items SET holding=?, avg_cost=?, quantity=? WHERE id=?", (holding, avg_cost, quantity, item_id))
     return item_id

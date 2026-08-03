@@ -806,7 +806,7 @@ async def api_items_search(request: Request, query: str = Form(...)):
         # Upsert item first: needed for recent buy dates + snapshot report
         conn_p = db.get_conn()
         try:
-            pid = db.upsert_item(conn_p, name=exact_name, good_id=good_id, in_watchlist=1)
+            pid = db.upsert_item(conn_p, name=exact_name, good_id=good_id, yyyp_id=item.yyyp_id, in_watchlist=1)
             conn_p.commit()
         finally:
             conn_p.close()
@@ -964,7 +964,7 @@ async def api_items_analyze(
         # Upsert item first: needed for recent buy dates + snapshot report
         conn_p = db.get_conn()
         try:
-            pid = db.upsert_item(conn_p, name=exact_name, good_id=good_id, in_watchlist=1)
+            pid = db.upsert_item(conn_p, name=exact_name, good_id=good_id, yyyp_id=item.yyyp_id, in_watchlist=1)
             conn_p.commit()
         finally:
             conn_p.close()
@@ -1130,6 +1130,15 @@ async def api_watchlist_analyze(request: Request, item_id: int):
             return HTMLResponse(_ae(f"详情获取失败"))
 
         exact_name = _clean_csqaq_name(item.name or page_title or name)
+        # 回写 good_id/yyyp_id，避免 watchlist 品下次分析重新搜索（csqaq 搜索易风控）
+        conn_w = db.get_conn()
+        try:
+            conn_w.execute("UPDATE items SET good_id=?, yyyp_id=?, name=?, updated_at=datetime('now','localtime') WHERE id=?", (good_id, item.yyyp_id, exact_name, item_id))
+            conn_w.commit()
+        except Exception as _we:
+            _web_log.warning(f"watchlist good_id writeback failed: {_we}")
+        finally:
+            conn_w.close()
         price_rmb = item.price_rmb
         volume_total = item.volume_total
         if volume_total == 0 and hasattr(item, 'in_sale_count') and item.in_sale_count:
@@ -1491,7 +1500,7 @@ async def _run_batch_scan_task(scan_id: str, rows: list):
             # Persist
             conn_p = db.get_conn()
             try:
-                pid = db.upsert_item(conn_p, name=exact_name, good_id=good_id, in_watchlist=1)
+                pid = db.upsert_item(conn_p, name=exact_name, good_id=good_id, yyyp_id=item.yyyp_id, in_watchlist=1)
                 db.save_price_history_batch(conn_p, pid, daily_bars)
                 conn_p.commit()
             finally:
