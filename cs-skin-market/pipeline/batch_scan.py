@@ -76,17 +76,30 @@ def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th
                 _suggest += "｜买入区间 ¥{:.2f}~¥{:.2f}".format(_entry["low"], _entry["high"])
             _suggest += "（详见单品报告）"
         else:
-            _gaps = []
-            if _pct > 30:
-                _gaps.append(f"pct={_pct:.0f}%(90日位置，越低越便宜)距低估线30%还差{_pct - 30:.0f}pp")
-            if _z > -1.5:
-                _gaps.append(f"z={_z:.2f}（参考需≤-1.5）")
-            if _th < 55:
-                _gaps.append(f"单品TH={_th:.0f}距55还差{55 - _th:.0f}分")
-            if _gaps:
-                _suggest = "；".join(_gaps) + "（参考线：pct≤30% + TH≥55 + z≤-1.5，恐慌共振场景TH可更低）"
+            _bd = getattr(analysis, "buy_distance", None) or {}
+            if isinstance(_bd, dict) and _bd.get("drop_to_entry_pct") is not None:
+                # 价格量化(2026-08-03): 距买入区的下杀幅度，与单品报告同源
+                _suggest = _bd.get("summary", "")
+                _pz = getattr(analysis, "price_zones", None) or {}
+                _entry = _pz.get("entry") or {}
+                if _entry.get("low") and _entry.get("high"):
+                    _suggest += "｜买入区 ¥{:.2f}~¥{:.2f}".format(_entry["low"], _entry["high"])
+                if _bd.get("pct_gap", 0) or _bd.get("z_gap", 0) or _bd.get("th_gap", 0):
+                    _suggest += "｜条件：pct距30%还差{:.1f}pp、z距-1.5还差{:.2f}、TH距55还差{:.0f}分".format(
+                        _bd.get("pct_gap", 0), _bd.get("z_gap", 0), _bd.get("th_gap", 0))
+                _suggest += "（详见单品报告）"
             else:
-                _suggest = f"已接近建仓参考线（pct={_pct:.0f}%、TH={_th:.0f}、z={_z:.2f}），等融合决策确认"
+                _gaps = []
+                if _pct > 30:
+                    _gaps.append(f"pct={_pct:.0f}%(90日位置，越低越便宜)距低估线30%还差{_pct - 30:.0f}pp")
+                if _z > -1.5:
+                    _gaps.append(f"z={_z:.2f}（参考需≤-1.5）")
+                if _th < 55:
+                    _gaps.append(f"单品TH={_th:.0f}距55还差{55 - _th:.0f}分")
+                if _gaps:
+                    _suggest = "；".join(_gaps) + "（参考线：pct≤30% + TH≥55 + z≤-1.5，恐慌共振场景TH可更低）"
+                else:
+                    _suggest = f"已接近建仓参考线（pct={_pct:.0f}%、TH={_th:.0f}、z={_z:.2f}），等融合决策确认"
         return {"action": action, "reason": reason, "risk": risk, "fusion_action": fusion_action,
                 "suggest": _suggest, "signal_type": _gd["signal_type"], "type_label": _gd["type_label"],
                 "hold_guidance": _gd["hold_guidance"]}

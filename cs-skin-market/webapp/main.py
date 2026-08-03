@@ -325,6 +325,7 @@ def _save_item_snapshot(conn, item_id, analysis, price_rmb, today=None):
         "oob_price": "",
         "oob_grade": "",
         "price_zones": analysis.price_zones,
+        "buy_distance": analysis.buy_distance,
         "analysis_time": _now_str(),
     })
     score = analysis.value.score
@@ -393,6 +394,7 @@ def _save_analysis_result(analysis, kline_stale_days=None, kline_stale_date="", 
             "kline_stale_days": kline_stale_days,
             "kline_stale_date": kline_stale_date,
             "price_zones": analysis.price_zones,
+            "buy_distance": analysis.buy_distance,
             "analysis_time": _now_str(),
         })
         conn_save = db.get_conn()
@@ -876,6 +878,7 @@ async def api_items_search(request: Request, query: str = Form(...)):
             "kline_stale_days": kline_stale_days,
             "kline_stale_date": kline_stale_date,
             "price_zones": analysis.price_zones,
+            "buy_distance": analysis.buy_distance,
             "analysis_time": __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M"),
         }
         return templates.TemplateResponse(request, "partials/analysis.html", ctx)
@@ -1032,6 +1035,7 @@ async def api_items_analyze(
             "kline_stale_days": kline_stale_days,
             "kline_stale_date": kline_stale_date,
             "price_zones": analysis.price_zones,
+            "buy_distance": analysis.buy_distance,
             "analysis_time": __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M"),
         }
         return templates.TemplateResponse(request, "partials/analysis.html", ctx)
@@ -1245,6 +1249,7 @@ async def api_watchlist_analyze(request: Request, item_id: int):
             "kline_stale_days": kline_stale_days,
             "kline_stale_date": kline_stale_date,
             "price_zones": analysis.price_zones,
+            "buy_distance": analysis.buy_distance,
         }
         return templates.TemplateResponse(request, "partials/analysis.html", ctx)
 

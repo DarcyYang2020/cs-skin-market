@@ -223,6 +223,7 @@ class ItemAnalysisResult:
     risk_level: str = "C"
     risk_label: str = ""
     bid_support: dict = field(default_factory=dict)
+    buy_distance: dict = field(default_factory=dict)
 
 
 # ============================================================
@@ -1538,6 +1539,19 @@ def run_item_analysis(
                 "expectancy": expectancy,
                 "strategy": " | ".join(strat) if strat else "",
             }
+    # ---- Buy-distance quantization (display layer, never changes decisions) ----
+    buy_distance = {}
+    try:
+        from .buy_distance import compute_buy_distance
+        _th_score = th.score if hasattr(th, 'score') else 50
+        buy_distance = compute_buy_distance(
+            prices, position, _th_score,
+            price_zones=price_zones,
+            cycle_phase=cycle.phase if hasattr(cycle, 'phase') else 'unknown',
+        ) or {}
+    except Exception:
+        buy_distance = {}
+
     return ItemAnalysisResult(
         name=name,
         price_rmb=current,
@@ -1562,5 +1576,6 @@ def run_item_analysis(
         bid_support=bid_support,
         risk_label={"A":"低风险·可关注","B":"中等风险·正常操作","C":"较高风险·谨慎介入","D":"极度危险·回避"}.get(risk_level, ""),
         price_zones=price_zones,
+        buy_distance=buy_distance,
     )
 

@@ -1108,6 +1108,19 @@ def analyze_index_full(index_history: list) -> dict:
         }
         result["market_trend_health"] = market_th_summary(mth)
         result["market_fusion_decision"] = market_fd_summary(mfd)
+        # ---- Buy-distance quantization (display layer, never changes decisions) ----
+        try:
+            from .buy_distance import compute_market_buy_distance
+            _mbd = compute_market_buy_distance(
+                values, pct, z, mth.score,
+                regime=mkt_regime,
+                action=mfd.action,
+                action_label=mfd.action_label,
+            )
+            if _mbd:
+                result["buy_distance"] = _mbd
+        except Exception:
+            pass
         # --- New: enhanced analysis (v4) ---
         result["cycle_probability"] = analyze_cycle_probability(
             values[-90:], pct, z)

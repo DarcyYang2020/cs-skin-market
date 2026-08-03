@@ -182,3 +182,22 @@
 **id=22 核对结论**：`AK-47 | ??? 1337 (????)`，good_id=0，无 price_history/snapshots/positions 引用，纯废记录；与 id=27「抽象派 1337 (崭新出厂)」磨损未知，按「勿乱改」保持不动（不删除、不改名）
 
 **更新搁置待办**：401 风控已通过浏览器兜底解决（commit 8885d25）；剩余：① main.py 5 处 run_item_analysis 前置样板抽取 ② 均线结构研究已出结论（不改）③ 主动扩样本（工程侧短任务，另开会话）
+---
+
+## 距买点量化（2026-08-03 第三轮，展示层增强）
+
+**需求**：距建仓参考线还差多少要更可视化、量化成价格（"还下杀多少就是买点"）；大盘也给 suggest；单品每个报告都显示。
+
+**实现（新增 `pipeline/buy_distance.py`，纯展示层，未动任何信号阈值/参数）**：
+- 单品 `compute_buy_distance()`：90 日窗口同口径反推参考价位
+  - 首选目标 = 报告 price_zones.entry 买入区间（回调触发区），下跌中继抑制买入区时退回 pct30 估值线
+  - 输出：还下杀 %（drop_to_entry_pct）+ 目标价（drop_price）+ 进度条（bar_pct，下杀 20% 满格）
+  - 三条件 gap：pct 距 30%（pp）、z 距 -1.5（MAD 反推 z15 价）、TH 距 55（分）；修复 z_gap 方向 bug
+- 大盘 `compute_market_buy_distance()`：参考线 pct≤30 + TH≥55 + z≤0（牛/震荡深调场景 TH 门槛 30，v5.2 口径）
+  - 价格参考位 = min(pct30 价格, z0 价格=中位数)；融合决策已是 buy 时直接显示「已到买点」
+- 接入点：item_analysis 返回对象新增 `buy_distance` 字段；analyze_index_full 新增 `result["buy_distance"]`；main.py 5 处报告渲染上下文补齐；批量扫描非持仓 suggest 优先用价格量化文本（与报告同源），无数据退回原 pp 差距文本
+- 模板：单品报告 + 大盘仪表盘各新增「🎯 距买点」卡片（summary + 进度条 + 当前价→参考价 + 三条件 gap 芯片）
+
+**口径说明**：pct30 价格为第 30 百分位价格（与 percent_90d 同口径近似）；z 反推价格用与报告一致的 MAD 公式（z15 = med - 1.5×mad×1.4826，z0 = med），精确可验证。参考线为展示口径，实际买点仍以融合决策为准（恐慌共振场景 TH 可更低）。
+
+**验证**：test_smoke 新增 4 项（单品距离量化 / z-gap 方向 / 大盘参考位 / 单品结果携带 buy_distance），全量 25 passed 0 failed；模板 Jinja 渲染手工验证通过。记录口径：展示层改动，不触发信号数/胜率/期望重估。

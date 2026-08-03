@@ -70,6 +70,7 @@ def t_ianalysis():
     assert 'market_trend_health' in result
     assert 'market_fusion_decision' in result
     assert isinstance(result['market_trend_health'].get('score'), int)
+    assert 'buy_distance' in result, list(result.keys())
 check('index analysis produces complete output', t_ianalysis)
 
 print('[API: Item Search]')
@@ -419,6 +420,93 @@ def t_guidance():
     g5 = signal_guidance("🟢 分批建仓", {"label": "周期吸筹"})
     assert g5["type_label"] == "周期吸筹", g5
 check('signal guidance classifies buy types', t_guidance)
+print('[Buy Distance]')
+def t_buy_distance_prices():
+    from types import SimpleNamespace
+    from pipeline.buy_distance import compute_buy_distance
+    import statistics
+    prices = list(range(11, 101))  # 90 points, current=100
+    pos = SimpleNamespace(percentile_90d=80.0, zscore_90d=1.5)
+    bd = compute_buy_distance(prices, pos, 40.0, price_zones={'entry': {'low': 30, 'high': 45}})
+    assert bd is not None
+    # 目标 = 买入区上沿
+    assert bd['drop_to_entry_pct'] == 55.0, bd
+    assert bd['drop_price'] == 45.0, bd
+    assert bd['in_entry_zone'] is False
+    # pct30 反推价格: 30% 分位
+    assert bd['pct30_price'] == 38.0, bd
+    # z=-1.5 反推价格: 用同口径 MAD 公式验证
+    med = statistics.median(prices)
+    mad = statistics.median([abs(v - med) for v in prices])
+    z_at = (bd['z15_price'] - med) / (mad * 1.4826)
+    assert abs(z_at + 1.5) < 0.01, z_at
+    # z gap 方向: z=1.5 距 -1.5 还差 3.0
+    assert bd['z_gap'] == 3.0, bd
+    assert bd['th_gap'] == 15.0, bd
+check('buy_distance quantifies drop% to entry zone', t_buy_distance_prices)
+
+def t_buy_distance_in_zone():
+    from types import SimpleNamespace
+    from pipeline.buy_distance import compute_buy_distance
+    prices = [100.0] * 40 + [105.0] * 50   # current=105, stable
+    pos = SimpleNamespace(percentile_90d=25.0, zscore_90d=-1.6)
+    bd = compute_buy_distance(prices, pos, 58.0, price_zones={'entry': {'low': 100, 'high': 106}})
+    assert bd['in_entry_zone'] is True, bd
+    assert bd['bar_pct'] == 100, bd
+    assert '已在买入区' in bd['summary'], bd
+    assert bd['pct_gap'] == 0.0 and bd['z_gap'] == 0.0 and bd['th_gap'] == 0.0, bd
+check('buy_distance marks in-zone with full bar', t_buy_distance_in_zone)
+
+def t_market_buy_distance():
+    from pipeline.buy_distance import compute_market_buy_distance
+    prices = list(range(11, 101))
+    mbd = compute_market_buy_distance(prices, pct=45.0, z=0.8, th_score=40.0, regime='bear', action='watch')
+    assert mbd is not None
+    assert mbd['line_price'] == 38.0, mbd          # min(pct30=38, z0=55.5)
+    assert mbd['drop_to_line_pct'] == 62.0, mbd
+    assert mbd['th_target'] == 55, mbd
+    assert '再下杀' in mbd['summary'], mbd
+    mbd2 = compute_market_buy_distance(prices, pct=20.0, z=-0.5, th_score=60.0, regime='bear', action='buy', action_label='低估区间·分批建仓')
+    assert mbd2['bar_pct'] == 100 and '已到买点' in mbd2['summary'], mbd2
+    mbd3 = compute_market_buy_distance(prices, pct=45.0, z=0.8, th_score=20.0, regime='bull', action='watch')
+    assert mbd3['th_target'] == 30, mbd3
+check('market buy_distance prices the reference line', t_market_buy_distance)
+
+def t_item_result_buy_distance():
+    from types import SimpleNamespace
+    import pipeline.item_analysis as ia
+    pos = SimpleNamespace(percentile_90d=5.0, zscore_90d=-2.8, high_90d=100.0,
+                          low_90d=50.0, mean_90d=80.0, median_90d=82.0,
+                          current_price=55.0, data_points=90, valuation_tier='undervalued')
+    orig = (ia._analyze_position, ia.compute_sentiment_score, ia.compute_sentiment_factor,
+            ia.event_risk_coefficient, ia.compute_fusion_decision, ia.compute_micro_th)
+    ia._analyze_position = lambda prices: pos
+    ia.compute_sentiment_score = lambda: 60
+    ia.compute_sentiment_factor = lambda: 0.0
+    ia.event_risk_coefficient = lambda: 1.0
+    ia.compute_micro_th = lambda prices: 70
+    def fake_fd(*a, **k):
+        return SimpleNamespace(action='buy', action_label='周期吸筹·分批建仓',
+                               action_detail='', deduction_sources=[], zone='undervalued',
+                               zone_label='低估', liquidity_filtered=False,
+                               percentile_90d=5.0, raw_th_score=55, corrected_th_score=55,
+                               position_limit=None)
+    ia.compute_fusion_decision = fake_fd
+    kw = dict(name='Test', volumes=[0] * 90, market_pct_90d=5.0,
+              market_cycle='consolidation', market_zscore=-2.8, market_th_score=55,
+              market_30d_change=-5.0, market_drop21=-25.0, recent_buy_dates=[], signal_date='2026-07-03')
+    try:
+        prices = [60.0] * 86 + [58.0, 57.0, 55.0, 57.0]
+        res = ia.run_item_analysis(prices=prices, **kw)
+        assert res.buy_distance, res
+        assert res.buy_distance['kind'] == 'item', res.buy_distance
+        assert res.buy_distance['drop_price'] > 0, res.buy_distance
+        assert res.buy_distance['current_price'] == res.price_rmb, res.buy_distance
+    finally:
+        (ia._analyze_position, ia.compute_sentiment_score, ia.compute_sentiment_factor,
+         ia.event_risk_coefficient, ia.compute_fusion_decision, ia.compute_micro_th) = orig
+check('item analysis result carries buy_distance', t_item_result_buy_distance)
+
 print('[Market Cycle Sync]')
 def t_market_cycle_sync():
     from pipeline.backtest_common import build_market_context
