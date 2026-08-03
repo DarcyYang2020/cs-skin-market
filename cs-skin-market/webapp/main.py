@@ -833,6 +833,9 @@ async def api_items_search(request: Request, query: str = Form(...)):
             recent_buy_dates=recent_buys,
             signal_date=_today_str(),
         )
+        # 报告价格锚定悠悠有品 DOM 价（chart fallback 价只补 K 线不参与定价）
+        if price_rmb and price_rmb > 0:
+            analysis.price_rmb = price_rmb
         analysis.volume_day = volume_day
         analysis.volume_total = volume_total
         if hasattr(analysis, 'aux') and analysis.aux:
@@ -991,6 +994,9 @@ async def api_items_analyze(
             recent_buy_dates=recent_buys,
             signal_date=_today_str(),
         )
+        # 报告价格锚定悠悠有品 DOM 价（chart fallback 价只补 K 线不参与定价）
+        if price_rmb and price_rmb > 0:
+            analysis.price_rmb = price_rmb
         analysis.volume_day = volume_day
         analysis.volume_total = volume_total
         if hasattr(analysis, 'aux') and analysis.aux:
@@ -1189,6 +1195,9 @@ async def api_watchlist_analyze(request: Request, item_id: int):
             recent_buy_dates=recent_buys,
             signal_date=_today_str(),
         )
+        # 报告价格锚定悠悠有品 DOM 价（chart fallback 价只补 K 线不参与定价）
+        if price_rmb and price_rmb > 0:
+            analysis.price_rmb = price_rmb
         analysis.volume_day = volume_day
         analysis.volume_total = volume_total
         if hasattr(analysis, 'aux') and analysis.aux:
@@ -1478,6 +1487,9 @@ async def _run_batch_scan_task(scan_id: str, rows: list):
                 recent_buy_dates=recent_buys,
                 signal_date=_today_str(),
             )
+            # 报告价格锚定悠悠有品 DOM 价（chart fallback 价只补 K 线不参与定价）
+            if getattr(item, "price_rmb", 0) and item.price_rmb > 0:
+                analysis.price_rmb = item.price_rmb
             analysis.volume_day = volume_day
             analysis.volume_total = item.volume_total or 0
             # 价格合理性校验：csQAQ 偶发串品/脏价，脏数据不落库（保留 DB 旧数据）

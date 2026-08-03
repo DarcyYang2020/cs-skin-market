@@ -397,15 +397,6 @@ async def _fetch_item_detail_once(good_id: int):
         except Exception as _ge:
             _csq_log.warning(f"goto goods/{good_id} failed: {_ge}")
         await _wait_chart(page, captured)
-        # Extract youyoupin listing price from page DOM
-        try:
-            yyyp_price = await page.evaluate("() => { const el = document.querySelector('.ant-statistic-content-value'); if (el) return el.innerText.trim(); return ''; }")
-            if yyyp_price:
-                p = float(yyyp_price.replace(',', '').replace('\u00a5', ''))
-                if p > 0:
-                    item.price_rmb = p
-        except Exception:
-            pass
         if captured['chart']:
             try:
                 _extract_chart(item, json.loads(captured['chart']))
@@ -428,6 +419,15 @@ async def _fetch_item_detail_once(good_id: int):
             except Exception as e2:
                 _csq_log.warning(f"{fb_name} retry failed: {e2}")
 
+        # 定价锚：悠悠有品 DOM 价最高优先级（最后覆盖，任何 chart close 都不得覆盖）
+        try:
+            yyyp_price = await page.evaluate("() => { const el = document.querySelector('.ant-statistic-content-value'); if (el) return el.innerText.trim(); return ''; }")
+            if yyyp_price:
+                p = float(yyyp_price.replace(',', '').replace('\u00a5', ''))
+                if p > 0:
+                    item.price_rmb = p
+        except Exception:
+            pass
         if captured['detail']:
             try:
                 dd = json.loads(captured['detail'])
