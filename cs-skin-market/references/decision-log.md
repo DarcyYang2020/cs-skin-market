@@ -234,3 +234,5 @@
 **行为变化（重要口径）**：P0-8 提前 1-7 天低吸后，原 buy 被 P0-2 去重替代（25 个原 buy 被替代，全部有 prior P0-8，无信号消失）。被替代原 buy avg14 +11.2/avg30 +9.5（正期望但平庸），且仓位从 0.2-0.3 降至 0.10。净效应为正（见上），接受「低吸优先」；若未来发现替代位置期望被压低，再评估加仓/分层方案。
 **验证**：test_smoke 25 passed 0 failed；回放口径已修正为完整回放（非 85+266 叠加）。
 **遗留**：run_item_backtest_deepvalue.py 归档 scripts-archive；deepvalue_records*.json 大文件删除（口径记录以上表为准）。
+
+**P0-8 展示层核查（2026-08-03）**：批量扫描/单品报告已自动显示深值企稳——type_label 经 expectancy.label 覆盖为「深值企稳」、建议文案含标签+原因+买入区间+期望+轻仓提示、hold 默认14日。无需额外改动。唯一小口径：signal_guidance 未独立 deep_value 分支，factor_monitor 分组统计归入 base（内部统计，暂不处理，待有实际用途再 +2 行）。
