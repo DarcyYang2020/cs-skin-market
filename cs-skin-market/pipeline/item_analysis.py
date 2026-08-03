@@ -1337,6 +1337,40 @@ def run_item_analysis(
         fd.position_limit = 0.0
         fd_dict = fusion_decision_summary(fd)
 
+    # ---- P0-8: Deep-value stable-market low-buy (2026-08-03, 24,123-day replay) ----
+    # A??(????)?????: 2????????????(mth<40), ???????????
+    # ???????????: pct<=20 z<=-0.5 ??TH>=35 ??TH>=40 40<=sent<=65 drop21>=-5
+    # 266 ????(???buy???,7???): 14d 48.1%/+4.20, 30d 45.5%/+8.17
+    # pre-1/23 ???? 80 ??: 14d 61.3%/+10.05, 30d 61.3%/+17.60
+    # 1/23~2/12 ??? 17 ??: 14d 70.6%/+4.10, 30d 76.5%/+27.29
+    # ?????(??-0.47/-1.14), ?????? -> ??0.10??
+    if fd.action in ("watch", "avoid") and position.percentile_90d is not None and position.zscore_90d is not None:
+        _dv_ok = (position.percentile_90d <= 20 and position.zscore_90d <= -0.5
+                  and th.score >= 35 and market_th_score >= 40
+                  and 40 <= sentiment_score <= 65 and market_drop21 >= -5)
+        if _dv_ok:
+            _dup = False
+            if recent_buy_dates:
+                from datetime import datetime as _dt
+                _d_now = signal_date or _dt.now().strftime("%Y-%m-%d")
+                for _d0 in recent_buy_dates:
+                    try:
+                        _gap = (_dt.strptime(_d_now[:10], "%Y-%m-%d") - _dt.strptime(_d0[:10], "%Y-%m-%d")).days
+                    except ValueError:
+                        continue
+                    if 0 <= _gap <= 7:
+                        _dup = True
+                        break
+            if not _dup:
+                fd.action = "buy"
+                fd.action_label = "🟢 ????????????"
+                fd.action_detail = (f"?????(pct={position.percentile_90d:.0f}%,Z={position.zscore_90d:.1f})"
+                                    f"+????(TH={market_th_score},21???{market_drop21:.1f}%)?"
+                                    f"??14d??+4.2%/30d+8.2%??????")
+                fd.deduction_sources.append("deep_value_stable_market")
+                fd.position_limit = 0.10
+                fd_dict = fusion_decision_summary(fd)
+
     # ---- Apply fusion decision to value score ----
     if fd.action == "buy":
         value.score = min(10, value.score + 1.5)
@@ -1483,8 +1517,12 @@ def run_item_analysis(
         # ---- Expectancy label (backtest-derived, shown for buy signals) ----
         expectancy = None
         if fd.action in ("buy", "oversold_buy"):
-            _is_panic = "\u6050\u614c" in fd.action_label
-            _stats = ITEM_EXPECTANCY_STATS["panic" if _is_panic else "accumulate"]
+            if "\u6050\u614c" in fd.action_label:
+                _stats = ITEM_EXPECTANCY_STATS["panic"]
+            elif "\u6df1\u503c" in fd.action_label:
+                _stats = ITEM_EXPECTANCY_STATS["deep_value"]
+            else:
+                _stats = ITEM_EXPECTANCY_STATS["accumulate"]
             expectancy = dict(_stats)
 
         # ---- ATH override ----
