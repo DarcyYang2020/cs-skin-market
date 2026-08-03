@@ -827,6 +827,7 @@ async def api_items_search(request: Request, query: str = Form(...)):
                 market_drop21=ms.get("drop21", 0),
             recent_buy_dates=recent_buys,
             signal_date=_today_str(),
+            price_anchor=price_rmb,
         )
         # 报告价格锚定悠悠有品 DOM 价（chart fallback 价只补 K 线不参与定价）
         if price_rmb and price_rmb > 0:
@@ -989,6 +990,7 @@ async def api_items_analyze(
                 market_drop21=ms.get("drop21", 0),
             recent_buy_dates=recent_buys,
             signal_date=_today_str(),
+            price_anchor=price_rmb,
         )
         # 报告价格锚定悠悠有品 DOM 价（chart fallback 价只补 K 线不参与定价）
         if price_rmb and price_rmb > 0:
@@ -1191,6 +1193,7 @@ async def api_watchlist_analyze(request: Request, item_id: int):
                 market_drop21=ms.get("drop21", 0),
             recent_buy_dates=recent_buys,
             signal_date=_today_str(),
+            price_anchor=price_rmb,
         )
         # 报告价格锚定悠悠有品 DOM 价（chart fallback 价只补 K 线不参与定价）
         if price_rmb and price_rmb > 0:
@@ -1431,10 +1434,103 @@ def _item_report_link(name):
     return ('<a href="javascript:void(0)" onclick="showItemReport(\'' + esc + '\')" '
             'style="color:var(--accent);text-decoration:none;cursor:pointer;font-weight:600;">' + str(name) + '</a>')
 
-async def _run_batch_scan_task(scan_id: str, rows: list):
+async def _scan_item(row, idx, ms, market_th_score, sentiment_score):
+    """批量扫描单个物品（可并发调用，共享 Playwright 浏览器多 page）。"""
     import json as _json
-    from pipeline.batch_scan import _portfolio_advice
+    from pipeline.batch_scan import _portfolio_advice, summarize_buy_distance
     from pipeline import collector_csqaq, item_analysis, collector
+    item_id, name, holding, avg_cost, qty = row["id"], row["name"], row["holding"] or 0, row["avg_cost"] or 0, row["quantity"] or 0
+    try:
+        good_id, _ = await _resolve_good_id(name)
+        if good_id == 0:
+            return dict(name=name, holding=holding, error="未找到")
+        item = await collector_csqaq.fetch_item_detail(good_id)
+        if item is None:
+            return dict(name=name, holding=holding, error="详情获取失败")
+        exact_name = item.name or name
+        daily_bars = item.kline_90d if hasattr(item, "kline_90d") and item.kline_90d else []
+        if not daily_bars:
+            _db_bars, _stale, _stale_date = _db_kline_fallback(good_id, exact_name)
+            if _db_bars:
+                daily_bars = _db_bars
+        prices = [k.close for k in daily_bars if k.close > 0] if daily_bars else [item.price_rmb]
+        vol_today, vol_map = await _fetch_volume_cached(good_id, item)
+        _apply_volume_map(daily_bars, vol_map)
+        volumes = [k.volume for k in daily_bars] if daily_bars else []
+        supply_hist = [k.in_sale_count for k in daily_bars] if daily_bars else []
+        volume_day = vol_today if vol_today > 0 else max(1, (item.volume_total or 0) // 20)
+        conn_r = db.get_conn()
+        try:
+            recent_buys = _recent_buy_dates(conn_r, item_id)
+        finally:
+            conn_r.close()
+        analysis = item_analysis.run_item_analysis(
+            name=exact_name, prices=prices, volumes=volumes or None,
+            supply_hist=supply_hist or None, order_book=item.order_book,
+            index_change_7d=getattr(idx, "change_7d", 0),
+            market_cycle=ms["cycle"],
+            market_th_score=ms["th"],
+            market_30d_change=ms["chg30"],
+            market_drop21=ms.get("drop21", 0),
+            recent_buy_dates=recent_buys,
+            signal_date=_today_str(),
+            price_anchor=item.price_rmb,
+        )
+        # 报告价格锚定悠悠有品 DOM 价（chart fallback 价只补 K 线不参与定价）
+        if getattr(item, "price_rmb", 0) and item.price_rmb > 0:
+            analysis.price_rmb = item.price_rmb
+        analysis.volume_day = volume_day
+        analysis.volume_total = item.volume_total or 0
+        # 价格合理性校验：csQAQ 偶发串品/脏价，脏数据不落库（保留 DB 旧数据）
+        _sane, _sane_msg = _kline_price_sane(daily_bars, item_id)
+        if not _sane:
+            _web_log.warning(f"batch scan skip {exact_name}: {_sane_msg}")
+            return dict(name=exact_name, holding=holding, error="价格校验未通过，保留旧数据")
+        pa = _portfolio_advice(holding, avg_cost, qty, item.price_rmb, analysis, market_th=market_th_score, sentiment_score=sentiment_score)
+        result = dict(
+            name=exact_name, holding=holding, avg_cost=avg_cost, qty=qty,
+            price_rmb=item.price_rmb, grade=analysis.value.grade, score=analysis.value.score,
+            portfolio_advice=pa,
+            buy_distance=summarize_buy_distance(getattr(analysis, "buy_distance", None) or {}),
+            valuation_tier=getattr(analysis.position, "valuation_tier", "") if hasattr(analysis, "position") else "",
+            percentile_90d=getattr(analysis.position, "percentile_90d", 50) if hasattr(analysis, "position") else 50,
+            error=None,
+        )
+        # Save to analysis_results (同步至单品报告)
+        _save_analysis_result(analysis)
+        # Persist
+        conn_p = db.get_conn()
+        try:
+            pid = db.upsert_item(conn_p, name=exact_name, good_id=good_id, yyyp_id=item.yyyp_id, in_watchlist=1)
+            db.save_price_history_batch(conn_p, pid, daily_bars)
+            conn_p.commit()
+        finally:
+            conn_p.close()
+        # Snapshot + summary
+        conn_s = db.get_conn()
+        try:
+            _save_item_snapshot(conn_s, item_id, analysis, item.price_rmb)
+            db.set_setting(conn_s, f"th_{pid}", _json.dumps(analysis.trend_health, ensure_ascii=False) if analysis.trend_health else "")
+            conn_s.commit()
+        except Exception as _se:
+            import traceback as _tb
+            with open("snapshot_error.log", "a", encoding="utf-8") as _ef:
+                _ef.write("\n=== BATCH ERROR " + str(item_id) + " ===\n" + _tb.format_exc() + "\n=== END ===\n")
+            _web_log.warning(f"Batch save error: {_se}")
+        finally:
+            conn_s.close()
+        return result
+    except Exception as e:
+        _web_log.error(f"batch scan item failed: {name}: {e}")
+        return dict(name=name, holding=holding, error=str(e)[:100])
+
+
+async def _run_batch_scan_task(scan_id: str, rows: list):
+    """批量扫描：并发 2 路共享浏览器采集（提速），结果排序 + 结构化缓存。"""
+    import json as _json
+    from pathlib import Path as _P
+    from pipeline.batch_scan import build_scan_html, sort_results
+    from pipeline import collector
     idx = collector.fetch_market_index()
     if idx is None or idx.value == 0:
         idx = type("obj", (object,), {"value": 0, "change_7d": 0})()
@@ -1442,145 +1538,47 @@ async def _run_batch_scan_task(scan_id: str, rows: list):
     ms = _market_snapshot()
     market_th_score = ms["th"]
     sentiment_score = ms["sentiment"]
-    results = []
     total = len(rows)
-    for i, row in enumerate(rows):
-        item_id, name, holding, avg_cost, qty = row["id"], row["name"], row["holding"] or 0, row["avg_cost"] or 0, row["quantity"] or 0
-        _scan_progress[scan_id]["current"] = i + 1
-        _scan_progress[scan_id]["name"] = name
-        try:
-            good_id, _ = await _resolve_good_id(name)
-            if good_id == 0:
-                results.append(dict(name=name, holding=holding, error="\u672a\u627e\u5230"))
-                continue
-            item = await collector_csqaq.fetch_item_detail(good_id)
-            if item is None:
-                results.append(dict(name=name, holding=holding, error="\u8be6\u60c5\u83b7\u53d6\u5931\u8d25"))
-                continue
-            exact_name = item.name or name
-            daily_bars = item.kline_90d if hasattr(item, "kline_90d") and item.kline_90d else []
-            if not daily_bars:
-                _db_bars, _stale, _stale_date = _db_kline_fallback(good_id, exact_name)
-                if _db_bars:
-                    daily_bars = _db_bars
-            prices = [k.close for k in daily_bars if k.close > 0] if daily_bars else [item.price_rmb]
-            vol_today, vol_map = await _fetch_volume_cached(good_id, item)
-            _apply_volume_map(daily_bars, vol_map)
-            volumes = [k.volume for k in daily_bars] if daily_bars else []
-            supply_hist = [k.in_sale_count for k in daily_bars] if daily_bars else []
-            volume_day = vol_today if vol_today > 0 else max(1, (item.volume_total or 0) // 20)
-            conn_r = db.get_conn()
-            try:
-                recent_buys = _recent_buy_dates(conn_r, item_id)
-            finally:
-                conn_r.close()
-            analysis = item_analysis.run_item_analysis(
-                name=exact_name, prices=prices, volumes=volumes or None,
-                supply_hist=supply_hist or None, order_book=item.order_book,
-                index_change_7d=getattr(idx, "change_7d", 0),
-                market_cycle=ms["cycle"],
-                market_th_score=ms["th"],
-                market_30d_change=ms["chg30"],
-                market_drop21=ms.get("drop21", 0),
-                recent_buy_dates=recent_buys,
-                signal_date=_today_str(),
-            )
-            # 报告价格锚定悠悠有品 DOM 价（chart fallback 价只补 K 线不参与定价）
-            if getattr(item, "price_rmb", 0) and item.price_rmb > 0:
-                analysis.price_rmb = item.price_rmb
-            analysis.volume_day = volume_day
-            analysis.volume_total = item.volume_total or 0
-            # 价格合理性校验：csQAQ 偶发串品/脏价，脏数据不落库（保留 DB 旧数据）
-            _sane, _sane_msg = _kline_price_sane(daily_bars, item_id)
-            if not _sane:
-                _web_log.warning(f"batch scan skip {exact_name}: {_sane_msg}")
-                results.append(dict(name=exact_name, holding=holding, error="价格校验未通过，保留旧数据"))
-                continue
-            pa = _portfolio_advice(holding, avg_cost, qty, item.price_rmb, analysis, market_th=market_th_score, sentiment_score=sentiment_score)
-            results.append(dict(
-                name=exact_name, holding=holding, avg_cost=avg_cost, qty=qty,
-                price_rmb=item.price_rmb, grade=analysis.value.grade, score=analysis.value.score,
-                portfolio_advice=pa,
-                valuation_tier=getattr(analysis.position, "valuation_tier", "") if hasattr(analysis, "position") else "",
-                percentile_90d=getattr(analysis.position, "percentile_90d", 50) if hasattr(analysis, "position") else 50,
-                error=None,
-            ))
-            # Save to analysis_results (同步至单品报告)
-            _save_analysis_result(analysis)
-            # Persist
-            conn_p = db.get_conn()
-            try:
-                pid = db.upsert_item(conn_p, name=exact_name, good_id=good_id, yyyp_id=item.yyyp_id, in_watchlist=1)
-                db.save_price_history_batch(conn_p, pid, daily_bars)
-                conn_p.commit()
-            finally:
-                conn_p.close()
-            # Snapshot + summary
-            conn_s = db.get_conn()
-            try:
-                _save_item_snapshot(conn_s, item_id, analysis, item.price_rmb)
-                db.set_setting(conn_s, f"th_{pid}", _json.dumps(analysis.trend_health, ensure_ascii=False) if analysis.trend_health else "")
-                conn_s.commit()
-            except Exception as _se:
-                import traceback as _tb
-                with open("snapshot_error.log", "a", encoding="utf-8") as _ef:
-                    _ef.write("\n=== BATCH ERROR " + str(item_id) + " ===\n" + _tb.format_exc() + "\n=== END ===\n")
-                _web_log.warning(f"Batch save error: {_se}")
-            finally:
-                conn_s.close()
+    _scan_progress[scan_id]["total"] = total
+    _scan_progress[scan_id]["name"] = "准备扫描..."
+    sem = asyncio.Semaphore(2)  # 并发 2 路：共享浏览器多 page，提速且降低风控风险
+    done = 0
 
-        except Exception as e:
-            _web_log.error(f"batch scan item failed: {name}: {e}")
-            results.append(dict(name=name, holding=holding, error=str(e)[:100]))
-    
-    # Build HTML
-    held = [r for r in results if r.get("holding") and r.get("error") is None]
-    unheld = [r for r in results if not r.get("holding") and r.get("error") is None]
-    errors = [r for r in results if r.get("error")]
-    html = ["<div class=\"card\" id=\"batch-result-{scan_id}\"><div class=\"card-header\" style=\"justify-content:space-between;\"><span class=\"card-title\">\u6279\u91cf\u626b\u63cf\u5b8c\u6210</span>".format(scan_id=scan_id)]
+    async def _one(row):
+        nonlocal done
+        async with sem:
+            res = await _scan_item(row, idx, ms, market_th_score, sentiment_score)
+            done += 1
+            _scan_progress[scan_id]["current"] = done
+            if res:
+                _scan_progress[scan_id]["name"] = res.get("name", "")
+            return res
+
+    raw_results = await asyncio.gather(*(_one(r) for r in rows))
+    results = [r for r in raw_results if r is not None]
+    results = sort_results(results)
+
     now_str = __import__("datetime").datetime.now().strftime("%H:%M:%S")
-    html.append("<span style=\"font-size:13px;color:var(--text-muted);\">" + now_str + " | \u6210\u529f " + str(len(results)) + "/" + str(total) + " | \u5237\u65b0\u540e\u4ecd\u4fdd\u7559</span></div></div>")
-    if held:
-        html.append("<div class=\"card\" style=\"margin-bottom:16px;\"><div class=\"card-header\"><span class=\"card-title\">\u6301\u4ed3\u5206\u6790 (" + str(len(held)) + ")</span></div><div class=\"table-wrap\"><table><thead><tr><th>\u7269\u54c1</th><th>\u6210\u672c/\u73b0\u4ef7</th><th>\u76c8\u4e8f</th><th>\u8bc4\u5206</th><th>\u5efa\u8bae</th></tr></thead><tbody>")
-        for r in held:
-            pnl_pct = (r["price_rmb"] - r["avg_cost"]) / r["avg_cost"] * 100 if r.get("avg_cost", 0) > 0 else 0
-            pa = r.get("portfolio_advice", {})
-            pnl_c = "green" if pnl_pct > 5 else ("red" if pnl_pct < -5 else "")
-            g = (r.get("grade") or "?").lower()
-            html.append("<tr><td>" + _item_report_link(r["name"]) + "</td>")
-            html.append("<td>\u00a5" + "%.2f" % r["avg_cost"] + " \u2192 <strong>\u00a5" + "%.2f" % r["price_rmb"] + "</strong></td>")
-            html.append("<td class=\"" + pnl_c + "\">" + "%.1f" % pnl_pct + "%</td>")
-            html.append("<td><span class=\"badge badge-" + g + "\">" + str(r.get("grade","?")) + "</span></td>")
-            html.append("<td><span style=\"font-size:12px;font-weight:600;color:var(--accent);\">" + pa.get("action","") + "</span><br><span style=\"font-size:11px;color:var(--text-muted);\">" + pa.get("suggest","") + "</span><br><span style=\"font-size:11px;color:var(--accent);\">" + (pa.get("hold_guidance","") or "") + "</span></td></tr>")
-        html.append("</tbody></table></div></div>")
-    if unheld:
-        html.append("<div class=\"card\" style=\"margin-bottom:16px;\"><div class=\"card-header\"><span class=\"card-title\">\u5173\u6ce8\u5217\u8868 (" + str(len(unheld)) + ")</span></div><div class=\"table-wrap\"><table><thead><tr><th>\u7269\u54c1</th><th>\u73b0\u4ef7</th><th>\u8bc4\u5206</th><th>\u4f30\u503c</th><th>\u5efa\u8bae</th></tr></thead><tbody>")
-        for r in unheld:
-            pa = r.get("portfolio_advice", {})
-            g = (r.get("grade") or "?").lower()
-            html.append("<tr><td>" + _item_report_link(r["name"]) + "</td>")
-            html.append("<td>\u00a5" + "%.2f" % r["price_rmb"] + "</td>")
-            html.append("<td><span class=\"badge badge-" + g + "\">" + str(r.get("grade","?")) + "</span></td>")
-            html.append("<td style=\"font-size:12px;\">" + str(r.get("valuation_tier","?")) + "<br><span style=\"color:var(--text-muted);\">pct=" + "%.1f" % r.get("percentile_90d",50) + "%</span></td>")
-            html.append("<td><span style=\"font-size:12px;font-weight:600;color:var(--accent);\">" + pa.get("action","") + "</span><br><span style=\"font-size:11px;color:var(--text-muted);\">" + pa.get("suggest","") + "</span></td></tr>")
-        html.append("</tbody></table></div></div>")
-    if errors:
-        html.append("<div class=\"card\" style=\"border-color:var(--red);\"><div class=\"card-header\"><span class=\"card-title\">\u626b\u63cf\u5931\u8d25</span></div>")
-        for e in errors:
-            html.append("<div style=\"margin-bottom:4px;\"><strong>" + str(e["name"]) + "</strong>: <span style=\"color:var(--red);\">" + str(e.get("error","")) + "</span></div>")
-        html.append("</div>")
-    _scan_progress[scan_id]["html"] = final_html = "\n".join(html)
+    final_html = build_scan_html(
+        results, total,
+        {"th": market_th_score, "sentiment": sentiment_score, "cycle": ms["cycle"],
+         "index": getattr(idx, "value", 0)},
+        now_str=now_str,
+        name_link=_item_report_link,
+    )
+    _scan_progress[scan_id]["html"] = final_html
     _scan_progress[scan_id]["done"] = True
     # Persist to disk
     try:
-        import json as _jcache
-        from pathlib import Path as _P
         _cache_path = _P(__file__).resolve().parent.parent / "data" / "batch_scan_latest.json"
-        _cache_path.write_text(_jcache.dumps({"time": __import__("datetime").datetime.now().isoformat(), "html": final_html}, ensure_ascii=False), encoding="utf-8")
+        _cache_path.write_text(_json.dumps({
+            "time": __import__("datetime").datetime.now().isoformat(),
+            "html": final_html,
+            "results": results,
+            "market_th": market_th_score,
+        }, ensure_ascii=False, default=str), encoding="utf-8")
     except Exception:
         pass
-
-
 @app.get("/api/watchlist/batch-scan-latest")
 async def api_batch_scan_latest():
     """Return the latest cached batch scan result."""

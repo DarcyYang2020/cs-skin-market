@@ -1,4 +1,4 @@
-﻿"""
+"""
 Single-item investment analysis engine --- CS2 skin specific.
 Unifies: percentile/Z-score, cycle detection, liquidity scoring,
 value scoring, probability prediction, and whale manipulation detection.
@@ -998,6 +998,7 @@ def run_item_analysis(
     recent_buy_dates: list = None,
     signal_date: str = None,
     item_meta: dict = None,
+    price_anchor: float = None,
 ):
     """
     Complete single-item analysis pipeline.
@@ -1587,6 +1588,7 @@ def run_item_analysis(
             price_zones=price_zones,
             cycle_phase=cycle.phase if hasattr(cycle, 'phase') else 'unknown',
             action=fd.action,
+            anchor_price=price_anchor,
         ) or {}
     except Exception:
         buy_distance = {}

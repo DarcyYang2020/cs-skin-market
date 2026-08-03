@@ -124,12 +124,16 @@ def _finish(scenario, scenario_label, cur, target, st, th, pct, z,
     }
 
 
-def compute_buy_distance(prices, position, th_score, price_zones=None, cycle_phase="unknown", action=None):
-    """单品距买点：估值线兜底 + 场景三态自适应（done/breakout/pullback/bottom/extreme）"""
+def compute_buy_distance(prices, position, th_score, price_zones=None, cycle_phase="unknown", action=None, anchor_price=None):
+    """单品距买点：估值线兜底 + 场景三态自适应（done/breakout/pullback/bottom/extreme）。
+
+    anchor_price: 价格锚定（悠悠有品 DOM 价）覆盖窗口最后价，保证与报告展示价同口径，
+                  避免 chart K 线价与锚定价偏差导致「参考位高于现价」的困惑（展示层，不改信号）。
+    """
     st = _window_stats(prices)
     if st is None:
         return None
-    cur = st["cur"]
+    cur = anchor_price if (anchor_price and anchor_price > 0) else st["cur"]
     pct30_price = st["pct30_price"]
     z15_price = round(st["med"] - 1.5 * st["mad_scale"], 2) if st["mad_scale"] else None
     low90 = st["low90"]

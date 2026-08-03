@@ -315,6 +315,59 @@ def t_advice():
     assert '距55还差10分' in a['suggest'], a['suggest']
 check('portfolio advice 补仓分级 works', t_advice)
 
+print('[Batch Scan: 距买点摘要/排序/HTML]')
+def t_batch_scan_display():
+    from pipeline.batch_scan import summarize_buy_distance, sort_results, build_scan_html
+    bd = {"scenario": "bottom", "scenario_label": "抄底/下跌中继", "current_price": 111.0,
+          "target_price": 106.6, "gap_pct": 4.0, "bar_pct": 20.0, "summary": "再跌 4.0% 到 ¥106.60 触发买点"}
+    s = summarize_buy_distance(bd)
+    assert s["target_price"] == 106.6 and s["gap_pct"] == 4.0 and s["bar_pct"] == 20.0, s
+    assert summarize_buy_distance(None) is None
+    assert summarize_buy_distance({}) is None
+    # 排序：持仓浮亏大在前，非持仓 gap 小在前
+    held = [dict(holding=1, avg_cost=100.0, price_rmb=130.0, name="赚"),
+            dict(holding=1, avg_cost=100.0, price_rmb=70.0, name="亏")]
+    unheld = [dict(holding=0, avg_cost=0, price_rmb=100.0, name="远", buy_distance={"gap_pct": 8.0}),
+              dict(holding=0, avg_cost=0, price_rmb=100.0, name="近", buy_distance={"gap_pct": 2.0})]
+    out = sort_results(held + unheld)
+    assert [r["name"] for r in out] == ["亏", "赚", "近", "远"], [r["name"] for r in out]
+    # HTML 冒烟：市场条 + 距买点列 + 汇总统计
+    results = [
+        dict(name="A", holding=0, price_rmb=100.0, grade="A", score=4.0, valuation_tier="低估", percentile_90d=12.0,
+             buy_distance={"scenario_label": "抄底/下跌中继", "target_price": 96.0, "gap_pct": 4.0, "bar_pct": 20.0},
+             portfolio_advice={"action": "观望等待机会", "suggest": "再跌 4.0%", "hold_guidance": ""}, error=None),
+        dict(name="B", holding=0, price_rmb=90.0, grade="B", score=3.0, valuation_tier="低估", percentile_90d=5.0,
+             buy_distance={"scenario_label": "已到买点", "target_price": 90.0, "gap_pct": 0.0, "bar_pct": 100.0},
+             portfolio_advice={"action": "可分批建仓", "suggest": "已到建仓区", "hold_guidance": ""}, error=None),
+    ]
+    html = build_scan_html(results, 2, {"th": 55, "sentiment": 70, "cycle": "bear", "index": 1566}, now_str="12:00:00")
+    assert "市场环境" in html and "大盘TH=55" in html, html
+    assert "距买点" in html
+    assert "1 个已到买点" in html, html
+    assert "¥96.00" in html and "¥90.00" in html
+    assert "批量扫描完成" in html and "成功 2/2" in html
+check('batch scan 距买点摘要/排序/HTML works', t_batch_scan_display)
+
+def t_advice_buy_distance_passthrough():
+    from pipeline.batch_scan import _portfolio_advice
+    from types import SimpleNamespace
+    pos = SimpleNamespace(percentile_90d=35.0, zscore_90d=-0.8)
+    bd = {"scenario": "bottom", "scenario_label": "抄底/下跌中继", "current_price": 80.0,
+          "target_price": 74.0, "gap_pct": 7.5, "bar_pct": 37.5, "summary": "再跌 7.5% 到 ¥74.00 触发买点"}
+    a = SimpleNamespace(position=pos, trend_health={"score": 45}, cycle=SimpleNamespace(phase="consolidation"),
+                        fusion_decision={"action": "watch", "action_label": "🟡 观望"}, value=SimpleNamespace(score=3.0, grade="B"),
+                        risk_level="C", price_zones=None, buy_distance=bd)
+    adv = _portfolio_advice(False, 0, 0, 80.0, a)
+    assert adv["buy_distance"] is not None and adv["buy_distance"]["target_price"] == 74.0, adv
+    assert adv["buy_distance"]["gap_pct"] == 7.5, adv
+    # 无 buy_distance 属性兼容（旧对象）
+    a2 = SimpleNamespace(position=pos, trend_health={"score": 45}, cycle=SimpleNamespace(phase="consolidation"),
+                         fusion_decision={"action": "watch", "action_label": "🟡 观望"}, value=SimpleNamespace(score=3.0, grade="B"),
+                         risk_level="C", price_zones=None)
+    adv2 = _portfolio_advice(False, 0, 0, 80.0, a2)
+    assert adv2["buy_distance"] is None, adv2
+check('portfolio advice 透传距买点摘要', t_advice_buy_distance_passthrough)
+
 print('[Youpin Volume Collector]')
 def t_youpin_aggregation():
     import asyncio
@@ -481,6 +534,27 @@ def t_buy_distance_scenarios():
     bd3 = compute_buy_distance(prices, pos, 32.0, price_zones={'entry': {'low': 0, 'high': 0}}, cycle_phase='distribution', action='buy')
     assert bd3['scenario'] == 'done' and bd3['target_price'] == bd3['current_price'], bd3
 check('buy_distance scenario targets never exceed current price', t_buy_distance_scenarios)
+
+def t_buy_distance_anchor():
+    from types import SimpleNamespace
+    from pipeline.buy_distance import compute_buy_distance
+    # 价格锚定：chart K 线最后价 111，锚定价 90（悠悠口径）→ current 用 90，target 必向下
+    prices = [200.0]
+    c = 200.0
+    for _ in range(89):
+        c *= 0.994
+        prices.append(round(c, 2))
+    prices[-1] = 111.0
+    pos = SimpleNamespace(percentile_90d=5.0, zscore_90d=-1.8)
+    bd = compute_buy_distance(prices, pos, 32.0, price_zones={'entry': {'low': 0, 'high': 0}},
+                              cycle_phase='distribution', anchor_price=90.0)
+    assert bd is not None and bd['current_price'] == 90.0, bd
+    assert bd['target_price'] <= bd['current_price'], bd
+    # 无锚定时回退窗口最后价
+    bd2 = compute_buy_distance(prices, pos, 32.0, price_zones={'entry': {'low': 0, 'high': 0}},
+                               cycle_phase='distribution')
+    assert bd2['current_price'] == 111.0, bd2
+check('buy_distance honors anchor_price (downward-only)', t_buy_distance_anchor)
 
 def t_market_buy_distance():
     from pipeline.buy_distance import compute_market_buy_distance

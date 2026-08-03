@@ -102,7 +102,8 @@ def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th
                     _suggest = f"已接近建仓参考线（pct={_pct:.0f}%、TH={_th:.0f}、z={_z:.2f}），等融合决策确认"
         return {"action": action, "reason": reason, "risk": risk, "fusion_action": fusion_action,
                 "suggest": _suggest, "signal_type": _gd["signal_type"], "type_label": _gd["type_label"],
-                "hold_guidance": _gd["hold_guidance"]}
+                "hold_guidance": _gd["hold_guidance"],
+                "buy_distance": summarize_buy_distance(getattr(analysis, "buy_distance", None) or {})}
 
     # Held: personalized advice
     cost_total = avg_cost * qty
@@ -194,4 +195,168 @@ def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th
     advice["signal_type"] = _gd["signal_type"]
     advice["type_label"] = _gd["type_label"]
     advice["hold_guidance"] = _gd["hold_guidance"]
+    advice["buy_distance"] = summarize_buy_distance(getattr(analysis, "buy_distance", None) or {})
     return advice
+
+def summarize_buy_distance(bd):
+    """从距买点结果提取表格列摘要（target/gap/进度条），批量扫描与单品报告同源。
+
+    纯展示层：不调用任何信号引擎。
+    """
+    if not isinstance(bd, dict):
+        return None
+    try:
+        cur = float(bd.get("current_price") or 0)
+        target = float(bd.get("target_price") or 0)
+    except (TypeError, ValueError):
+        return None
+    if cur <= 0 or target <= 0:
+        return None
+    gap = bd.get("gap_pct")
+    try:
+        gap = round(float(gap), 1) if gap is not None else round((cur - target) / cur * 100, 1)
+    except (TypeError, ValueError):
+        gap = round((cur - target) / cur * 100, 1)
+    try:
+        bar = round(float(bd.get("bar_pct") or 100), 0)
+    except (TypeError, ValueError):
+        bar = 100.0
+    return {
+        "scenario": bd.get("scenario", ""),
+        "scenario_label": bd.get("scenario_label", ""),
+        "current_price": round(cur, 2),
+        "target_price": round(target, 2),
+        "gap_pct": gap,
+        "bar_pct": bar,
+        "summary": bd.get("summary", ""),
+    }
+
+
+def _pnl_pct(r):
+    """持仓盈亏百分比（avg_cost 为 0 时返回 0）。"""
+    ac = r.get("avg_cost") or 0
+    if ac <= 0:
+        return 0.0
+    return (float(r.get("price_rmb") or 0) - ac) / ac * 100
+
+
+def _buy_gap(r):
+    """距买点 gap_pct；无距买点数据时给最大值（排最后）。"""
+    bd = r.get("buy_distance") or {}
+    g = bd.get("gap_pct")
+    try:
+        return float(g) if g is not None else 999.0
+    except (TypeError, ValueError):
+        return 999.0
+
+
+def sort_results(results):
+    """批量扫描结果排序：持仓按浮亏升序（最大浮亏在前）；非持仓按距买点 gap 升序（最接近买点在前）。
+
+    展示层排序，不影响任何引擎信号。
+    """
+    held, unheld = [], []
+    for r in results:
+        (held if r.get("holding") else unheld).append(r)
+    held.sort(key=_pnl_pct)
+    unheld.sort(key=_buy_gap)
+    return held + unheld
+
+
+def _esc(s):
+    """HTML 转义（展示层防注入）。"""
+    return (str(s or "").replace("&", "&amp;").replace("<", "&lt;")
+            .replace(">", "&gt;").replace('"', "&quot;"))
+
+
+def _bd_cell(bd):
+    """距买点表格单元格：目标价 + 下杀幅度 + 微型进度条 + 场景标签。"""
+    if not bd:
+        return '<span style="font-size:11px;color:var(--text-muted);">—</span>'
+    gap = bd.get("gap_pct")
+    bar = min(100.0, max(0.0, float(bd.get("bar_pct") or 0)))
+    at = gap is not None and gap <= 0
+    color = "#4ade80" if at else "#fbbf24"
+    gap_txt = "已到" if at else "还差 {:.1f}%".format(gap)
+    return ('<span style="font-size:11px;color:var(--text-muted);">'
+            + bd.get("scenario_label", "") + "</span><br>"
+            + '<b style="color:{c};">¥{t:.2f}</b>'.format(c=color, t=bd.get("target_price") or 0)
+            + ' <span style="color:{c};font-size:11px;">（{g}）</span>'.format(c=color, g=gap_txt)
+            + '<div style="height:5px;background:rgba(255,255,255,0.06);border-radius:3px;margin-top:3px;overflow:hidden;">'
+            + '<div style="height:100%;width:{b:.0f}%;background:linear-gradient(90deg,#3b82f6,#22c55e);"></div></div>'.format(b=bar))
+
+
+def build_scan_html(results, total, market_ctx=None, now_str="", name_link=None):
+    """批量扫描结果 → HTML（市场条 + 汇总统计 + 持仓/关注表格 + 距买点列）。
+
+    展示层函数：不调用任何信号引擎。
+    """
+    market_ctx = market_ctx or {}
+    held = [r for r in results if r.get("holding") and r.get("error") is None]
+    unheld = [r for r in results if not r.get("holding") and r.get("error") is None]
+    errors = [r for r in results if r.get("error")]
+    n_at_buy = sum(1 for r in results if (r.get("buy_distance") or {}).get("gap_pct") is not None
+                   and float((r.get("buy_distance") or {}).get("gap_pct", 99)) <= 0)
+    n_near = sum(1 for r in results if 0 < float((r.get("buy_distance") or {}).get("gap_pct", 99)) <= 5)
+    n_loss = sum(1 for r in held if _pnl_pct(r) < 0)
+    n_ok = len(results) - len(errors)
+    h = []
+    h.append('<div class="card" id="batch-result" style="margin-bottom:16px;">')
+    h.append('<div class="card-header" style="justify-content:space-between;"><span class="card-title">批量扫描完成</span>')
+    h.append('<span style="font-size:13px;color:var(--text-muted);">' + _esc(now_str) + " | 成功 " + str(n_ok) + "/" + str(total) + " | 刷新后仍保留</span></div></div>")
+    # 市场环境条
+    th = market_ctx.get("th")
+    sent = market_ctx.get("sentiment")
+    cycle = market_ctx.get("cycle") or "unknown"
+    idxv = market_ctx.get("index")
+    th_txt = "{:.0f}".format(th) if th is not None else "?"
+    sent_txt = "{:.0f}".format(sent) if sent is not None else "?"
+    mood = "恐惧" if (sent is not None and sent >= 60) else ("贪婪" if (sent is not None and sent <= 30) else "中性")
+    h.append('<div class="card" style="margin-bottom:16px;"><div class="card-header"><span class="card-title">市场环境</span></div>'
+             '<div style="padding:10px 14px;font-size:13px;color:var(--text-secondary);">'
+             + ("指数 " + _esc("{:.0f}".format(idxv)) + " ｜" if idxv else "") + " 大盘TH=" + th_txt + " ｜ 情绪 " + sent_txt + "（" + mood + "）｜ 周期 " + _esc(str(cycle)))
+    stats = []
+    if n_at_buy:
+        stats.append(str(n_at_buy) + " 个已到买点")
+    if n_near:
+        stats.append(str(n_near) + " 个接近买点（≤5%）")
+    if n_loss:
+        stats.append(str(n_loss) + " 个持仓浮亏")
+    if stats:
+        h.append('<br><span style="color:var(--accent);font-weight:600;">' + " · ".join(stats) + "</span>")
+    h.append("</div></div>")
+    # 持仓分析
+    if held:
+        h.append('<div class="card" style="margin-bottom:16px;"><div class="card-header"><span class="card-title">持仓分析 (' + str(len(held)) + ")</span></div><div class=\"table-wrap\"><table><thead><tr><th>物品</th><th>成本/现价</th><th>盈亏</th><th>评分</th><th>距买点</th><th>建议</th></tr></thead><tbody>")
+        for r in held:
+            pnl_pct = _pnl_pct(r)
+            pa = r.get("portfolio_advice", {}) or {}
+            g = (r.get("grade") or "?").lower()
+            pnl_c = "green" if pnl_pct > 5 else ("red" if pnl_pct < -5 else "")
+            h.append("<tr><td>" + (name_link(r["name"]) if name_link else _esc(r["name"])) + "</td>")
+            h.append("<td>¥" + "%.2f" % r["avg_cost"] + " → <strong>¥" + "%.2f" % r["price_rmb"] + "</strong></td>")
+            h.append('<td class="' + pnl_c + '">' + "%.1f" % pnl_pct + "%</td>")
+            h.append('<td><span class="badge badge-' + g + '">' + _esc(str(r.get("grade", "?"))) + "</span></td>")
+            h.append("<td>" + _bd_cell(r.get("buy_distance")) + "</td>")
+            h.append('<td><span style="font-size:12px;font-weight:600;color:var(--accent);">' + _esc(pa.get("action", "")) + "</span><br><span style=\"font-size:11px;color:var(--text-muted);\">" + _esc(pa.get("suggest", "")) + "</span><br><span style=\"font-size:11px;color:var(--accent);\">" + _esc(pa.get("hold_guidance", "") or "") + "</span></td></tr>")
+        h.append("</tbody></table></div></div>")
+    # 关注列表（非持仓）
+    if unheld:
+        h.append('<div class="card" style="margin-bottom:16px;"><div class="card-header"><span class="card-title">关注列表 (' + str(len(unheld)) + ")</span></div><div class=\"table-wrap\"><table><thead><tr><th>物品</th><th>现价</th><th>评分</th><th>估值</th><th>距买点</th><th>建议</th></tr></thead><tbody>")
+        for r in unheld:
+            pa = r.get("portfolio_advice", {}) or {}
+            g = (r.get("grade") or "?").lower()
+            h.append("<tr><td>" + (name_link(r["name"]) if name_link else _esc(r["name"])) + "</td>")
+            h.append("<td>¥" + "%.2f" % r["price_rmb"] + "</td>")
+            h.append('<td><span class="badge badge-' + g + '">' + _esc(str(r.get("grade", "?"))) + "</span></td>")
+            h.append('<td style="font-size:12px;">' + _esc(str(r.get("valuation_tier", "?"))) + '<br><span style="color:var(--text-muted);">pct=' + "%.1f" % r.get("percentile_90d", 50) + "%</span></td>")
+            h.append("<td>" + _bd_cell(r.get("buy_distance")) + "</td>")
+            h.append('<td><span style="font-size:12px;font-weight:600;color:var(--accent);">' + _esc(pa.get("action", "")) + "</span><br><span style=\"font-size:11px;color:var(--text-muted);\">" + _esc(pa.get("suggest", "")) + "</span></td></tr>")
+        h.append("</tbody></table></div></div>")
+    # 失败
+    if errors:
+        h.append('<div class="card" style="border-color:var(--red);"><div class="card-header"><span class="card-title">扫描失败</span></div>')
+        for e in errors:
+            h.append('<div style="margin-bottom:4px;"><strong>' + _esc(e["name"]) + "</strong>: <span style=\"color:var(--red);\">" + _esc(e.get("error", "")) + "</span></div>")
+        h.append("</div>")
+    return "\n".join(h)
