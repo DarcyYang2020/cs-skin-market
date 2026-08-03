@@ -55,3 +55,25 @@
 - 单品 buy 信号（恐慌共振+周期吸筹+低吸）见 `data/item_backtest_latest.json`
 - 大盘关键节点见 `data/backtest_index_results.json` / `data/market_signals_2025full.json`
 - 分层回测见 `references/backtest_layered.md`
+
+---
+
+## 当前进度（2026-08-03 会话归档点）
+
+**已完成（本会话）**
+- 价格全链路锚定悠悠有品：collector DOM 悠悠价最后覆盖 chart close；报告/快照/批量扫描统一用悠悠锚（commit 77dd851）
+- 血腥运动 good_id=46 找回补库（id=110），实测 1091.38 正确；石墨黑 984.50 / 死寂空间 614.00 验证通过
+- 项目记忆文档落地：project-principles.md + decision-log.md + AGENTS.md 引用块
+- 死代码清理：db.py 删 19 函数、collector.py 删 5、supply.py 删 1、config.py 删 38 死常量（-1004 行）；6 个一次性脚本归档 references/scripts-archive/（commit 9654c22）
+
+**搁置待办（未做，按优先级）**
+1. webapp/main.py 5 处 run_item_analysis 前置流程重复样板抽取（fetch detail → volume → 快照 → 保存报告），抽 1 个公共函数，风险较高需单独会话处理
+2. 大盘 csqaq K 线 401 风控问题（IP 白名单绑定，冒烟测试 2 项因此失败，非代码 bug）
+3. id=22 乱码名待核对（AK-47 | ??? 1337，疑似"抽象派 1337 (崭新出厂)"，与 id=27 不同磨损记录，勿乱改）
+4. 均线结构得分瓶颈：TH 突破 55 的主要依赖，当前均线得分为 0，待策略研究
+5. 5 处 run_item_analysis 之外的跨模块口径核对（如有新发现继续追加）
+
+**下一步策略研究建议**
+- 长短期 TH 平衡与超跌买入保守度验证（5/22-27 黄金坑 Z<-2 检查）
+- 大周期里抓小周期能力（熊市大周期内的小牛周期识别）
+- 非恐慌段低吸信号扩展（拉美西斯之触 6/21 后走势学习）
