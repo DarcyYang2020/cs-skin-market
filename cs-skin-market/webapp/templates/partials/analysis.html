@@ -67,55 +67,11 @@
   </div>
 </div>
 
-{# ====== 买卖参考区间 ====== #}
-{% if price_zones and price_zones.entry %}
-<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
-  <div style="background:#f0fdf4;padding:10px;border-radius:8px;text-align:center;">
-    <div style="font-weight:600;color:#16a34a;margin-bottom:4px;">买入区间</div>
-    {% if price_zones.entry.low > 0 %}
-    <div style="font-size:14px;font-weight:600;">¥{{ "%.2f"|format(price_zones.entry.low) }} ~ ¥{{ "%.2f"|format(price_zones.entry.high) }}</div>
-    {% if price_zones.entry_pct and price_zones.entry_pct.high %}
-    <div style="font-size:11px;color:#16a34a;margin-top:2px;">回调 {{ (100 - price_zones.entry_pct.high)|round|int }}%~{{ (100 - price_zones.entry_pct.low)|round|int }}% 触发</div>
-    {% endif %}
-    {% else %}<div style="color:#999;">不建议买入</div>{% endif %}
-  </div>
-  <div style="background:#fef2f2;padding:10px;border-radius:8px;text-align:center;">
-    <div style="font-weight:600;color:#dc2626;margin-bottom:4px;">卖出区间</div>
-    <div style="font-size:14px;font-weight:600;">¥{{ "%.2f"|format(price_zones.exit.low) }} ~ ¥{{ "%.2f"|format(price_zones.exit.high) }}</div>
-    {% if price_zones.exit_pct and price_zones.exit_pct.high %}
-    <div style="font-size:11px;color:#dc2626;margin-top:2px;">反弹 {{ (price_zones.exit_pct.low - 100)|round|int }}%~{{ (price_zones.exit_pct.high - 100)|round|int }}% 触发</div>
-    {% endif %}
-  </div>
-  <div style="background:#fef9c3;padding:10px;border-radius:8px;text-align:center;">
-    <div style="font-weight:600;color:#ca8a04;margin-bottom:4px;">止损参考</div>
-    {% if price_zones.stop_loss is mapping %}
-    <div style="font-size:14px;font-weight:600;">¥{{ "%.2f"|format(price_zones.stop_loss.low) }}</div>
-    {% elif price_zones.stop_loss %}
-    <div style="font-size:14px;font-weight:600;">¥{{ "%.2f"|format(price_zones.stop_loss) }}</div>
-    {% else %}<div style="color:#999;">¥--</div>{% endif %}
-  </div>
-  <div style="background:#ecfdf5;padding:10px;border-radius:8px;text-align:center;">
-    <div style="font-weight:600;color:#059669;margin-bottom:4px;">止盈参考</div>
-    {% if price_zones.take_profit is mapping %}
-    <div style="font-size:14px;font-weight:600;">¥{{ "%.2f"|format(price_zones.take_profit.low) }}</div>
-    {% elif price_zones.take_profit %}
-    <div style="font-size:14px;font-weight:600;">¥{{ "%.2f"|format(price_zones.take_profit) }}</div>
-    {% else %}<div style="color:#999;">¥--</div>{% endif %}
-  </div>
-{% if price_zones and price_zones.expectancy %}
-<div style="background:#eff6ff;border:1px solid #dbeafe;padding:8px 10px;border-radius:8px;margin-bottom:12px;font-size:13px;color:#1e40af;">
-  历史同类信号(<b>{{ price_zones.expectancy.label }}</b>, {{ price_zones.expectancy.n }}个): 14日胜率 {{ price_zones.expectancy.win14 }}% <span style="color:#94a3b8;">(95%CI {{ price_zones.expectancy.ci14_lo }}~{{ price_zones.expectancy.ci14_hi }}%)</span> / 均收益 {{ "%+.1f"|format(price_zones.expectancy.avg14) }}% · 30日胜率 {{ price_zones.expectancy.win30 }}% / 均收益 {{ "%+.1f"|format(price_zones.expectancy.avg30) }}%
-  <span style="color:#64748b;font-size:12px;">(回测 2026-04-21~08-01, 毛收益口径)</span>
-</div>
-{% endif %}
-</div>
-{% endif %}
-
-{# ====== 距买点距离（价格量化 + 进度条） ====== #}
+﻿{# ====== 距买点（场景自适应 + 差距量化） ====== #}
 {% if buy_distance %}
 <div class="card" style="margin-bottom:12px;border-color:rgba(59,130,246,0.35);">
   <div class="card-header" style="padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
-    <span class="card-title">🎯 距买点</span>
+    <span class="card-title">🎯 距买点 · {{ buy_distance.scenario_label }}</span>
     <span style="font-size:11px;color:var(--text-muted);">{{ buy_distance.ref }}</span>
   </div>
   <div style="padding:10px 14px;">
@@ -130,20 +86,33 @@
     <div style="margin-top:8px;height:10px;background:rgba(255,255,255,0.06);border-radius:5px;overflow:hidden;">
       <div style="height:100%;width:{{ buy_distance.bar_pct }}%;background:linear-gradient(90deg,#3b82f6,#22c55e);border-radius:5px;"></div>
     </div>
-    <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:11px;color:var(--text-muted);">
-      <span>当前 ¥{{ "%.2f"|format(buy_distance.current_price) }}</span>
-      <span>买点参考 ¥{{ "%.2f"|format(buy_distance.drop_price) }}</span>
+    <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:12px;color:var(--text-muted);flex-wrap:wrap;gap:4px;">
+      <span>当前 <b style="color:var(--text-primary);">¥{{ "%.2f"|format(buy_distance.current_price) }}</b></span>
+      <span>买点目标 <b style="color:var(--green);">¥{{ "%.2f"|format(buy_distance.target_price) }}</b>
+        {% if buy_distance.gap_pct > 0 %}<span style="color:#fbbf24;">（还差 {{ "%.1f"|format(buy_distance.gap_pct) }}% / 约 ¥{{ "%.2f"|format(buy_distance.gap_rmb) }}）</span>{% else %}<span style="color:#4ade80;">（已到）</span>{% endif %}</span>
     </div>
     <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;font-size:12px;">
-      <span style="padding:3px 8px;border-radius:4px;background:{% if buy_distance.pct_gap <= 0 %}rgba(34,197,94,0.15);color:#4ade80{% else %}rgba(245,158,11,0.15);color:#fbbf24{% endif %};">pct 距 30%：{{ "%.1f"|format(buy_distance.pct_gap) }}pp</span>
-      <span style="padding:3px 8px;border-radius:4px;background:{% if buy_distance.z_gap <= 0 %}rgba(34,197,94,0.15);color:#4ade80{% else %}rgba(245,158,11,0.15);color:#fbbf24{% endif %};">z 距 -1.5：{{ "%.2f"|format(buy_distance.z_gap) }}</span>
-      <span style="padding:3px 8px;border-radius:4px;background:{% if buy_distance.th_gap <= 0 %}rgba(34,197,94,0.15);color:#4ade80{% else %}rgba(245,158,11,0.15);color:#fbbf24{% endif %};">TH 距 55：{{ "%.0f"|format(buy_distance.th_gap) }}分</span>
-      <span style="padding:3px 8px;border-radius:4px;background:rgba(100,116,139,0.15);color:#94a3b8;">估值线 pct30 ¥{{ "%.2f"|format(buy_distance.pct30_price) }}{% if buy_distance.z15_price %} / z-1.5 ¥{{ "%.2f"|format(buy_distance.z15_price) }}{% else %} / z-1.5 数据不足{% endif %}</span>
+      <span style="padding:3px 8px;border-radius:4px;background:rgba(100,116,139,0.15);color:#94a3b8;">pct30 ¥{{ "%.2f"|format(buy_distance.pct30_price) }}</span>
+      {% if buy_distance.z15_price %}<span style="padding:3px 8px;border-radius:4px;background:rgba(100,116,139,0.15);color:#94a3b8;">z-1.5 ¥{{ "%.2f"|format(buy_distance.z15_price) }}</span>{% endif %}
+      <span style="padding:3px 8px;border-radius:4px;background:rgba(100,116,139,0.15);color:#94a3b8;">90日最低 ¥{{ "%.2f"|format(buy_distance.low90_price) }}</span>
+      {% if buy_distance.ma7 %}<span style="padding:3px 8px;border-radius:4px;background:rgba(100,116,139,0.15);color:#94a3b8;">MA7 ¥{{ "%.2f"|format(buy_distance.ma7) }}</span>{% endif %}
+      {% if buy_distance.ma30 %}<span style="padding:3px 8px;border-radius:4px;background:rgba(100,116,139,0.15);color:#94a3b8;">MA30 ¥{{ "%.2f"|format(buy_distance.ma30) }}</span>{% endif %}
     </div>
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;font-size:12px;">
+      <span style="padding:3px 8px;border-radius:4px;background:{% if buy_distance.pct_gap <= 0 %}rgba(34,197,94,0.15);color:#4ade80{% else %}rgba(245,158,11,0.15);color:#fbbf24{% endif %};">估值 pct 距 30%：{{ "%.1f"|format(buy_distance.pct_gap) }}pp</span>
+      <span style="padding:3px 8px;border-radius:4px;background:{% if buy_distance.z_gap <= 0 %}rgba(34,197,94,0.15);color:#4ade80{% else %}rgba(245,158,11,0.15);color:#fbbf24{% endif %};">z 距 -1.5：{{ "%.2f"|format(buy_distance.z_gap) }}</span>
+      <span style="padding:3px 8px;border-radius:4px;background:{% if buy_distance.th_gap <= 0 %}rgba(34,197,94,0.15);color:#4ade80{% else %}rgba(245,158,11,0.15);color:#fbbf24{% endif %};">TH 距参考：{{ "%.0f"|format(buy_distance.th_gap) }}分</span>
+      <span style="padding:3px 8px;border-radius:4px;background:rgba(59,130,246,0.12);color:#60a5fa;">实际买点以决策条为准</span>
+    </div>
+    {% if price_zones and price_zones.expectancy %}
+    <div style="background:#eff6ff;border:1px solid #dbeafe;padding:8px 10px;border-radius:8px;margin-top:10px;font-size:13px;color:#1e40af;">
+      历史同类信号(<b>{{ price_zones.expectancy.label }}</b>, {{ price_zones.expectancy.n }}个): 14日胜率 {{ price_zones.expectancy.win14 }}% <span style="color:#94a3b8;">(95%CI {{ price_zones.expectancy.ci14_lo }}~{{ price_zones.expectancy.ci14_hi }}%)</span> / 均收益 {{ "%+.1f"|format(price_zones.expectancy.avg14) }}% · 30日胜率 {{ price_zones.expectancy.win30 }}% / 均收益 {{ "%+.1f"|format(price_zones.expectancy.avg30) }}%
+      <span style="color:#64748b;font-size:12px;">(回测口径)</span>
+    </div>
+    {% endif %}
   </div>
 </div>
 {% endif %}
-
 {# ====== 报告时间 ====== #}
 <div style="text-align:right;font-size:12px;color:var(--text-muted);">
   报告时间: {{ analysis_time if analysis_time else 'N/A' }}

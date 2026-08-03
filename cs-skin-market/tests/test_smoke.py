@@ -453,9 +453,34 @@ def t_buy_distance_in_zone():
     bd = compute_buy_distance(prices, pos, 58.0, price_zones={'entry': {'low': 100, 'high': 106}})
     assert bd['in_entry_zone'] is True, bd
     assert bd['bar_pct'] == 100, bd
-    assert '已在买入区' in bd['summary'], bd
+    assert bd['scenario'] == 'done' and bd['target_price'] == bd['current_price'], bd
     assert bd['pct_gap'] == 0.0 and bd['z_gap'] == 0.0 and bd['th_gap'] == 0.0, bd
 check('buy_distance marks in-zone with full bar', t_buy_distance_in_zone)
+
+def t_buy_distance_scenarios():
+    from types import SimpleNamespace
+    from pipeline.buy_distance import compute_buy_distance
+    # ????: current=111 ??? pct30 -> ??=z-1.5(????)
+    prices = [200.0]
+    c = 200.0
+    for _ in range(89):
+        c *= 0.994
+        prices.append(round(c, 2))
+    prices[-1] = 111.0
+    pos = SimpleNamespace(percentile_90d=5.0, zscore_90d=-1.8)
+    bd = compute_buy_distance(prices, pos, 32.0, price_zones={'entry': {'low': 0, 'high': 0}}, cycle_phase='distribution')
+    assert bd is not None and bd['scenario'] == 'bottom', bd
+    assert bd['target_price'] < bd['current_price'], bd          # ????????
+    assert bd['gap_pct'] > 0 and bd['gap_rmb'] > 0, bd
+    assert bd['z15_price'] and bd['z15_price'] < bd['current_price'], bd
+    # ????: ??=MA??(????)
+    bd2 = compute_buy_distance(prices, pos, 65.0, price_zones={'entry': {'low': 0, 'high': 0}}, cycle_phase='accumulation')
+    assert bd2['scenario'] in ('breakout', 'pullback'), bd2
+    assert bd2['target_price'] <= bd2['current_price'], bd2
+    # ????
+    bd3 = compute_buy_distance(prices, pos, 32.0, price_zones={'entry': {'low': 0, 'high': 0}}, cycle_phase='distribution', action='buy')
+    assert bd3['scenario'] == 'done' and bd3['target_price'] == bd3['current_price'], bd3
+check('buy_distance scenario targets never exceed current price', t_buy_distance_scenarios)
 
 def t_market_buy_distance():
     from pipeline.buy_distance import compute_market_buy_distance
@@ -465,7 +490,8 @@ def t_market_buy_distance():
     assert mbd['line_price'] == 38.0, mbd          # min(pct30=38, z0=55.5)
     assert mbd['drop_to_line_pct'] == 62.0, mbd
     assert mbd['th_target'] == 55, mbd
-    assert '再下杀' in mbd['summary'], mbd
+    assert mbd['scenario'] == 'bottom' and mbd['target_price'] == 38.0, mbd
+    assert mbd['gap_pct'] == 62.0 and mbd['gap_rmb'] == 62.0, mbd
     mbd2 = compute_market_buy_distance(prices, pct=20.0, z=-0.5, th_score=60.0, regime='bear', action='buy', action_label='低估区间·分批建仓')
     assert mbd2['bar_pct'] == 100 and '已到买点' in mbd2['summary'], mbd2
     mbd3 = compute_market_buy_distance(prices, pct=45.0, z=0.8, th_score=20.0, regime='bull', action='watch')

@@ -28,11 +28,11 @@
 </div>
 {% endif %}
 
-<!-- ====== 距买点距离（大盘 suggest） ====== -->
+﻿<!-- ====== 距买点（大盘，场景自适应 + 差距量化） ====== -->
 {% if analysis.buy_distance %}
 <div class="card" style="margin-top:12px;border-color:rgba(59,130,246,0.35);">
   <div class="card-header" style="padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
-    <span class="card-title">🎯 距买点</span>
+    <span class="card-title">🎯 距买点 · {{ analysis.buy_distance.scenario_label }}</span>
     <span style="font-size:11px;color:var(--text-muted);">{{ analysis.buy_distance.ref }}</span>
   </div>
   <div style="padding:10px 14px;">
@@ -42,15 +42,23 @@
     <div style="margin-top:8px;height:10px;background:rgba(255,255,255,0.06);border-radius:5px;overflow:hidden;">
       <div style="height:100%;width:{{ analysis.buy_distance.bar_pct }}%;background:linear-gradient(90deg,#3b82f6,#22c55e);border-radius:5px;"></div>
     </div>
-    <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:11px;color:var(--text-muted);">
-      <span>当前指数 {{ "%.0f"|format(analysis.buy_distance.current_price) }}</span>
-      <span>估值参考位 {{ "%.0f"|format(analysis.buy_distance.line_price) }}</span>
+    <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:12px;color:var(--text-muted);flex-wrap:wrap;gap:4px;">
+      <span>当前指数 <b style="color:var(--text-primary);">{{ "%.0f"|format(analysis.buy_distance.current_price) }}</b></span>
+      <span>买点目标 <b style="color:var(--green);">{{ "%.0f"|format(analysis.buy_distance.target_price) }}</b>
+        {% if analysis.buy_distance.gap_pct > 0 %}<span style="color:#fbbf24;">（还差 {{ "%.1f"|format(analysis.buy_distance.gap_pct) }}% / 约 {{ "%.0f"|format(analysis.buy_distance.gap_rmb) }} 点）</span>{% else %}<span style="color:#4ade80;">（已到）</span>{% endif %}</span>
     </div>
     <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;font-size:12px;">
-      <span style="padding:3px 8px;border-radius:4px;background:{% if analysis.buy_distance.pct_gap <= 0 %}rgba(34,197,94,0.15);color:#4ade80{% else %}rgba(245,158,11,0.15);color:#fbbf24{% endif %};">pct 距 30%：{{ "%.1f"|format(analysis.buy_distance.pct_gap) }}pp</span>
+      <span style="padding:3px 8px;border-radius:4px;background:rgba(100,116,139,0.15);color:#94a3b8;">pct30 ¥{{ "%.0f"|format(analysis.buy_distance.pct30_price) }}</span>
+      {% if analysis.buy_distance.z15_price %}<span style="padding:3px 8px;border-radius:4px;background:rgba(100,116,139,0.15);color:#94a3b8;">z-1.5 ¥{{ "%.0f"|format(analysis.buy_distance.z15_price) }}</span>{% endif %}
+      <span style="padding:3px 8px;border-radius:4px;background:rgba(100,116,139,0.15);color:#94a3b8;">90日最低 ¥{{ "%.0f"|format(analysis.buy_distance.low90_price) }}</span>
+      {% if analysis.buy_distance.ma7 %}<span style="padding:3px 8px;border-radius:4px;background:rgba(100,116,139,0.15);color:#94a3b8;">MA7 ¥{{ "%.0f"|format(analysis.buy_distance.ma7) }}</span>{% endif %}
+      {% if analysis.buy_distance.ma30 %}<span style="padding:3px 8px;border-radius:4px;background:rgba(100,116,139,0.15);color:#94a3b8;">MA30 ¥{{ "%.0f"|format(analysis.buy_distance.ma30) }}</span>{% endif %}
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;font-size:12px;">
+      <span style="padding:3px 8px;border-radius:4px;background:{% if analysis.buy_distance.pct_gap <= 0 %}rgba(34,197,94,0.15);color:#4ade80{% else %}rgba(245,158,11,0.15);color:#fbbf24{% endif %};">估值 pct 距 30%：{{ "%.1f"|format(analysis.buy_distance.pct_gap) }}pp</span>
       <span style="padding:3px 8px;border-radius:4px;background:{% if analysis.buy_distance.z_gap <= 0 %}rgba(34,197,94,0.15);color:#4ade80{% else %}rgba(245,158,11,0.15);color:#fbbf24{% endif %};">z 距 0：{{ "%.2f"|format(analysis.buy_distance.z_gap) }}</span>
       <span style="padding:3px 8px;border-radius:4px;background:{% if analysis.buy_distance.th_gap <= 0 %}rgba(34,197,94,0.15);color:#4ade80{% else %}rgba(245,158,11,0.15);color:#fbbf24{% endif %};">TH 距 {{ "%.0f"|format(analysis.buy_distance.th_target) }}：{{ "%.0f"|format(analysis.buy_distance.th_gap) }}分</span>
-      <span style="padding:3px 8px;border-radius:4px;background:rgba(100,116,139,0.15);color:#94a3b8;">pct30 指数 ¥{{ "%.0f"|format(analysis.buy_distance.pct30_price) }} / z0 指数 ¥{{ "%.0f"|format(analysis.buy_distance.z0_price) }}</span>
+      <span style="padding:3px 8px;border-radius:4px;background:rgba(59,130,246,0.12);color:#60a5fa;">实际买点以决策条为准</span>
     </div>
   </div>
 </div>

@@ -1586,6 +1586,7 @@ def run_item_analysis(
             prices, position, _th_score,
             price_zones=price_zones,
             cycle_phase=cycle.phase if hasattr(cycle, 'phase') else 'unknown',
+            action=fd.action,
         ) or {}
     except Exception:
         buy_distance = {}
