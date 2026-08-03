@@ -156,13 +156,3 @@ class SupplySignals:
     confidence: float = 0.0
 
 
-def supply_signals_to_dict(ss: SupplySignals) -> dict:
-    return {
-        "signal": ss.signal,
-        "trend": ss.trend,
-        "is_hoarding": ss.is_hoarding,
-        "is_dumping": ss.is_dumping,
-        "supply_change_7d": ss.supply_change_7d,
-        "supply_change_30d": ss.supply_change_30d,
-        "confidence": ss.confidence,
-    }

@@ -251,42 +251,6 @@ def _fetch_index_kline_raw() -> list:
 #  Sector flow
 # ============================================================
 
-def fetch_sector_flow() -> list[SectorFlow]:
-    """Fetch sector/type flow data from csQAQ current_data.
-    Falls back to browser interception on 401 IP binding mismatch."""
-    data = _current_data_with_fallback()
-    if not data:
-        return []
-
-    sectors = []
-    type_data = data.get("chg_type_data", [])
-    for i, td in enumerate(type_data):
-        sf = SectorFlow()
-        sf.name = td.get("name", "")
-        sf.change_pct = float(td.get("price_diff_1", 0))
-        sf.rank = i + 1
-        # determine momentum
-        diff_7 = float(td.get("price_diff_7", 0))
-        if diff_7 > 3:
-            sf.momentum = "hot"
-        elif diff_7 > 0:
-            sf.momentum = "warm"
-        elif diff_7 > -3:
-            sf.momentum = "cool"
-        else:
-            sf.momentum = "cold"
-        sectors.append(sf)
-
-    # Sort by 1-day change descending
-    sectors.sort(key=lambda s: s.change_pct, reverse=True)
-    for i, s in enumerate(sectors):
-        s.rank = i + 1
-    return sectors
-
-
-# ============================================================
-#  Item search
-# ============================================================
 
 def search_items(query: str, max_results: int = 10) -> list[ItemData]:
     """Search items by keyword via csQAQ autocomplete API."""
@@ -414,87 +378,10 @@ def fetch_item_detail(name_or_hash: str | None = None, good_id: int = 0,
     return item
 
 
-def fetch_item_detail_by_id(good_id: int) -> ItemData | None:
-    """Fetch item detail directly by csQAQ good_id."""
-    return fetch_item_detail(good_id=good_id)
 
 
-# ============================================================
-#  K-line data
-# ============================================================
-
-def fetch_kline(good_id: int, days: int = 30, platform: int = 1) -> list[dict]:
-    """Fetch K-line data for a single item.
-    Returns list of {timestamp, price, in_sale, volume, tx_amount, tx_count, survive_num}"""
-    resp = _api_post("/info/kline", {
-        "good_id": good_id,
-        "day": days,
-        "platform": platform,
-    })
-    data = resp.get("data")
-    if not data or not isinstance(data, list):
-        return []
-
-    points = []
-    for row in data:
-        if isinstance(row, list) and len(row) >= 5:
-            try:
-                points.append({
-                    "timestamp": int(row[0]) if row[0] is not None else 0,
-                    "price": _parse_price(row[1]),
-                    "in_sale": _parse_int(row[2]) if len(row) > 2 else 0,
-                    "volume": _parse_int(row[3]) if len(row) > 3 else 0,
-                    "tx_amount": _parse_price(row[4]) if len(row) > 4 else 0,
-                    "tx_count": _parse_int(row[5]) if len(row) > 5 else 0,
-                    "survive_num": _parse_int(row[6]) if len(row) > 6 else 0,
-                })
-            except (ValueError, TypeError):
-                continue
-    return points
 
 
-def fetch_survive(good_id: int) -> list:
-    """Fetch survive count history (180 days)."""
-    resp = _api_get(f"/info/survive?good_id={good_id}")
-    data = resp.get("data")
-    if not data or not isinstance(data, list):
-        return []
-    return data
-
-
-# ============================================================
-#  Batch helpers (for watchlist scan)
-# ============================================================
-
-def fetch_multi_prices(market_hash_names: list[str]) -> dict:
-    """Batch fetch prices for multiple items by marketHashName."""
-    if not market_hash_names:
-        return {}
-    # Limit batch size to avoid timeouts
-    resp = _api_post("/goods/get_multi_sell_info", {
-        "market_hash_names": market_hash_names[:50],
-    })
-    data = resp.get("data")
-    if not data:
-        return {}
-    if isinstance(data, list):
-        return {d.get("market_hash_name", ""): d for d in data}
-    return {}
-
-
-# ============================================================
-#  Legacy compatibility stubs (no-op, kept for old callers)
-# ============================================================
-
-# csqaq Playwright collector (for 90-day K-line and item detail)
-try:
-    from .collector_csqaq import (
-        search_good_id,
-        fetch_item_detail as fetch_item_detail_csqaq,
-        fetch_kline_90d,
-    )
-except ImportError:
-    pass
 
 
 def _save_debug(name: str, text_lines: list[str]) -> None:

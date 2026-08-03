@@ -340,11 +340,6 @@ def upsert_item(conn, name, steam_name="", weapon="", skin="", wear="",
 
 
 
-def save_price(conn, item_id, price_rmb, volume_day=0, volume_total=0, in_sale_count=0):
-
-    conn.execute("INSERT OR REPLACE INTO price_history (item_id,date,price_rmb,volume_day,volume_total,in_sale_count) VALUES (?,?,?,?,?,?)",
-
-                 (item_id, _today(), price_rmb, volume_day, volume_total, in_sale_count))
 
 
 
@@ -367,21 +362,10 @@ def save_price_history_batch(conn, item_id, daily_bars):
 
 
 
-def save_market_index(conn, value, change_7d, mood=""):
-
-    conn.execute("INSERT OR REPLACE INTO market_index (date,value,change_7d,mood) VALUES (?,?,?,?)",
-
-                 (_today(), value, change_7d, mood))
 
 
 
 
-def save_macro_snapshot(conn, date, greedy_index=None, card_price=None):
-    """Persist daily macro snapshot (greedy index / card price) for historical backtests."""
-    conn.execute(
-        "INSERT OR REPLACE INTO macro_history (date, greedy_index, card_price) VALUES (?,?,?)",
-        (date, greedy_index, card_price),
-    )
 
 
 def save_macro_snapshots(conn, rows):
@@ -413,53 +397,21 @@ def get_greedy_history(conn, start=None):
 
 
 
-def save_snapshot(conn, item_id, score_scarcity, score_volume, score_market, score_liquidity=0, total_score=0, grade="", recommendation="", price_rmb=0, report_md="", report_html="") -> int:
-
-    cur = conn.execute("""INSERT INTO snapshots (item_id,date,score_scarcity,score_volume,score_market,score_liquidity,total_score,grade,recommendation,price_rmb,report_md,report_html)
-
-                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
-
-                       (item_id, _now(), score_scarcity, score_volume, score_market, score_liquidity, total_score, grade, recommendation, price_rmb, report_md, report_html))
-
-    return cur.lastrowid
 
 
 
 
 
-def upsert_snapshot(conn, item_id, price_rmb=0, total_score=0, grade="", report_md="", report_html=""):
-
-    conn.execute("DELETE FROM snapshots WHERE item_id=?", (item_id,))
-
-    cur = conn.execute(
-
-        "INSERT INTO snapshots (item_id,date,score_scarcity,score_volume,score_market,score_liquidity,total_score,grade,recommendation,price_rmb,report_md,report_html) VALUES (?,?,0,0,0,0,?,?,?,?,?,?)",
-
-        (item_id, _now(), total_score, grade, "", price_rmb, report_md, report_html))
-
-    return cur.lastrowid
 
 
 
 
 
-def get_latest_market_index(conn):
-
-    return conn.execute("SELECT * FROM market_index ORDER BY date DESC LIMIT 1").fetchone()
 
 
 
 
 
-def get_market_index_history(conn, limit=90):
-
-    rows = conn.execute(
-
-        "SELECT date, value FROM market_index ORDER BY date ASC LIMIT ?", (limit,)
-
-    ).fetchall()
-
-    return [(r["date"], r["value"]) for r in rows]
 
 
 
@@ -473,17 +425,11 @@ def get_item_history(conn, item_id, limit=90):
 
 
 
-def get_item_snapshots(conn, item_id, limit=30):
-
-    return conn.execute("SELECT * FROM snapshots WHERE item_id=? ORDER BY date DESC LIMIT ?", (item_id, limit)).fetchall()
 
 
 
 
 
-def list_items(conn):
-
-    return conn.execute("SELECT * FROM items ORDER BY updated_at DESC").fetchall()
 
 
 
@@ -501,73 +447,26 @@ def find_item(conn, name):
 
 
 
-def add_position(conn, item_id, buy_date, buy_price, quantity=1, notes=""):
-
-    cur = conn.execute("INSERT INTO positions (item_id,buy_date,buy_price,quantity,notes) VALUES (?,?,?,?,?)",
-
-                       (item_id, buy_date, buy_price, quantity, notes))
-
-    return cur.lastrowid
 
 
 
 
 
-def close_position(conn, position_id, close_price, close_date=None):
-
-    close_date = close_date or _today()
-
-    conn.execute("UPDATE positions SET closed=1, close_date=?, close_price=? WHERE id=?", (close_date, close_price, position_id))
 
 
 
 
 
-def get_open_positions(conn):
-
-    return conn.execute("SELECT * FROM positions WHERE closed=0 ORDER BY buy_date ASC").fetchall()
 
 
 
 
 
-def get_all_positions(conn):
-
-    return conn.execute("""SELECT p.*, i.name FROM positions p
-
-        LEFT JOIN items i ON p.item_id = i.id ORDER BY p.buy_date DESC""").fetchall()
 
 
 
 
 
-def get_position_pnl(conn, position_id):
-
-    row = conn.execute("SELECT * FROM positions WHERE id=?", (position_id,)).fetchone()
-
-    if not row:
-
-        return {}
-
-    item = conn.execute("SELECT name FROM items WHERE id=?", (row["item_id"],)).fetchone()
-
-    return {
-
-        "id": row["id"], "item_name": item["name"] if item else "?",
-
-        "buy_price": row["buy_price"], "quantity": row["quantity"],
-
-        "close_price": row["close_price"], "closed": bool(row["closed"]),
-
-        "buy_date": row["buy_date"], "close_date": row["close_date"],
-
-    }
-
-
-
-
-
-# ---- Backtest ----
 
 
 
@@ -599,21 +498,6 @@ def save_backtest(conn, strategy, item_id, start_date, end_date, initial_capital
 
 
 
-def get_backtest_by_item(conn, item_id, limit=5):
-
-    return conn.execute("""SELECT * FROM backtest_results WHERE item_id=?
-
-        ORDER BY created_at DESC LIMIT ?""", (item_id, limit)).fetchall()
-
-
-
-
-
-
-
-
-
-# ---- Settings key-value store ----
 
 
 
@@ -655,24 +539,7 @@ def watchlist_list_with_snapshots(conn):
     """).fetchall()
 
 
-def batch_get_settings(conn, keys):
-    """Fetch multiple settings in one query."""
-    if not keys:
-        return {}
-    placeholders = ','.join(['?'] * len(keys))
-    rows = conn.execute(
-        f'SELECT key, value FROM settings WHERE key IN ({placeholders})',
-        keys
-    ).fetchall()
-    return {r['key']: r['value'] for r in rows}
 
-def watchlist_list(conn):
-
-    return conn.execute(
-
-        "SELECT * FROM items WHERE in_watchlist=1 ORDER BY name"
-
-    ).fetchall()
 
 
 
@@ -716,21 +583,6 @@ def watchlist_remove(conn, name):
 
 
 
-def get_watchlist_holdings_total(conn):
-
-    row = conn.execute(
-
-        "SELECT SUM(holding) as total FROM items WHERE in_watchlist=1"
-
-    ).fetchone()
-
-    return (row["total"] or 0) if row else 0
-
-
-
-
-
-# ---- Snapshot helpers ----
 
 
 
@@ -752,29 +604,4 @@ def get_latest_snapshot_report(conn, item_id):
 
 
 
-def cleanup_old_data(conn, retention_days=365):
-
-    from datetime import timedelta
-
-    cutoff = (datetime.now(TZ_BJ) - timedelta(days=retention_days)).strftime("%Y-%m-%d")
-
-    conn.execute("DELETE FROM price_history WHERE date < ?", (cutoff,))
-
-    conn.execute("DELETE FROM market_index WHERE date < ?", (cutoff,))
-
-    conn.execute("DELETE FROM snapshots WHERE date < ?", (cutoff,))
-
-    # Clean old debug files (7 days)
-
-    cutoff_debug = (datetime.now(TZ_BJ) - timedelta(days=7)).strftime("%Y-%m-%d")
-
-    import glob, os
-
-    for f in glob.glob(str(DATA_DIR / "_debug_*")):
-
-        if os.path.getmtime(f) < (datetime.now(TZ_BJ) - timedelta(days=7)).timestamp():
-
-            os.remove(f)
-
-    conn.execute("VACUUM")
 
