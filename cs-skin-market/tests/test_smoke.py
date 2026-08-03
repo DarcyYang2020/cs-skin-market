@@ -273,7 +273,7 @@ print('[Portfolio Advice: 补仓分级]')
 def t_advice():
     from pipeline.batch_scan import _portfolio_advice
     from types import SimpleNamespace
-    def mk(pct=15.0, z=-1.0, th=45, phase='consolidation'):
+    def mk(pct=15.0, z=-1.0, th=45, phase='consolidation', price_zones=None):
         pos = SimpleNamespace(percentile_90d=pct, zscore_90d=z)
         return SimpleNamespace(
             position=pos,
@@ -282,6 +282,7 @@ def t_advice():
             fusion_decision={'action': 'hold'},
             value=SimpleNamespace(score=5.0, grade='C'),
             risk_level='D',
+            price_zones=price_zones,
         )
     # 深度低估+趋势及格+大盘配合 → 可分批补仓
     a = _portfolio_advice(True, 100.0, 10, 80.0, mk(pct=15, z=-1.2, th=45), market_th=50, sentiment_score=60)
@@ -298,6 +299,19 @@ def t_advice():
     # 趋势走弱 → 止损
     a = _portfolio_advice(True, 100.0, 10, 80.0, mk(pct=15, z=-1.2, th=25), market_th=50, sentiment_score=60)
     assert a['action'] == '趋势走弱，考虑止损', a['action']
+    # A方向(2026-08-03): 带 price_zones 买入区间时给出补仓价位与摊薄成本
+    a = _portfolio_advice(True, 100.0, 10, 80.0, mk(pct=15, z=-1.2, th=45, price_zones={'entry': {'low': 60.0, 'high': 75.0}, 'current': 80.0}), market_th=50, sentiment_score=60)
+    assert a['action'] == '可分批补仓', a['action']
+    assert len(a.get('add_positions', [])) == 3, a
+    assert a['add_positions'][0]['price'] == 75.0 and a['add_positions'][2]['price'] == 60.0
+    assert a['entry_zone'] == {'low': 60.0, 'high': 75.0}
+    assert a['avg_cost_after'] > 0, a
+    assert '批1' in a['suggest'] and '摊薄成本' in a['suggest'], a['suggest']
+    # 非持仓: suggest 给出距建仓参考线的距离
+    a = _portfolio_advice(False, 0, 0, 80.0, mk(pct=35, z=-0.8, th=45))
+    assert a['action'] == '持有观察', a['action']
+    assert '距低估线30%还差5pp' in a['suggest'], a['suggest']
+    assert '距55还差10分' in a['suggest'], a['suggest']
 check('portfolio advice 补仓分级 works', t_advice)
 
 print('[Youpin Volume Collector]')
@@ -389,6 +403,22 @@ def t_volume_map_fill():
     vols = [b.volume for b in bars]
     assert vols == [0, 2, 1, 0], vols
 check('volume map fills matching daily bars', t_volume_map_fill)
+
+print('[Guidance]')
+def t_guidance():
+    from pipeline.batch_scan import signal_guidance
+    g = signal_guidance("🟢 恐慌共振·分批建仓")
+    assert g["signal_type"] == "panic", g
+    assert "30日" in g["hold_guidance"], g
+    g2 = signal_guidance("🟢 周期吸筹·分批建仓")
+    assert g2["signal_type"] == "accumulate", g2
+    g3 = signal_guidance("🟢 超跌反弹·分批建仓")
+    assert g3["signal_type"] == "oversold", g3
+    g4 = signal_guidance("🟢 分批建仓")
+    assert g4["signal_type"] == "base", g4
+    g5 = signal_guidance("🟢 分批建仓", {"label": "周期吸筹"})
+    assert g5["type_label"] == "周期吸筹", g5
+check('signal guidance classifies buy types', t_guidance)
 
 print()
 print(f'=== Results: {passed} passed, {failed} failed ===')

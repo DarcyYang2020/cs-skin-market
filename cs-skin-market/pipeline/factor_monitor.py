@@ -23,6 +23,16 @@ def stats(signals):
         "count": len(f14),
     }
 
+def by_type_stats(signals):
+    """Group buy signals by signal_type (panic/oversold/accumulate/base) and
+    report per-type stats so a single cluster can decay before the aggregate."""
+    groups = {}
+    for s in signals:
+        t = s.get("signal_type") or "base"
+        groups.setdefault(t, []).append(s)
+    return {t: stats(g) for t, g in groups.items()}
+
+
 def check_decay(series="backtest_"):
     """series: "backtest_" (market) or "item_backtest_" (single-item)."""
     SNAPSHOT_DIR.mkdir(parents=True, exist_ok=True)
@@ -68,6 +78,15 @@ def check_decay(series="backtest_"):
     if old_st["count"] > 0 and new_st["count"] > 0:
         delta = new_st["14d_win_rate"] - old_st["14d_win_rate"]
         print(f"\nTrend: 14d win rate {'+' if delta>=0 else ''}{delta:.0%}")
+
+    # Per-type breakdown (latest snapshot)
+    per_type = by_type_stats(new_buys)
+    if per_type:
+        print("\nPer-type (latest):")
+        for t in sorted(per_type):
+            st = per_type[t]
+            print(f"  {t:<10} n={st['count']:3d} 14d win={st['14d_win_rate']:.0%} avg={st['14d_avg']:+.2f} "
+                  f"30d win={st['30d_win_rate']:.0%} avg={st['30d_avg']:+.2f}")
 
 if __name__ == "__main__":
     import sys

@@ -19,6 +19,7 @@ sys.path.insert(0, ".")
 from pipeline import db
 import pipeline.item_analysis as ia
 from pipeline.backtest_common import approx_sentiment, patch_sentiment, build_market_context
+from pipeline.batch_scan import signal_guidance
 
 
 def load_item_series(item_id):
@@ -101,6 +102,7 @@ def backtest_item(item_id, name, start, end, warmup, market_ctx, cost=0.02):
         dd = 0.0
         for j in range(i + 1, min(i + 15, n)):
             dd = min(dd, (prices[j] / prices[i] - 1) * 100)
+        _gd = signal_guidance(fd.get("action_label", action))
         th = res.trend_health or {}
         # ATR% at signal date (same formula as item_analysis price zones)
         rets = [(prices[j] - prices[j - 1]) / prices[j - 1]
@@ -115,6 +117,9 @@ def backtest_item(item_id, name, start, end, warmup, market_ctx, cost=0.02):
             "entry_price": round(prices[i], 2),
             "action": action,
             "action_label": fd.get("action_label", action),
+            "signal_type": _gd["signal_type"],
+            "type_label": _gd["type_label"],
+            "hold_guidance": _gd["hold_guidance"],
             "position_limit": fd.get("position_limit", 0.0),
             "pct": getattr(res.position, "percentile_90d", None),
             "z": getattr(res.position, "zscore_90d", None),

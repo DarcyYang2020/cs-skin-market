@@ -223,9 +223,18 @@ def _fetch_index_kline_raw() -> list:
     resp = _api_get("/sub/kline?id=1&type=1day")
     data = resp.get("data")
     
-    # Fallback: 401 -> return empty (no browser fallback available)
+    # Fallback: 401 -> browser interception (same session-bypass as current_data)
     if resp.get("code") == 401 and not data:
-        _log.warning("fetch_index_kline: API 401, returning empty")
+        _log.warning("fetch_index_kline: API 401, falling back to browser")
+        try:
+            import asyncio as _asyncio
+            from .collector_csqaq import fetch_index_kline_via_browser
+            points = _asyncio.run(fetch_index_kline_via_browser())
+            if points:
+                return points
+            _log.warning("fetch_index_kline: browser fallback returned empty")
+        except Exception as _e:
+            _log.error(f"fetch_index_kline: browser fallback failed: {_e}")
         return []
     
     if not data or not isinstance(data, list):

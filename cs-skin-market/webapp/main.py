@@ -1,4 +1,4 @@
-﻿"""CS-Market Web App - FastAPI application."""
+"""CS-Market Web App - FastAPI application."""
 
 import sys, io, asyncio, json, re, traceback
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
@@ -1553,7 +1553,7 @@ async def _run_batch_scan_task(scan_id: str, rows: list):
             html.append("<td>\u00a5" + "%.2f" % r["avg_cost"] + " \u2192 <strong>\u00a5" + "%.2f" % r["price_rmb"] + "</strong></td>")
             html.append("<td class=\"" + pnl_c + "\">" + "%.1f" % pnl_pct + "%</td>")
             html.append("<td><span class=\"badge badge-" + g + "\">" + str(r.get("grade","?")) + "</span></td>")
-            html.append("<td><span style=\"font-size:12px;font-weight:600;color:var(--accent);\">" + pa.get("action","") + "</span><br><span style=\"font-size:11px;color:var(--text-muted);\">" + pa.get("suggest","") + "</span></td></tr>")
+            html.append("<td><span style=\"font-size:12px;font-weight:600;color:var(--accent);\">" + pa.get("action","") + "</span><br><span style=\"font-size:11px;color:var(--text-muted);\">" + pa.get("suggest","") + "</span><br><span style=\"font-size:11px;color:var(--accent);\">" + (pa.get("hold_guidance","") or "") + "</span></td></tr>")
         html.append("</tbody></table></div></div>")
     if unheld:
         html.append("<div class=\"card\" style=\"margin-bottom:16px;\"><div class=\"card-header\"><span class=\"card-title\">\u5173\u6ce8\u5217\u8868 (" + str(len(unheld)) + ")</span></div><div class=\"table-wrap\"><table><thead><tr><th>\u7269\u54c1</th><th>\u73b0\u4ef7</th><th>\u8bc4\u5206</th><th>\u4f30\u503c</th><th>\u5efa\u8bae</th></tr></thead><tbody>")
@@ -1564,7 +1564,7 @@ async def _run_batch_scan_task(scan_id: str, rows: list):
             html.append("<td>\u00a5" + "%.2f" % r["price_rmb"] + "</td>")
             html.append("<td><span class=\"badge badge-" + g + "\">" + str(r.get("grade","?")) + "</span></td>")
             html.append("<td style=\"font-size:12px;\">" + str(r.get("valuation_tier","?")) + "<br><span style=\"color:var(--text-muted);\">pct=" + "%.1f" % r.get("percentile_90d",50) + "%</span></td>")
-            html.append("<td><span style=\"font-size:12px;font-weight:600;color:var(--accent);\">" + pa.get("action","") + "</span></td></tr>")
+            html.append("<td><span style=\"font-size:12px;font-weight:600;color:var(--accent);\">" + pa.get("action","") + "</span><br><span style=\"font-size:11px;color:var(--text-muted);\">" + pa.get("suggest","") + "</span></td></tr>")
         html.append("</tbody></table></div></div>")
     if errors:
         html.append("<div class=\"card\" style=\"border-color:var(--red);\"><div class=\"card-header\"><span class=\"card-title\">\u626b\u63cf\u5931\u8d25</span></div>")

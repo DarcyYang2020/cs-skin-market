@@ -1,0 +1,64 @@
+{
+ "dry_run": false,
+ "processed": 5,
+ "ok": 5,
+ "skip": 0,
+ "error": 0,
+ "items": [
+  {
+   "name": "M4A4 | 活色生香 (崭新出厂)",
+   "good": 13283,
+   "csqaq_days": 364,
+   "overlap": 181,
+   "k": 1.0058,
+   "backfilled": 183,
+   "range": "2025-08-04~2026-02-02",
+   "boundary_jump_pct": 0.86,
+   "status": "ok"
+  },
+  {
+   "name": "沙漠之鹰 | 后发制人 (崭新出厂)",
+   "good": 13198,
+   "csqaq_days": 364,
+   "overlap": 181,
+   "k": 1.0075,
+   "backfilled": 183,
+   "range": "2025-08-04~2026-02-02",
+   "boundary_jump_pct": -7.59,
+   "status": "ok"
+  },
+  {
+   "name": "M4A1消音版 | 印花集 (崭新出厂)",
+   "good": 12800,
+   "csqaq_days": 364,
+   "overlap": 181,
+   "k": 1.0,
+   "backfilled": 183,
+   "range": "2025-08-04~2026-02-02",
+   "boundary_jump_pct": -1.41,
+   "status": "ok"
+  },
+  {
+   "name": "M4A4 | 赛博 (崭新出厂)",
+   "good": 12832,
+   "csqaq_days": 364,
+   "overlap": 181,
+   "k": 1.0088,
+   "backfilled": 183,
+   "range": "2025-08-04~2026-02-02",
+   "boundary_jump_pct": 0.11,
+   "status": "ok"
+  },
+  {
+   "name": "M4A1消音版 | 二号玩家 (崭新出厂)",
+   "good": 12304,
+   "csqaq_days": 364,
+   "overlap": 181,
+   "k": 1.009,
+   "backfilled": 183,
+   "range": "2025-08-04~2026-02-02",
+   "boundary_jump_pct": -1.76,
+   "status": "ok"
+  }
+ ]
+}

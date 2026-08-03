@@ -518,6 +518,80 @@ async def _fetch_item_detail_once(good_id: int):
         await page.close()
 
 
+async def _capture_proxies_api(browser, keyword: str, tries: int = 3):
+    """Open the csqaq market homepage and capture a /proxies/api/v1/* response.
+
+    Direct API calls are blocked by the ApiToken IP whitelist (401 when the
+    account-bound IP changes); the browser carries the page session so these
+    endpoints succeed. Returns raw response text or None.
+    """
+    page = await browser.new_page()
+    captured = {"body": None}
+    try:
+        async def on_response(response):
+            try:
+                if keyword in response.url and response.ok:
+                    captured["body"] = await response.text()
+            except Exception:
+                pass
+        page.on("response", on_response)
+        for attempt in range(tries):
+            captured["body"] = None
+            await page.goto(f'{CSQAQ_WEB}/', wait_until='domcontentloaded', timeout=25000)
+            for _ in range(40):
+                if captured["body"]:
+                    return captured["body"]
+                await asyncio.sleep(0.25)
+        return None
+    finally:
+        await page.close()
+
+
+async def fetch_index_kline_via_browser():
+    """Fallback: intercept sub_data (market daily kline) on the homepage.
+
+    Returns list of (date_str, value) close pairs (2020-12-31+), same shape
+    as collector.fetch_index_kline(). main_data rows are [close, chg, chg_pct].
+    """
+    pw, browser = await _get_browser()
+    try:
+        body = await _capture_proxies_api(browser, "sub_data")
+        if not body:
+            return []
+        payload = json.loads(body)
+        data = payload.get("data") or {}
+        ts_arr = data.get("timestamp", [])
+        md_arr = data.get("main_data", [])
+        points = []
+        for i in range(min(len(ts_arr), len(md_arr))):
+            try:
+                row = md_arr[i]
+                close = float(row[0]) if isinstance(row, (list, tuple)) and row else 0
+                if close <= 0 or not ts_arr[i]:
+                    continue
+                dt = datetime.fromtimestamp(int(ts_arr[i]) / 1000, tz=TZ_BJ)
+                points.append((dt.strftime("%Y-%m-%d"), close))
+            except (TypeError, ValueError, OSError):
+                continue
+        return points
+    finally:
+        pass
+
+
+async def fetch_current_data_via_browser():
+    """Fallback: intercept current_data on the homepage (repairs the dangling
+    import in collector._current_data_with_fallback)."""
+    pw, browser = await _get_browser()
+    try:
+        body = await _capture_proxies_api(browser, "current_data")
+        if not body:
+            return None
+        payload = json.loads(body)
+        return payload.get("data") if payload.get("code") == 200 else None
+    finally:
+        pass
+
+
 async def fetch_kline_90d(good_id: int):
     """Async: Get 90-day K-line data."""
     pw, browser = await _get_browser()
