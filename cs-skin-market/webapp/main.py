@@ -161,11 +161,14 @@ def _apply_volume_map(daily_bars, vol_map):
         bar.volume = int(v) if v and v > 0 else 0
 
 
-def _kline_price_sane(daily_bars, item_id):
+def _kline_price_sane(daily_bars, item_id, anchor_price=None):
     """K线价格合理性校验，防 csQAQ 偶发串品/脏价覆盖历史。
 
     规则：新采集最新价 vs DB 该品最近历史价 偏差>25%，且新序列内存在单日跳变>30%，
     判为疑似脏数据（如 2026-08-01 水灵 595 vs 真实 424）。
+    规则2（2026-08-04 增强）：anchor_price（悠悠锚）存在时，最新 close vs 锚价偏差>20%
+    判脏——拦截「整条序列整体口径偏移」型脏价（如死寂空间 chart 883 vs 悠悠 614，
+    序列内无大跳变但整体偏离，规则1漏检）。
     Returns (ok: bool, msg: str)；ok=False 时调用方应跳过落库，保留 DB 旧数据。
     """
     if not daily_bars or len(daily_bars) < 3:
@@ -174,6 +177,11 @@ def _kline_price_sane(daily_bars, item_id):
     if len(closes) < 3:
         return True, ""
     new_last = closes[-1]
+    # 锚定校验：chart 最新价 vs 悠悠锚价（价格锚定同口径，偏差>20% 视为整体口径偏移脏价；不依赖 DB 历史）
+    if anchor_price and anchor_price > 0 and new_last > 0:
+        dev_anchor = abs(new_last / anchor_price - 1)
+        if dev_anchor > 0.20:
+            return False, "最新价¥%.2f vs 悠悠锚¥%.2f 偏差%.0f%%" % (new_last, anchor_price, dev_anchor * 100)
     max_jump = 0.0
     for i in range(1, len(closes)):
         if closes[i - 1] > 0:
@@ -838,6 +846,12 @@ async def api_items_search(request: Request, query: str = Form(...)):
             analysis.aux.turnover_rate = round(volume_day / volume_total * 100, 3) if volume_total > 0 else 0
             analysis.aux.mean_volume_7d = volume_day
     
+
+        # 脏价校验：chart 最新 close vs 悠悠锚偏差>20% 时不落库（保留 DB 旧数据，防整体口径偏移脏价）
+        _sane, _sane_msg = _kline_price_sane(daily_bars, pid, anchor_price=price_rmb)
+        if not _sane:
+            _web_log.warning(f"search kline skip {exact_name}: {_sane_msg}")
+            daily_bars = None
         # Persist 90-day kline data (pid already upserted above)
         conn_p = db.get_conn()
         try:
@@ -1000,6 +1014,12 @@ async def api_items_analyze(
         if hasattr(analysis, 'aux') and analysis.aux:
             analysis.aux.turnover_rate = round(volume_day / volume_total * 100, 3) if volume_total > 0 else 0
             analysis.aux.mean_volume_7d = volume_day
+
+        # 脏价校验：chart 最新 close vs 悠悠锚偏差>20% 时不落库（保留 DB 旧数据，防整体口径偏移脏价）
+        _sane, _sane_msg = _kline_price_sane(daily_bars, pid, anchor_price=price_rmb)
+        if not _sane:
+            _web_log.warning(f"analyze kline skip {exact_name}: {_sane_msg}")
+            daily_bars = None
         # Persist 90-day kline data (pid already upserted above)
         conn_p = db.get_conn()
         try:
@@ -1203,6 +1223,12 @@ async def api_watchlist_analyze(request: Request, item_id: int):
         if hasattr(analysis, 'aux') and analysis.aux:
             analysis.aux.turnover_rate = round(volume_day / volume_total * 100, 3) if volume_total > 0 else 0
             analysis.aux.mean_volume_7d = volume_day
+
+        # 脏价校验：chart 最新 close vs 悠悠锚偏差>20% 时不落库（保留 DB 旧数据，防整体口径偏移脏价）
+        _sane, _sane_msg = _kline_price_sane(daily_bars, item_id, anchor_price=price_rmb)
+        if not _sane:
+            _web_log.warning(f"watchlist kline skip {exact_name}: {_sane_msg}")
+            daily_bars = None
         # Persist 90-day kline data
         if daily_bars:
             try:
@@ -1482,7 +1508,7 @@ async def _scan_item(row, idx, ms, market_th_score, sentiment_score):
         analysis.volume_day = volume_day
         analysis.volume_total = item.volume_total or 0
         # 价格合理性校验：csQAQ 偶发串品/脏价，脏数据不落库（保留 DB 旧数据）
-        _sane, _sane_msg = _kline_price_sane(daily_bars, item_id)
+        _sane, _sane_msg = _kline_price_sane(daily_bars, item_id, anchor_price=getattr(item, "price_rmb", 0) or 0)
         if not _sane:
             _web_log.warning(f"batch scan skip {exact_name}: {_sane_msg}")
             return dict(name=exact_name, holding=holding, error="价格校验未通过，保留旧数据")

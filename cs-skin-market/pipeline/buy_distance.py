@@ -14,7 +14,12 @@
 兼容旧字段 drop_price / drop_to_entry_pct / line_price / drop_to_line_pct / pct_gap 之外，新增：
   current_price, target_price, gap_pct, gap_rmb, scenario, scenario_label,
   summary, bar_pct, pct30_price, z15_price, low90_price, ma7, ma30,
-  z_gap, th_gap, entry_zone, ref
+  z_gap, th_gap, entry_zone, ref, anchor_price, anchor_note
+
+口径约定（2026-08-03 修复）：场景/目标价/距离全部基于 chart K线收盘价（与
+percent_90d 同源），避免与悠悠锚定价混源产生自相矛盾的结论（守护者 2026-08-03：
+K线收盘处于 48.8 分位，悠悠价 55 却被判「已低于 90 日低 ¥65.71」）。anchor_price
+仅作展示字段，偏差 ≥15% 时输出 anchor_note 提示。
 """
 import statistics
 
@@ -83,8 +88,12 @@ def _gap_pct(cur, target):
 
 
 def _finish(scenario, scenario_label, cur, target, st, th, pct, z,
-            entry_zone=None, summary=None, th_target=TH_REF):
-    """统一收尾：兜底 target<=cur、构造 summary/进度条/兼容字段"""
+            entry_zone=None, summary=None, th_target=TH_REF, anchor_price=None):
+    """统一收尾：兜底 target<=cur、构造 summary/进度条/兼容字段。
+
+    anchor_price: 悠悠有品锚定价，仅作展示（不参与场景/目标/距离计算），
+                  与 K线口径偏差 ≥15% 时输出 anchor_note 提示。
+    """
     if target is None or target >= cur:
         target = cur
         scenario = scenario if scenario == "done" else "extreme"
@@ -96,12 +105,21 @@ def _finish(scenario, scenario_label, cur, target, st, th, pct, z,
         summary = ("再跌 {:.1f}% 到 ¥{:.2f} 触发买点".format(gap_pct, gap_rmb)
                    if gap_pct > 0 else "已到买点区间，可分批建仓")
     z15 = round(st["med"] - 1.5 * st["mad_scale"], 2) if st["mad_scale"] else None
+    anchor = round(anchor_price, 2) if (anchor_price and anchor_price > 0) else None
+    anchor_note = None
+    if anchor and cur > 0:
+        dev = (anchor - cur) / cur * 100
+        if abs(dev) >= 15.0:
+            anchor_note = ("悠悠锚价 ¥{:.2f} 与K线收盘 ¥{:.2f} 偏差 {:.0f}%，距买点按K线口径计算（与百分位同源），建议核实K线数据".format(
+                anchor, round(cur, 2), dev))
     return {
         "kind": "item",
         "scenario": scenario,
         "scenario_label": scenario_label,
         "ref": "下跌寻底=估值线(pct30→z-1.5→90日低)｜等待回踩=买入区上沿｜强势回踩=MA支撑",
         "current_price": round(cur, 2),
+        "anchor_price": anchor,
+        "anchor_note": anchor_note,
         "target_price": round(target, 2),
         "gap_pct": gap_pct,
         "gap_rmb": gap_rmb,
@@ -127,13 +145,14 @@ def _finish(scenario, scenario_label, cur, target, st, th, pct, z,
 def compute_buy_distance(prices, position, th_score, price_zones=None, cycle_phase="unknown", action=None, anchor_price=None):
     """单品距买点：估值线兜底 + 场景三态自适应（done/breakout/pullback/bottom/extreme）。
 
-    anchor_price: 价格锚定（悠悠有品 DOM 价）覆盖窗口最后价，保证与报告展示价同口径，
-                  避免 chart K 线价与锚定价偏差导致「参考位高于现价」的困惑（展示层，不改信号）。
+    anchor_price: 悠悠有品锚定价，仅作展示当前价（不参与场景/目标/距离计算）；
+                 场景/目标/距离全部基于 chart K线收盘价（与 percent_90d 同源），
+                 避免混源得出「已低于90日低」等矛盾结论（展示层，不改信号）。
     """
     st = _window_stats(prices)
     if st is None:
         return None
-    cur = anchor_price if (anchor_price and anchor_price > 0) else st["cur"]
+    cur = st["cur"]
     pct30_price = st["pct30_price"]
     z15_price = round(st["med"] - 1.5 * st["mad_scale"], 2) if st["mad_scale"] else None
     low90 = st["low90"]
@@ -151,7 +170,8 @@ def compute_buy_distance(prices, position, th_score, price_zones=None, cycle_pha
     # ---- 已到买点 ----
     if action == "buy" or (entry_zone and entry_zone["low"] <= cur <= entry_zone["high"]):
         return _finish("done", "已到买点", cur, cur, st, th, pct, z, entry_zone,
-                       summary="当前已在买点区间（或已触发买入信号），按计划分批建仓")
+                       summary="当前已在买点区间（或已触发买入信号），按计划分批建仓",
+                       anchor_price=anchor_price)
 
     if th >= 60 or cycle_phase == "markup":
         # 突破/趋势健康：回踩 = 最近 MA（MA7/MA30 取低），无 MA 用 ATR 支撑
@@ -161,28 +181,33 @@ def compute_buy_distance(prices, position, th_score, price_zones=None, cycle_pha
             support = round(cur * (1 - atr_pct), 2)
         target = support
         summary = "回踩/突破 参考支撑 ¥{:.2f}（-{:.1f}%）".format(target, _gap_pct(cur, target))
-        return _finish("breakout", "强势回踩", cur, target, st, th, pct, z, entry_zone, summary=summary)
+        return _finish("breakout", "强势回踩", cur, target, st, th, pct, z, entry_zone,
+                       summary=summary, anchor_price=anchor_price)
 
     if e_hi > 0 and e_hi < cur:
         # 等待回踩 = 买入区间上沿支撑
         target = e_hi
         summary = "回踩 参考买入区上沿 ¥{:.2f}（-{:.1f}%）".format(target, _gap_pct(cur, target))
-        return _finish("pullback", "等待回踩", cur, target, st, th, pct, z, entry_zone, summary=summary)
+        return _finish("pullback", "等待回踩", cur, target, st, th, pct, z, entry_zone,
+                       summary=summary, anchor_price=anchor_price)
 
     # 下跌寻底：估值线逐级下探 pct30 -> z-1.5 -> 90日低
     if cur > pct30_price:
         target = pct30_price
         summary = "再跌 {:.1f}% 到 ¥{:.2f} 触及估值线（pct30）".format(_gap_pct(cur, target), target)
-        return _finish("bottom", "下跌寻底", cur, target, st, th, pct, z, entry_zone, summary=summary)
+        return _finish("bottom", "下跌寻底", cur, target, st, th, pct, z, entry_zone,
+                       summary=summary, anchor_price=anchor_price)
     if z15_price and cur > z15_price:
         target = z15_price
         summary = "已过 pct30 线 ¥{:.2f}，再跌 {:.1f}% 到 ¥{:.2f} 触 z-1.5 线".format(
             pct30_price, _gap_pct(cur, target), target)
-        return _finish("bottom", "下跌寻底", cur, target, st, th, pct, z, entry_zone, summary=summary)
+        return _finish("bottom", "下跌寻底", cur, target, st, th, pct, z, entry_zone,
+                       summary=summary, anchor_price=anchor_price)
     if low90 < cur:
         target = low90
         summary = "已过 z-1.5 线 ¥{:.2f}，再跌到 90 日低 ¥{:.2f} 为止".format(z15_price or 0, target)
-        return _finish("bottom", "下跌寻底", cur, target, st, th, pct, z, entry_zone, summary=summary)
+        return _finish("bottom", "下跌寻底", cur, target, st, th, pct, z, entry_zone,
+                       summary=summary, anchor_price=anchor_price)
     return _finish("extreme", "极端超跌", cur, cur, st, th, pct, z, entry_zone,
                    summary="已低于 90 日低 ¥{:.2f}，极端超跌，等待企稳信号".format(low90))
 

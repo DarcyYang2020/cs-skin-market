@@ -538,7 +538,8 @@ check('buy_distance scenario targets never exceed current price', t_buy_distance
 def t_buy_distance_anchor():
     from types import SimpleNamespace
     from pipeline.buy_distance import compute_buy_distance
-    # 价格锚定：chart K 线最后价 111，锚定价 90（悠悠口径）→ current 用 90，target 必向下
+    # 锚定价仅作展示：场景/目标/距离按 chart K线口径（与百分位同源），
+    # 悠悠价 90 vs K线收盘 111 偏差 -19% → anchor_note 提示，不再混源得出「已低于90日低」
     prices = [200.0]
     c = 200.0
     for _ in range(89):
@@ -548,13 +549,39 @@ def t_buy_distance_anchor():
     pos = SimpleNamespace(percentile_90d=5.0, zscore_90d=-1.8)
     bd = compute_buy_distance(prices, pos, 32.0, price_zones={'entry': {'low': 0, 'high': 0}},
                               cycle_phase='distribution', anchor_price=90.0)
-    assert bd is not None and bd['current_price'] == 90.0, bd
+    assert bd is not None and bd['current_price'] == 111.0, bd          # K线口径
     assert bd['target_price'] <= bd['current_price'], bd
-    # 无锚定时回退窗口最后价
+    assert bd['anchor_price'] == 90.0, bd                                # 悠悠锚价仅展示
+    assert bd['anchor_note'] and '偏差' in bd['anchor_note'], bd
+    assert bd['scenario'] != 'extreme', bd
+    # 无锚定价时仅展示当前价回退窗口最后价
     bd2 = compute_buy_distance(prices, pos, 32.0, price_zones={'entry': {'low': 0, 'high': 0}},
                                cycle_phase='distribution')
-    assert bd2['current_price'] == 111.0, bd2
-check('buy_distance honors anchor_price (downward-only)', t_buy_distance_anchor)
+    assert bd2['current_price'] == 111.0 and bd2.get('anchor_price') is None, bd2
+check('buy_distance anchor_price is display-only (chart-consistent)', t_buy_distance_anchor)
+
+print('[Data Sane: K线脏价校验]')
+def t_kline_price_sane():
+    from types import SimpleNamespace
+    from webapp.main import _kline_price_sane
+    def bars(last):
+        # 平滑序列（无大跳变），只改最后一天 → 专测「整体口径偏移」漏检场景
+        b = [SimpleNamespace(date="2026-08-%02d" % (d + 1), close=640.0) for d in range(4)]
+        b[-1].close = last
+        return b
+    # 死寂空间场景：chart 883 vs 悠悠锚 614 → 应拦截（整体偏移、序列平滑）
+    ok, msg = _kline_price_sane(bars(883.28), 999999, anchor_price=614.0)
+    assert not ok and "悠悠锚" in msg, (ok, msg)
+    # 正常：chart 614 vs 锚 614 → 通过
+    ok, _ = _kline_price_sane(bars(614.0), 999999, anchor_price=614.0)
+    assert ok
+    # 正常小偏差：chart 618 vs 锚 614（0.7%）→ 通过
+    ok, _ = _kline_price_sane(bars(618.0), 999999, anchor_price=614.0)
+    assert ok
+    # 新品无历史（item_id 不存在）+ 无锚 → 原逻辑不误伤
+    ok, _ = _kline_price_sane(bars(640.0), 999999)
+    assert ok
+check('kline dirty-price anchor rule blocks offset series', t_kline_price_sane)
 
 def t_market_buy_distance():
     from pipeline.buy_distance import compute_market_buy_distance
