@@ -883,6 +883,42 @@ def t_exec_btn_display():
 check('batch scan exec button maps actionable advice only', t_exec_btn_display)
 
 
+print('[Dashboards: P0-3 数据积累 / P0-4 组合仓位]')
+def t_data_progress():
+    from pipeline import db, dashboards
+    conn = db.get_conn()
+    try:
+        d = dashboards.data_progress(conn)
+        assert d['index']['rows'] > 0, d['index']
+        assert d['price']['items'] > 0 and d['price']['median_days'] >= 0
+        assert 0.0 <= d['price']['pct_90d'] <= 100.0
+        assert d['volume']['rows'] >= 0 and d['volume']['avg_days_per_item'] >= 0
+        assert d['volume']['est_days_to_target'] >= 0
+        assert d['volume']['pct_items'] >= 0.0
+    finally:
+        conn.close()
+check('data_progress reports index/price/volume coverage', t_data_progress)
+
+def t_portfolio_dash():
+    from pipeline import db, dashboards
+    conn = db.get_conn()
+    try:
+        d = dashboards.portfolio_dashboard(conn)
+        assert d['total_assets'] >= 0 and d['holding_value'] >= 0
+        assert isinstance(d['holdings'], list)
+        assert 0.0 <= d['position_ratio'] <= 100.0
+        assert d['max_single'] >= 0.0 and d['top3'] >= 0.0
+        s = d['scan']
+        assert s['cap'] > 0 and s['demand'] >= 0.0
+        assert isinstance(s['over_cap'], bool)
+        # holdings 按市值降序
+        vals = [h['value'] for h in d['holdings']]
+        assert vals == sorted(vals, reverse=True), vals
+    finally:
+        conn.close()
+check('portfolio_dashboard reports holdings and concurrent cap', t_portfolio_dash)
+
+
 print()
 print(f'=== Results: {passed} passed, {failed} failed ===')
 if failures:

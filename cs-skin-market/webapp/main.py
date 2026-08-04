@@ -1894,6 +1894,28 @@ async def api_delete_execution(eid: int):
     finally:
         conn.close()
 
+# ---- 仪表盘 (P0-3 数据积累 / P0-4 组合仓位, 2026-08-04): 纯展示层 ----
+@app.get("/api/data/progress")
+async def api_data_progress():
+    """数据积累进度: 大盘/价格K线/真实成交量覆盖度。"""
+    from pipeline import dashboards
+    conn = db.get_conn()
+    try:
+        return {"ok": True, **dashboards.data_progress(conn)}
+    finally:
+        conn.close()
+
+
+@app.get("/api/portfolio/dashboard")
+async def api_portfolio_dashboard():
+    """组合仓位仪表: 持仓分布 + 并发建议仓位占用。"""
+    from pipeline import dashboards
+    conn = db.get_conn()
+    try:
+        return {"ok": True, **dashboards.portfolio_dashboard(conn)}
+    finally:
+        conn.close()
+
 @app.post("/api/watchlist/batch-scan-selected")
 async def api_watchlist_batch_scan_selected(request: Request):
     body = await request.json()

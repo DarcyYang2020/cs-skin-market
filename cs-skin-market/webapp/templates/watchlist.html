@@ -60,6 +60,23 @@
   {% endif %}
 </div>
 
+<!-- 组合仓位仪表 (P0-4, 2026-08-04) -->
+<div class="card" id="portfolio-dash" style="display:none;margin-bottom:16px;">
+  <div class="card-header">
+    <span class="card-title">📊 组合仓位仪表</span>
+    <span id="portfolio-scan-time" style="font-size:11px;color:var(--text-muted);"></span>
+  </div>
+  <div class="row-flex" style="gap:26px;padding:12px 16px 4px;flex-wrap:wrap;">
+    <div><span class="card-subtitle">持仓市值</span><span id="pd-holding-value" style="font-size:18px;font-weight:700;margin-left:8px;color:var(--accent);"></span></div>
+    <div><span class="card-subtitle">仓位比例</span><span id="pd-ratio" style="font-size:18px;font-weight:700;margin-left:8px;"></span></div>
+    <div><span class="card-subtitle">现金比例</span><span id="pd-cash" style="font-size:18px;font-weight:700;margin-left:8px;"></span></div>
+    <div><span class="card-subtitle">最大单品</span><span id="pd-max" style="font-size:18px;font-weight:700;margin-left:8px;"></span></div>
+    <div><span class="card-subtitle">Top3 集中度</span><span id="pd-top3" style="font-size:18px;font-weight:700;margin-left:8px;"></span></div>
+  </div>
+  <div id="pd-concurrent" style="padding:8px 16px 6px;"></div>
+  <div id="pd-holdings" style="padding:0 16px 14px;font-size:13px;"></div>
+</div>
+
 <!-- Watchlist Table -->
 <div class="card" style="padding:0;" id="wl-card">
   <div class="table-wrap">
@@ -813,6 +830,47 @@ function loadExecutions() {
   });
 }
 loadExecutions();
+
+
+// ---- 组合仓位仪表 (P0-4, 2026-08-04) ----
+function loadPortfolioDash() {
+  fetch('/api/portfolio/dashboard')
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    var card = document.getElementById('portfolio-dash');
+    if (!card || !d.ok) return;
+    card.style.display = 'block';
+    var s = d.scan || {};
+    document.getElementById('pd-holding-value').textContent = '¥' + Number(d.holding_value || 0).toFixed(2);
+    document.getElementById('pd-ratio').textContent = (d.position_ratio || 0) + '%';
+    document.getElementById('pd-cash').textContent = (d.cash_ratio || 0) + '%';
+    document.getElementById('pd-max').textContent = (d.max_single || 0) + '%';
+    document.getElementById('pd-top3').textContent = (d.top3 || 0) + '%';
+    document.getElementById('portfolio-scan-time').textContent = s.time ? ('最近扫描 ' + String(s.time).replace('T', ' ').slice(0, 16)) : '';
+    var capPct = Math.min(100, s.utilization || 0);
+    var color = s.over_cap ? 'var(--red)' : (capPct >= 70 ? 'var(--yellow)' : 'var(--green)');
+    document.getElementById('pd-concurrent').innerHTML =
+      '<div style="font-size:12px;color:var(--text-muted);">并发建议仓位（建仓/补仓 Σ）: '
+      + '<b style="color:' + color + ';">' + Math.round((s.demand || 0) * 100) + '%</b> / 上限 ' + Math.round((s.cap || 0.8) * 100) + '%'
+      + (s.over_cap ? ' <span style="color:var(--red);">⚠️ 超限：信号扎堆时优先处理靠前信号</span>' : '')
+      + '</div>'
+      + '<div style="height:8px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden;margin-top:4px;">'
+      + '<div style="height:100%;width:' + capPct + '%;background:' + color + ';"></div></div>';
+    var holds = d.holdings || [];
+    document.getElementById('pd-holdings').innerHTML = holds.length
+      ? holds.slice(0, 8).map(function(h) {
+          var w = d.holding_value > 0 ? Math.max(1, Math.round(100 * h.value / d.holding_value)) : 0;
+          return '<div style="display:flex;align-items:center;gap:8px;margin-top:6px;">'
+            + '<span style="flex:0 0 200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + h.name + '</span>'
+            + '<div style="flex:1;height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;">'
+            + '<div style="height:100%;width:' + w + '%;background:#3b82f6;"></div></div>'
+            + '<span style="flex:0 0 90px;text-align:right;font-size:12px;">¥' + Number(h.value).toFixed(0) + ' (' + w + '%)</span>'
+            + '</div>';
+        }).join('')
+      : '<span style="color:var(--text-muted);">暂无持仓</span>';
+  });
+}
+loadPortfolioDash();
 
 </script>
 {% endblock %}

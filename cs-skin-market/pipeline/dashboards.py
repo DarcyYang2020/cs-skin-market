@@ -1,0 +1,96 @@
+# -*- coding: utf-8 -*-
+"""仪表盘数据（P0-3 数据积累进度 / P0-4 组合仓位）——纯展示层，只读 DB + 最近扫描缓存，不触碰信号引擎。"""
+import json
+from pathlib import Path
+from statistics import median
+
+from .config import PORTFOLIO_CAP_CONCURRENT
+
+_SCAN_CACHE = Path(__file__).resolve().parent.parent / "data" / "batch_scan_latest.json"
+VOLUME_TARGET_DAYS = 90  # 真实成交量目标覆盖天数（数据积累主线：价格 K 线已成熟，成交量是长板）
+_ADD_ACTIONS = ("\u53ef\u5206\u6279\u5efa\u4ed3", "\u53ef\u5206\u6279\u8865\u4ed3")  # 可分批建仓/可分批补仓
+
+
+def data_progress(conn):
+    """数据积累进度：大盘指数 / 单品价格 K 线 / 真实成交量覆盖度。"""
+    def _scalar(sql, args=()):
+        row = conn.execute(sql, args).fetchone()
+        return row[0] if row else 0
+
+    idx = conn.execute("SELECT COUNT(*), MIN(date), MAX(date) FROM market_index").fetchone()
+    ph = conn.execute(
+        "SELECT COUNT(*), COUNT(DISTINCT item_id), MIN(date), MAX(date), "
+        "SUM(CASE WHEN volume_day IS NOT NULL AND volume_day>0 THEN 1 ELSE 0 END) "
+        "FROM price_history").fetchone()
+    items_total = _scalar("SELECT COUNT(*) FROM items")
+    per_item = conn.execute(
+        "SELECT COUNT(*) days, "
+        "SUM(CASE WHEN volume_day IS NOT NULL AND volume_day>0 THEN 1 ELSE 0 END) vol "
+        "FROM price_history GROUP BY item_id").fetchall()
+    days_list = [r["days"] for r in per_item]
+    vol_list = [r["vol"] for r in per_item]
+    n90 = sum(1 for d in days_list if d >= 90)
+    n180 = sum(1 for d in days_list if d >= 180)
+    items_vol = sum(1 for v in vol_list if v > 0)
+    avg_vol = round(sum(vol_list) / len(vol_list), 1) if vol_list else 0.0
+    return {
+        "index": {"rows": idx[0] or 0, "start": idx[1], "end": idx[2]},
+        "price": {
+            "rows": ph[0] or 0, "items": ph[1] or 0,
+            "start": ph[2], "end": ph[3],
+            "median_days": int(median(days_list)) if days_list else 0,
+            "pct_90d": round(100.0 * n90 / items_total, 1) if items_total else 0.0,
+            "pct_180d": round(100.0 * n180 / items_total, 1) if items_total else 0.0,
+        },
+        "volume": {
+            "rows": ph[4] or 0,
+            "items_with_volume": items_vol,
+            "pct_items": round(100.0 * items_vol / items_total, 1) if items_total else 0.0,
+            "avg_days_per_item": avg_vol,
+            "latest": _scalar("SELECT MAX(date) FROM price_history "
+                              "WHERE volume_day IS NOT NULL AND volume_day>0"),
+            "est_days_to_target": max(0, VOLUME_TARGET_DAYS - int(avg_vol)),
+        },
+    }
+
+
+def portfolio_dashboard(conn):
+    """组合仓位仪表：持仓分布 + 最近扫描的并发建议仓位占用（P2 口径 Σposition_limit vs 0.8 上限）。"""
+    assets = 0.0
+    row = conn.execute("SELECT value FROM settings WHERE key='total_assets'").fetchone()
+    try:
+        assets = float(row["value"]) if row else 0.0
+    except (TypeError, ValueError):
+        assets = 0.0
+    holdings = conn.execute(
+        "SELECT id, name, avg_cost, quantity FROM items WHERE holding=1 AND quantity>0 AND avg_cost>0").fetchall()
+    vals = []
+    for h in holdings:
+        px = conn.execute("SELECT price_rmb FROM price_history WHERE item_id=? ORDER BY date DESC LIMIT 1",
+                          (h["id"],)).fetchone()
+        price = px["price_rmb"] if px and px["price_rmb"] else (h["avg_cost"] or 0)
+        vals.append({"id": h["id"], "name": h["name"], "qty": h["quantity"], "avg_cost": h["avg_cost"],
+                     "price": round(float(price), 2), "value": round(float(price) * h["quantity"], 2)})
+    vals.sort(key=lambda v: v["value"], reverse=True)
+    holding_value = sum(v["value"] for v in vals)
+    ratio = round(100.0 * holding_value / assets, 1) if assets > 0 else 0.0
+    scan = {"time": None, "demand": 0.0, "cap": PORTFOLIO_CAP_CONCURRENT,
+            "utilization": 0.0, "over_cap": False}
+    if _SCAN_CACHE.exists():
+        try:
+            d = json.loads(_SCAN_CACHE.read_text(encoding="utf-8"))
+            scan["time"] = d.get("time")
+            demand = sum(float(r.get("position_limit") or 0) for r in d.get("results", [])
+                         if (r.get("portfolio_advice") or {}).get("action") in _ADD_ACTIONS)
+            scan["demand"] = round(demand, 3)
+            scan["utilization"] = round(100.0 * demand / PORTFOLIO_CAP_CONCURRENT, 1)
+            scan["over_cap"] = demand > PORTFOLIO_CAP_CONCURRENT + 1e-9
+        except Exception:
+            pass
+    max_single = round(100.0 * vals[0]["value"] / holding_value, 1) if vals and holding_value > 0 else 0.0
+    top3 = round(100.0 * sum(v["value"] for v in vals[:3]) / holding_value, 1) if holding_value > 0 else 0.0
+    return {
+        "total_assets": round(assets, 2), "holding_value": round(holding_value, 2),
+        "position_ratio": ratio, "cash_ratio": round(max(0.0, 100.0 - ratio), 1),
+        "holdings": vals, "max_single": max_single, "top3": top3, "scan": scan,
+    }
