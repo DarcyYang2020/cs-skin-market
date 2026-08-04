@@ -51,6 +51,7 @@
 | 2026-08 | 批量扫描优化：并发2路采集 + 距买点列 + 市场环境条 + 排序 | 共享浏览器多page并发提速约2x；持仓按浮亏、关注按距买点gap排序；结果结构化缓存(含buy_distance)；展示层不动信号引擎 |
 | 2026-08 | 距买点价格锚定悠悠有品(anchor_price) | csQAQ chart K线价与悠悠DOM价存在偏差(死寂空间883 vs 614)，buy_distance现价改用锚定价，保证目标价<=展示现价；K线/估值线仍为chart口径，统一K线定价留待数据层迭代 |
 | 2026-08 | 距买点口径统一为K线（修复混源矛盾） | 守护者：K线收盘48.8分位 vs 悠悠锚价55 < K线90日低65.71 → 误报「已低于90日低·极端超跌」；场景/目标/距离改按 chart K线口径（与百分位同源），anchor 仅作展示且偏差≥15% 提示 anchor_note |
+| 2026-08 | 批量扫描修复：串行采集 + DB K线兜底 + 任务异常兜底 | 并发共享浏览器多page导航串出脏chart（复现：AWP火卫一并发收盘59.78/93.63 vs 串行64.69、沙鹰53.62 vs 36.20，锚价校验全拒→0分析）；改串行保正确；新鲜chart判脏时用DB缓存K线兜底仍出分析；_run_batch_scan_task整体try/except置done，前端轮询加catch，弹窗不再无限转 |
 
 ---
 
@@ -357,3 +358,27 @@
 - 落地：config.py 新增 `PORTFOLIO_CAP_CONCURRENT=0.8`；批量扫描市场条新增「并发建议仓位」预警（Σ建仓/补仓建议仓位超 80% 时提示优先处理靠前信号；展示层，不改信号）；webapp/main.py `_scan_item` 结果补 position_limit 字段供聚合
 
 **验证**：test_smoke 33/33（新增融合门控、并发预警断言）。回放/模拟脚本入库 references/advice_layer_fit.py、references/portfolio_cap_fit.py；data/*_tmp.json 回放产物不入库（可重放再生）。
+
+
+---
+
+## 价格口径新规则：出现偏差统一以悠悠锚价为准（2026-08-04）
+
+**背景**：批量扫描中 格洛克 18 型 | 水灵 / 拉美西斯之触（崭新出厂）等物品，csQAQ chart 最新收盘价与悠悠有品锚价偏差 50%+（水灵 592.89 vs 394.77、拉美西斯 1004.07 vs 659.50），原 `_kline_price_sane` 规则 2 会整条拦截并「保留旧数据」，导致物品无法分析。
+
+**新规则**：出现偏差时统一以悠悠锚价为准——
+- webapp/main.py 新增 `_anchor_override(daily_bars, anchor_price, label)`：以「近7日历史水平（去掉最新 bar 的中位数）」为参考——历史水平与锚价偏差>20% 判定整体口径偏移，整条序列按 (锚价/参考水平) 缩放（最新价精确=锚价）；仅最新价偏差>20% 则只校正最新 bar（尾部跳变）。避免新旧口径混算产生「假深坑」误判；校正后继续分析并落库（顺带修复被污染的 DB 历史）。
+- 搜索 `/api/items/search`、单品分析 `/api/items/analyze`、批量扫描 `_scan_item` 三处统一应用：先校正再分析；落库顺带用锚价修复同期被污染的 price_history 行（INSERT OR REPLACE 按 item_id+date）。
+- 仅当悠悠锚价不可用（price_rmb<=0）时才维持旧行为（跳过落库/保留旧数据）。
+- 触发日志：`anchor override <name>: 最新价¥X vs 悠悠锚¥Y，统一以悠悠锚价为准`。
+
+**验证**：py_compile 通过；待重启服务后跑批量扫描确认两只格洛克不再「价格校验未通过」。
+---
+
+## P0-1 批量扫描信号中心 + 历史归档（2026-08-04）
+
+- 信号提取 `extract_signals`：可分批补仓 > 建议止损 > 已到买点（buy_distance gap<=0），同类型按距买点近优先；纯展示层，不改信号引擎
+- 历史归档：每次批量扫描写 `data/scan_history/scan_YYYYMMDD_HHMMSS.json`（时间/结果数/信号摘要/HTML），保留最近 30 份
+- 新增 API：`GET /api/watchlist/scan-history`（归档列表+最近信号摘要）、`GET /api/watchlist/scan-history/{scan_id}`（详情 HTML，scan_id 白名单校验防路径穿越）
+- watchlist 页：新增「🔔 信号中心」卡（最近扫描的信号摘要）+「📚 历史扫描」下拉回看历史结果
+- 验证：test_smoke 34/34（新增信号提取断言）

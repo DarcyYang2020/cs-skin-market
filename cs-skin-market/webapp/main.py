@@ -1,6 +1,6 @@
 """CS-Market Web App - FastAPI application."""
 
-import sys, io, asyncio, json, re, traceback
+import sys, io, asyncio, json, re, traceback, copy
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
@@ -169,7 +169,8 @@ def _kline_price_sane(daily_bars, item_id, anchor_price=None):
     规则2（2026-08-04 增强）：anchor_price（悠悠锚）存在时，最新 close vs 锚价偏差>20%
     判脏——拦截「整条序列整体口径偏移」型脏价（如死寂空间 chart 883 vs 悠悠 614，
     序列内无大跳变但整体偏离，规则1漏检）。
-    Returns (ok: bool, msg: str)；ok=False 时调用方应跳过落库，保留 DB 旧数据。
+    Returns (ok: bool, msg: str)；ok=False 时调用方统一以悠悠锚价为准校正最新价（anchor>0），
+    无锚价可用时才跳过落库（保留 DB 旧数据）。
     """
     if not daily_bars or len(daily_bars) < 3:
         return True, ""
@@ -207,6 +208,59 @@ def _kline_price_sane(daily_bars, item_id, anchor_price=None):
     if dev > 0.25 and max_jump > 0.30:
         return False, "最新价¥%.2f vs DB ¥%.2f 偏差%.0f%%，序列内跳变%.0f%%" % (new_last, db_last, dev * 100, max_jump * 100)
     return True, ""
+
+
+def _anchor_override(daily_bars, anchor_price, label=""):
+    """新规则（2026-08-04）：chart 最新价与悠悠锚价偏差>20% 时，统一以悠悠锚价为准。
+
+    以「近7日历史水平（去掉最新 bar 后的中位数）」为参考判定口径：
+    - 历史水平与锚价偏差>20% → 整条序列按 (锚价/参考水平) 缩放到悠悠锚口径（整体口径偏移型脏价）；
+    - 仅最新价偏差>20%（历史正常） → 仅把最新 bar 校正为锚价（尾部跳变）；
+    最新 bar 未含当日时追加一根当日锚价 bar。校正后继续分析/落库（顺带修复被污染的 DB 历史）。
+    anchor_price<=0 时不校正，原样返回。
+    """
+    if not daily_bars or not anchor_price or anchor_price <= 0:
+        return daily_bars
+    closes = [b.close for b in daily_bars if getattr(b, "close", 0) and b.close > 0]
+    if len(closes) < 3:
+        return daily_bars
+    last_close = closes[-1]
+    hist = sorted(closes[-8:-1])  # 近7日历史（去掉最新 bar）
+    ref = hist[len(hist) // 2]
+    dev_last = abs(last_close / anchor_price - 1)
+    dev_ref = abs(ref / anchor_price - 1)
+    if dev_last <= 0.20 and dev_ref <= 0.20:
+        return daily_bars
+    if dev_ref > 0.20:
+        factor = anchor_price / ref
+        mode = "序列整体缩放"
+        out = []
+        for b in daily_bars:
+            nb = copy.copy(b)
+            if getattr(nb, "close", 0) or 0:
+                nb.close = round(nb.close * factor, 2)
+            if getattr(nb, "high", 0) or 0:
+                nb.high = round(nb.high * factor, 2)
+            if getattr(nb, "low", 0) or 0:
+                nb.low = round(nb.low * factor, 2)
+            out.append(nb)
+    else:
+        factor = anchor_price / last_close
+        mode = "仅最新价校正"
+        out = list(daily_bars)
+    out[-1].close = anchor_price
+    _web_log.warning(f"anchor override {label}: 最新价¥{last_close:.2f} 近7日水平¥{ref:.2f} vs 悠悠锚¥{anchor_price:.2f}（偏差{dev_ref * 100:.0f}%），{mode}统一以悠悠锚价为准")
+    today = _today_str()
+    if (getattr(out[-1], "date", "") or "") < today:
+        nb = copy.copy(out[-1])
+        nb.date = today
+        nb.close = anchor_price
+        nb.high = max((getattr(nb, "high", 0) or 0), anchor_price)
+        nb.low = min((getattr(nb, "low", 0) or 0) or anchor_price, anchor_price)
+        nb.volume = 0
+        nb.tx_count = 0
+        out.append(nb)
+    return out
 
 
 async def _fetch_volume_cached(good_id, item):
@@ -799,6 +853,10 @@ async def api_items_search(request: Request, query: str = Form(...)):
                 _web_log.warning(f"search kline DB fallback for {exact_name} stale={_stale}d")
             else:
                 return HTMLResponse(_ae("K线数据获取失败，请稍后重试（csQAQ 图表采集偶发为空，已自动重试仍失败）"))
+        # 新规则（2026-08-04）：chart 最新价 vs 悠悠锚价偏差>20% 时，统一以悠悠锚价为准（分析与落库口径一致）
+        daily_bars = _anchor_override(daily_bars, price_rmb, label=exact_name)
+        price_history = [k.close for k in daily_bars if k.close > 0] if daily_bars else []
+
         volume_history = [k.volume for k in daily_bars] if daily_bars else []
         supply_history = [k.in_sale_count for k in daily_bars] if daily_bars else []
 
@@ -968,6 +1026,10 @@ async def api_items_analyze(
                 price_history = [k.close for k in daily_bars if k.close > 0]
                 kline_stale_days, kline_stale_date = _stale, _stale_date
                 _web_log.warning(f"analyze kline DB fallback for {exact_name} stale={_stale}d")
+        # 新规则（2026-08-04）：chart 最新价 vs 悠悠锚价偏差>20% 时，统一以悠悠锚价为准（分析与落库口径一致）
+        daily_bars = _anchor_override(daily_bars, price_rmb, label=exact_name)
+        price_history = [k.close for k in daily_bars if k.close > 0] if daily_bars else []
+
         volume_history = [k.volume for k in daily_bars] if daily_bars else []
         supply_history = [k.in_sale_count for k in daily_bars] if daily_bars else []
 
@@ -1479,6 +1541,31 @@ async def _scan_item(row, idx, ms, market_th_score, sentiment_score):
             _db_bars, _stale, _stale_date = _db_kline_fallback(good_id, exact_name)
             if _db_bars:
                 daily_bars = _db_bars
+        # 价格合理性校验：csQAQ 偶发串品/脏价，脏数据不落库。
+        # 新规则（2026-08-04）：出现偏差时统一以悠悠锚价为准——新鲜 chart 判脏先试 DB 缓存 K 线，
+        # DB 仍判脏且悠悠锚价可用时，把最新价校正为锚价继续分析（不再跳过/保留旧数据）。
+        _anchor_px = getattr(item, "price_rmb", 0) or 0
+        _sane, _sane_msg = _kline_price_sane(daily_bars, item_id, anchor_price=_anchor_px)
+        if not _sane:
+            _db_bars, _db_stale, _db_stale_date = _db_kline_fallback(good_id, exact_name)
+            if _db_bars:
+                _base_sane, _base_msg = _kline_price_sane(_db_bars, item_id, anchor_price=_anchor_px)
+                if _base_sane:
+                    _web_log.warning(f"batch scan DB kline fallback {exact_name}: {_sane_msg}")
+                    daily_bars = _db_bars
+                elif _anchor_px and _anchor_px > 0:
+                    daily_bars = _anchor_override(_db_bars, _anchor_px, label=exact_name)
+                    _web_log.warning(f"batch scan anchor override {exact_name}: {_base_msg} -> 统一以悠悠锚¥{_anchor_px:.2f}为准")
+                else:
+                    _web_log.warning(f"batch scan skip {exact_name}: {_base_msg}")
+                    return dict(name=exact_name, holding=holding, error="价格校验未通过，保留旧数据")
+            else:
+                if _anchor_px and _anchor_px > 0:
+                    daily_bars = _anchor_override(daily_bars, _anchor_px, label=exact_name)
+                    _web_log.warning(f"batch scan anchor override {exact_name}: {_sane_msg} -> 统一以悠悠锚¥{_anchor_px:.2f}为准")
+                else:
+                    _web_log.warning(f"batch scan skip {exact_name}: {_sane_msg}")
+                    return dict(name=exact_name, holding=holding, error="价格校验未通过，保留旧数据")
         prices = [k.close for k in daily_bars if k.close > 0] if daily_bars else [item.price_rmb]
         vol_today, vol_map = await _fetch_volume_cached(good_id, item)
         _apply_volume_map(daily_bars, vol_map)
@@ -1507,11 +1594,6 @@ async def _scan_item(row, idx, ms, market_th_score, sentiment_score):
             analysis.price_rmb = item.price_rmb
         analysis.volume_day = volume_day
         analysis.volume_total = item.volume_total or 0
-        # 价格合理性校验：csQAQ 偶发串品/脏价，脏数据不落库（保留 DB 旧数据）
-        _sane, _sane_msg = _kline_price_sane(daily_bars, item_id, anchor_price=getattr(item, "price_rmb", 0) or 0)
-        if not _sane:
-            _web_log.warning(f"batch scan skip {exact_name}: {_sane_msg}")
-            return dict(name=exact_name, holding=holding, error="价格校验未通过，保留旧数据")
         pa = _portfolio_advice(holding, avg_cost, qty, item.price_rmb, analysis, market_th=market_th_score, sentiment_score=sentiment_score)
         _fd_lim = (getattr(analysis, "fusion_decision", {}) or {}).get("position_limit", 0) or 0
         result = dict(
@@ -1554,59 +1636,93 @@ async def _scan_item(row, idx, ms, market_th_score, sentiment_score):
 
 
 async def _run_batch_scan_task(scan_id: str, rows: list):
-    """批量扫描：并发 2 路共享浏览器采集（提速），结果排序 + 结构化缓存。"""
+    """批量扫描：串行共享浏览器采集（2026-08-04 起，并发页面导航会串出脏 chart 数据），结果排序 + 结构化缓存。
+
+    整体 try/except：任何未预期异常也会置 done=True，避免前端弹窗无限轮询。
+    """
     import json as _json
     from pathlib import Path as _P
-    from pipeline.batch_scan import build_scan_html, sort_results
+    from pipeline.batch_scan import build_scan_html, sort_results, _esc
     from pipeline import collector
-    idx = collector.fetch_market_index()
-    if idx is None or idx.value == 0:
-        idx = type("obj", (object,), {"value": 0, "change_7d": 0})()
-    # Compute market TH + sentiment once for resonance-aware portfolio advice
-    ms = _market_snapshot()
-    market_th_score = ms["th"]
-    sentiment_score = ms["sentiment"]
-    total = len(rows)
-    _scan_progress[scan_id]["total"] = total
-    _scan_progress[scan_id]["name"] = "准备扫描..."
-    sem = asyncio.Semaphore(2)  # 并发 2 路：共享浏览器多 page，提速且降低风控风险
-    done = 0
-
-    async def _one(row):
-        nonlocal done
-        async with sem:
-            res = await _scan_item(row, idx, ms, market_th_score, sentiment_score)
-            done += 1
-            _scan_progress[scan_id]["current"] = done
-            if res:
-                _scan_progress[scan_id]["name"] = res.get("name", "")
-            return res
-
-    raw_results = await asyncio.gather(*(_one(r) for r in rows))
-    results = [r for r in raw_results if r is not None]
-    results = sort_results(results)
-
-    now_str = __import__("datetime").datetime.now().strftime("%H:%M:%S")
-    final_html = build_scan_html(
-        results, total,
-        {"th": market_th_score, "sentiment": sentiment_score, "cycle": ms["cycle"],
-         "index": getattr(idx, "value", 0)},
-        now_str=now_str,
-        name_link=_item_report_link,
-    )
-    _scan_progress[scan_id]["html"] = final_html
-    _scan_progress[scan_id]["done"] = True
-    # Persist to disk
     try:
-        _cache_path = _P(__file__).resolve().parent.parent / "data" / "batch_scan_latest.json"
-        _cache_path.write_text(_json.dumps({
+        idx = collector.fetch_market_index()
+        if idx is None or idx.value == 0:
+            idx = type("obj", (object,), {"value": 0, "change_7d": 0})()
+        # Compute market TH + sentiment once for resonance-aware portfolio advice
+        ms = _market_snapshot()
+        market_th_score = ms["th"]
+        sentiment_score = ms["sentiment"]
+        total = len(rows)
+        _scan_progress[scan_id]["total"] = total
+        _scan_progress[scan_id]["name"] = "准备扫描..."
+        # 串行采集：并发共享浏览器多 page 导航会把不同品的 chart/锚价串到一起
+        # （复现：AWP 火卫一 并发 chart 收盘 59.78/93.63 vs 串行 64.69；沙鹰 53.62 vs 36.20）
+        sem = asyncio.Semaphore(1)
+        done = 0
+
+        async def _one(row):
+            nonlocal done
+            async with sem:
+                res = await _scan_item(row, idx, ms, market_th_score, sentiment_score)
+                done += 1
+                _scan_progress[scan_id]["current"] = done
+                if res:
+                    _scan_progress[scan_id]["name"] = res.get("name", "")
+                return res
+
+        raw_results = await asyncio.gather(*(_one(r) for r in rows))
+        results = [r for r in raw_results if r is not None]
+        results = sort_results(results)
+
+        now_str = __import__("datetime").datetime.now().strftime("%H:%M:%S")
+        final_html = build_scan_html(
+            results, total,
+            {"th": market_th_score, "sentiment": sentiment_score, "cycle": ms["cycle"],
+             "index": getattr(idx, "value", 0)},
+            now_str=now_str,
+            name_link=_item_report_link,
+        )
+        _scan_progress[scan_id]["html"] = final_html
+        _scan_progress[scan_id]["done"] = True
+        # Persist to disk (latest + 历史归档, 2026-08-04)
+        _data_dir = _P(__file__).resolve().parent.parent / "data"
+        _payload = {
             "time": __import__("datetime").datetime.now().isoformat(),
             "html": final_html,
             "results": results,
             "market_th": market_th_score,
-        }, ensure_ascii=False, default=str), encoding="utf-8")
-    except Exception:
-        pass
+        }
+        try:
+            _cache_path = _data_dir / "batch_scan_latest.json"
+            _cache_path.write_text(_json.dumps(_payload, ensure_ascii=False, default=str), encoding="utf-8")
+        except Exception:
+            pass
+        # 历史归档: 每次扫描留存（信号中心/复盘数据源），保留最近 30 份
+        try:
+            from pipeline.batch_scan import extract_signals
+            _hist_dir = _data_dir / "scan_history"
+            _hist_dir.mkdir(exist_ok=True)
+            _ts = __import__("datetime").datetime.now().strftime("%Y%m%d_%H%M%S")
+            (_hist_dir / ("scan_" + _ts + ".json")).write_text(_json.dumps({
+                "time": _payload["time"], "market_th": market_th_score,
+                "results_count": len(results),
+                "signals": extract_signals(results),
+                "html": final_html,
+            }, ensure_ascii=False, default=str), encoding="utf-8")
+            _olds = sorted(_hist_dir.glob("scan_*.json"))
+            for _f in _olds[:-30]:
+                try:
+                    _f.unlink()
+                except Exception:
+                    pass
+        except Exception:
+            pass
+    except Exception as _e:
+        import traceback as _tb
+        _web_log.error(f"batch scan task crashed: {_e}\n{_tb.format_exc()}")
+        _scan_progress[scan_id]["html"] = ('<div class="card" style="padding:20px;color:var(--red);">批量扫描异常：'
+                                           + _esc(str(_e))[:200] + "</div>")
+        _scan_progress[scan_id]["done"] = True
 @app.get("/api/watchlist/batch-scan-latest")
 async def api_batch_scan_latest():
     """Return the latest cached batch scan result."""
@@ -1632,6 +1748,54 @@ async def api_batch_scan_latest_clear():
     except Exception:
         pass
     return {"ok": True}
+
+
+@app.get("/api/watchlist/scan-history")
+async def api_scan_history():
+    """批量扫描历史归档列表 + 最近一次信号摘要（信号中心数据源, 2026-08-04）。"""
+    import json as _J
+    from pathlib import Path as _P
+    _hist_dir = _P(__file__).resolve().parent.parent / "data" / "scan_history"
+    scans = []
+    if _hist_dir.exists():
+        for f in sorted(_hist_dir.glob("scan_*.json"), reverse=True)[:30]:
+            try:
+                d = _J.loads(f.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            scans.append({
+                "scan_id": f.stem.replace("scan_", ""),
+                "time": d.get("time", ""),
+                "results_count": d.get("results_count", 0),
+                "signals_count": len(d.get("signals", [])),
+                "market_th": d.get("market_th"),
+            })
+    latest_signals = []
+    if scans:
+        _first = _hist_dir / ("scan_" + scans[0]["scan_id"] + ".json")
+        try:
+            latest_signals = _J.loads(_first.read_text(encoding="utf-8")).get("signals", [])
+        except Exception:
+            latest_signals = []
+    return {"found": bool(scans), "scans": scans, "latest_signals": latest_signals}
+
+
+@app.get("/api/watchlist/scan-history/{scan_id}")
+async def api_scan_history_detail(scan_id: str):
+    """查看历史归档详情（复用 HTML, 展示层）。"""
+    import json as _J
+    from pathlib import Path as _P
+    if not scan_id or not all(ch.isdigit() or ch in "_" for ch in scan_id):
+        return {"found": False}
+    _f = _P(__file__).resolve().parent.parent / "data" / "scan_history" / ("scan_" + scan_id + ".json")
+    if not _f.exists():
+        return {"found": False}
+    try:
+        d = _J.loads(_f.read_text(encoding="utf-8"))
+        return {"found": True, "time": d.get("time", ""), "html": d.get("html", ""),
+                "results_count": d.get("results_count", 0), "market_th": d.get("market_th")}
+    except Exception:
+        return {"found": False}
 
 @app.post("/api/watchlist/batch-scan-selected")
 async def api_watchlist_batch_scan_selected(request: Request):

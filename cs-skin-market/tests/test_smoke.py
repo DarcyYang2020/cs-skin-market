@@ -364,6 +364,27 @@ def t_p08_deep_value_tranche():
          ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision) = orig
 check('P0-8 deep-value buy carries tranche advice (2026-08-04)', t_p08_deep_value_tranche)
 
+print('[Batch Scan: 信号提取]')
+def t_extract_signals():
+    from pipeline.batch_scan import extract_signals
+    results = [
+        dict(name="A", holding=0, buy_distance={"gap_pct": -1.0}, portfolio_advice={"action": "观望等待机会", "suggest": "x"}),
+        dict(name="B", holding=1, buy_distance={"gap_pct": 4.0}, portfolio_advice={"action": "可分批补仓", "suggest": "可分3批补仓"}),
+        dict(name="C", holding=1, buy_distance={"gap_pct": 2.0}, portfolio_advice={"action": "趋势走弱，考虑止损", "suggest": "y"}),
+        dict(name="D", holding=0, buy_distance={"gap_pct": 12.0}, portfolio_advice={"action": "观望等待机会", "suggest": "z"}),
+        dict(name="E", holding=0, buy_distance={"gap_pct": 0.0}, portfolio_advice={"action": "可分批建仓", "suggest": "w"}),
+        dict(name="F", holding=0, error="价格校验未通过"),
+    ]
+    sigs = extract_signals(results)
+    # 补仓优先 > 止损 > 已到买点；D(远离)与F(错误)不产生信号
+    assert [s["name"] for s in sigs] == ["B", "C", "A", "E"], [s["name"] for s in sigs]
+    assert sigs[0]["action"] == "可分批补仓" and sigs[0]["holding"] == 1
+    assert sigs[2]["action"] == "已到买点" and sigs[2]["gap_pct"] == -1.0
+    assert sigs[3]["action"] == "已到买点" and sigs[3]["gap_pct"] == 0.0
+    # 无信号场景
+    assert extract_signals([dict(name="X", holding=0, buy_distance={"gap_pct": 20.0}, portfolio_advice={"action": "观望等待机会"})]) == []
+check('batch scan 信号提取(补仓/止损/已到买点)', t_extract_signals)
+
 print('[Batch Scan: 距买点摘要/排序/HTML]')
 def t_batch_scan_display():
     from pipeline.batch_scan import summarize_buy_distance, sort_results, build_scan_html

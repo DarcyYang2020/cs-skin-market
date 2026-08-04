@@ -289,6 +289,48 @@ def sort_results(results):
     return held + unheld
 
 
+def extract_signals(results):
+    """从批量扫描结果提取值得关注的信号事件（展示层，不改引擎）。
+
+    信号规则（优先级从高到低）:
+    - 可分批补仓: 持仓补仓点已确认（正期望门控后）
+    - 建议止损: 趋势走弱，风控提示
+    - 已到买点: buy_distance.gap_pct <= 0（建仓/补仓参考线已到）
+    排序: 补仓 > 止损 > 已到买点，同类型按距买点近优先。
+    """
+    signals = []
+    for r in results:
+        if r.get("error"):
+            continue
+        bd = r.get("buy_distance") or {}
+        pa = r.get("portfolio_advice") or {}
+        action = (pa.get("action") or "").strip()
+        gap = bd.get("gap_pct")
+        try:
+            gap = float(gap) if gap is not None else None
+        except (TypeError, ValueError):
+            gap = None
+        if action == "可分批补仓":
+            sig_action = "可分批补仓"
+        elif action == "趋势走弱，考虑止损":
+            sig_action = "建议止损"
+        elif gap is not None and gap <= 0:
+            sig_action = "已到买点"
+        else:
+            continue
+        signals.append({
+            "name": r.get("name", ""),
+            "action": sig_action,
+            "holding": 1 if r.get("holding") else 0,
+            "gap_pct": round(gap, 1) if gap is not None else None,
+            "suggest": (pa.get("suggest") or "")[:120],
+        })
+    _prio = {"可分批补仓": 0, "建议止损": 1, "已到买点": 2}
+    signals.sort(key=lambda s: (_prio.get(s["action"], 9),
+                                s["gap_pct"] if s["gap_pct"] is not None else 999))
+    return signals
+
+
 def _esc(s):
     """HTML 转义（展示层防注入）。"""
     return (str(s or "").replace("&", "&amp;").replace("<", "&lt;")

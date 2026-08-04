@@ -247,7 +247,18 @@
 <!-- 批量扫描结果 -->
 <div class="batch-scan-section" id="batch-scan-section" style="display:none;">
   <div class="page-header" style="margin-top:24px;">
-    <h2 style="display:flex;align-items:center;gap:10px;">📋 批量扫描结果 <button class="btn btn-sm btn-outline" onclick="clearScanCache()" style="font-size:12px;">✕ 清除</button></h2>
+    <h2 style="display:flex;align-items:center;gap:10px;">📋 批量扫描结果
+      <select id="scan-history-select" class="form-select" onchange="loadScanHistory(this.value)" style="width:auto;padding:4px 8px;font-size:12px;"><option value="">📚 历史扫描</option></select>
+      <button class="btn btn-sm btn-outline" onclick="clearScanCache()" style="font-size:12px;">✕ 清除</button>
+    </h2>
+  </div>
+  <!-- 信号中心(2026-08-04): 最近一次扫描的信号摘要 -->
+  <div class="card" id="signal-center" style="margin-bottom:16px;display:none;">
+    <div class="card-header" style="justify-content:space-between;">
+      <span class="card-title">🔔 信号中心</span>
+      <span id="signal-time" style="font-size:12px;color:var(--text-muted);"></span>
+    </div>
+    <div id="signal-list" style="padding:10px 14px;font-size:13px;color:var(--text-secondary);"></div>
   </div>
   <div id="batch-scan-result"></div>
 </div>
@@ -554,10 +565,17 @@ function batchScanSelectedIds(ids) {
                 clearInterval(poll);
                 modal.style.display = 'none';
                 showToast('✅ 批量扫描完成 (' + ids.length + ' 个物品)');
+              } else if (d.done) {
+                clearInterval(poll); modal.style.display = 'none';
+                showToast('批量扫描已结束但结果为空，请刷新页面查看', 'error');
               } else {
                 status.textContent = '扫描进度 ' + d.current + '/' + d.total + ' ' + (d.name || '');
                 if (bar && d.total > 0) bar.style.width = (d.current / d.total * 100) + '%';
               }
+            })
+            .catch(function() {
+              clearInterval(poll); modal.style.display = 'none';
+              showToast('扫描进度获取失败，请刷新页面查看结果', 'error');
             });
         }, 1000);
       } else {
@@ -585,6 +603,61 @@ fetch("/api/watchlist/batch-scan-latest")
   if (d.found && d.html) {
     document.getElementById("batch-scan-section").style.display = "block";
     document.getElementById("batch-scan-result").innerHTML = d.html;
+  }
+});
+
+// ---- 信号中心 + 历史归档 (2026-08-04) ----
+function sigColor(a) {
+  if (a === "可分批补仓") return "var(--green)";
+  if (a === "建议止损") return "var(--red)";
+  return "var(--accent)";
+}
+function renderSignalCenter(scans, signals) {
+  var sc = document.getElementById("signal-center");
+  if (!sc) return;
+  if (!signals || signals.length === 0) {
+    sc.style.display = "block";
+    document.getElementById("signal-time").textContent = scans && scans.length ? scans[0].time : "";
+    document.getElementById("signal-list").innerHTML = "暂无触发信号（已到买点 / 可补仓 / 建议止损）；点上方「批量扫描」获取最新信号。";
+    return;
+  }
+  sc.style.display = "block";
+  document.getElementById("signal-time").textContent = scans && scans.length ? scans[0].time : "";
+  var rows = signals.map(function(s) {
+    var gapTxt = (s.gap_pct !== null && s.gap_pct !== undefined) ? "距买点还差 " + s.gap_pct + "%" : "";
+    return '<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.06);flex-wrap:wrap;">'
+      + '<span style="font-weight:600;">' + s.name + '</span>'
+      + '<span class="badge" style="background:rgba(255,255,255,0.08);color:' + sigColor(s.action) + ';">' + (s.holding ? "持仓·" : "") + s.action + '</span>'
+      + '<span style="font-size:11px;color:var(--text-muted);">' + gapTxt + '</span>'
+      + '<span style="font-size:11px;color:var(--text-muted);">' + (s.suggest || "") + '</span>'
+      + '</div>';
+  }).join("");
+  document.getElementById("signal-list").innerHTML = rows;
+}
+function loadScanHistory(scanId) {
+  if (!scanId) return;
+  fetch("/api/watchlist/scan-history/" + scanId)
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.found && d.html) {
+      document.getElementById("batch-scan-section").style.display = "block";
+      document.getElementById("batch-scan-result").innerHTML = '<div class="card" style="margin-bottom:12px;padding:8px 14px;font-size:12px;color:var(--text-muted);">历史扫描：' + d.time + '（' + d.results_count + ' 个物品）</div>' + d.html;
+    }
+  });
+}
+fetch("/api/watchlist/scan-history")
+.then(function(r) { return r.json(); })
+.then(function(d) {
+  if (!d.found) return;
+  renderSignalCenter(d.scans, d.latest_signals);
+  var sel = document.getElementById("scan-history-select");
+  if (sel) {
+    d.scans.forEach(function(s) {
+      var opt = document.createElement("option");
+      opt.value = s.scan_id;
+      opt.textContent = (s.time || "").replace("T", " ").slice(0, 16) + " ｜ " + s.results_count + "个品" + (s.signals_count ? " ｜ " + s.signals_count + "信号" : "");
+      sel.appendChild(opt);
+    });
   }
 });
 
