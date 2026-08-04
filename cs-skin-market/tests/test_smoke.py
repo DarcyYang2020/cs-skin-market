@@ -895,6 +895,8 @@ def t_data_progress():
         assert d['volume']['rows'] >= 0 and d['volume']['avg_days_per_item'] >= 0
         assert d['volume']['est_days_to_target'] >= 0
         assert d['volume']['pct_items'] >= 0.0
+        assert d['market_snapshot']['days'] >= 0 and d['market_snapshot']['latest'] is not None
+        assert d['monitor_rank']['days'] >= 0 and d['monitor_rank']['n'] >= 0
     finally:
         conn.close()
 check('data_progress reports index/price/volume coverage', t_data_progress)

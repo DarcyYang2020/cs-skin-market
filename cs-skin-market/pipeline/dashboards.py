@@ -11,6 +11,17 @@ VOLUME_TARGET_DAYS = 90  # 真实成交量目标覆盖天数（数据积累主�
 _ADD_ACTIONS = ("\u53ef\u5206\u6279\u5efa\u4ed3", "\u53ef\u5206\u6279\u8865\u4ed3")  # 可分批建仓/可分批补仓
 
 
+def _snapshot_days(conn, table, col):
+    """日快照统计：覆盖天数/品数/最新日期（用于数据积累进度卡）。"""
+    try:
+        row = conn.execute(
+            "SELECT COUNT(DISTINCT date) days, COUNT(DISTINCT {0}) n, MAX(date) latest FROM {1}".format(col, table)
+        ).fetchone()
+    except Exception:
+        return {"days": 0, "n": 0, "latest": None}
+    return {"days": row[0] or 0, "n": row[1] or 0, "latest": row[2]}
+
+
 def data_progress(conn):
     """数据积累进度：大盘指数 / 单品价格 K 线 / 真实成交量覆盖度。"""
     def _scalar(sql, args=()):
@@ -51,6 +62,9 @@ def data_progress(conn):
                               "WHERE volume_day IS NOT NULL AND volume_day>0"),
             "est_days_to_target": max(0, VOLUME_TARGET_DAYS - int(avg_vol)),
         },
+        # 全市场快照 / 大户集中度 (2026-08-04 开始积累)
+        "market_snapshot": _snapshot_days(conn, "market_snapshot", "good_id"),
+        "monitor_rank": _snapshot_days(conn, "monitor_rank_snapshot", "item_id"),
     }
 
 

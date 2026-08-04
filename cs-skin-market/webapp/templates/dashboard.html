@@ -32,7 +32,9 @@ fetch("/api/data/progress")
   var rows = [
     ["大盘指数", (idx.rows || 0) + " 条 · " + _dpFmt(idx.start) + " ~ " + _dpFmt(idx.end)],
     ["价格K线", (p.items || 0) + " 个物品 · " + (p.rows || 0) + " 条 · 中位 " + (p.median_days || 0) + " 天 · 90日覆盖 " + (p.pct_90d || 0) + "%"],
-    ["真实成交量", (v.items_with_volume || 0) + " 个物品 · " + (v.rows || 0) + " 条 · 均 " + (v.avg_days_per_item || 0) + " 天/品 · 最近 " + _dpFmt(v.latest)]
+    ["真实成交量", (v.items_with_volume || 0) + " 个物品 · " + (v.rows || 0) + " 条 · 均 " + (v.avg_days_per_item || 0) + " 天/品 · 最近 " + _dpFmt(v.latest)],
+    ["全市场快照", (ms.days || 0) + " 天 " + "·" + " " + (ms.n || 0) + " 品 " + "·" + " 最近 " + _dpFmt(ms.latest)],
+    ["大户集中度", (mr.days || 0) + " 天 " + "·" + " " + (mr.n || 0) + " 品 " + "·" + " 最近 " + _dpFmt(mr.latest)]
   ];
   var html = '<table style="width:100%;font-size:13px;"><tbody>' + rows.map(function(r) {
     return '<tr><td style="width:130px;color:var(--text-muted);padding:4px 0;">' + r[0] + '</td><td style="padding:4px 0;">' + r[1] + '</td></tr>';

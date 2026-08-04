@@ -136,13 +136,12 @@ async def collect_kline_all() -> int:
     return ok
 
 
-def collect_market_snapshot(max_pages: int = 25) -> int:
+async def collect_market_snapshot(max_pages: int = 25) -> int:
     """全市场快照采集（get_page_list 翻页，悠悠锚价+在售数，存 market_snapshot）。"""
-    import asyncio as _asyncio
     from pipeline import db
     from pipeline.collector_snapshot import fetch_market_snapshot
     try:
-        rows = _asyncio.run(fetch_market_snapshot(max_pages=max_pages))
+        rows = await fetch_market_snapshot(max_pages=max_pages)
     except Exception as e:
         log(f"全市场快照异常: {e}")
         return 0
@@ -161,9 +160,8 @@ def collect_market_snapshot(max_pages: int = 25) -> int:
 
 
 
-def collect_monitor_rank(top_n: int = 50) -> int:
+async def collect_monitor_rank(top_n: int = 50) -> int:
     """大户集中度快照采集(monitor/rank, 每品顶头大户 Top N, 存 monitor_rank_snapshot)。"""
-    import asyncio as _asyncio
     from pipeline import db
     from pipeline.collector_monitor import fetch_monitor_rank
     conn = db.get_conn()
@@ -175,31 +173,25 @@ def collect_monitor_rank(top_n: int = 50) -> int:
         log("大户集中度快照: 无可采集品")
         return 0
     today = datetime.now(TZ_BJ).strftime("%Y-%m-%d")
-
-    async def _run_all():
-        # 全部品在同一个 event loop 内跑（浏览器实例绑定 loop，多次 asyncio.run 会失效）
-        total = 0
-        ok = 0
-        for r in items:
-            try:
-                rows = await fetch_monitor_rank(r["good_id"], top_n=top_n)
-            except Exception as e:
-                log(f"  [{r['id']}] 大户排行异常: {e}")
-                continue
-            if not rows:
-                continue
-            conn = db.get_conn()
-            try:
-                db.save_monitor_rank_snapshot(conn, today, r["id"], r["good_id"], rows)
-            finally:
-                conn.close()
-            total += len(rows)
-            ok += 1
-            if ok % 20 == 0:
-                log(f"  大户快照进度 {ok}/{len(items)}")
-        return total, ok
-
-    total, ok = _asyncio.run(_run_all())
+    total = 0
+    ok = 0
+    for r in items:
+        try:
+            rows = await fetch_monitor_rank(r["good_id"], top_n=top_n)
+        except Exception as e:
+            log(f"  [{r['id']}] 大户排行异常: {e}")
+            continue
+        if not rows:
+            continue
+        conn = db.get_conn()
+        try:
+            db.save_monitor_rank_snapshot(conn, today, r["id"], r["good_id"], rows)
+        finally:
+            conn.close()
+        total += len(rows)
+        ok += 1
+        if ok % 20 == 0:
+            log(f"  大户快照进度 {ok}/{len(items)}")
     log(f"大户集中度快照: {ok}/{len(items)} 品, 累计 {total} 行 ({today})")
     return total
 
@@ -215,22 +207,28 @@ def main():
         asyncio.run(collect_volume())
     except Exception as e:
         log(f"成交量任务异常: {e}")
+    # 浏览器任务合并到同一个 event loop（Playwright 实例绑定 loop，多次 asyncio.run 会导致后续任务拿到已失效浏览器）
+    async def _playwright_tasks():
+        try:
+            await collect_market_snapshot(max_pages=25)
+        except Exception as e:
+            log(f"全市场快照任务异常: {e}")
+        try:
+            await collect_monitor_rank(top_n=50)
+        except Exception as e:
+            log(f"大户集中度快照任务异常: {e}")
+        if args.kline or is_sunday:
+            log("--kline：全量刷新 90 日 K 线")
+            try:
+                await collect_kline_all()
+            except Exception as e:
+                log(f"K线任务异常: {e}")
     try:
-        collect_market_snapshot(max_pages=25)
+        asyncio.run(_playwright_tasks())
     except Exception as e:
-        log(f"全市场快照任务异常: {e}")
-    try:
-        collect_monitor_rank(top_n=50)
-    except Exception as e:
-        log(f"大户集中度快照任务异常: {e}")
+        log(f"浏览器采集任务异常: {e}")
     # 每周日额外全量刷新 90 日 K 线（对齐 docstring；--kline 亦可手动触发）
     is_sunday = datetime.now(TZ_BJ).isoweekday() == 7
-    if args.kline or is_sunday:
-        log("--kline：全量刷新 90 日 K 线")
-        try:
-            asyncio.run(collect_kline_all())
-        except Exception as e:
-            log(f"K线任务异常: {e}")
     log("=== 每日采集完成 ===")
 
 
