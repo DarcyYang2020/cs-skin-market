@@ -319,6 +319,44 @@ def t_advice():
     assert '首仓10%' in a['suggest'] and '跌10%加20%' in a['suggest'] and '跌15%加30%' in a['suggest'], a['suggest']
 check('portfolio advice 补仓分级 works', t_advice)
 
+def t_p08_deep_value_tranche():
+    from types import SimpleNamespace
+    import pipeline.item_analysis as ia
+    pos = SimpleNamespace(percentile_90d=15.0, zscore_90d=-0.8, high_90d=100.0,
+                          low_90d=50.0, mean_90d=80.0, median_90d=82.0,
+                          current_price=57.0, data_points=90, valuation_tier='undervalued')
+    orig = (ia._analyze_position, ia.compute_sentiment_score, ia.compute_sentiment_factor,
+            ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision)
+    ia._analyze_position = lambda prices: pos
+    ia.compute_sentiment_score = lambda: 50          # 40<=sent<=65
+    ia.compute_sentiment_factor = lambda: 0.0
+    ia.event_risk_coefficient = lambda: 1.0
+    ia.compute_micro_th = lambda prices: 45          # 单品TH>=35
+    def fake_fd(*a, **k):
+        return SimpleNamespace(action='watch', action_label='🟡 观望', action_detail='',
+                               deduction_sources=[], zone='undervalued', zone_label='低估',
+                               liquidity_filtered=False, percentile_90d=15.0,
+                               raw_th_score=45, corrected_th_score=45, position_limit=0.0)
+    ia.compute_fusion_decision = fake_fd
+    kw = dict(name='Test', volumes=[0] * 90, market_pct_90d=15.0,
+              market_cycle='consolidation', market_zscore=-0.8, market_th_score=45,
+              market_30d_change=-3.0, market_drop21=-3.0, recent_buy_dates=[], signal_date='2026-07-03')
+    # 先跌后恢复: 单品TH真实计算>=35, 触发 P0-8 深值企稳
+    prices = [60.0]*80 + [58.0, 56.0, 55.0, 56.0, 57.0, 58.0, 58.5, 59.0, 59.5, 60.0]
+    try:
+        res = ia.run_item_analysis(prices=prices, **kw)
+        fd = res.fusion_decision
+        assert fd['action'] == 'buy', fd['action']
+        assert 'deep_value_stable_market' in fd['deduction_sources'], fd['deduction_sources']
+        assert '深值' in fd['action_label'], fd['action_label']
+        assert fd['position_limit'] == 0.10, fd['position_limit']
+        # 2026-08-04 分批落地: action_detail 带档位与加权期望
+        assert '分批' in fd['action_detail'] and '跌10%加20%' in fd['action_detail'], fd['action_detail']
+    finally:
+        (ia._analyze_position, ia.compute_sentiment_score, ia.compute_sentiment_factor,
+         ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision) = orig
+check('P0-8 deep-value buy carries tranche advice (2026-08-04)', t_p08_deep_value_tranche)
+
 print('[Batch Scan: 距买点摘要/排序/HTML]')
 def t_batch_scan_display():
     from pipeline.batch_scan import summarize_buy_distance, sort_results, build_scan_html
@@ -521,7 +559,7 @@ check('buy_distance marks in-zone with full bar', t_buy_distance_in_zone)
 def t_buy_distance_scenarios():
     from types import SimpleNamespace
     from pipeline.buy_distance import compute_buy_distance
-    # ????: current=111 ??? pct30 -> ??=z-1.5(????)
+    # 下跌寻底: current=111 已过 pct30 -> 目标=z-1.5(仍低于现价)
     prices = [200.0]
     c = 200.0
     for _ in range(89):
@@ -531,14 +569,14 @@ def t_buy_distance_scenarios():
     pos = SimpleNamespace(percentile_90d=5.0, zscore_90d=-1.8)
     bd = compute_buy_distance(prices, pos, 32.0, price_zones={'entry': {'low': 0, 'high': 0}}, cycle_phase='distribution')
     assert bd is not None and bd['scenario'] == 'bottom', bd
-    assert bd['target_price'] < bd['current_price'], bd          # ????????
+    assert bd['target_price'] < bd['current_price'], bd          # 目标价永不高于现价
     assert bd['gap_pct'] > 0 and bd['gap_rmb'] > 0, bd
     assert bd['z15_price'] and bd['z15_price'] < bd['current_price'], bd
-    # ????: ??=MA??(????)
+    # 强势回踩: 目标=MA支撑(低于现价)
     bd2 = compute_buy_distance(prices, pos, 65.0, price_zones={'entry': {'low': 0, 'high': 0}}, cycle_phase='accumulation')
     assert bd2['scenario'] in ('breakout', 'pullback'), bd2
     assert bd2['target_price'] <= bd2['current_price'], bd2
-    # ????
+    # 已到买点: 目标=现价
     bd3 = compute_buy_distance(prices, pos, 32.0, price_zones={'entry': {'low': 0, 'high': 0}}, cycle_phase='distribution', action='buy')
     assert bd3['scenario'] == 'done' and bd3['target_price'] == bd3['current_price'], bd3
     assert '首仓10%' in bd3.get('tranche_plan', ''), bd3

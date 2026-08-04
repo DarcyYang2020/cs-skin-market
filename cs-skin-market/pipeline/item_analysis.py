@@ -1339,12 +1339,13 @@ def run_item_analysis(
         fd_dict = fusion_decision_summary(fd)
 
     # ---- P0-8: Deep-value stable-market low-buy (2026-08-03, 24,123-day replay) ----
-    # A??(????)?????: 2????????????(mth<40), ???????????
-    # ???????????: pct<=20 z<=-0.5 ??TH>=35 ??TH>=40 40<=sent<=65 drop21>=-5
-    # 266 ????(???buy???,7???): 14d 48.1%/+4.20, 30d 45.5%/+8.17
-    # pre-1/23 ???? 80 ??: 14d 61.3%/+10.05, 30d 61.3%/+17.60
-    # 1/23~2/12 ??? 17 ??: 14d 70.6%/+4.10, 30d 76.5%/+27.29
-    # ?????(??-0.47/-1.14), ?????? -> ??0.10??
+    # A方向(深值+大盘企稳)补充层: 补恐慌共振休眠期/TH>=55突破期缺口(2月漏买根因: 大盘mth<40)
+    # 触发: pct<=20 z<=-0.5 单品TH>=35 大盘TH>=40 40<=sent<=65 drop21>=-5; watch/avoid升级buy; 7天去重
+    # 266 信号(补充,与引擎buy零重叠): 14d 48.1%/+4.20, 30d 45.5%/+8.17
+    # pre-1/23 护栏 80 信号: 14d 61.3%/+10.05, 30d 61.3%/+17.60
+    # 1/23~2/12 底部区 17 信号: 14d 70.6%/+4.10, 30d 76.5%/+27.29
+    # 右偏(中位数-0.47/-1.14), 单笔波动大 -> 仓位 0.10 轻仓
+    # 2026-08-04 分批拟合(241信号): 首仓10%->跌10%加20%->跌15%加30%, hold14资金加权 +3.81%->+11.01%
     if fd.action in ("watch", "avoid") and position.percentile_90d is not None and position.zscore_90d is not None:
         _dv_ok = (position.percentile_90d <= 20 and position.zscore_90d <= -0.5
                   and th.score >= 35 and market_th_score >= 40
@@ -1364,10 +1365,11 @@ def run_item_analysis(
                         break
             if not _dup:
                 fd.action = "buy"
-                fd.action_label = "🟢 ????????????"
-                fd.action_detail = (f"?????(pct={position.percentile_90d:.0f}%,Z={position.zscore_90d:.1f})"
-                                    f"+????(TH={market_th_score},21???{market_drop21:.1f}%)?"
-                                    f"??14d??+4.2%/30d+8.2%??????")
+                fd.action_label = "🟢 深值·大盘企稳·分批建仓"
+                fd.action_detail = (f"深值低估(pct={position.percentile_90d:.0f}%,Z={position.zscore_90d:.1f})"
+                                    f"+大盘企稳(TH={market_th_score},21日跌幅{market_drop21:.1f}%)·"
+                                    f"回测14d+4.2%/30d+8.2%(轻仓0.10)·分批:首仓10%→跌10%加20%→跌15%加30%"
+                                    f"(241信号14d资金加权+11.0%)")
                 fd.deduction_sources.append("deep_value_stable_market")
                 fd.position_limit = 0.10
                 fd_dict = fusion_decision_summary(fd)
