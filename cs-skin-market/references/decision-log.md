@@ -448,3 +448,15 @@
 
 数据现状：大盘 K 线 992 条（2023-11-17 起）、单品价格 K 线 94 品/中位 364 天（成熟）；真实成交量均 8.1 天/品（预计还需约 82 天自然日达 90 天覆盖）——这是引擎参数复验的等待主线。
 下一步：待成交量积累到约 90 天/品后，再进行引擎参数复验（见 AGENTS.md 参数拟合规则）。
+
+
+---
+
+## 学习官方 csQAQ 接口文档（2026-08-04）
+
+- 来源：https://docs.csqaq.com/（Apifox 托管，项目 ID 4711104，37 个端点）。
+- 发现：项目未用的新端点 30+，且直连全部 401（IP 白名单），但通过 Playwright 访问对应页面拦截 /proxies/api/v1/* 可绕过（复用 _capture_proxies_api）。
+- 实测可用：/detail→info/get_page_list（分页列表+悠悠锚价）、/series→info/get_series_list（系列动量+资金规模）、/monitor→monitor/rank + get_task_trends（大户持仓）、/stat/case→info/roi（开箱回报率）、/exchange→info/exchange_detail。
+- 关键结论：官方文档无「单品每日真实成交历史」接口（simple/chartAll 的 v=0），**真实成交量主线不变**，悠悠有品仍为唯一来源。
+- 落地分级：P0 系列动量卡 + get_page_list/get_all_goods_rank 全市场扫描（扩样本路径）；P1 monitor/rank 大户集中度数据积累（与成交量积累并行）；P2 开箱量/ROI 因子、get_all_goods_* 权限确认后全市场估值分布。
+- 文档：cs-knowledge.md 新增「官方接口文档 (docs.csqaq.com) 端点清单」；AGENTS.md 数据采集路径补充说明。

@@ -30,6 +30,9 @@
 
 **浏览器复用**: _get_browser() 全局单例，5 分钟超时重建。
 
+**官方接口文档**: https://docs.csqaq.com/（Apifox 托管）。除上表外还有 30+ 未用端点（全量价格/排行榜 get_all_goods_*、饰品列表 get_page_list、系列 get_series_list、库存监控 monitor/rank、开箱 stat/case + info/roi 等）。直连均受 IP 白名单限制（401），可访问对应页面（/detail /rank /monitor /series /stat/case /exchange）拦截 /proxies/api/v1/* 响应绕过。完整清单与页面映射见 references/cs-knowledge.md「官方接口文档 (docs.csqaq.com) 端点清单」。
+
+
 **StatTrak 过滤**: 自动排除 StatTrak™ 和纪念品版本，仅分析普通版。名称匹配时优先 market_hash_name，失败则通过搜索栏降级查询。
 
 ## 单品分析引擎 (item_analysis.py)

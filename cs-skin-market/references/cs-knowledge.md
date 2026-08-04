@@ -277,6 +277,74 @@ Body: {\"good_id\": int, \"key\": \"sell_price|sell_num|buy_price|buy_num|turnov
 
 ---
 
+### 官方接口文档 (docs.csqaq.com) 端点清单
+
+> 学习日期: 2026-08-04。官方文档托管于 Apifox（docs.csqaq.com，项目 ID 4711104），共收录 37 个端点。
+> 项目直连 API 均受 IP 白名单限制（当前返回 401），**通过 Playwright 访问对应页面、拦截 /proxies/api/v1/* 响应即可绕过**（复用 collector_csqaq._capture_proxies_api 机制，无需 ApiToken）。
+
+#### 页面 → 端点映射（2026-08-04 实测）
+
+| 页面 | 触发端点 | 用途 |
+|---|---|---|
+| /detail | info/get_page_list | 分页饰品列表（筛选类别/磨损/类型），返回悠悠锚价+在售数 |
+| /rank | info/get_rank_list | 排行榜单 |
+| /monitor | monitor/rank、monitor/get_task_trends、monitor/get_task_stat | 库存监控（大户持仓持有量排行/最新动态） |
+| /exchange | info/exchange_detail | 挂刀行情（Steam 汇率） |
+| /series | info/get_series_list | 热门系列（资金规模+1/7/15/30/90/180 涨跌+15点趋势） |
+| /stat/case | info/roi | 开箱回报率列表 |
+| /goods/{id} | info/good、info/chart | 单品详情+K线（项目已在用） |
+
+#### 官方端点总表（37 个）
+
+| 端点 | 方法 | 说明 | 项目状态 |
+|---|---|---|---|
+| /api/v1/sub_data | GET | 获取指数详情数据（大盘 sub_index_data 同源） | 新 |
+| /api/v1/sub/kline | GET | 获取指数K线图 | 已用 collector.fetch_index_kline |
+| /api/v1/goods/get_all_goods_id | - | 获取全量站内饰品ID | 新·触发方式待确认 |
+| /api/v1/goods/get_all_goods_info | POST | 获取全量饰品价格数据（多平台 sell/buy/num + 悠悠/IGXE 租赁价） | 新·触发方式待确认 |
+| /api/v1/goods/get_all_goods_rank | POST | 获取全量饰品排行榜（1/7/15/30/90/180/365 涨跌 + buff/yyyp 价格趋势） | 新·触发方式待确认 |
+| /api/v1/info/simple/chartAll | POST | 获取单件饰品简化K线 [{t,o,c,h,l,v}]（v 恒为 0，无真实成交量） | 新 |
+| /api/v1/info/get_popular_goods | POST | 获取全量饰品热度排名（rank_num + change + turnover_number） | 新·触发方式待确认 |
+| /api/v1/goods/get_goods_template | POST | 获取饰品模板（含 container/income/roi、buff_id/yyyp_id/steam_id/c5_id 跨平台映射） | 新 |
+| /api/v1/info/get_good_id | - | 获取饰品的ID信息（项目在用 goods/get_good_id，等价） | 已用(等价) |
+| /api/v1/search/suggest | GET | 联想查询饰品（搜索框自动补全 ?text=） | 新 |
+| /api/v1/info/good | GET | 获取单件饰品详情（Playwright 拦截 info/good?id=） | 已用 |
+| /api/v1/info/good/statistic | GET | 获取单件饰品存世量走势（?id=，[{statistic,created_at}] 日序列） | 新 |
+| /api/v1/goods/getPriceByMarketHashName | POST | 批量获取出售价格（body marketHashNameList[] → success{goodId, buff/yyyp/steam 价} + error[]） | 新 |
+| /api/v1/info/chart | POST | 获取单件饰品图表数据（sell_price/sell_num/buy_price/buy_num/turnover_number） | 已用 |
+| /api/v1/info/chartAll | - | 获取单件饰品全量图表数据 | 暂停使用 |
+| /api/v1/info/get_rank_list | POST | 获取排行榜单信息 | 新 |
+| /api/v1/info/get_page_list | POST | 获取饰品列表信息（body page_index/page_size/search/filter{类别,磨损,类型}；返回 yyyp_sell_price/yyyp_sell_num） | 新·已实测 |
+| /api/v1/info/get_series_list | POST | 获取热门系列饰品列表（sell_price_1..180 + amount + total_value + recently_data[15]） | 新·已实测 |
+| /api/v1/info/get_series_detail | - | 获取单件热门系列饰品详情 | 新 |
+| /api/v1/info/exchange_detail | POST | 获取挂刀行情详情 | 新·已实测 |
+| /api/v1/monitor/get_task_trends | - | 获取库存监控最新动态 | 新·已实测 |
+| /api/v1/monitor/get_task_list | POST | 获取库存监控任务列表（body page_index/page_size/order/search → res[{steam_name,steam_id,amount,active_time,state}]） | 新 |
+| /api/v1/monitor/rank | POST | 获取库存监控持有量排行榜（body good_id → [{steam_name,steam_id,avatar,num}]） | 新·已实测 |
+| /api/v1/task/get_task_info | - | 获取监控单个用户信息 | 新 |
+| /api/v1/task/get_task_business | - | 获取监控单个用户库存动态 | 新 |
+| /api/v1/task/get_task_all | - | 获取监控单个用户全部库存 | 新 |
+| /api/v1/task/get_task_recent | - | 获取监控单个用户库存快照列表 | 新 |
+| /api/v1/stat/case | POST | 获取武器箱开箱数量统计（daily/weekly/monthly/total + cn_name/good_id/ground_at） | 新 |
+| /api/v1/info/roi | POST | 获取武器箱开箱回报率列表（roi/income/price/num + comment 掉落状态） | 新·已实测 |
+| /api/v1/info/roi_detail | GET | 获取单个武器箱开箱回报率走势（?id=，小时级 {income,roi,date}） | 新 |
+| /api/v1/stat/case/chart | POST | 获取单个武器箱历史开箱量（body case_id → [{daily,date}] 日序列） | 新 |
+| /api/v1/info/container_data_info | POST | 获取所有收藏品列表 | 新 |
+| /api/v1/info/good/container_detail | - | 获取单个收藏品的包含物 | 新 |
+| /api/v1/info/vol_data_info | POST | 获取成交量数据信息（**武器箱维度**，statistic/avg_price/sum_price；非单品真实成交量） | 新 |
+| /api/v1/info/vol_data_detail | - | 获取成交量图表/磨损信息 | 新 |
+| /api/v1/info/get_banana_data | - | 获取所有Banana列表数据 | 新·无关 |
+| /api/v1/info/get_banana_chart | - | 获取单件Banana图表数据 | 新·无关 |
+
+> 补充：/monitor 页面还触发了文档未收录的 monitor/get_task_stat（监控任务统计）。
+
+#### 对项目的价值判断（2026-08-04）
+
+- **真实成交量主线不变**：官方文档无「单品每日真实成交历史」接口（simple/chartAll 的 v=0；get_popular_goods 仅当日 turnover_number），悠悠有品仍是唯一真实量来源，等成交量积累继续。
+- **P0（纯展示/数据层，不进引擎）**：get_series_list 系列动量卡（大盘/单品参考所属系列涨跌+资金规模）；get_page_list + get_all_goods_rank 做全市场异动扫描候选池，扩样本路径（解决单品 92 品样本瓶颈）。
+- **P1（新数据积累主线，与成交量积累并行）**：monitor/rank 每日采集自选品 Top 持有者快照 → 积累集中度历史 → 复验期回测「集中度变化」能否提升吸筹信号。
+- **P2（复验期评估）**：stat/case 开箱量 + info/roi 回报率 → 事件/热度因子量化；get_all_goods_* 权限确认后做全市场估值分布。
+
 ## 八、csQAQ API 数据字典
 
 ### 采集方式
