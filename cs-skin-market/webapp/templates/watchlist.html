@@ -19,7 +19,7 @@
 <div class="toolbar">
   <div class="row-flex">
     <button class="btn btn-primary btn-sm" onclick="openAddModal()">＋ 添加自选</button>
-    <button class="btn btn-accent btn-sm" onclick="openScanModal()">📊 批量扫描</button>
+    <button class="btn btn-accent btn-sm" onclick="openScanModal()">📊 批量扫描<span id="scan-signal-badge" style="display:none;margin-left:6px;background:var(--red);color:#fff;border-radius:10px;font-size:11px;padding:1px 7px;font-weight:600;"></span></button>
     
   </div>
   <div class="row-flex">
@@ -141,6 +141,7 @@
     <span class="card-title">📒 执行记录与复盘</span>
     <div style="display:flex;gap:10px;align-items:center;">
       <span style="font-size:11px;color:var(--text-muted);">14/30 天到期自动按收盘价结算（净收益扣 2% 双边成本）</span>
+      <button type="button" class="btn btn-primary btn-sm" onclick="openExecManual()">＋ 手动录入</button>
       <button type="button" class="btn btn-outline btn-sm" onclick="loadExecutions()">🔄 刷新</button>
     </div>
   </div>
@@ -162,7 +163,7 @@
       <tbody id="exec-tbody"></tbody>
     </table>
   </div>
-  <div id="exec-empty" style="padding:20px;text-align:center;color:var(--text-muted);display:none;">暂无执行记录：批量扫描结果里点「💼 按建议执行」开始记账，14/30 天后自动复盘</div>
+  <div id="exec-empty" style="padding:20px;text-align:center;color:var(--text-muted);display:none;">暂无执行记录：点上方「📝 手动录入」或批量扫描结果里「💼 按建议执行」开始记账，14/30 天后自动复盘</div>
 </div>
 
 <!-- Pagination -->
@@ -292,10 +293,10 @@
 <!-- Exec Modal (P0-2, 2026-08-04): 按建议执行 -->
 <div class="modal-overlay" id="exec-modal" style="display:none;">
   <div class="modal">
-    <h3>💼 按建议执行</h3>
+    <h3 id="exec-modal-title">💼 按建议执行</h3>
     <div class="form-group">
       <label>物品名称</label>
-      <input type="text" id="exec-name" class="form-input" readonly style="background:var(--bg-input);">
+      <input type="text" id="exec-name" class="form-input" placeholder="输入物品名称" style="background:var(--bg-input);">
     </div>
     <div class="row-flex" style="gap:12px;">
       <div class="form-group" style="flex:1;">
@@ -652,6 +653,7 @@ function batchScanSelectedIds(ids) {
                 clearInterval(poll);
                 modal.style.display = 'none';
                 showToast('✅ 批量扫描完成 (' + ids.length + ' 个物品)');
+                refreshScanMeta();
               } else if (d.done) {
                 clearInterval(poll); modal.style.display = 'none';
                 showToast('批量扫描已结束但结果为空，请刷新页面查看', 'error');
@@ -699,7 +701,15 @@ function sigColor(a) {
   if (a === "建议止损") return "var(--red)";
   return "var(--accent)";
 }
+function updateScanBadge(signals) {
+  var b = document.getElementById('scan-signal-badge');
+  if (!b) return;
+  var n = signals ? signals.length : 0;
+  if (n > 0) { b.textContent = '信号 ' + n; b.style.display = 'inline-block'; }
+  else { b.style.display = 'none'; }
+}
 function renderSignalCenter(scans, signals) {
+  updateScanBadge(signals);
   var sc = document.getElementById("signal-center");
   if (!sc) return;
   if (!signals || signals.length === 0) {
@@ -732,21 +742,25 @@ function loadScanHistory(scanId) {
     }
   });
 }
-fetch("/api/watchlist/scan-history")
-.then(function(r) { return r.json(); })
-.then(function(d) {
-  if (!d.found) return;
-  renderSignalCenter(d.scans, d.latest_signals);
-  var sel = document.getElementById("scan-history-select");
-  if (sel) {
-    d.scans.forEach(function(s) {
-      var opt = document.createElement("option");
-      opt.value = s.scan_id;
-      opt.textContent = (s.time || "").replace("T", " ").slice(0, 16) + " ｜ " + s.results_count + "个品" + (s.signals_count ? " ｜ " + s.signals_count + "信号" : "");
-      sel.appendChild(opt);
-    });
-  }
-});
+function refreshScanMeta() {
+  fetch("/api/watchlist/scan-history")
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (!d.found) return;
+    renderSignalCenter(d.scans, d.latest_signals);
+    var sel = document.getElementById("scan-history-select");
+    if (sel) {
+      sel.innerHTML = '<option value="">📚 历史扫描</option>';
+      d.scans.forEach(function(s) {
+        var opt = document.createElement("option");
+        opt.value = s.scan_id;
+        opt.textContent = (s.time || "").replace("T", " ").slice(0, 16) + " ｜ " + s.results_count + "个品" + (s.signals_count ? " ｜ " + s.signals_count + "信号" : "");
+        sel.appendChild(opt);
+      });
+    }
+  });
+}
+refreshScanMeta();
 
 function clearScanCache() {
   fetch("/api/watchlist/batch-scan-latest/clear", {method:"POST"})
@@ -771,7 +785,10 @@ function pnlBadge(pnl, px) {
     + (px ? '<br><span style="font-size:11px;color:var(--text-muted);">¥' + Number(px).toFixed(2) + '</span>' : '');
 }
 function openExecModal(btn) {
-  document.getElementById('exec-name').value = btn.getAttribute('data-name') || '';
+  var nameEl = document.getElementById('exec-name');
+  nameEl.value = btn.getAttribute('data-name') || '';
+  nameEl.readOnly = true;
+  document.getElementById('exec-modal-title').textContent = '💼 按建议执行';
   document.getElementById('exec-action').value = btn.getAttribute('data-action') || 'buy';
   document.getElementById('exec-signal').textContent = btn.getAttribute('data-signal') || '';
   document.getElementById('exec-price').value = btn.getAttribute('data-price') || '';
@@ -779,12 +796,29 @@ function openExecModal(btn) {
   document.getElementById('exec-date').value = new Date().toISOString().slice(0, 10);
   openModal('exec-modal');
 }
+function openExecManual() {
+  var nameEl = document.getElementById('exec-name');
+  nameEl.value = '';
+  nameEl.readOnly = false;
+  document.getElementById('exec-modal-title').textContent = '📝 手动录入执行';
+  document.getElementById('exec-action').value = 'buy';
+  document.getElementById('exec-signal').textContent = '手动录入：建议信号留空，14/30 天到期仍自动按收盘价复盘';
+  document.getElementById('exec-price').value = '';
+  document.getElementById('exec-qty').value = 1;
+  document.getElementById('exec-date').value = new Date().toISOString().slice(0, 10);
+  openModal('exec-modal');
+  nameEl.focus();
+}
 function submitExec() {
+  var name = document.getElementById('exec-name').value.trim();
+  var price = parseFloat(document.getElementById('exec-price').value);
+  if (!name) { showToast('请填写物品名称', 'error'); return; }
+  if (!(price > 0)) { showToast('成交价必须大于 0', 'error'); return; }
   var body = {
-    name: document.getElementById('exec-name').value,
+    name: name,
     action: document.getElementById('exec-action').value,
     advice_date: document.getElementById('exec-date').value,
-    exec_price: parseFloat(document.getElementById('exec-price').value),
+    exec_price: price,
     qty: parseInt(document.getElementById('exec-qty').value, 10) || 1,
     advice_signal: document.getElementById('exec-signal').textContent
   };
@@ -810,7 +844,7 @@ function loadExecutions() {
     var empty = document.getElementById('exec-empty');
     if (!sec || !tb || !d.ok) return;
     var list = d.executions || [];
-    sec.style.display = list.length ? 'block' : 'none';
+    sec.style.display = 'block';
     if (empty) empty.style.display = list.length ? 'none' : 'block';
     tb.innerHTML = list.map(function(e) {
       var act = execActionLabel(e.action);
