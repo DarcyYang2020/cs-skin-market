@@ -285,8 +285,8 @@ def t_advice():
             risk_level='D',
             price_zones=price_zones,
         )
-    # 深度低估+趋势及格+大盘配合 → 可分批补仓
-    a = _portfolio_advice(True, 100.0, 10, 80.0, mk(pct=15, z=-1.2, th=45), market_th=50, sentiment_score=60)
+    # 深度低估+趋势及格+大盘配合+融合buy → 可分批补仓 (P1: 需融合决策放行)
+    a = _portfolio_advice(True, 100.0, 10, 80.0, mk(pct=15, z=-1.2, th=45, fusion='buy'), market_th=50, sentiment_score=60)
     assert a['action'] == '可分批补仓', a['action']
     # 半山腰 pct 25~40 → 暂缓补仓
     a = _portfolio_advice(True, 100.0, 10, 80.0, mk(pct=30, z=-0.6, th=45), market_th=50, sentiment_score=60)
@@ -297,11 +297,15 @@ def t_advice():
     # 深度低估但大盘TH<45 → 暂缓补仓
     a = _portfolio_advice(True, 100.0, 10, 80.0, mk(pct=15, z=-1.2, th=45), market_th=40, sentiment_score=60)
     assert a['action'] == '暂缓补仓', a['action']
+    # P1(2026-08-04): 条件满足但融合决策未放行(watch) → 暂缓补仓(回测: watch子集14d均值-0.3%)
+    a = _portfolio_advice(True, 100.0, 10, 80.0, mk(pct=15, z=-1.2, th=45, fusion='watch'), market_th=50, sentiment_score=60)
+    assert a['action'] == '暂缓补仓', a['action']
+    assert '融合决策未放行' in a['reason'], a['reason']
     # 趋势走弱 → 止损
     a = _portfolio_advice(True, 100.0, 10, 80.0, mk(pct=15, z=-1.2, th=25), market_th=50, sentiment_score=60)
     assert a['action'] == '趋势走弱，考虑止损', a['action']
     # A方向(2026-08-03): 带 price_zones 买入区间时给出补仓价位与摊薄成本
-    a = _portfolio_advice(True, 100.0, 10, 80.0, mk(pct=15, z=-1.2, th=45, price_zones={'entry': {'low': 60.0, 'high': 75.0}, 'current': 80.0}), market_th=50, sentiment_score=60)
+    a = _portfolio_advice(True, 100.0, 10, 80.0, mk(pct=15, z=-1.2, th=45, fusion='buy', price_zones={'entry': {'low': 60.0, 'high': 75.0}, 'current': 80.0}), market_th=50, sentiment_score=60)
     assert a['action'] == '可分批补仓', a['action']
     assert len(a.get('add_positions', [])) == 3, a
     assert a['add_positions'][0]['price'] == 75.0 and a['add_positions'][2]['price'] == 60.0
@@ -309,7 +313,7 @@ def t_advice():
     assert a['avg_cost_after'] > 0, a
     assert '批1' in a['suggest'] and '摊薄成本' in a['suggest'], a['suggest']
     # 持仓: signal_guidance 传 expectancy -> type_label 覆盖为分层标签(2026-08-04 修复)
-    a = _portfolio_advice(True, 100.0, 10, 80.0, mk(pct=15, z=-1.2, th=45, price_zones={'entry': {'low': 60.0, 'high': 75.0}, 'expectancy': {'label': '深值企稳'}}), market_th=50, sentiment_score=60)
+    a = _portfolio_advice(True, 100.0, 10, 80.0, mk(pct=15, z=-1.2, th=45, fusion='buy', price_zones={'entry': {'low': 60.0, 'high': 75.0}, 'expectancy': {'label': '深值企稳'}}), market_th=50, sentiment_score=60)
     assert a['type_label'] == '深值企稳', a['type_label']
     # 非持仓: suggest 给出距建仓参考线的距离
     a = _portfolio_advice(False, 0, 0, 80.0, mk(pct=35, z=-0.8, th=45))
@@ -394,6 +398,21 @@ def t_batch_scan_display():
     assert "跌10%加20%" in html, html
     assert "¥96.00" in html and "¥90.00" in html
     assert "批量扫描完成" in html and "成功 2/2" in html
+    # P2(2026-08-04): 并发建议仓位超上限 → 预警提示(展示层)
+    results_cap = [
+        dict(name="A", holding=0, price_rmb=100.0, grade="A", score=4.0, valuation_tier="低估", percentile_90d=12.0,
+             buy_distance={}, position_limit=0.3,
+             portfolio_advice={"action": "可分批建仓", "suggest": "", "hold_guidance": ""}, error=None),
+        dict(name="B", holding=0, price_rmb=90.0, grade="A", score=4.0, valuation_tier="低估", percentile_90d=10.0,
+             buy_distance={}, position_limit=0.3,
+             portfolio_advice={"action": "可分批建仓", "suggest": "", "hold_guidance": ""}, error=None),
+        dict(name="C", holding=1, avg_cost=100.0, price_rmb=85.0, grade="A", score=4.0, valuation_tier="低估", percentile_90d=12.0,
+             buy_distance={}, position_limit=0.3,
+             portfolio_advice={"action": "可分批补仓", "suggest": "", "hold_guidance": ""}, error=None),
+    ]
+    html_cap = build_scan_html(results_cap, 3, {"th": 55, "sentiment": 70, "cycle": "bear", "index": 1566}, now_str="12:00:00")
+    assert "并发建议仓位 90%" in html_cap, html_cap
+    assert "上限 80%" in html_cap, html_cap
 check('batch scan 距买点摘要/排序/HTML works', t_batch_scan_display)
 
 def t_advice_buy_distance_passthrough():

@@ -1513,9 +1513,11 @@ async def _scan_item(row, idx, ms, market_th_score, sentiment_score):
             _web_log.warning(f"batch scan skip {exact_name}: {_sane_msg}")
             return dict(name=exact_name, holding=holding, error="价格校验未通过，保留旧数据")
         pa = _portfolio_advice(holding, avg_cost, qty, item.price_rmb, analysis, market_th=market_th_score, sentiment_score=sentiment_score)
+        _fd_lim = (getattr(analysis, "fusion_decision", {}) or {}).get("position_limit", 0) or 0
         result = dict(
             name=exact_name, holding=holding, avg_cost=avg_cost, qty=qty,
             price_rmb=item.price_rmb, grade=analysis.value.grade, score=analysis.value.score,
+            position_limit=float(_fd_lim),
             portfolio_advice=pa,
             buy_distance=summarize_buy_distance(getattr(analysis, "buy_distance", None) or {}),
             valuation_tier=getattr(analysis.position, "valuation_tier", "") if hasattr(analysis, "position") else "",

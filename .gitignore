@@ -1,4 +1,4 @@
-﻿# Python
+# Python
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -39,3 +39,7 @@ node_modules/
 
 # Auth / secrets - NEVER commit
 cs-skin-market/data/uu_headers.json
+
+
+# Replay outputs (regenerable, large) - do not commit
+**/data/*_tmp.json

@@ -4,6 +4,7 @@ from datetime import datetime
 
 from . import collector_csqaq, collector, db, item_analysis, index_analysis
 from .buy_distance import tranche_plan_text
+from .config import TOPUP_EXPECTANCY_STATS, PORTFOLIO_CAP_CONCURRENT
 
 _log = logging.getLogger("batch_scan")
 
@@ -41,8 +42,9 @@ def signal_guidance(action_label: str = "", expectancy: dict = None) -> dict:
 def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th=None, sentiment_score=50.0):
     """Generate personalized portfolio advice based on cost basis and current position.
     sentiment_score: contrarian 0-100 (0=extreme greed, 100=extreme fear), default neutral.
-    补仓分层阈值来自单品回测(run_item_backtest.py, 2026-04~07, warmup=30):
-      pct<=25 & th>=40: 14d胜率75% | pct 25~40(半山腰): 14d胜率28% | sent<=30(贪婪): 30d胜率0%
+    补仓分层阈值来自全量日记录回放(2026-08-04, 2025-11-02~2026-07-13, warmup=60, 只读引擎):
+      可分批补仓(条件+融合buy): 14d胜率54%/均值+5.4% | 半山腰(25~40): 14d均值≈0 |
+      sent<=30(贪婪): 14d均值-2.4% | 大盘未配合(mth<45): 14d均值-1.0%
     """
     if not holding or avg_cost <= 0:
         # Non-held: entry advice —— 与单品报告决策同源（fusion_decision），统一口径
@@ -118,6 +120,8 @@ def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th
 
     advice = {"cost_price": avg_cost, "current_price": current_price, "qty": qty,
               "pnl_pct": round(pnl_pct, 1), "cost_total": round(cost_total, 2), "market_value": round(market_value, 2)}
+    _fusion = getattr(analysis, "fusion_decision", {}) or {}
+    _fusion_act = _fusion.get("action", "") if isinstance(_fusion, dict) else ""
 
     if pnl_pct > 20 and th_score < 40:
         advice["action"] = "建议止盈减仓"
@@ -143,16 +147,20 @@ def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th
         if sent <= 30:
             advice["action"] = "禁止补仓"
             advice["reason"] = f"浮亏{pnl_pct:.0f}%但市场贪婪(sent={sent:.0f})，逆势抄底期望为负"
-            advice["suggest"] = f"情绪贪婪(sent={sent:.0f}，≤30禁补)，距可补区间还差{max(0, 30 - sent):.0f}分，等情绪转中性/恐惧再考虑"
+            advice["suggest"] = (f"情绪贪婪(sent={sent:.0f}，≤30禁补)，距可补区间还差{max(0, 30 - sent):.0f}分，"
+                                 f"等情绪转中性/恐惧再考虑（回测：贪婪期补仓14d均值{TOPUP_EXPECTANCY_STATS['greedy']['avg14']:+.1f}%）")
         # 半山腰（pct 25~40）：14d胜率仅28%，不构成补仓点
         elif 25 < pct <= 40:
             advice["action"] = "暂缓补仓"
             advice["reason"] = f"浮亏{pnl_pct:.0f}%但pct={pct:.0f}%处于半山腰，非深度底部"
-            advice["suggest"] = f"pct={pct:.0f}%（90日位置，越低越便宜），距补仓线≤25%还差{pct - 25:.0f}pp；z={z:.2f}(需≤-0.5)、单品TH={th_score}(需≥40)"
-        # 深度低估 + 单品趋势及格 + 大盘配合：可分批补仓
-        elif pct <= 25 and th_score >= 40 and z <= -0.5 and (market_th is None or market_th >= 45):
+            advice["suggest"] = (f"pct={pct:.0f}%（90日位置，越低越便宜），距补仓线≤25%还差{pct - 25:.0f}pp；"
+                                 f"z={z:.2f}(需≤-0.5)、单品TH={th_score}(需≥40)（回测：半山腰14d均值≈0，暂缓）")
+        # 深度低估 + 单品趋势及格 + 大盘配合 + 融合决策放行(buy)：可分批补仓
+        # 回测(2026-08-04 全量回放): 条件∩buy 14d胜率54.2%/均值+5.4%; watch 子集-0.3% → 需融合确认
+        elif (pct <= 25 and th_score >= 40 and z <= -0.5
+              and (market_th is None or market_th >= 45) and _fusion_act == "buy"):
             advice["action"] = "可分批补仓"
-            advice["reason"] = f"浮亏{pnl_pct:.0f}%但深度低估(pct={pct:.0f}%, z={z:.2f})，趋势分{th_score}，大盘TH={market_th}"
+            advice["reason"] = f"浮亏{pnl_pct:.0f}%但深度低估(pct={pct:.0f}%, z={z:.2f})，趋势分{th_score}，大盘TH={market_th}，融合决策buy"
             # A方向(2026-08-03): 引用price_zones买入区间给出补仓价位+摊薄成本（与报告同源）
             _pz = getattr(analysis, "price_zones", None) or {}
             _entry = _pz.get("entry") or {}
@@ -170,14 +178,28 @@ def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th
                 advice["avg_cost_after"] = _cost_after
                 advice["suggest"] = (f"可分3批补仓，每批约{_q}件：批1 ¥{_e_hi:.2f}({_drops[0]:.1f}%)、"
                                      f"批2 ¥{_mid:.2f}({_drops[1]:.1f}%)、批3 ¥{_e_lo:.2f}({_drops[2]:.1f}%)；"
-                                     f"补满后摊薄成本约¥{_cost_after:.2f}；单批不超过仓位上限15%")
+                                     f"补满后摊薄成本约¥{_cost_after:.2f}；单批不超过仓位上限15%"
+                                     f"（回测：补仓点14d胜率{TOPUP_EXPECTANCY_STATS['topup_ok']['win14']:.0f}%、"
+                                     f"均值+{TOPUP_EXPECTANCY_STATS['topup_ok']['avg14']:.1f}%）")
             else:
-                advice["suggest"] = f"可分2~3批加仓{_q}件，单批不超过仓位上限15%（当前周期结构未放行买入区间，待企稳后更新补仓价位）"
+                advice["suggest"] = (f"可分2~3批加仓{_q}件，单批不超过仓位上限15%"
+                                     f"（回测：补仓点14d胜率{TOPUP_EXPECTANCY_STATS['topup_ok']['win14']:.0f}%、"
+                                     f"均值+{TOPUP_EXPECTANCY_STATS['topup_ok']['avg14']:.1f}%）"
+                                     f"（当前周期结构未放行买入区间，待企稳后更新补仓价位）")
+        # 深度低估但融合决策未放行：暂缓等确认(回测: watch子集14d均值-0.3%)
+        elif pct <= 25 and th_score >= 40 and z <= -0.5 and (market_th is None or market_th >= 45):
+            advice["action"] = "暂缓补仓"
+            advice["reason"] = f"浮亏{pnl_pct:.0f}%且深度低估(pct={pct:.0f}%)，但融合决策未放行({_fusion_act or '无'})"
+            advice["suggest"] = (f"单品条件已满足(pct={pct:.0f}%、z={z:.2f}、单品TH={th_score})，"
+                                 f"融合决策={_fusion_act or '无'}，待买点确认再补"
+                                 f"（回测：未确认14d均值{TOPUP_EXPECTANCY_STATS['topup_wait']['avg14']:+.1f}%）")
         # 深度低估但大盘未配合：暂缓等共振
         elif pct <= 25 and th_score >= 40 and market_th is not None and market_th < 45:
             advice["action"] = "暂缓补仓"
             advice["reason"] = f"浮亏{pnl_pct:.0f}%且深度低估(pct={pct:.0f}%)，但大盘TH={market_th}仍偏弱"
-            advice["suggest"] = f"单品条件已满足(pct={pct:.0f}%、z={z:.2f}、单品TH={th_score})，大盘TH={market_th}距45还差{45 - market_th:.0f}分"
+            advice["suggest"] = (f"单品条件已满足(pct={pct:.0f}%、z={z:.2f}、单品TH={th_score})，"
+                                 f"大盘TH={market_th}距45还差{45 - market_th:.0f}分"
+                                 f"（回测：大盘未配合14d均值{TOPUP_EXPECTANCY_STATS['mkt_weak']['avg14']:+.1f}%）")
         # 趋势走弱：止损是风险预算，先控损
         elif th_score < 30:
             advice["action"] = "趋势走弱，考虑止损"
@@ -193,7 +215,6 @@ def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th
     else:
         advice["action"] = "持有观察"
         advice["reason"] = f"建议结合大盘走势决策"
-    _fusion = getattr(analysis, "fusion_decision", {}) or {}
     _gd = signal_guidance(_fusion.get("action_label", "") if isinstance(_fusion, dict) else "",
                           (getattr(analysis, "price_zones", None) or {}).get("expectancy"))
     advice["signal_type"] = _gd["signal_type"]
@@ -328,6 +349,14 @@ def build_scan_html(results, total, market_ctx=None, now_str="", name_link=None)
         stats.append(str(n_loss) + " 个持仓浮亏")
     if stats:
         h.append('<br><span style="color:var(--accent);font-weight:600;">' + " · ".join(stats) + "</span>")
+    # 组合并发仓位提示(P2, 2026-08-04): Σ建仓/补仓建议仓位超上限时预警(展示层, 不改信号)
+    demand = sum(float(r.get("position_limit") or 0) for r in results
+                 if (r.get("portfolio_advice") or {}).get("action") in ("可分批建仓", "可分批补仓"))
+    if demand > PORTFOLIO_CAP_CONCURRENT + 1e-9:
+        h.append(('<br><span style="color:var(--yellow);font-weight:600;">并发建议仓位 {:.0f}%（上限 {:.0f}%），'
+                  '超出 {:.0f}%：信号扎堆时优先处理排序靠前的建仓/补仓，避免单日同时开仓过多'
+                  '（回测：超限持仓并发最高1200%、回撤可达-85%）</span>').format(
+            demand * 100, PORTFOLIO_CAP_CONCURRENT * 100, (demand - PORTFOLIO_CAP_CONCURRENT) * 100))
     h.append("</div></div>")
     # 持仓分析
     if held:
