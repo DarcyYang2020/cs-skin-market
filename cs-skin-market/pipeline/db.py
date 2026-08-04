@@ -296,6 +296,20 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         created_at TEXT DEFAULT (datetime('now','localtime')))""")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_executions_date ON executions(advice_date)")
 
+    # 全市场快照(2026-08-04): 每日 get_page_list 拉全市场价格/在售数快照, 样本扩容
+    conn.execute("""CREATE TABLE IF NOT EXISTS market_snapshot (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT NOT NULL,
+        good_id INTEGER NOT NULL,
+        name TEXT,
+        exterior_localized_name TEXT,
+        rarity_localized_name TEXT,
+        yyyp_sell_price REAL,
+        yyyp_sell_num INTEGER,
+        created_at TEXT DEFAULT (datetime('now','localtime')),
+        UNIQUE(date, good_id))""")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_market_snapshot_date ON market_snapshot(date)")
+
     conn.execute("""CREATE TABLE IF NOT EXISTS backtest_results (
 
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -655,6 +669,43 @@ def closing_price_on(conn, item_id, date_str):
     row = conn.execute("SELECT price_rmb FROM price_history WHERE item_id=? ORDER BY date DESC LIMIT 1",
                        (item_id,)).fetchone()
     return row["price_rmb"] if row else None
+
+
+
+def save_market_snapshot(conn, date, rows):
+    """全市场快照落库（2026-08-04，样本扩容数据积累）。
+    rows: list of dict {good_id, name, exterior_localized_name, rarity_localized_name,
+                        yyyp_sell_price, yyyp_sell_num}
+    同 (date, good_id) 幂等覆盖，重复运行安全。
+    """
+    conn.executemany(
+        """INSERT OR REPLACE INTO market_snapshot
+           (date, good_id, name, exterior_localized_name, rarity_localized_name,
+            yyyp_sell_price, yyyp_sell_num)
+           VALUES (?,?,?,?,?,?,?)""",
+        [(date, r["good_id"], r.get("name"), r.get("exterior_localized_name"),
+          r.get("rarity_localized_name"), r.get("yyyp_sell_price"), r.get("yyyp_sell_num"))
+         for r in rows if r.get("good_id")])
+    conn.commit()
+
+
+def backfill_price_missing(conn, item_id, rows):
+    """仅补缺失日期的历史价格（simple/chartAll 回填用）。
+
+    与 save_price_history_batch 的 INSERT OR REPLACE 不同：不覆盖已有行，
+    保护已有 volume_day / in_sale_count（历史回填只写价格）。
+    rows: list of (date, price_rmb)
+    """
+    conn.executemany(
+        "INSERT OR IGNORE INTO price_history (item_id, date, price_rmb) VALUES (?,?,?)",
+        [(item_id, d, round(float(p), 2)) for d, p in rows if d and p])
+    conn.commit()
+
+
+def item_history_start(conn, item_id):
+    """返回单品 price_history 最早日期（无数据返回 None）。"""
+    row = conn.execute("SELECT MIN(date) AS d FROM price_history WHERE item_id=?", (item_id,)).fetchone()
+    return row["d"] if row and row["d"] else None
 
 
 # ---- Cleanup ----

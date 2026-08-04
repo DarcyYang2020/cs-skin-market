@@ -919,6 +919,56 @@ def t_portfolio_dash():
 check('portfolio_dashboard reports holdings and concurrent cap', t_portfolio_dash)
 
 
+print('[DB: 全市场快照 + 历史回填 (2026-08-04)]')
+def t_market_snapshot():
+    from pipeline import db
+    conn = db.get_conn()
+    try:
+        db.save_market_snapshot(conn, "2099-01-01", [
+            {"good_id": 900001, "name": "测试品A", "exterior_localized_name": "崭新出厂",
+             "rarity_localized_name": "隐秘", "yyyp_sell_price": 12.34, "yyyp_sell_num": 56},
+            {"good_id": 900002, "name": "测试品B", "yyyp_sell_price": 0},
+        ])
+        rows = conn.execute("SELECT * FROM market_snapshot WHERE date='2099-01-01' ORDER BY good_id").fetchall()
+        assert len(rows) == 2, len(rows)
+        assert rows[0]["yyyp_sell_price"] == 12.34 and rows[0]["yyyp_sell_num"] == 56
+        assert rows[0]["exterior_localized_name"] == "崭新出厂"
+        # 幂等覆盖
+        db.save_market_snapshot(conn, "2099-01-01", [{"good_id": 900001, "name": "测试品A2", "yyyp_sell_price": 99.0}])
+        rows2 = conn.execute("SELECT * FROM market_snapshot WHERE date='2099-01-01' AND good_id=900001").fetchall()
+        assert len(rows2) == 1 and rows2[0]["name"] == "测试品A2"
+    finally:
+        conn.execute("DELETE FROM market_snapshot WHERE date='2099-01-01'")
+        conn.commit()
+        conn.close()
+check('save_market_snapshot upsert rows', t_market_snapshot)
+
+def t_backfill_missing():
+    from pipeline import db
+    conn = db.get_conn()
+    try:
+        # 找一个已有 volume_day 的真实品，验证回填不覆盖量
+        item = conn.execute("SELECT item_id, date, volume_day FROM price_history WHERE volume_day IS NOT NULL AND volume_day>0 ORDER BY date DESC LIMIT 1").fetchone()
+        if not item:
+            return
+        item_id, date, vol = item["item_id"], item["date"], item["volume_day"]
+        # 清掉该行，模拟"缺失日期"，再回填价格
+        conn.execute("DELETE FROM price_history WHERE item_id=? AND date=?", (item_id, date))
+        conn.commit()
+        db.backfill_price_missing(conn, item_id, [(date, 888.88)])
+        row = conn.execute("SELECT price_rmb, volume_day FROM price_history WHERE item_id=? AND date=?", (item_id, date)).fetchone()
+        assert row is not None and abs(row["price_rmb"] - 888.88) < 0.01
+        assert row["volume_day"] is None  # 原 volume 已被删, 回填不伪造量
+        # 恢复原始行
+        conn.execute("UPDATE price_history SET volume_day=? WHERE item_id=? AND date=?", (vol, item_id, date))
+        conn.commit()
+        start = db.item_history_start(conn, item_id)
+        assert start and len(start) == 10
+    finally:
+        conn.close()
+check('backfill_price_missing fills price only, keeps volume', t_backfill_missing)
+
+
 print()
 print(f'=== Results: {passed} passed, {failed} failed ===')
 if failures:

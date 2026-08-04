@@ -656,3 +656,123 @@ async def fetch_kline_90d(good_id: int):
         return ohlc, raw
     finally:
         await page.close()
+
+
+async def fetch_simple_kline(good_id: int, max_time_ms: int):
+    """深度历史 K 线（simple/chartAll，2026-08-04 实测）。
+
+    通过路由改写把商品页 info/chart 请求替换为 info/simple/chartAll
+    （body: good_id/plat=2 悠悠/periods=1day/max_time），走页面会话绕过 IP 白名单。
+    返回 [{t(ms str), o, c, h, l, v}]，约 150 个日线点（向前分页由 max_time 控制）。
+
+    实测改写后响应延迟波动大（2s~11s+），故等待 12s + 失败重试 2 次（各开新页）。
+    """
+    pw, browser = await _get_browser()
+
+    async def attempt():
+        page = await browser.new_page()
+        captured = {"chart": None}
+        try:
+            async def on_response(response):
+                try:
+                    if "info/simple/chartAll" in response.url and response.ok:
+                        captured["chart"] = await response.text()
+                except Exception:
+                    pass
+
+            async def rewrite(route, request):
+                if "info/chart" in request.url:
+                    try:
+                        new_url = request.url.replace("/info/chart", "/info/simple/chartAll")
+                        body = {"good_id": str(good_id), "plat": 2, "periods": "1day",
+                                "max_time": max_time_ms}
+                        await route.continue_(url=new_url, post_data=json.dumps(body))
+                    except Exception:
+                        await route.continue_()
+                else:
+                    await route.continue_()
+
+            page.on("response", on_response)
+            await page.route("**/info/chart**", rewrite)
+            try:
+                await page.goto(f"{CSQAQ_WEB}/goods/{good_id}", wait_until="domcontentloaded", timeout=15000)
+            except Exception as ge:
+                _csq_log.warning(f"fetch_simple_kline goto goods/{good_id} failed: {ge}")
+            await _wait_chart(page, captured, timeout=12.0)
+            if captured["chart"]:
+                data = json.loads(captured["chart"])
+                if data.get("code") == 200 and data.get("data"):
+                    return data["data"]
+            return None
+        finally:
+            await page.close()
+
+    for attempt_no in range(3):
+        data = await attempt()
+        if data:
+            return data
+        if attempt_no < 2:
+            await asyncio.sleep(1.0)
+    return []
+
+
+
+async def fetch_history_deep(good_id: int, min_date: str = "2025-01-01", start_date: str | None = None):
+    """深度历史日线价格回填（simple/chartAll 多窗口向前翻页）。
+
+    min_date: 回填下界（默认 2025-01-01：2024 及更早市场逻辑已过时，不纳入）。
+    start_date: 已有数据起点（含）；只补 [min_date, start_date) 区间，避免重复抓已覆盖窗口。
+    返回 [(date_str, close), ...] 升序；仅价格，不含成交量（v 字段口径未确认，勿用于量）。
+    """
+    from datetime import datetime as _dt
+    min_ts = int(_dt.strptime(min_date, "%Y-%m-%d").replace(tzinfo=TZ_BJ).timestamp() * 1000)
+    now_ts = int(datetime.now(TZ_BJ).timestamp() * 1000)
+    if start_date:
+        try:
+            start_ts = int(_dt.strptime(start_date, "%Y-%m-%d").replace(tzinfo=TZ_BJ).timestamp() * 1000)
+            now_ts = min(now_ts, start_ts - 86400000)  # 只取已有起点之前
+        except ValueError:
+            pass
+    if now_ts < min_ts:
+        return []
+    points: list = []
+    max_time = now_ts
+    empty_run = 0
+    while max_time >= min_ts and empty_run < 2:
+        data = await fetch_simple_kline(good_id, max_time)
+        if not data:
+            empty_run += 1
+            max_time -= 150 * 86400000
+            continue
+        empty_run = 0
+        pts = []
+        for p in data:
+            try:
+                t = int(p["t"])
+                c = float(p.get("c") or 0)
+                d = _dt.fromtimestamp(t / 1000, tz=TZ_BJ).strftime("%Y-%m-%d")
+                if c > 0:
+                    pts.append((t, d, c))
+            except (KeyError, TypeError, ValueError):
+                continue
+        pts.sort()
+        for t, d, c in pts:
+            if min_ts <= t <= now_ts:
+                points.append((d, c))
+        # 回拨到本窗口最早点前一天，继续向前翻页
+        earliest_t = pts[0][0] if pts else max_time - 150 * 86400000
+        next_max = earliest_t - 86400000
+        if next_max >= max_time:  # 防御：无进展则强制回拨 150 天
+            next_max = max_time - 150 * 86400000
+        max_time = next_max
+    # 去重保序
+    seen, out = set(), []
+    for d, c in points:
+        if d not in seen:
+            seen.add(d)
+            out.append((d, c))
+    out.sort()
+    _csq_log.info(f"fetch_history_deep good_id={good_id}: {len(out)} points")
+    return out
+
+

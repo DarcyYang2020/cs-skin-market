@@ -83,8 +83,13 @@ async def collect_volume() -> int:
         try:
             vol_map = await fetch_youpin_volume(r["yyyp_id"])
         except Exception as e:
-            log(f"  [{r['id']}] 悠悠量异常: {e}")
-            continue
+            log(f"  [{r['id']}] 悠悠量异常(重试1次): {e}")
+            try:
+                await asyncio.sleep(1.0)
+                vol_map = await fetch_youpin_volume(r["yyyp_id"])
+            except Exception as e2:
+                log(f"  [{r['id']}] 悠悠量重试仍失败: {e2}")
+                continue
         if not vol_map:
             continue
         conn = db.get_conn()
@@ -131,6 +136,29 @@ async def collect_kline_all() -> int:
     return ok
 
 
+def collect_market_snapshot(max_pages: int = 25) -> int:
+    """全市场快照采集（get_page_list 翻页，悠悠锚价+在售数，存 market_snapshot）。"""
+    import asyncio as _asyncio
+    from pipeline import db
+    from pipeline.collector_snapshot import fetch_market_snapshot
+    try:
+        rows = _asyncio.run(fetch_market_snapshot(max_pages=max_pages))
+    except Exception as e:
+        log(f"全市场快照异常: {e}")
+        return 0
+    if not rows:
+        log("全市场快照为空")
+        return 0
+    today = datetime.now(TZ_BJ).strftime("%Y-%m-%d")
+    conn = db.get_conn()
+    try:
+        db.save_market_snapshot(conn, today, rows)
+    finally:
+        conn.close()
+    log(f"全市场快照: {len(rows)} 品 ({today})")
+    return len(rows)
+
+
 def main():
     import argparse
     ap = argparse.ArgumentParser(description="每日自动采集")
@@ -143,6 +171,10 @@ def main():
         asyncio.run(collect_volume())
     except Exception as e:
         log(f"成交量任务异常: {e}")
+    try:
+        collect_market_snapshot(max_pages=25)
+    except Exception as e:
+        log(f"全市场快照任务异常: {e}")
     # 每周日额外全量刷新 90 日 K 线（对齐 docstring；--kline 亦可手动触发）
     is_sunday = datetime.now(TZ_BJ).isoweekday() == 7
     if args.kline or is_sunday:

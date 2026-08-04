@@ -16,6 +16,7 @@ cs-skin-market/
 │   ├── collector.py            # 大盘/板块数据采集（Playwright）
 │   ├── collector_csqaq.py      # csqaq.com 单品数据采集（搜索+K线+详情）
 │   ├── collector_youpin.py     # 悠悠有品成交量采集
+│   ├── collector_snapshot.py # 全市场快照（get_page_list 翻页，存 market_snapshot）
 │   ├── db.py                   # SQLite 数据库（表结构+CRUD）
 │   ├── item_analysis.py        # 单品分析引擎（主入口+各模块汇总）
 │   ├── index_analysis.py       # 大盘分析引擎（融合决策+多维评分）

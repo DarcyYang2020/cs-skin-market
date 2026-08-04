@@ -76,6 +76,14 @@ CS饰品投资分析系统，提供大盘分析、单品分析、持仓管理三
 - extract_signals() -> 信号提取（可分批补仓/建议止损/已到买点）
 - _exec_btn() -> 按建议执行按钮（建仓/补仓/减仓/止损）
 
+
+### collector_snapshot.py — 全市场快照采集（2026-08-04）
+- fetch_market_snapshot(max_pages, page_size) -> 路由改写 get_page_list 翻页拉全市场价格/在售数（悠悠锚价）
+- 存 market_snapshot 表，挂 run_daily_collect.py 每日任务；为全市场选品/估值分布积累面板
+
+### run_backfill_history.py — 单品历史深度回填（2026-08-04）
+- fetch_history_deep(good_id, min_date="2025-01-01")：simple/chartAll(plat=2) 多窗口向前翻页补 2025-01-01 起缺失价格
+- db.backfill_price_missing 仅补缺失日期，不覆盖已有 volume_day/in_sale_count
 ### dashboards.py — 仪表盘数据（P0-3/P0-4）
 - data_progress() -> 数据积累进度：大盘指数/K线覆盖度/真实成交量覆盖（含 90 天目标剩余自然日）
 - portfolio_dashboard() -> 组合仓位：持仓分布/仓位比例/集中度 + 并发建议仓位占用（读 batch_scan_latest.json）

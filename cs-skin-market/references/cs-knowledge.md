@@ -303,7 +303,7 @@ Body: {\"good_id\": int, \"key\": \"sell_price|sell_num|buy_price|buy_num|turnov
 | /api/v1/goods/get_all_goods_id | - | 获取全量站内饰品ID | 新·触发方式待确认 |
 | /api/v1/goods/get_all_goods_info | POST | 获取全量饰品价格数据（多平台 sell/buy/num + 悠悠/IGXE 租赁价） | 新·触发方式待确认 |
 | /api/v1/goods/get_all_goods_rank | POST | 获取全量饰品排行榜（1/7/15/30/90/180/365 涨跌 + buff/yyyp 价格趋势） | 新·触发方式待确认 |
-| /api/v1/info/simple/chartAll | POST | 获取单件饰品简化K线 [{t,o,c,h,l,v}]（v 恒为 0，无真实成交量） | 新 |
+| /api/v1/info/simple/chartAll | POST | 简化日线 [{t,o,c,h,l,v}]（body good_id/plat/periods/max_time，max_time 向前翻页每窗口150天，实测可回补至 2023-08；plat=2 为悠悠价；v 口径未确认） | 新·已实测(历史回填) |
 | /api/v1/info/get_popular_goods | POST | 获取全量饰品热度排名（rank_num + change + turnover_number） | 新·触发方式待确认 |
 | /api/v1/goods/get_goods_template | POST | 获取饰品模板（含 container/income/roi、buff_id/yyyp_id/steam_id/c5_id 跨平台映射） | 新 |
 | /api/v1/info/get_good_id | - | 获取饰品的ID信息（项目在用 goods/get_good_id，等价） | 已用(等价) |
@@ -314,7 +314,7 @@ Body: {\"good_id\": int, \"key\": \"sell_price|sell_num|buy_price|buy_num|turnov
 | /api/v1/info/chart | POST | 获取单件饰品图表数据（sell_price/sell_num/buy_price/buy_num/turnover_number） | 已用 |
 | /api/v1/info/chartAll | - | 获取单件饰品全量图表数据 | 暂停使用 |
 | /api/v1/info/get_rank_list | POST | 获取排行榜单信息 | 新 |
-| /api/v1/info/get_page_list | POST | 获取饰品列表信息（body page_index/page_size/search/filter{类别,磨损,类型}；返回 yyyp_sell_price/yyyp_sell_num） | 新·已实测 |
+| /api/v1/info/get_page_list | POST | 饰品列表（body page_index/page_size/search/filter{类别,磨损,类型}；返回 yyyp_sell_price/yyyp_sell_num；200/页，全市场 2 万+ 品） | 新·已实测(全市场快照) |
 | /api/v1/info/get_series_list | POST | 获取热门系列饰品列表（sell_price_1..180 + amount + total_value + recently_data[15]） | 新·已实测 |
 | /api/v1/info/get_series_detail | - | 获取单件热门系列饰品详情 | 新 |
 | /api/v1/info/exchange_detail | POST | 获取挂刀行情详情 | 新·已实测 |
@@ -338,12 +338,13 @@ Body: {\"good_id\": int, \"key\": \"sell_price|sell_num|buy_price|buy_num|turnov
 
 > 补充：/monitor 页面还触发了文档未收录的 monitor/get_task_stat（监控任务统计）。
 
-#### 对项目的价值判断（2026-08-04）
+#### 对项目的价值判断与落地（2026-08-04）
 
-- **真实成交量主线不变**：官方文档无「单品每日真实成交历史」接口（simple/chartAll 的 v=0；get_popular_goods 仅当日 turnover_number），悠悠有品仍是唯一真实量来源，等成交量积累继续。
-- **P0（纯展示/数据层，不进引擎）**：get_series_list 系列动量卡（大盘/单品参考所属系列涨跌+资金规模）；get_page_list + get_all_goods_rank 做全市场异动扫描候选池，扩样本路径（解决单品 92 品样本瓶颈）。
-- **P1（新数据积累主线，与成交量积累并行）**：monitor/rank 每日采集自选品 Top 持有者快照 → 积累集中度历史 → 复验期回测「集中度变化」能否提升吸筹信号。
-- **P2（复验期评估）**：stat/case 开箱量 + info/roi 回报率 → 事件/热度因子量化；get_all_goods_* 权限确认后做全市场估值分布。
+- **真实成交量主线不变**：官方文档无「单品每日真实成交历史」接口（simple/chartAll 的 v 为 csQAQ 内部成交量口径，实测与悠悠逐日量不一致，**未确认、勿用于成交量因子**），悠悠有品仍是唯一真实量来源，等成交量积累继续。
+- **历史深度（已落地）**：simple/chartAll(plat=2 悠悠价) 多窗口向前翻页可回补至 2023-08。经研判 **2024 及更早市场逻辑已过时，回填起点定为 2025-01-01**（覆盖 2025-02 反弹、2025-05 深底、2026-02 小牛，全部关键样本点）。`run_backfill_history.py` 给现有品补 2025-01-01~2025-08-03 缺失价格（仅补缺失、不覆盖已有 volume_day）。
+- **全市场快照（已落地）**：`collector_snapshot.py` 用 get_page_list 翻页（200/页，按热度取前 5000 品 ≈ 25 页 ≈ 2 分钟/天）每日采集悠悠锚价+在售数，存 market_snapshot 表，为未来全市场选品/估值分布/异动扫描积累面板，与成交量积累并行。
+- **P1 待办**：monitor/rank 大户集中度数据积累（复验期回测「集中度变化」能否提升吸筹信号）。
+- **P2 待办**：stat/case 开箱量 + info/roi 回报率 → 事件/热度因子量化；get_all_goods_* 权限确认后做全市场估值分布。
 
 ## 八、csQAQ API 数据字典
 

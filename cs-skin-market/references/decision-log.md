@@ -460,3 +460,15 @@
 - 关键结论：官方文档无「单品每日真实成交历史」接口（simple/chartAll 的 v=0），**真实成交量主线不变**，悠悠有品仍为唯一来源。
 - 落地分级：P0 系列动量卡 + get_page_list/get_all_goods_rank 全市场扫描（扩样本路径）；P1 monitor/rank 大户集中度数据积累（与成交量积累并行）；P2 开箱量/ROI 因子、get_all_goods_* 权限确认后全市场估值分布。
 - 文档：cs-knowledge.md 新增「官方接口文档 (docs.csqaq.com) 端点清单」；AGENTS.md 数据采集路径补充说明。
+
+
+---
+
+## 历史深度回填 + 全市场快照（2026-08-04）
+
+- **背景**：官方接口文档学习后发现 simple/chartAll 可回补深历史、get_page_list 可全市场翻页；用户研判 2024 及更早市场逻辑已过时，回填起点定为 **2025-01-01**（覆盖 2025-02 反弹/2025-05 深底/2026-02 小牛）。
+- **历史回填**：`run_backfill_history.py` + `collector_csqaq.fetch_history_deep`（simple/chartAll plat=2 悠悠价，max_time 每 150 天向前翻页）。`db.backfill_price_missing` 仅补缺失日期（INSERT OR IGNORE），**不覆盖已有 volume_day/in_sale_count**（区别于 save_price_history_batch 的 REPLACE）。实测单品 580 天（2025-01-01~2026-08-04）。
+- **全市场快照**：`collector_snapshot.fetch_market_snapshot`（get_page_list 翻页 200/页，按热度前 5000 品，约 2 分钟/天）+ 新表 `market_snapshot(date, good_id, name, exterior, rarity, yyyp_sell_price, yyyp_sell_num)`。挂入 run_daily_collect.py 每日任务。
+- **附带优化**：成交量采集失败加 1 次重试。
+- **验证**：test_smoke 42/42（新增 save_market_snapshot/backfill_price_missing 2 项）。
+- **注意**：simple/chartAll 的 v 字段与悠悠逐日量口径不一致，未确认语义，勿用于成交量因子。

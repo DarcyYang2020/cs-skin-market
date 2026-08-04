@@ -273,14 +273,16 @@ cs-skin-market/
   run_server.py          -- Web 服务启动脚本
   run_backtest.py        -- 大盘回测脚本（python run_backtest.py [--start 2025-11-02]）
   run_item_backtest.py   -- 单品回测脚本（--all/--items/--warmup/--stratify）
+  run_backfill_history.py -- 单品历史深度回填（simple/chartAll，2025-01-01 起，仅补缺失日期）
   data/market.db         -- SQLite 数据库
   data/discover_latest.json -- 发现高分品缓存
   pipeline/
     config.py            -- 配置（TOKEN/BASE_URL/权重/参数）
     collector.py         -- csQAQ HTTP 采集（大盘指数/品类/搜索）
-    collector_csqaq.py   -- csQAQ Playwright 采集（单品搜索/详情/90日K线）
+    collector_csqaq.py   -- csQAQ Playwright 采集（单品搜索/详情/K线/fetch_history_deep 深历史）
+    collector_snapshot.py -- 全市场快照采集（get_page_list 翻页，悠悠锚价+在售数，存 market_snapshot）
     collector_youpin.py -- 悠悠有品成交量采集（HTTP，登录态）
-    db.py                -- SQLite 存储（items/price_history/snapshots/positions/settings）
+    db.py                -- SQLite 存储（items/price_history/snapshots/positions/settings/market_snapshot/executions）
     item_analysis.py     -- 单品分析主流程（协调10大模块）
     trend_health.py      -- 趋势健康度 + 融合决策
     valuation.py         -- 估值宫格（百分位 + Z-score + 3×4宫格）
