@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """修复 5 个模板错配品的 K 线：重新抓取 platform=2(悠悠) K线覆盖库内 Buff/C5 fallback 错价。"""
 import sys, io, asyncio, os
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")

@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """Pre-1/23 non-panic small bull replay + 1/23~3/17 crash-rally window (v2)."""
 import sys, json, statistics
 from collections import Counter

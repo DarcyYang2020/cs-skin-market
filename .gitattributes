@@ -1,0 +1,11 @@
+# Text files (.md/.py/.html/.css/.js/.json/.txt) are UTF-8, no BOM.
+# Line endings normalized by git per core.autocrlf (LF in repo).
+# See AGENTS.md "doc encoding rules" for details.
+* text=auto
+*.md text
+*.py text
+*.html text
+*.css text
+*.js text
+*.json text
+*.txt text

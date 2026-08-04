@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """Backfill price_history pre-2026-02-03 using csQAQ chart API period=365.
 
 Why: price_history starts 2026-02-03 (youpin 180d limit + csqaq 90d chart).

@@ -273,6 +273,19 @@ python run_item_backtest.py --items "AWP | 冥界之河 (崭新出厂);AK-47 | �
 - **P0-4 组合仓位仪表**：持仓市值/仓位比例/集中度 + 并发建议仓位占用（Σ建仓补仓 vs 0.8 上限）
 - **体验优化**：批量扫描按钮信号角标、执行记录手动录入、待结算预计日期、平均净收益汇总、物品名自动补全、扫描后自动刷新信号中心
 
+## 文档编码规范（防乱码，2026-08-04）
+
+所有文本文件统一 **UTF-8 无 BOM**（.md/.py/.html/.css/.js/.json/.txt），`.gitattributes` 已声明文本属性，换行符由 git 规范化（提交入库为 LF）。
+
+**乱码三大根源与规避**：
+1. **PowerShell 管道传中文**：`@'...'@ | python -` 会把中文变 `?`（控制台 GBK 代码页）。禁止用管道直接传中文给脚本；改用 node_repl（JSON 通道，UTF-8 无损）或先落盘 UTF-8 脚本再执行，或代码内用 `\uXXXX` 转义。
+2. **终端显示误判**：GBK 控制台直接 `Get-Content` UTF-8 文件会显示乱码，但文件本身没坏。用 Python/node_repl 以 UTF-8 读取验证后再判断。
+3. **编辑器保存编码**：统一 UTF-8 无 BOM；不要用 GBK/ANSI 保存中文文件。
+
+**提交前检查**：`python tests/check_encoding.py`（已并入冒烟测试 t_encoding）。hard 问题（非法 UTF-8/BOM/U+FFFD）必须修复；`?` 长串警告需人工确认——如 decision-log 中 `AK-47 | ??? 1337` 是刻意记录脏名，非损坏。
+
+**已知历史损坏**：`references/portfolio_cap_fit.py` 头部中文注释已丢失（PowerShell 管道写入所致，2026-08-04 发现），代码可用，未恢复。
+
 ## 文件结构
 
 `

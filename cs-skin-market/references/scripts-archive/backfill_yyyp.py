@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """一次性回填 items.yyyp_id：对每个 good_id 打开 csqaq 商品页，拦截 info/good 响应拿悠悠 template id。"""
 import sys, io, asyncio, json, os
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")

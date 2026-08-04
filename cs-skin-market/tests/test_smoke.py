@@ -1052,6 +1052,18 @@ check('item_analysis 存世量<3000 不建仓过滤', t_survive_filter)
 
 
 
+
+def t_encoding():
+    # 文档编码健康检查（防乱码，2026-08-04）：仓库文本文件必须为 UTF-8 无 BOM、
+    # 无 U+FFFD；'?' 长串仅警告（如 decision-log 中 AK-47 | ??? 1337 为刻意记录）。
+    sys.path.insert(0, TEST_DIR)
+    import check_encoding
+    root = check_encoding.repo_root()
+    hard, warn = check_encoding.scan(root)
+    assert not hard, f"encoding hard issues: {hard}"
+check('repo text files encoding health', t_encoding)
+
+
 print()
 print(f'=== Results: {passed} passed, {failed} failed ===')
 if failures:

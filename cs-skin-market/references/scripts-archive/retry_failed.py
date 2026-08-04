@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """重试失败项：名称变体 + K线重试。"""
 import sys, io, asyncio, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))

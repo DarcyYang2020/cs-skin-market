@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """批量采集样本：箱子下级皮肤（csqaq 90日K线 + 悠悠真实成交量）落库。
 
 用法: python collect_sample_items.py [--start N] [--end N]
