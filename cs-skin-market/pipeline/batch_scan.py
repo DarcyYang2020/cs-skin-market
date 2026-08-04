@@ -3,6 +3,7 @@ import asyncio, json, logging, traceback
 from datetime import datetime
 
 from . import collector_csqaq, collector, db, item_analysis, index_analysis
+from .buy_distance import tranche_plan_text
 
 _log = logging.getLogger("batch_scan")
 
@@ -69,7 +70,7 @@ def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th
         _th = _th_obj.get("score", 50) if isinstance(_th_obj, dict) else getattr(_th_obj, "score", 50)
         _gd = signal_guidance(fusion.get("action_label", ""), (getattr(analysis, "price_zones", None) or {}).get("expectancy"))
         if fusion_action == "buy":
-            _suggest = "已到建仓区，可分批建仓"
+            _suggest = "已到建仓区，可分批建仓：" + tranche_plan_text()
             _pz = getattr(analysis, "price_zones", None) or {}
             _entry = _pz.get("entry") or {}
             if _entry.get("low") and _entry.get("high"):

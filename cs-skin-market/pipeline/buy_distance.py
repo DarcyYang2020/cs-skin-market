@@ -30,6 +30,19 @@ TH_REF = 55             # 抄底参考 TH 阈值（TH>=55 更可靠）
 TH_BULL = 30            # 牛/震荡市 TH 参考阈值（v5.2 放宽）
 BAR_CAP = 20.0          # 进度条满格 20%（距离再远也封顶）
 
+# 分批建仓方案 C（2026-08-04 回测最优，88 信号基准，hold14 资金加权期望 +48.13% vs 一次性按 position_limit +31.35%）
+#   首仓 10%（信号日）→ 较首仓价再跌 10% 加 20% → 跌 15% 加 30%（总仓位上限 60%）
+FIRST_TRANCHE = 10                  # 首仓仓位（信号日建）
+TRANCHES = ((10, 20), (15, 30))     # (相对首仓价跌幅%, 加仓仓位%)
+TOTAL_CAP = FIRST_TRANCHE + sum(w for _, w in TRANCHES)   # 60%
+
+
+def tranche_plan_text():
+    """分批建仓方案文案（纯展示层）：首仓10% → 跌10%加20% → 跌15%加30%"""
+    parts = ["首仓{}%".format(FIRST_TRANCHE)]
+    parts += ["跌{}%加{}%".format(thr, w) for thr, w in TRANCHES]
+    return " → ".join(parts)
+
 
 def _get(obj, key, default=None):
     """Read attribute-or-key from dataclass / dict."""
@@ -103,7 +116,7 @@ def _finish(scenario, scenario_label, cur, target, st, th, pct, z,
     bar = min(100.0, max(0.0, gap_pct / BAR_CAP * 100)) if gap_pct > 0 else 100.0
     if summary is None:
         summary = ("再跌 {:.1f}% 到 ¥{:.2f} 触发买点".format(gap_pct, gap_rmb)
-                   if gap_pct > 0 else "已到买点区间，可分批建仓")
+                   if gap_pct > 0 else "已到买点区间，可分批建仓：" + tranche_plan_text())
     z15 = round(st["med"] - 1.5 * st["mad_scale"], 2) if st["mad_scale"] else None
     anchor = round(anchor_price, 2) if (anchor_price and anchor_price > 0) else None
     anchor_note = None
@@ -137,6 +150,7 @@ def _finish(scenario, scenario_label, cur, target, st, th, pct, z,
         "z_gap": round(max(0.0, z - ENTRY_Z), 2) if z > ENTRY_Z else 0.0,
         "th_gap": round(max(0.0, th_target - th), 0),
         "th_score": th,
+        "tranche_plan": tranche_plan_text(),
         "summary": summary,
         "bar_pct": round(bar, 0),
     }
@@ -170,7 +184,7 @@ def compute_buy_distance(prices, position, th_score, price_zones=None, cycle_pha
     # ---- 已到买点 ----
     if action == "buy" or (entry_zone and entry_zone["low"] <= cur <= entry_zone["high"]):
         return _finish("done", "已到买点", cur, cur, st, th, pct, z, entry_zone,
-                       summary="当前已在买点区间（或已触发买入信号），按计划分批建仓",
+                       summary="当前已在买点区间（或已触发买入信号），按计划分批建仓：" + tranche_plan_text(),
                        anchor_price=anchor_price)
 
     if th >= 60 or cycle_phase == "markup":
@@ -234,7 +248,7 @@ def compute_market_buy_distance(values, pct, z, th_score, regime="unknown", acti
 
     if action == "buy":
         target, scenario, sl = cur, "done", "已到买点"
-        summary = "已到买点（{}），按计划执行".format(action_label or "大盘 buy")
+        summary = "已到买点（{}），按计划分批建仓：{}".format(action_label or "大盘 buy", tranche_plan_text())
     elif regime in ("bull", "sideways") or th >= 50:
         # 突破/回踩：最近 MA 支撑（MA7/MA30 取低），无 MA 用 ATR 支撑
         supps = [x for x in (st["ma7"], st["ma30"]) if x]
@@ -283,6 +297,7 @@ def compute_market_buy_distance(values, pct, z, th_score, regime="unknown", acti
         "z_gap": round(z_gap, 2),
         "th_gap": round(th_gap, 0),
         "th_score": th,
+        "tranche_plan": tranche_plan_text(),
         "th_target": th_target,
         "regime": regime,
         "action": action,

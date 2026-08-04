@@ -274,13 +274,13 @@ print('[Portfolio Advice: 补仓分级]')
 def t_advice():
     from pipeline.batch_scan import _portfolio_advice
     from types import SimpleNamespace
-    def mk(pct=15.0, z=-1.0, th=45, phase='consolidation', price_zones=None):
+    def mk(pct=15.0, z=-1.0, th=45, phase='consolidation', price_zones=None, fusion='hold'):
         pos = SimpleNamespace(percentile_90d=pct, zscore_90d=z)
         return SimpleNamespace(
             position=pos,
             trend_health={'score': th},
             cycle=SimpleNamespace(phase=phase),
-            fusion_decision={'action': 'hold'},
+            fusion_decision={'action': fusion},
             value=SimpleNamespace(score=5.0, grade='C'),
             risk_level='D',
             price_zones=price_zones,
@@ -313,17 +313,23 @@ def t_advice():
     assert a['action'] == '持有观察', a['action']
     assert '距低估线30%还差5pp' in a['suggest'], a['suggest']
     assert '距55还差10分' in a['suggest'], a['suggest']
+    # 非持仓 buy 信号: 建议给出分批建仓方案（方案C, 回测最优）
+    a = _portfolio_advice(False, 0, 0, 80.0, mk(pct=15, z=-1.2, th=60, fusion='buy', price_zones={'entry': {'low': 60.0, 'high': 75.0}}))
+    assert a['action'] == '可分批建仓', a['action']
+    assert '首仓10%' in a['suggest'] and '跌10%加20%' in a['suggest'] and '跌15%加30%' in a['suggest'], a['suggest']
 check('portfolio advice 补仓分级 works', t_advice)
 
 print('[Batch Scan: 距买点摘要/排序/HTML]')
 def t_batch_scan_display():
     from pipeline.batch_scan import summarize_buy_distance, sort_results, build_scan_html
+    from pipeline.buy_distance import tranche_plan_text
     bd = {"scenario": "bottom", "scenario_label": "抄底/下跌中继", "current_price": 111.0,
           "target_price": 106.6, "gap_pct": 4.0, "bar_pct": 20.0, "summary": "再跌 4.0% 到 ¥106.60 触发买点"}
     s = summarize_buy_distance(bd)
     assert s["target_price"] == 106.6 and s["gap_pct"] == 4.0 and s["bar_pct"] == 20.0, s
     assert summarize_buy_distance(None) is None
     assert summarize_buy_distance({}) is None
+    assert tranche_plan_text() == '首仓10% → 跌10%加20% → 跌15%加30%', tranche_plan_text()
     # 排序：持仓浮亏大在前，非持仓 gap 小在前
     held = [dict(holding=1, avg_cost=100.0, price_rmb=130.0, name="赚"),
             dict(holding=1, avg_cost=100.0, price_rmb=70.0, name="亏")]
@@ -338,12 +344,13 @@ def t_batch_scan_display():
              portfolio_advice={"action": "观望等待机会", "suggest": "再跌 4.0%", "hold_guidance": ""}, error=None),
         dict(name="B", holding=0, price_rmb=90.0, grade="B", score=3.0, valuation_tier="低估", percentile_90d=5.0,
              buy_distance={"scenario_label": "已到买点", "target_price": 90.0, "gap_pct": 0.0, "bar_pct": 100.0},
-             portfolio_advice={"action": "可分批建仓", "suggest": "已到建仓区", "hold_guidance": ""}, error=None),
+             portfolio_advice={"action": "可分批建仓", "suggest": "已到建仓区，可分批建仓：首仓10% → 跌10%加20% → 跌15%加30%", "hold_guidance": ""}, error=None),
     ]
     html = build_scan_html(results, 2, {"th": 55, "sentiment": 70, "cycle": "bear", "index": 1566}, now_str="12:00:00")
     assert "市场环境" in html and "大盘TH=55" in html, html
     assert "距买点" in html
     assert "1 个已到买点" in html, html
+    assert "跌10%加20%" in html, html
     assert "¥96.00" in html and "¥90.00" in html
     assert "批量扫描完成" in html and "成功 2/2" in html
 check('batch scan 距买点摘要/排序/HTML works', t_batch_scan_display)
@@ -508,6 +515,7 @@ def t_buy_distance_in_zone():
     assert bd['bar_pct'] == 100, bd
     assert bd['scenario'] == 'done' and bd['target_price'] == bd['current_price'], bd
     assert bd['pct_gap'] == 0.0 and bd['z_gap'] == 0.0 and bd['th_gap'] == 0.0, bd
+    assert bd.get('tranche_plan') and '首仓10%' in bd['tranche_plan'] and '跌10%加20%' in bd['tranche_plan'], bd
 check('buy_distance marks in-zone with full bar', t_buy_distance_in_zone)
 
 def t_buy_distance_scenarios():
@@ -533,6 +541,7 @@ def t_buy_distance_scenarios():
     # ????
     bd3 = compute_buy_distance(prices, pos, 32.0, price_zones={'entry': {'low': 0, 'high': 0}}, cycle_phase='distribution', action='buy')
     assert bd3['scenario'] == 'done' and bd3['target_price'] == bd3['current_price'], bd3
+    assert '首仓10%' in bd3.get('tranche_plan', ''), bd3
 check('buy_distance scenario targets never exceed current price', t_buy_distance_scenarios)
 
 def t_buy_distance_anchor():
