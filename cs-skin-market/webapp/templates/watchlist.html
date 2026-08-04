@@ -6,7 +6,7 @@
   <div class="row-flex" style="justify-content:space-between;">
     <div>
       <h1>⭐ 持仓管理</h1>
-      <div class="page-sub">共 <strong id="wl-total-count">{{ pagination.total if pagination else items|length }}</strong> 个持仓 · 总资产 ¥<span id="total-assets">{{ "%.2f"|format(total_assets) }}</span></div>
+      <div class="page-sub">共 <strong id="wl-total-count">{{ pagination.total_items if pagination else items|length }}</strong> 个持仓 · 总资产 ¥<span id="total-assets">{{ "%.2f"|format(total_assets) }}</span></div>
     </div>
     <div id="wl-tabs" class="tabs">
       <span class="tab {% if wl_filter == 'all' %}active{% endif %}" data-filter="all" onclick="filterWatchlist('all')">全部</span>
@@ -23,7 +23,7 @@
     
   </div>
   <div class="row-flex">
-    <input type="text" id="wl-search-input" placeholder="搜索持仓..." class="form-input" style="width:180px;padding:6px 12px;font-size:13px;" value="{{ wl_q }}" oninput="filterWatchlist()">
+    <input type="text" id="wl-search-input" placeholder="搜索持仓..." class="form-input" style="width:180px;padding:6px 12px;font-size:13px;" value="{{ wl_q }}" oninput="debounceWatchlistSearch()">
     <select id="wl-sort-select" class="form-select" style="width:120px;padding:6px 10px;font-size:12px;" onchange="sortWatchlist(this.value)">
       <option value="newest" {% if wl_sort == 'newest' %}selected{% endif %}>最新添加</option>
       <option value="name" {% if wl_sort == 'name' %}selected{% endif %}>名称 A-Z</option>
@@ -145,6 +145,7 @@
       <button type="button" class="btn btn-outline btn-sm" onclick="loadExecutions()">🔄 刷新</button>
     </div>
   </div>
+  <div id="exec-summary" style="padding:8px 14px 0;font-size:12px;color:var(--text-secondary);"></div>
   <div class="table-wrap">
     <table>
       <thead>
@@ -296,7 +297,8 @@
     <h3 id="exec-modal-title">💼 按建议执行</h3>
     <div class="form-group">
       <label>物品名称</label>
-      <input type="text" id="exec-name" class="form-input" placeholder="输入物品名称" style="background:var(--bg-input);">
+      <input type="text" id="exec-name" class="form-input" placeholder="输入物品名称" list="exec-name-options" style="background:var(--bg-input);">
+      <datalist id="exec-name-options"></datalist>
     </div>
     <div class="row-flex" style="gap:12px;">
       <div class="form-group" style="flex:1;">
@@ -369,80 +371,46 @@
 
 
 <script>
-// ---- Watchlist Data ----
-var wlData = [];
-document.querySelectorAll('.wl-row').forEach(function(row) {
-  wlData.push({
-    id: parseInt(row.dataset.id),
-    name: row.dataset.name,
-    price: parseFloat(row.dataset.price),
-    grade: row.dataset.grade,
-    holding: parseInt(row.dataset.holding),
-    created: row.dataset.created,
-    el: row
-  });
-});
-
-// ---- Filter ----
-var currentFilter = 'all';
-function filterWatchlist(filter) {
-  if (filter) {
-    currentFilter = filter;
-    document.querySelectorAll('#wl-tabs .tab').forEach(function(t) { t.classList.remove('active'); });
-    document.querySelector('#wl-tabs .tab[data-filter="' + filter + '"]').classList.add('active');
-  }
-  syncUrlState();
-  var q = (document.getElementById('wl-search-input').value || '').toLowerCase();
-  wlData.forEach(function(d) {
-    var show = true;
-    if (currentFilter === 'holding' && !d.holding) show = false;
-    if (currentFilter === 'unheld' && d.holding) show = false;
-    if (q && d.name.toLowerCase().indexOf(q) === -1) show = false;
-    d.el.style.display = show ? '' : 'none';
-  });
-}
-
-// ---- Sort ----
-function sortWatchlist(by) {
-  wlData.sort(function(a, b) {
-    if (by === 'name') return a.name.localeCompare(b.name);
-    if (by === 'price_desc') return b.price - a.price;
-    if (by === 'price_asc') return a.price - b.price;
-    if (by === 'grade') {
-      var order = {S:0,A:1,B:2,C:3,Z:4};
-      return (order[a.grade]||4) - (order[b.grade]||4);
-    }
-    return b.id - a.id; // newest first
-  });
-  var tbody = document.getElementById('wl-tbody');
-  wlData.forEach(function(d) { tbody.appendChild(d.el); });
-}
-
-// ---- URL state sync (keep filter/q/sort across pagination) ----
-function syncUrlState() {
-  try {
-    var fEl = document.querySelector('#wl-tabs .tab.active');
-    var f = fEl ? fEl.getAttribute('data-filter') : 'all';
-    var q = document.getElementById('wl-search-input') ? document.getElementById('wl-search-input').value : '';
-    var s = document.getElementById('wl-sort-select') ? document.getElementById('wl-sort-select').value : 'newest';
-    var url = new URL(window.location.href);
-    url.searchParams.set('filter', f);
-    url.searchParams.set('q', q);
-    url.searchParams.set('sort', s);
-    window.history.replaceState({}, '', url);
-  } catch (e) {}
-}
-
-// ---- Pagination ----
-function goPage(p) {
+// ---- Watchlist filter/sort/search/pagination (server-side; URL 参数驱动，保证跨页一致) ----
+function buildWatchlistUrl(page) {
   var fEl = document.querySelector('#wl-tabs .tab.active');
   var f = fEl ? fEl.getAttribute('data-filter') : 'all';
   var qEl = document.getElementById('wl-search-input');
   var q = qEl ? qEl.value : '';
   var sEl = document.getElementById('wl-sort-select');
   var s = sEl ? sEl.value : 'newest';
-  window.location.href = '/watchlist?page=' + p + '&filter=' + encodeURIComponent(f) + '&q=' + encodeURIComponent(q) + '&sort=' + encodeURIComponent(s);
+  var url = new URL(window.location.pathname, window.location.origin);
+  url.searchParams.set('page', page || 1);
+  url.searchParams.set('filter', f);
+  url.searchParams.set('q', q);
+  url.searchParams.set('sort', s);
+  return url.toString();
 }
+
+// ---- 筛选 tab：切到服务端（?filter=），分页/计数才正确 ----
+function filterWatchlist(filter) {
+  document.querySelectorAll('#wl-tabs .tab').forEach(function(t) { t.classList.remove('active'); });
+  document.querySelector('#wl-tabs .tab[data-filter="' + filter + '"]').classList.add('active');
+  window.location.href = buildWatchlistUrl(1);
+}
+
+// ---- 排序：服务端跨页排序 ----
+function sortWatchlist(by) {
+  var sEl = document.getElementById('wl-sort-select');
+  if (sEl) sEl.value = by;
+  window.location.href = buildWatchlistUrl(1);
+}
+
+// ---- 搜索：防抖后服务端搜索（刷新后 ?q= 保留输入）----
+var wlSearchTimer = null;
+function debounceWatchlistSearch() {
+  if (wlSearchTimer) clearTimeout(wlSearchTimer);
+  wlSearchTimer = setTimeout(function() { window.location.href = buildWatchlistUrl(1); }, 400);
+}
+
+// ---- 分页 ----
+function goPage(p) { window.location.href = buildWatchlistUrl(p); }
+
 
 // ---- Modal ----
 function openModal(id) { var el = document.getElementById(id); if (el) el.style.display = 'flex'; }
@@ -777,12 +745,31 @@ function clearScanCache() {
 // ---- 执行记录与复盘 (P0-2, 2026-08-04) ----
 var EXEC_ACTION_LABEL = {buy: "建仓", add: "补仓", reduce: "减仓", sell: "清仓/止损"};
 function execActionLabel(a) { return EXEC_ACTION_LABEL[a] || a; }
-function pnlBadge(pnl, px) {
-  if (pnl === null || pnl === undefined) return '<span style="font-size:11px;color:var(--text-muted);">待结算</span>';
+function execDue(dateStr, days) {
+  if (!dateStr) return '';
+  var d = new Date(dateStr + 'T00:00:00');
+  if (isNaN(d.getTime())) return '';
+  d.setDate(d.getDate() + days);
+  return ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+}
+function pnlBadge(pnl, px, due) {
+  if (pnl === null || pnl === undefined) {
+    var t = due ? '待结算·' + due : '待结算';
+    return '<span style="font-size:11px;color:var(--text-muted);">' + t + '</span>';
+  }
   var c = pnl >= 0 ? 'var(--green)' : 'var(--red)';
   var s = (pnl >= 0 ? '+' : '') + pnl.toFixed(1) + '%';
   return '<span style="color:' + c + ';font-weight:600;">' + s + '</span>'
     + (px ? '<br><span style="font-size:11px;color:var(--text-muted);">¥' + Number(px).toFixed(2) + '</span>' : '');
+}
+function buildExecNameOptions() {
+  var dl = document.getElementById('exec-name-options');
+  if (!dl || dl.options.length) return;
+  (allWatchlistItems || []).forEach(function(it) {
+    var o = document.createElement('option');
+    o.value = it.name;
+    dl.appendChild(o);
+  });
 }
 function openExecModal(btn) {
   var nameEl = document.getElementById('exec-name');
@@ -846,6 +833,22 @@ function loadExecutions() {
     var list = d.executions || [];
     sec.style.display = 'block';
     if (empty) empty.style.display = list.length ? 'none' : 'block';
+    buildExecNameOptions();
+    var pnlVals = [];
+    list.forEach(function(e) {
+      var p = (e.pnl_14 !== null && e.pnl_14 !== undefined) ? e.pnl_14 : e.pnl_30;
+      if (p !== null && p !== undefined) pnlVals.push(p);
+    });
+    var avg = pnlVals.length ? pnlVals.reduce(function(a, b) { return a + b; }, 0) / pnlVals.length : null;
+    var sm = document.getElementById('exec-summary');
+    if (sm) {
+      var txt = '共 ' + list.length + ' 笔 · 已结算 ' + pnlVals.length + ' 笔';
+      if (avg !== null) {
+        var ac = avg >= 0 ? 'var(--green)' : 'var(--red)';
+        txt += ' · 平均净收益 <b style="color:' + ac + ';">' + (avg >= 0 ? '+' : '') + avg.toFixed(1) + '%</b>';
+      }
+      sm.innerHTML = txt;
+    }
     tb.innerHTML = list.map(function(e) {
       var act = execActionLabel(e.action);
       var actC = (e.action === 'buy' || e.action === 'add') ? 'var(--green)' : 'var(--red)';
@@ -856,8 +859,8 @@ function loadExecutions() {
         + '<td style="font-size:11px;color:var(--text-muted);">' + (e.advice_signal || '—') + '</td>'
         + '<td>¥' + Number(e.exec_price).toFixed(2) + '</td>'
         + '<td>' + e.qty + '</td>'
-        + '<td>' + pnlBadge(e.pnl_14, e.settle_14) + '</td>'
-        + '<td>' + pnlBadge(e.pnl_30, e.settle_30) + '</td>'
+        + '<td>' + pnlBadge(e.pnl_14, e.settle_14, execDue(e.advice_date, 14)) + '</td>'
+        + '<td>' + pnlBadge(e.pnl_30, e.settle_30, execDue(e.advice_date, 30)) + '</td>'
         + '<td><button class="btn btn-danger btn-sm" onclick="deleteExec(' + e.id + ')">删除</button></td>'
         + '</tr>';
     }).join('');

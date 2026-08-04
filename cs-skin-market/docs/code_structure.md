@@ -1,6 +1,6 @@
 # CS-Skin-Market 项目代码文件说明
 
-> 最后更新: 2026-08-02
+> 最后更新: 2026-08-04
 
 ## 项目概述
 CS饰品投资分析系统，提供大盘分析、单品分析、持仓管理三大功能模块。
@@ -17,6 +17,7 @@ CS饰品投资分析系统，提供大盘分析、单品分析、持仓管理三
 - 数据存储（save_price_history_batch/upsert_item）
 - 设置键值存储（get_setting/set_setting）
 - 快照查询（get_latest_snapshot_report/watchlist_list_with_snapshots）
+- 执行记录（P0-2）：add_execution/list_executions/delete_execution/settle_execution/closing_price_on
 
 ### collector.py — 大盘指数采集
 - 使用 requests（非 Playwright）从 csqaq 获取大盘指数数据
@@ -72,6 +73,13 @@ CS饰品投资分析系统，提供大盘分析、单品分析、持仓管理三
 ### batch_scan.py — 批量扫描
 - _portfolio_advice() -> 持仓个性化建议生成（根据成本/数量/现价）
 - batch_scan_watchlist() -> 共享浏览器批量分析所有自选
+- extract_signals() -> 信号提取（可分批补仓/建议止损/已到买点）
+- _exec_btn() -> 按建议执行按钮（建仓/补仓/减仓/止损）
+
+### dashboards.py — 仪表盘数据（P0-3/P0-4）
+- data_progress() -> 数据积累进度：大盘指数/K线覆盖度/真实成交量覆盖（含 90 天目标剩余自然日）
+- portfolio_dashboard() -> 组合仓位：持仓分布/仓位比例/集中度 + 并发建议仓位占用（读 batch_scan_latest.json）
+- 纯展示层，不触碰信号引擎
 
 ### config.py — 配置与评分权重
 - 代理设置、评分权重表、止盈止损参数、TH阈值常量
@@ -94,6 +102,9 @@ CS饰品投资分析系统，提供大盘分析、单品分析、持仓管理三
 - 批量扫描：POST /api/watchlist/batch-scan-selected（勾选物品批量分析）
 - 报告查询：GET /api/watchlist/{id}/report（读取最新快照）
 - 持仓管理 CRUD：添加/编辑/删除自选、设置总资产
+- 信号中心/历史：GET /api/watchlist/scan-history[٭{scan_id}]（归档列表与详情）
+- 执行记录：GET/POST /api/watchlist/executions、DELETE /api/watchlist/executions/{eid}（GET 时自动结算到期记录）
+- 仪表盘：GET /api/data/progress、GET /api/portfolio/dashboard
 
 ### 模板 (templates/)
 - base.html — 布局骨架+导航栏
@@ -170,3 +181,4 @@ CS饰品投资分析系统，提供大盘分析、单品分析、持仓管理三
 | positions | 持仓记录 |
 | settings | 键值对设置（总资产、缓存等） |
 | backtest_results | 回测结果 |
+| executions | 执行记录+复盘（P0-2） |

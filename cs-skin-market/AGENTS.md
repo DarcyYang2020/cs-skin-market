@@ -74,11 +74,10 @@ cd cs-skin-market && python run_server.py
 
 | 页面 | 路由 | 说明 |
 |---|---|---|
-| 大盘仪表盘 | / | 大盘指数 + 市场宏观 + 融合决策 |
+| 大盘仪表盘 | / | 大盘指数 + 市场宏观 + 融合决策 + 数据积累进度 |
 | 单品分析 | /search | 搜索 + 分析，结果持久化 |
-| 持仓管理 | /watchlist | 自选列表 + 持仓管理 + 批量扫描 |
+| 持仓管理 | /watchlist | 自选 + 持仓 + 批量扫描 + 信号中心 + 执行记录 + 组合仓位仪表 |
 | 发现高分品 | /discover | 扫描全武器类型崭新出厂品，筛选 Top 10 |
-| 自选管理 | /watchlist | 自选列表 + 持仓管理 |
 
 **API 路由**:
 | 方法 | 路径 | 功能 |
@@ -92,6 +91,15 @@ cd cs-skin-market && python run_server.py
 | POST | /api/watchlist/assets | 设置资产规模 |
 | POST | /api/watchlist/batch-scan-selected | 批量扫描自选 |
 | GET  | /api/watchlist/batch-scan-progress/{scan_id} | 批量扫描进度轮询 |
+| GET  | /api/watchlist/batch-scan-latest | 最近一次批量扫描缓存（结果+HTML） |
+| POST | /api/watchlist/batch-scan-latest/clear | 清除批量扫描缓存 |
+| GET  | /api/watchlist/scan-history | 扫描历史归档列表 + 最近信号摘要 |
+| GET  | /api/watchlist/scan-history/{scan_id} | 历史归档详情 HTML |
+| GET  | /api/watchlist/executions | 执行记录列表（自动结算到期记录） |
+| POST | /api/watchlist/executions | 新增执行记录（按建议执行/手动录入） |
+| DELETE | /api/watchlist/executions/{eid} | 删除执行记录 |
+| GET  | /api/data/progress | 数据积累进度（大盘/K线/成交量覆盖） |
+| GET  | /api/portfolio/dashboard | 组合仓位仪表（持仓分布+并发仓位占用） |
 | POST | /api/discover/scan-all | 扫描全武器类型，异步分析 |
 | GET  | /api/items/discover-progress/{task_id} | 发现高分品进度轮询 |
 | GET  | /api/discover/latest | 获取上次扫描缓存结果 |
@@ -243,6 +251,16 @@ python run_item_backtest.py --items "AWP | 冥界之河 (崭新出厂);AK-47 | �
 - P1-1 结构化持久化: discover_latest.json 保存 results 明细 + market_th, 前端显示上次扫描时间与成功数
 - P1-2 联动单品报告: Top 表名称点击跳 /search?q=名称 自动触发分析; search 页支持 q 参数预填+自动提交
 
+## 产品层迭代 (2026-08-04)
+
+引擎冻结期（等真实成交量积累）的产品/展示层增强，不改任何信号引擎：
+
+- **P0-1 信号中心 + 历史归档**：批量扫描提取信号（可分批补仓 > 建议止损 > 已到买点），存 data/scan_history/scan_*.json（保留 30 份）；watchlist 页信号中心卡 + 历史下拉
+- **P0-2 执行记录 + 自动复盘**：executions 表；批量扫描「按建议执行」/手动录入；14/30 天到期按最近收盘价自动结算（净收益扣 2% 双边成本，与回测口径一致）
+- **P0-3 数据积累进度**：大盘/K线/真实成交量覆盖度 + 90 天目标进度条（当前成交量约 8 天/品）
+- **P0-4 组合仓位仪表**：持仓市值/仓位比例/集中度 + 并发建议仓位占用（Σ建仓补仓 vs 0.8 上限）
+- **体验优化**：批量扫描按钮信号角标、执行记录手动录入、待结算预计日期、平均净收益汇总、物品名自动补全、扫描后自动刷新信号中心
+
 ## 文件结构
 
 `
@@ -268,7 +286,8 @@ cs-skin-market/
     market_th.py         -- 大盘趋势健康度 + 大盘融合决策
     market_context.py    -- 大盘上下文构建（供单品分析参考）
     supply.py            -- 供给端追踪
-    batch_scan.py        -- 自选批量扫描
+    batch_scan.py        -- 自选批量扫描（信号提取/按建议执行按钮）
+    dashboards.py        -- 仪表盘数据（数据积累进度/组合仓位，纯展示层）
     backtest_common.py   -- 回测公共模块（approx_sentiment/patch_sentiment/build_market_context）
   webapp/
     main.py              -- FastAPI 应用
@@ -290,6 +309,7 @@ cs-skin-market/
 | settings | 配置键值对 | key, value |
 | macro_history | 每日宏观快照（贪婪指数/点卡价，P1-1） | date, greedy_index, card_price |
 | backtest_results | 回测结果 | strategy, sharpe_ratio, max_drawdown_pct |
+| executions | 执行记录+复盘（P0-2） | item_id, name, action, advice_date, exec_price, qty, settle_14/30, pnl_14/30 |
 
 ## 常见问题
 

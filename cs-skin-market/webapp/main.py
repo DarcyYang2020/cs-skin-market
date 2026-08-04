@@ -1499,6 +1499,7 @@ async def api_watchlist_set_assets(request: Request, amount: float = Form(...)):
     conn = db.get_conn()
     try:
         db.set_setting(conn, "total_assets", amount)
+        conn.commit()
         return HTMLResponse(f'<div class="flash-msg flash-success">✅ 总资产已设置为 ¥{amount:,.2f}</div>')
     finally:
         conn.close()

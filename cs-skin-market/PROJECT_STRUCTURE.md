@@ -25,7 +25,8 @@ cs-skin-market/
 │   ├── market_th.py            # 大盘趋势健康度
 │   ├── valuation.py            # 历史估值分位（百分位+Z-score）
 │   ├── supply.py               # 供给端追踪（吸筹/派发检测）
-│   ├── batch_scan.py         # 自选批量扫描
+│   ├── batch_scan.py         # 自选批量扫描（信号提取/按建议执行）
+│   ├── dashboards.py         # 仪表盘数据（数据积累进度/组合仓位）
 │   └── factor_monitor.py     # 因子衰减监控
 ├── webapp/                     # Web 前端
 │   ├── main.py                 # FastAPI 路由（全端点+HTML渲染）
@@ -101,6 +102,7 @@ cs-skin-market/
 
 | 文件 | 功能 |
 |---|---|
+| `dashboards.py` | 仪表盘数据（纯展示层）：`data_progress` 数据积累进度（大盘/K线/真实成交量覆盖）、`portfolio_dashboard` 组合仓位（持仓分布 + 并发建议仓位占用 vs 0.8 上限） |
 
 ### 工具
 
@@ -124,7 +126,7 @@ cs-skin-market/
 | `base.html` | 布局骨架：左侧 220px 导航栏（大盘/搜索/自选/持仓），右侧内容区 `#main-content` |
 | `dashboard.html` | 首页：大盘指数卡片 + 板块资金流向 + 大盘分析面板 |
 | `search.html` | 单品搜索页：搜索框→即时分析→左侧结果列表+右侧分析详情 |
-| `watchlist.html` | 自选管理页：自选表格（添加/编辑/删除/分析/报告/移除）+ 持仓管理 |
+| `watchlist.html` | 自选管理页：自选表格 + 持仓管理 + 批量扫描 + 信号中心 + 执行记录与复盘 + 组合仓位仪表 |
 
 ### 局部模板（templates/partials/）
 
@@ -146,11 +148,12 @@ cs-skin-market/
 - 缓存：data/discover_latest.json，可反复查看上次结果
 - 异步：搜索+分析后台执行，前端轮询进度
 
-## 批量扫描 (/watchlist)
+## 批量扫描 + 信号中心 + 执行记录 (/watchlist)
 
-- 选中自选物品 → POST /api/watchlist/batch-scan-selected 异步扫描
-- 进度轮询 /api/watchlist/batch-scan-progress/{scan_id}
-- 每个物品保存快照到 snapshots 表（覆盖老数据），报告可反复查看
+- 选中自选物品 → POST /api/watchlist/batch-scan-selected 异步扫描，进度轮询
+- 结果归档 data/scan_history/scan_*.json（保留 30 份）；信号中心提取可分批补仓/建议止损/已到买点，批量扫描按钮显示信号角标
+- 执行记录：按建议执行或手动录入（executions 表），14/30 天到期自动按收盘价结算复盘
+- 组合仓位仪表：持仓分布 + 并发建议仓位占用预警
 - 持仓个性化建议：_portfolio_advice() 基于成本/数量/现价生成
 
 ## 回测工具 (run_backtest.py)
