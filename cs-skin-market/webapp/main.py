@@ -1797,6 +1797,103 @@ async def api_scan_history_detail(scan_id: str):
     except Exception:
         return {"found": False}
 
+
+# ---- 执行记录 (P0-2, 2026-08-04): 按建议执行 + 14/30天自动复盘 ----
+EXEC_ACTIONS = ("buy", "add", "reduce", "sell")
+
+
+def _settle_expired_executions(conn, today=None):
+    """对已到 14/30 天的执行记录，用 price_history 惰性结算并回填（复盘）。
+
+    净收益率 = (结算价/成交价 - 1)*100 - 2%（双边成本，与回测 net14 口径一致）。
+    无历史价格时跳过（下次再试），不影响其它记录。
+    """
+    from datetime import date, timedelta
+    today = date.fromisoformat(today) if today else date.today()
+    rows = conn.execute(
+        "SELECT id, item_id, advice_date, exec_price, settle_14, settle_30 FROM executions").fetchall()
+    for r in rows:
+        try:
+            adv = date.fromisoformat(r["advice_date"])
+        except (TypeError, ValueError):
+            continue
+        upd = {}
+        for _days, _col_px, _col_pnl in ((14, "settle_14", "pnl_14"), (30, "settle_30", "pnl_30")):
+            if r[_col_px] is not None:
+                continue
+            due = adv + timedelta(days=_days)
+            if due > today:
+                continue
+            px = db.closing_price_on(conn, r["item_id"], due.isoformat())
+            if px is None:
+                continue
+            upd[_col_px] = px
+            upd[_col_pnl] = round((px / r["exec_price"] - 1) * 100 - 2.0, 2)
+        if upd:
+            _sets = ", ".join(f"{k}=?" for k in upd)
+            conn.execute(f"UPDATE executions SET {_sets} WHERE id=?", (*upd.values(), r["id"]))
+    conn.commit()
+
+
+@app.get("/api/watchlist/executions")
+async def api_executions():
+    """执行记录列表（自动结算到期记录）。"""
+    conn = db.get_conn()
+    try:
+        _settle_expired_executions(conn)
+        return {"ok": True, "executions": db.list_executions(conn)}
+    finally:
+        conn.close()
+
+
+@app.post("/api/watchlist/executions")
+async def api_add_execution(request: Request):
+    """新增执行记录（按建议执行：建仓/补仓/减仓/清仓）。"""
+    body = await request.json()
+    name = str(body.get("name", "")).strip()
+    action = str(body.get("action", "")).strip()
+    try:
+        qty = max(1, int(body.get("qty", 1)))
+        price = float(body.get("exec_price", 0))
+    except (TypeError, ValueError):
+        return {"ok": False, "error": "数量和价格格式不正确"}
+    advice_date = str(body.get("advice_date", "")).strip() or __import__("datetime").date.today().isoformat()
+    if not name:
+        return {"ok": False, "error": "请选择物品"}
+    if action not in EXEC_ACTIONS:
+        return {"ok": False, "error": "动作类型不正确"}
+    if price <= 0:
+        return {"ok": False, "error": "成交价必须大于0"}
+    conn = db.get_conn()
+    try:
+        item_id = 0
+        try:
+            _pid = int(body.get("item_id", 0))
+        except (TypeError, ValueError):
+            _pid = 0
+        row = conn.execute("SELECT id FROM items WHERE id=? AND name=?", (_pid, name)).fetchone()
+        if row:
+            item_id = row["id"]
+        else:
+            row2 = conn.execute("SELECT id FROM items WHERE name=?", (name,)).fetchone()
+            if row2:
+                item_id = row2["id"]
+        eid = db.add_execution(conn, item_id, name, action, advice_date, price, qty,
+                               advice_signal=body.get("advice_signal", "") or "")
+        return {"ok": True, "id": eid}
+    finally:
+        conn.close()
+
+
+@app.delete("/api/watchlist/executions/{eid}")
+async def api_delete_execution(eid: int):
+    conn = db.get_conn()
+    try:
+        db.delete_execution(conn, eid)
+        return {"ok": True}
+    finally:
+        conn.close()
+
 @app.post("/api/watchlist/batch-scan-selected")
 async def api_watchlist_batch_scan_selected(request: Request):
     body = await request.json()

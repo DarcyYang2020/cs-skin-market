@@ -118,6 +118,36 @@
   </div>
 </div>
 
+<!-- 执行记录与复盘 (P0-2, 2026-08-04) -->
+<div class="card" id="exec-section" style="display:none;margin-top:16px;">
+  <div class="card-header" style="justify-content:space-between;">
+    <span class="card-title">📒 执行记录与复盘</span>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <span style="font-size:11px;color:var(--text-muted);">14/30 天到期自动按收盘价结算（净收益扣 2% 双边成本）</span>
+      <button type="button" class="btn btn-outline btn-sm" onclick="loadExecutions()">🔄 刷新</button>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:90px;">日期</th>
+          <th>物品</th>
+          <th style="width:60px;">动作</th>
+          <th>建议信号</th>
+          <th style="width:90px;">成交价</th>
+          <th style="width:50px;">数量</th>
+          <th style="width:110px;">14天复盘</th>
+          <th style="width:110px;">30天复盘</th>
+          <th style="width:64px;"></th>
+        </tr>
+      </thead>
+      <tbody id="exec-tbody"></tbody>
+    </table>
+  </div>
+  <div id="exec-empty" style="padding:20px;text-align:center;color:var(--text-muted);display:none;">暂无执行记录：批量扫描结果里点「💼 按建议执行」开始记账，14/30 天后自动复盘</div>
+</div>
+
 <!-- Pagination -->
 {% if pagination and pagination.total_pages > 1 %}
 <div class="pagination" id="wl-pagination">
@@ -242,6 +272,46 @@
   </div>
 </div>
 
+<!-- Exec Modal (P0-2, 2026-08-04): 按建议执行 -->
+<div class="modal-overlay" id="exec-modal" style="display:none;">
+  <div class="modal">
+    <h3>💼 按建议执行</h3>
+    <div class="form-group">
+      <label>物品名称</label>
+      <input type="text" id="exec-name" class="form-input" readonly style="background:var(--bg-input);">
+    </div>
+    <div class="row-flex" style="gap:12px;">
+      <div class="form-group" style="flex:1;">
+        <label>动作</label>
+        <select id="exec-action" class="form-select">
+          <option value="buy">🟢 建仓</option>
+          <option value="add">➕ 补仓</option>
+          <option value="reduce">🔻 减仓</option>
+          <option value="sell">🔴 清仓/止损</option>
+        </select>
+      </div>
+      <div class="form-group" style="flex:1;">
+        <label>建议日期</label>
+        <input type="date" id="exec-date" class="form-input">
+      </div>
+    </div>
+    <div class="row-flex" style="gap:12px;">
+      <div class="form-group" style="flex:1;">
+        <label>成交价 (¥) <span class="muted">*</span></label>
+        <input type="number" id="exec-price" class="form-input" step="0.01" min="0" required placeholder="例如：120.00">
+      </div>
+      <div class="form-group" style="flex:1;">
+        <label>数量 <span class="muted">*</span></label>
+        <input type="number" id="exec-qty" class="form-input" min="1" step="1" value="1">
+      </div>
+    </div>
+    <div id="exec-signal" style="font-size:12px;color:var(--text-muted);margin-bottom:12px;"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-outline" onclick="closeModal('exec-modal')">取消</button>
+      <button type="button" class="btn btn-primary" onclick="submitExec()">确认执行</button>
+    </div>
+  </div>
+</div>
 
 
 <!-- 批量扫描结果 -->
@@ -669,22 +739,80 @@ function clearScanCache() {
   });
 }
 
-// Auto-load cached batch scan results
-fetch("/api/watchlist/batch-scan-latest")
-.then(function(r) { return r.json(); })
-.then(function(d) {
-  if (d.found && d.html) {
-    document.getElementById("batch-scan-section").style.display = "block";
-    document.getElementById("batch-scan-result").innerHTML = d.html;
-  }
-});
 
-function clearScanCache() {
-  fetch("/api/watchlist/batch-scan-latest/clear", {method:"POST"})
-  .then(function() {
-    document.getElementById("batch-scan-section").style.display = "none";
-    document.getElementById("batch-scan-result").innerHTML = "";
+
+
+
+// ---- 执行记录与复盘 (P0-2, 2026-08-04) ----
+var EXEC_ACTION_LABEL = {buy: "建仓", add: "补仓", reduce: "减仓", sell: "清仓/止损"};
+function execActionLabel(a) { return EXEC_ACTION_LABEL[a] || a; }
+function pnlBadge(pnl, px) {
+  if (pnl === null || pnl === undefined) return '<span style="font-size:11px;color:var(--text-muted);">待结算</span>';
+  var c = pnl >= 0 ? 'var(--green)' : 'var(--red)';
+  var s = (pnl >= 0 ? '+' : '') + pnl.toFixed(1) + '%';
+  return '<span style="color:' + c + ';font-weight:600;">' + s + '</span>'
+    + (px ? '<br><span style="font-size:11px;color:var(--text-muted);">¥' + Number(px).toFixed(2) + '</span>' : '');
+}
+function openExecModal(btn) {
+  document.getElementById('exec-name').value = btn.getAttribute('data-name') || '';
+  document.getElementById('exec-action').value = btn.getAttribute('data-action') || 'buy';
+  document.getElementById('exec-signal').textContent = btn.getAttribute('data-signal') || '';
+  document.getElementById('exec-price').value = btn.getAttribute('data-price') || '';
+  document.getElementById('exec-qty').value = 1;
+  document.getElementById('exec-date').value = new Date().toISOString().slice(0, 10);
+  openModal('exec-modal');
+}
+function submitExec() {
+  var body = {
+    name: document.getElementById('exec-name').value,
+    action: document.getElementById('exec-action').value,
+    advice_date: document.getElementById('exec-date').value,
+    exec_price: parseFloat(document.getElementById('exec-price').value),
+    qty: parseInt(document.getElementById('exec-qty').value, 10) || 1,
+    advice_signal: document.getElementById('exec-signal').textContent
+  };
+  fetch('/api/watchlist/executions', {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)})
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.ok) { closeModal('exec-modal'); showToast('✅ 已记录执行'); loadExecutions(); }
+    else { showToast('❌ ' + (d.error || '记录失败'), 'error'); }
   });
 }
+function deleteExec(eid) {
+  if (!confirm('删除这条执行记录？')) return;
+  fetch('/api/watchlist/executions/' + eid, {method: "DELETE"})
+  .then(function(r) { return r.json(); })
+  .then(function(d) { if (d.ok) { showToast('已删除'); loadExecutions(); } });
+}
+function loadExecutions() {
+  fetch('/api/watchlist/executions')
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    var sec = document.getElementById('exec-section');
+    var tb = document.getElementById('exec-tbody');
+    var empty = document.getElementById('exec-empty');
+    if (!sec || !tb || !d.ok) return;
+    var list = d.executions || [];
+    sec.style.display = list.length ? 'block' : 'none';
+    if (empty) empty.style.display = list.length ? 'none' : 'block';
+    tb.innerHTML = list.map(function(e) {
+      var act = execActionLabel(e.action);
+      var actC = (e.action === 'buy' || e.action === 'add') ? 'var(--green)' : 'var(--red)';
+      return '<tr>'
+        + '<td style="white-space:nowrap;">' + (e.advice_date || '').slice(0, 10) + '</td>'
+        + '<td><strong>' + e.name + '</strong></td>'
+        + '<td><span style="color:' + actC + ';font-weight:600;">' + act + '</span></td>'
+        + '<td style="font-size:11px;color:var(--text-muted);">' + (e.advice_signal || '—') + '</td>'
+        + '<td>¥' + Number(e.exec_price).toFixed(2) + '</td>'
+        + '<td>' + e.qty + '</td>'
+        + '<td>' + pnlBadge(e.pnl_14, e.settle_14) + '</td>'
+        + '<td>' + pnlBadge(e.pnl_30, e.settle_30) + '</td>'
+        + '<td><button class="btn btn-danger btn-sm" onclick="deleteExec(' + e.id + ')">删除</button></td>'
+        + '</tr>';
+    }).join('');
+  });
+}
+loadExecutions();
+
 </script>
 {% endblock %}

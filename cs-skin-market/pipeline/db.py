@@ -279,6 +279,22 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         created_at TEXT DEFAULT (datetime('now','localtime')))""")
 
     conn.execute("CREATE INDEX IF NOT EXISTS idx_positions_item ON positions(item_id)")
+    # 执行记录(P0-2, 2026-08-04): 按建议执行 + 14/30天自动复盘
+    conn.execute("""CREATE TABLE IF NOT EXISTS executions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        item_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        action TEXT NOT NULL,
+        advice_date TEXT NOT NULL,
+        advice_signal TEXT,
+        exec_price REAL NOT NULL,
+        qty INTEGER NOT NULL DEFAULT 1,
+        settle_14 REAL,
+        settle_30 REAL,
+        pnl_14 REAL,
+        pnl_30 REAL,
+        created_at TEXT DEFAULT (datetime('now','localtime')))""")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_executions_date ON executions(advice_date)")
 
     conn.execute("""CREATE TABLE IF NOT EXISTS backtest_results (
 
@@ -598,6 +614,47 @@ def get_latest_snapshot_report(conn, item_id):
 
 
 
+
+
+# ---- Executions (P0-2, 2026-08-04) ----
+
+
+def add_execution(conn, item_id, name, action, advice_date, exec_price, qty=1, advice_signal=""):
+    """新增执行记录（按建议执行：建仓/补仓/减仓/清仓）。"""
+    cur = conn.execute(
+        "INSERT INTO executions (item_id, name, action, advice_date, advice_signal, exec_price, qty) "
+        "VALUES (?,?,?,?,?,?,?)",
+        (item_id, name, action, advice_date, advice_signal, exec_price, qty))
+    conn.commit()
+    return cur.lastrowid
+
+
+def list_executions(conn):
+    return [dict(r) for r in conn.execute("SELECT * FROM executions ORDER BY id DESC")]
+
+
+def delete_execution(conn, eid):
+    conn.execute("DELETE FROM executions WHERE id=?", (eid,))
+    conn.commit()
+
+
+def settle_execution(conn, eid, settle_14=None, settle_30=None, pnl_14=None, pnl_30=None):
+    """回填复盘结果（settle 价格 + 净收益率%，扣 2% 双边成本）。"""
+    conn.execute("UPDATE executions SET settle_14=?, settle_30=?, pnl_14=?, pnl_30=? WHERE id=?",
+                 (settle_14, settle_30, pnl_14, pnl_30, eid))
+    conn.commit()
+
+
+def closing_price_on(conn, item_id, date_str):
+    """≤ date_str 的最近收盘价（用于复盘结算）；无任何历史返回 None。"""
+    row = conn.execute(
+        "SELECT price_rmb FROM price_history WHERE item_id=? AND date<=? ORDER BY date DESC LIMIT 1",
+        (item_id, date_str)).fetchone()
+    if row and row["price_rmb"]:
+        return row["price_rmb"]
+    row = conn.execute("SELECT price_rmb FROM price_history WHERE item_id=? ORDER BY date DESC LIMIT 1",
+                       (item_id,)).fetchone()
+    return row["price_rmb"] if row else None
 
 
 # ---- Cleanup ----

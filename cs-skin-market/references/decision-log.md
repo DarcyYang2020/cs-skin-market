@@ -382,3 +382,14 @@
 - 新增 API：`GET /api/watchlist/scan-history`（归档列表+最近信号摘要）、`GET /api/watchlist/scan-history/{scan_id}`（详情 HTML，scan_id 白名单校验防路径穿越）
 - watchlist 页：新增「🔔 信号中心」卡（最近扫描的信号摘要）+「📚 历史扫描」下拉回看历史结果
 - 验证：test_smoke 34/34（新增信号提取断言）
+
+---
+
+## P0-2 执行记录 + 自动复盘（2026-08-04）
+
+- 新表 executions（item_id/name/action/advice_date/advice_signal/exec_price/qty/settle_14/settle_30/pnl_14/pnl_30），记录按建议执行的实际成交，14/30 天到期后按 price_history 最近收盘价自动结算
+- 结算口径：净收益率 = (结算价/成交价 - 1)*100 - 2%（双边成本，与回测 net14 一致）；无历史价格时跳过下次再试
+- 新增 API：`GET/POST /api/watchlist/executions`、`DELETE /api/watchlist/executions/{eid}`（action 白名单 buy/add/reduce/sell，数量/价格校验）
+- 批量扫描结果：建议动作映射「按建议执行」按钮（可分批建仓→buy、可分批补仓→add、止盈减仓→reduce、趋势走弱止损→sell；展示层不改信号），点击弹窗填成交价/数量/日期记入执行记录
+- watchlist 页：新增「📒 执行记录与复盘」卡（14/30 天盈亏徽章 + 结算价 + 删除），执行后自动刷新；顺带清理批量扫描 JS 重复块（auto-load/clearScanCache 双定义）
+- 验证：test_smoke 38/38（新增 executions CRUD、closing_price_on、到期自动结算、_exec_btn 映射 4 项）；API 已重启服务实测 GET/POST/DELETE 通过

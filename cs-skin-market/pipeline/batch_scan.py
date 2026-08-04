@@ -336,6 +336,27 @@ def _esc(s):
     return (str(s or "").replace("&", "&amp;").replace("<", "&lt;")
             .replace(">", "&gt;").replace('"', "&quot;"))
 
+# ---- 按建议执行 (P0-2, 2026-08-04): 展示层记账入口, 不改任何信号 ----
+_EXEC_ACTION_MAP = {
+    "可分批建仓": "buy",
+    "可分批补仓": "add",
+    "建议止盈减仓": "reduce",
+    "大幅盈利，部分止盈": "reduce",
+    "趋势走弱，考虑止损": "sell",
+}
+
+
+def _exec_btn(name, pa, price):
+    """建议动作 -> 执行按钮（build 卡片里的小按钮，带 data-* 供前端弹窗）。"""
+    act = (pa or {}).get("action") or ""
+    ea = _EXEC_ACTION_MAP.get(act)
+    if not ea:
+        return ""
+    return ('<button type="button" class="btn btn-accent btn-sm exec-btn" '
+            'data-name="{n}" data-action="{a}" data-signal="{s}" data-price="{p:.2f}" '
+            'onclick="openExecModal(this)">💼 按建议执行</button>').format(
+        n=_esc(name), a=ea, s=_esc(act), p=float(price or 0))
+
 
 def _bd_cell(bd):
     """距买点表格单元格：目标价 + 下杀幅度 + 微型进度条 + 场景标签。"""
@@ -414,7 +435,7 @@ def build_scan_html(results, total, market_ctx=None, now_str="", name_link=None)
             h.append('<td class="' + pnl_c + '">' + "%.1f" % pnl_pct + "%</td>")
             h.append('<td><span class="badge badge-' + g + '">' + _esc(str(r.get("grade", "?"))) + "</span></td>")
             h.append("<td>" + _bd_cell(r.get("buy_distance")) + "</td>")
-            h.append('<td><span style="font-size:12px;font-weight:600;color:var(--accent);">' + _esc(pa.get("action", "")) + "</span><br><span style=\"font-size:11px;color:var(--text-muted);\">" + _esc(pa.get("suggest", "")) + "</span><br><span style=\"font-size:11px;color:var(--accent);\">" + _esc(pa.get("hold_guidance", "") or "") + "</span></td></tr>")
+            h.append('<td><span style="font-size:12px;font-weight:600;color:var(--accent);">' + _esc(pa.get("action", "")) + "</span><br><span style=\"font-size:11px;color:var(--text-muted);\">" + _esc(pa.get("suggest", "")) + "</span><br><span style=\"font-size:11px;color:var(--accent);\">" + _esc(pa.get("hold_guidance", "") or "") + "</span>" + _exec_btn(r["name"], pa, r["price_rmb"]) + "</td></tr>")
         h.append("</tbody></table></div></div>")
     # 关注列表（非持仓）
     if unheld:
@@ -427,7 +448,7 @@ def build_scan_html(results, total, market_ctx=None, now_str="", name_link=None)
             h.append('<td><span class="badge badge-' + g + '">' + _esc(str(r.get("grade", "?"))) + "</span></td>")
             h.append('<td style="font-size:12px;">' + _esc(str(r.get("valuation_tier", "?"))) + '<br><span style="color:var(--text-muted);">pct=' + "%.1f" % r.get("percentile_90d", 50) + "%</span></td>")
             h.append("<td>" + _bd_cell(r.get("buy_distance")) + "</td>")
-            h.append('<td><span style="font-size:12px;font-weight:600;color:var(--accent);">' + _esc(pa.get("action", "")) + "</span><br><span style=\"font-size:11px;color:var(--text-muted);\">" + _esc(pa.get("suggest", "")) + "</span></td></tr>")
+            h.append('<td><span style="font-size:12px;font-weight:600;color:var(--accent);">' + _esc(pa.get("action", "")) + "</span><br><span style=\"font-size:11px;color:var(--text-muted);\">" + _esc(pa.get("suggest", "")) + "</span>" + _exec_btn(r["name"], pa, r["price_rmb"]) + "</td></tr>")
         h.append("</tbody></table></div></div>")
     # 失败
     if errors:

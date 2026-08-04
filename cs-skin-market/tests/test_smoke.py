@@ -790,6 +790,99 @@ def t_live_snapshot_sync():
     assert abs(live["z"] - ctx[today]["z"]) < 0.05, (live["z"], ctx[today]["z"])
 check('live _market_snapshot matches backtest context (pct/z/th/cycle)', t_live_snapshot_sync)
 
+print('[Executions: P0-2 执行记录与自动复盘]')
+def t_exec_crud():
+    from pipeline import db
+    conn = db.get_conn()
+    eids = []
+    try:
+        eid = db.add_execution(conn, 0, '__smoke_test_item__', 'buy', '2026-07-01', 100.0, 2, advice_signal='已到买点')
+        eids.append(eid)
+        rows = [r for r in db.list_executions(conn) if r['id'] == eid]
+        assert len(rows) == 1, rows
+        r = rows[0]
+        assert r['name'] == '__smoke_test_item__' and r['action'] == 'buy'
+        assert r['advice_date'] == '2026-07-01' and abs(r['exec_price'] - 100.0) < 1e-6 and r['qty'] == 2
+        assert r['settle_14'] is None and r['pnl_14'] is None
+        db.settle_execution(conn, eid, settle_14=110.0, pnl_14=8.0)
+        r2 = [r for r in db.list_executions(conn) if r['id'] == eid][0]
+        assert abs(r2['settle_14'] - 110.0) < 1e-6 and abs(r2['pnl_14'] - 8.0) < 1e-6
+    finally:
+        for eid in eids:
+            try:
+                db.delete_execution(conn, eid)
+            except Exception:
+                pass
+        conn.close()
+check('executions CRUD (add/list/settle/delete)', t_exec_crud)
+
+def t_closing_price():
+    from pipeline import db
+    conn = db.get_conn()
+    try:
+        row = conn.execute("SELECT item_id, MAX(date) d, MIN(date) d0 FROM price_history GROUP BY item_id ORDER BY COUNT(*) DESC LIMIT 1").fetchone()
+        if not row:
+            return
+        item_id, dmax, dmin = row['item_id'], row['d'], row['d0']
+        assert dmin <= dmax
+        mid = (dmin[:8] + dmax[:8]) if len(dmin) >= 8 else dmax
+        px = db.closing_price_on(conn, item_id, dmax)
+        assert px is not None and px > 0, px
+        px_future = db.closing_price_on(conn, item_id, '2999-12-31')
+        assert px_future == px, (px_future, px)
+    finally:
+        conn.close()
+check('closing_price_on returns latest close for future date', t_closing_price)
+
+def t_auto_settle():
+    from datetime import date, timedelta
+    from pipeline import db
+    from webapp.main import _settle_expired_executions
+    conn = db.get_conn()
+    eids = []
+    try:
+        today = date(2026, 8, 4)
+        due = (today - timedelta(days=40)).isoformat()   # 14d 与 30d 均已到期
+        fresh = (today - timedelta(days=5)).isoformat()  # 未到期
+        e1 = db.add_execution(conn, 0, '__smoke_settle_due__', 'buy', due, 100.0, 1)
+        e2 = db.add_execution(conn, 0, '__smoke_settle_fresh__', 'buy', fresh, 100.0, 1)
+        eids += [e1, e2]
+        _settle_expired_executions(conn, today.isoformat())
+        r1 = [r for r in db.list_executions(conn) if r['id'] == e1][0]
+        r2 = [r for r in db.list_executions(conn) if r['id'] == e2][0]
+        # 无价格历史的 item_id=0: 到期记录跳过(不报错), 未到期保持 None
+        assert r1['settle_14'] is None and r1['settle_30'] is None
+        assert r2['settle_14'] is None and r2['settle_30'] is None
+        # 有价格历史时: 结算价<=到期日, pnl 口径=(px/exec-1)*100-2
+        row = conn.execute("SELECT item_id, MAX(date) d FROM price_history GROUP BY item_id ORDER BY COUNT(*) DESC LIMIT 1").fetchone()
+        if row:
+            e3 = db.add_execution(conn, row['item_id'], '__smoke_settle_px__', 'buy', (today - timedelta(days=40)).isoformat(), 100.0, 1)
+            eids.append(e3)
+            _settle_expired_executions(conn, today.isoformat())
+            r3 = [r for r in db.list_executions(conn) if r['id'] == e3][0]
+            assert r3['settle_14'] is not None and r3['settle_30'] is not None, r3
+            expected = round((r3['settle_14'] / 100.0 - 1) * 100 - 2.0, 2)
+            assert abs(r3['pnl_14'] - expected) < 1e-6, (r3['pnl_14'], expected)
+    finally:
+        for eid in eids:
+            try:
+                db.delete_execution(conn, eid)
+            except Exception:
+                pass
+        conn.close()
+check('_settle_expired_executions settles due records only', t_auto_settle)
+
+def t_exec_btn_display():
+    from pipeline.batch_scan import _exec_btn
+    assert '按建议执行' in _exec_btn('测试|AK', {'action': '可分批补仓'}, 55.5)
+    assert 'data-action="add"' in _exec_btn('x', {'action': '可分批补仓'}, 1.0)
+    assert 'data-action="buy"' in _exec_btn('x', {'action': '可分批建仓'}, 1.0)
+    assert 'data-action="reduce"' in _exec_btn('x', {'action': '建议止盈减仓'}, 1.0)
+    assert 'data-action="sell"' in _exec_btn('x', {'action': '趋势走弱，考虑止损'}, 1.0)
+    assert _exec_btn('x', {'action': '持有观察'}, 1.0) == ''
+check('batch scan exec button maps actionable advice only', t_exec_btn_display)
+
+
 print()
 print(f'=== Results: {passed} passed, {failed} failed ===')
 if failures:
