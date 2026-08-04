@@ -276,14 +276,15 @@ def _buy_gap(r):
 
 
 def sort_results(results):
-    """批量扫描结果排序：持仓按浮亏升序（最大浮亏在前）；非持仓按距买点 gap 升序（最接近买点在前）。
+    """批量扫描结果排序：统一按距买点 gap 升序（最接近买点在前）。
 
+    持仓与非持仓各自区块内排序，两区块口径一致；同 gap 时持仓按浮亏升序（亏损多优先）。
     展示层排序，不影响任何引擎信号。
     """
     held, unheld = [], []
     for r in results:
         (held if r.get("holding") else unheld).append(r)
-    held.sort(key=_pnl_pct)
+    held.sort(key=lambda r: (_buy_gap(r), _pnl_pct(r)))
     unheld.sort(key=_buy_gap)
     return held + unheld
 

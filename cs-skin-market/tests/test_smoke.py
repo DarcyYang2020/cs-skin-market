@@ -375,13 +375,21 @@ def t_batch_scan_display():
     assert summarize_buy_distance(None) is None
     assert summarize_buy_distance({}) is None
     assert tranche_plan_text() == '首仓10% → 跌10%加20% → 跌15%加30%', tranche_plan_text()
-    # 排序：持仓浮亏大在前，非持仓 gap 小在前
-    held = [dict(holding=1, avg_cost=100.0, price_rmb=130.0, name="赚"),
-            dict(holding=1, avg_cost=100.0, price_rmb=70.0, name="亏")]
+    # 排序(2026-08-04): 统一按距买点 gap 升序（最接近买点在前）——持仓不再按浮亏排
+    held = [dict(holding=1, avg_cost=100.0, price_rmb=130.0, name="赚", buy_distance={"gap_pct": 3.0}),
+            dict(holding=1, avg_cost=100.0, price_rmb=70.0, name="亏", buy_distance={"gap_pct": 8.0})]
     unheld = [dict(holding=0, avg_cost=0, price_rmb=100.0, name="远", buy_distance={"gap_pct": 8.0}),
               dict(holding=0, avg_cost=0, price_rmb=100.0, name="近", buy_distance={"gap_pct": 2.0})]
     out = sort_results(held + unheld)
-    assert [r["name"] for r in out] == ["亏", "赚", "近", "远"], [r["name"] for r in out]
+    assert [r["name"] for r in out] == ["赚", "亏", "近", "远"], [r["name"] for r in out]
+    # 持仓同 gap 时浮亏大在前（次级排序）
+    held_tie = [dict(holding=1, avg_cost=100.0, price_rmb=130.0, name="赚", buy_distance={"gap_pct": 5.0}),
+                dict(holding=1, avg_cost=100.0, price_rmb=70.0, name="亏", buy_distance={"gap_pct": 5.0})]
+    assert [r["name"] for r in sort_results(held_tie)] == ["亏", "赚"]
+    # 无 buy_distance 的品排最后
+    held_no = [dict(holding=1, avg_cost=100.0, price_rmb=130.0, name="A", buy_distance={"gap_pct": 3.0}),
+               dict(holding=1, avg_cost=100.0, price_rmb=70.0, name="B")]
+    assert [r["name"] for r in sort_results(held_no)] == ["A", "B"]
     # HTML 冒烟：市场条 + 距买点列 + 汇总统计
     results = [
         dict(name="A", holding=0, price_rmb=100.0, grade="A", score=4.0, valuation_tier="低估", percentile_90d=12.0,
