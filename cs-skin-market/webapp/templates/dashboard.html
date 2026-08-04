@@ -27,6 +27,7 @@ fetch("/api/data/progress")
   if (!card || !d.ok) return;
   card.style.display = "block";
   var idx = d.index || {}, p = d.price || {}, v = d.volume || {};
+  var ms = d.market_snapshot || {}, mr = d.monitor_rank || {};
   var target = 90;
   var volPct = Math.min(100, Math.round(100 * (v.avg_days_per_item || 0) / target));
   var rows = [
