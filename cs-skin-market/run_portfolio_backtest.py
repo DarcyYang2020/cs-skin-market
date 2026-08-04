@@ -114,8 +114,12 @@ def compute_metrics(trades, curve_dates, curve, start_capital=START_CAPITAL):
     var = sum((r - mean_r) ** 2 for r in rets) / len(rets) if rets else 0.0
     sharpe = mean_r / (var ** 0.5) * (365 ** 0.5) if var > 0 else 0.0
     contribs = [t["contrib_pct"] for t in trades]
+    limits = [t.get("limit") or 0.0 for t in trades]
     wins = [c for c in contribs if c > 0]
     losses = [c for c in contribs if c <= 0]
+    # 资金加权期望：每笔交易按 limit 占仓比重，而非信号等权
+    wsum = sum(limits)
+    wexpect = (sum(c for c, w in zip(contribs, limits)) / wsum) if wsum > 0 else None
     pf = (sum(wins) / abs(sum(losses))) if losses and sum(losses) != 0 else (float("inf") if wins else 0.0)
     max_consec_loss = cur = 0
     for c in contribs:
@@ -130,6 +134,7 @@ def compute_metrics(trades, curve_dates, curve, start_capital=START_CAPITAL):
         "win_rate_pct": round(len(wins) / len(contribs) * 100, 1),
         "profit_factor": round(pf, 2) if pf != float("inf") else None,
         "expectancy_pct": round(sum(contribs) / len(contribs), 3),
+        "wexpectancy_pct": round(wexpect, 3) if wexpect is not None else None,
         "avg_win_pct": round(sum(wins) / len(wins), 2) if wins else None,
         "avg_loss_pct": round(sum(losses) / len(losses), 2) if losses else None,
         "max_consec_loss": max_consec_loss,
@@ -154,7 +159,8 @@ def scan_exit_rules(dates, values, signals):
                 if m is None:
                     continue
                 rows.append({"sl": sl, "tp": tp, "hold": hold, **m})
-    rows.sort(key=lambda r: r["expectancy_pct"], reverse=True)
+    # 优选目标：资金加权期望（结合占仓），非信号等权期望
+    rows.sort(key=lambda r: (r.get("wexpectancy_pct") is not None, r.get("wexpectancy_pct") or 0), reverse=True)
     return rows
 
 

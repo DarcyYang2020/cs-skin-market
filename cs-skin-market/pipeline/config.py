@@ -75,6 +75,10 @@ ITEM_EXIT_RULES = {
 # Shown next to price zones so investors see the mathematical expectancy of the
 # signal type instead of trading on gut feeling (project principle #1/#2).
 ITEM_EXPECTANCY_STATS = {
+    # 资金加权口径说明（2026-08-04）：期望按 position_limit 占仓加权（Σ(limit×ret)/Σlimit），
+    # 非信号等权。当前仓位结构：panic 全 0.3、deep_value 全 0.10 → 加权=等权；
+    # accumulate 混合 0.2/0.3，88 信号基准下加权与等权差异 <0.2pp。
+    # 回测脚本 run_item_backtest.py / run_portfolio_backtest.py 已升级为资金加权，此层展示常量下次回放时刷新。
     # 恐慌共振 (sent>=75 + pct<10): 强信号层, 2026-08-02 回测 37信号中切片
     "panic": {
         "label": "恐慌共振",
@@ -82,16 +86,16 @@ ITEM_EXPECTANCY_STATS = {
         "win14": 95.0, "avg14": 61.4, "ci14_lo": 76.4, "ci14_hi": 99.1,
         "win30": 83.3, "avg30": 74.6,
     },
-    # 周期吸笼 (sent<75 或 pct>=10): 中等信号层
+    # 周期吸筹 (sent<75 或 pct>=10): 中等信号层
     "accumulate": {
-        "label": "????",
+        "label": "周期吸筹",
         "n": 16,
         "win14": 81.2, "avg14": 15.1, "ci14_lo": 57.0, "ci14_hi": 93.4,
         "win30": 68.8, "avg30": 27.6,
     },
-    # ??+???? (2026-08-03 ???? 266??): ????????, ??0.10
+    # 深值+大盘企稳 (2026-08-03 回放 266信号): 轻仓位 0.10
     "deep_value": {
-        "label": "????",
+        "label": "深值企稳",
         "n": 266,
         "win14": 48.1, "avg14": 4.2, "ci14_lo": 42.2, "ci14_hi": 54.1,
         "win30": 45.5, "avg30": 8.2,

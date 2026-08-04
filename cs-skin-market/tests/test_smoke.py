@@ -583,6 +583,38 @@ def t_kline_price_sane():
     assert ok
 check('kline dirty-price anchor rule blocks offset series', t_kline_price_sane)
 
+print('[Expectancy: 资金加权期望]')
+def t_weighted_expectancy():
+    from run_item_backtest import summarize, _weighted_stats
+    # 三笔信号：仓位 0.1/0.2/0.3，收益 +10/-5/+5
+    sigs = [
+        {"position_limit": 0.1, "fwd14": 12.0, "net14": 10.0, "fwd30": 15.0, "net30": 12.0},
+        {"position_limit": 0.2, "fwd14": -3.0, "net14": -5.0, "fwd30": -8.0, "net30": -10.0},
+        {"position_limit": 0.3, "fwd14": 7.0, "net14": 5.0, "fwd30": 9.0, "net30": 8.0},
+    ]
+    wavg, wwin = _weighted_stats(sigs, "net14")
+    # 等权 avg = (10-5+5)/3 = 3.33；加权 avg = (1 - 1 + 1.5)/0.6 = 2.50
+    assert abs(wavg - 2.50) < 0.01, wavg
+    assert wwin == 66.7, wwin  # 赢仓位 0.1+0.3 / 0.6
+    rows, agg = summarize([{"name": "T", "days": 10, "signals": sigs}])
+    assert agg["wavg14"] == 2.50 and abs(agg["avg14"] - 3.33) < 0.01, agg
+    assert agg["wavg14"] != agg["avg14"], agg
+    assert "wavg14" in rows[0] and "wavg30" in rows[0]
+check('expectancy is position-weighted not signal-equal', t_weighted_expectancy)
+
+def t_portfolio_wexpectancy():
+    from run_portfolio_backtest import compute_metrics
+    trades = [
+        {"contrib_pct": 4.38, "limit": 0.2},  # 大赢，低仓
+        {"contrib_pct": 0.49, "limit": 0.3},
+        {"contrib_pct": -0.89, "limit": 0.3},
+    ]
+    m = compute_metrics(trades, ["2026-01-01", "2026-01-02"], [100000.0, 100000.0])
+    # 等权 = (4.38+0.49-0.89)/3 = 1.327；加权 = (4.38+0.49-0.89)/(0.2+0.3+0.3) = 4.975
+    assert abs(m["expectancy_pct"] - 1.327) < 0.01, m["expectancy_pct"]
+    assert abs(m["wexpectancy_pct"] - 4.975) < 0.01, m["wexpectancy_pct"]
+check('portfolio expectancy is position-weighted', t_portfolio_wexpectancy)
+
 def t_market_buy_distance():
     from pipeline.buy_distance import compute_market_buy_distance
     prices = list(range(11, 101))

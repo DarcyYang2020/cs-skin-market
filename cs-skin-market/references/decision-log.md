@@ -64,6 +64,18 @@
 
 ---
 
+## 回测期望口径修正：资金加权（非信号等权）（2026-08-04）
+
+- **问题**：原回测期望为信号等权平均（avg=mean(net)），未结合实际占仓；信号已记录 position_limit 但统计时未使用。实际分批建仓（10%→15%→30%）下，后续大仓位单笔期望低会拉低资金加权总期望。
+- **改动**：
+  - run_item_backtest.py：新增 _weighted_stats（资金加权期望 Σ(limit×ret)/Σlimit + 加权胜率）；aggregate/per-item 新增 wavg14/wavg30/wwin14_pct/wwin30_pct，原等权字段保留对比
+  - run_portfolio_backtest.py：新增 wexpectancy_pct；P0-2 网格优选目标从等权 per-trade expectancy 改为资金加权期望
+  - config.py ITEM_EXPECTANCY_STATS：加口径注释（当前仓位结构下 panic全 0.3/deep_value全 0.10 → 加权=等权，accumulate 差异 <0.2pp，数值不硬改）
+- **数据验证（现有 88 信号）**：等权 avg14 +29.85% vs 资金加权 +31.35%；现有信号仓位只有 0.2/0.3 两档且与信号强度正相关（强共振 0.3、弱信号 0.2），加权与等权差异有限；真正大差异在执行层分批建仓（回测未模拟）——待定义分批规则后单独落地
+- **警示：回测基准维护**：本次试近全量回放（run_item_backtest.py --all）产生 301 信号，与 88 信号基准不一致（物品池大小变化）——已恢复 git 版本，基准保持 88 信号；后续重放需明确物品范围等同基准
+
+---
+
 ## 阶段 0 工程优化（2026-08-04）
 
 - **脏价检测增强（已落地）**：_kline_price_sane 新增 anchor 规则——anchor_price（悠悠锚）存在时，最新 chart close vs 锚价偏差>20% 即判脏，拦截「整条序列整体口径偏移」型脏价（死寂空间 883 vs 614 案例，规则1 只拦单日跳变漏检）；校验不依赖 DB 历史，新品首采同样生效；test_smoke 新增 4 断言

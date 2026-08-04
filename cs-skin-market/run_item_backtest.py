@@ -144,6 +144,19 @@ def backtest_item(item_id, name, start, end, warmup, market_ctx, cost=0.02):
             "first_signal_date": dates[warmup], "signals": signals}
 
 
+def _weighted_stats(sigs, key):
+    """资金加权期望：每笔信号按 position_limit 占仓比重加权，而非信号等权。
+    返回 (wavg, wwin_pct)：wavg = Σ(limit×ret)/Σlimit，wwin = Σ(limit×赢)/Σlimit。
+    """
+    xs = [(s.get("position_limit") or 0.0, s.get(key)) for s in sigs if s.get(key) is not None]
+    tot_w = sum(w for w, _ in xs)
+    if not xs or tot_w <= 0:
+        return None, None
+    wavg = sum(w * r for w, r in xs) / tot_w
+    wwin = sum(w for w, r in xs if r > 0) / tot_w * 100
+    return round(wavg, 2), round(wwin, 1)
+
+
 def summarize(results):
     total = [s for r in results if "signals" in r for s in r["signals"] if "fwd14" in s]
     rows = []
@@ -151,26 +164,34 @@ def summarize(results):
         sigs = [s for s in r.get("signals", []) if "fwd14" in s]
         f14 = [s.get("net14", s["fwd14"]) for s in sigs if s.get("net14", s["fwd14"]) is not None]
         f30 = [s.get("net30", s["fwd30"]) for s in sigs if s.get("net30", s["fwd30"]) is not None]
+        w14, _ = _weighted_stats(sigs, "net14")
+        w30, _ = _weighted_stats(sigs, "net30")
         row = {
             "name": r["name"], "days": r.get("days", 0), "signals": len(sigs),
             "win14": sum(1 for v in f14 if v > 0), "f14": len(f14),
             "avg14": round(sum(f14) / len(f14), 2) if f14 else None,
+            "wavg14": w14,
             "win30": sum(1 for v in f30 if v > 0), "f30": len(f30),
             "avg30": round(sum(f30) / len(f30), 2) if f30 else None,
+            "wavg30": w30,
         }
         rows.append(row)
     agg = None
     if total:
         f14 = [s.get("net14", s["fwd14"]) for s in total if s.get("net14", s["fwd14"]) is not None]
         f30 = [s.get("net30", s["fwd30"]) for s in total if s.get("net30", s["fwd30"]) is not None]
+        w14, ww14 = _weighted_stats(total, "net14")
+        w30, ww30 = _weighted_stats(total, "net30")
         agg = {
             "signals": len(total),
             "win14": sum(1 for v in f14 if v > 0), "n14": len(f14),
             "win14_pct": round(sum(1 for v in f14 if v > 0) / len(f14) * 100, 1) if f14 else None,
             "avg14": round(sum(f14) / len(f14), 2) if f14 else None,
+            "wavg14": w14, "wwin14_pct": ww14,
             "win30": sum(1 for v in f30 if v > 0), "n30": len(f30),
             "win30_pct": round(sum(1 for v in f30 if v > 0) / len(f30) * 100, 1) if f30 else None,
             "avg30": round(sum(f30) / len(f30), 2) if f30 else None,
+            "wavg30": w30, "wwin30_pct": ww30,
         }
     return rows, agg
 
