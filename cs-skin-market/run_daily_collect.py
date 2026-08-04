@@ -159,6 +159,50 @@ def collect_market_snapshot(max_pages: int = 25) -> int:
     return len(rows)
 
 
+
+
+def collect_monitor_rank(top_n: int = 50) -> int:
+    """大户集中度快照采集(monitor/rank, 每品顶头大户 Top N, 存 monitor_rank_snapshot)。"""
+    import asyncio as _asyncio
+    from pipeline import db
+    from pipeline.collector_monitor import fetch_monitor_rank
+    conn = db.get_conn()
+    try:
+        items = conn.execute("SELECT id, good_id, name FROM items WHERE good_id > 0 ORDER BY id").fetchall()
+    finally:
+        conn.close()
+    if not items:
+        log("大户集中度快照: 无可采集品")
+        return 0
+    today = datetime.now(TZ_BJ).strftime("%Y-%m-%d")
+
+    async def _run_all():
+        # 全部品在同一个 event loop 内跑（浏览器实例绑定 loop，多次 asyncio.run 会失效）
+        total = 0
+        ok = 0
+        for r in items:
+            try:
+                rows = await fetch_monitor_rank(r["good_id"], top_n=top_n)
+            except Exception as e:
+                log(f"  [{r['id']}] 大户排行异常: {e}")
+                continue
+            if not rows:
+                continue
+            conn = db.get_conn()
+            try:
+                db.save_monitor_rank_snapshot(conn, today, r["id"], r["good_id"], rows)
+            finally:
+                conn.close()
+            total += len(rows)
+            ok += 1
+            if ok % 20 == 0:
+                log(f"  大户快照进度 {ok}/{len(items)}")
+        return total, ok
+
+    total, ok = _asyncio.run(_run_all())
+    log(f"大户集中度快照: {ok}/{len(items)} 品, 累计 {total} 行 ({today})")
+    return total
+
 def main():
     import argparse
     ap = argparse.ArgumentParser(description="每日自动采集")
@@ -175,6 +219,10 @@ def main():
         collect_market_snapshot(max_pages=25)
     except Exception as e:
         log(f"全市场快照任务异常: {e}")
+    try:
+        collect_monitor_rank(top_n=50)
+    except Exception as e:
+        log(f"大户集中度快照任务异常: {e}")
     # 每周日额外全量刷新 90 日 K 线（对齐 docstring；--kline 亦可手动触发）
     is_sunday = datetime.now(TZ_BJ).isoweekday() == 7
     if args.kline or is_sunday:

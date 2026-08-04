@@ -310,6 +310,20 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         UNIQUE(date, good_id))""")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_market_snapshot_date ON market_snapshot(date)")
 
+    # 大户集中度日常快照(2026-08-04): /monitor monitor/rank 每日采集顶头大户持有量排行, 筹码分布方向
+    conn.execute("""CREATE TABLE IF NOT EXISTS monitor_rank_snapshot (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT NOT NULL,
+        item_id INTEGER NOT NULL,
+        good_id INTEGER NOT NULL,
+        rank INTEGER NOT NULL,          -- Top N 序号 1..50
+        steam_name TEXT,
+        steam_id TEXT,
+        num INTEGER,                    -- 持有量
+        created_at TEXT DEFAULT (datetime('now','localtime')),
+        UNIQUE(date, item_id, rank))""")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_monitor_snapshot_date ON monitor_rank_snapshot(date)")
+
     conn.execute("""CREATE TABLE IF NOT EXISTS backtest_results (
 
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -689,6 +703,22 @@ def save_market_snapshot(conn, date, rows):
     conn.commit()
 
 
+
+
+def save_monitor_rank_snapshot(conn, date, item_id, good_id, rows):
+    """大户集中度快照落库(2026-08-04, P1 数据积累)。
+    rows: list of dict {steam_name, steam_id, num} (持有量降序, 已裁剪 Top N)。
+    同 (date, good_id, rank) 幂等覆盖, 重复运行安全。
+    """
+    # 快照语义：先删该 (date, item_id) 全部旧行再插入，避免 Top 数量变少时旧行残留（按 item_id 不按 good_id，防重复品误删）
+    conn.execute("DELETE FROM monitor_rank_snapshot WHERE date=? AND item_id=?", (date, item_id))
+    conn.executemany(
+        """INSERT INTO monitor_rank_snapshot
+           (date, item_id, good_id, rank, steam_name, steam_id, num)
+           VALUES (?,?,?,?,?,?,?)""",
+        [(date, item_id, good_id, i + 1, r.get("steam_name"), r.get("steam_id"), r.get("num"))
+         for i, r in enumerate(rows) if r.get("num")])
+    conn.commit()
 def backfill_price_missing(conn, item_id, rows):
     """仅补缺失日期的历史价格（simple/chartAll 回填用）。
 

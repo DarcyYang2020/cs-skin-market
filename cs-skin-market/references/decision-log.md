@@ -472,3 +472,15 @@
 - **附带优化**：成交量采集失败加 1 次重试。
 - **验证**：test_smoke 42/42（新增 save_market_snapshot/backfill_price_missing 2 项）。
 - **注意**：simple/chartAll 的 v 字段与悠悠逐日量口径不一致，未确认语义，勿用于成交量因子。
+
+
+---
+
+## P1 大户集中度每日积累落地（2026-08-04）
+
+- **背景（策略研究）**：用户补充 CS 庄盘知识——CS 庄盘依赖散户抱团拉升，庄盘吸汲资金。数据验证：强庄品 AK-47|抽象派 1337 与大盘日收益率相关 0.606（普通品 0.26~0.30），2025-05 大盘 -0.1% 时单月 +173.9%（牛市独立行情）。但大盘上涨日后高 beta 品并未跑赢低 beta 品（+1.43% vs +2.30%）——庄盘收益来自题材行情，非 beta。
+- **价值场景**：选品（识别有庄品）、吸筹信号增强（筹码分布交叉验证）、风控（高控盘度出货崩塌预警）、资金流向跟踪。均需数据积累后回测验证。
+- **落地**：`collector_monitor.py`（monitor/rank 路由改写 good_id，走 /monitor 页面会话绕过 IP 白名单，每品 Top50 大户持有量，失败重试 2 次）+ 新表 `monitor_rank_snapshot(date, item_id, good_id, rank, steam_name, steam_id, num)`（UNIQUE(date, item_id, rank)，快照语义 DELETE+插入）+ 挂 run_daily_collect 每日任务。
+- **实测**：100/100 品 4960 行，约 6.5 分钟/天。抽查：抽象派 1337 顶头 koyouki x149、守护者 HWLH x241。
+- **坑记录**：① 循环多次 asyncio.run 会因浏览器绑定 loop 而失效，须单 loop 内跑全部品；② DELETE 按 good_id 会误删重复品（items 表有同 good_id 多条），按 item_id；③ UNIQUE 含 good_id 时重复品无法并存，改 (date, item_id, rank)。
+- **副产品**：修复测试污染（t_backfill_missing 原先删行回填 888.88 后不恢复原价，污染 8/4 三个持仓品价格）；现已改为保存并完整恢复原始行，并重新采集恢复 8/4 真实价格（火卫一 64.69 / 抽象派 1568.0 / 蓝色层压板 36.2）。

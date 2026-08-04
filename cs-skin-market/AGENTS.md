@@ -281,6 +281,7 @@ cs-skin-market/
     collector.py         -- csQAQ HTTP 采集（大盘指数/品类/搜索）
     collector_csqaq.py   -- csQAQ Playwright 采集（单品搜索/详情/K线/fetch_history_deep 深历史）
     collector_snapshot.py -- 全市场快照采集（get_page_list 翻页，悠悠锚价+在售数，存 market_snapshot）
+    collector_monitor.py -- 大户集中度快照采集（monitor/rank 每日 Top50 大户持有量，存 monitor_rank_snapshot）
     collector_youpin.py -- 悠悠有品成交量采集（HTTP，登录态）
     db.py                -- SQLite 存储（items/price_history/snapshots/positions/settings/market_snapshot/executions）
     item_analysis.py     -- 单品分析主流程（协调10大模块）

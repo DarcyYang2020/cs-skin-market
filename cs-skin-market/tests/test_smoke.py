@@ -946,27 +946,59 @@ check('save_market_snapshot upsert rows', t_market_snapshot)
 def t_backfill_missing():
     from pipeline import db
     conn = db.get_conn()
+    item_id = None
+    date = None
+    orig = None
     try:
         # 找一个已有 volume_day 的真实品，验证回填不覆盖量
-        item = conn.execute("SELECT item_id, date, volume_day FROM price_history WHERE volume_day IS NOT NULL AND volume_day>0 ORDER BY date DESC LIMIT 1").fetchone()
+        item = conn.execute("SELECT item_id, date FROM price_history WHERE volume_day IS NOT NULL AND volume_day>0 ORDER BY date DESC LIMIT 1").fetchone()
         if not item:
             return
-        item_id, date, vol = item["item_id"], item["date"], item["volume_day"]
-        # 清掉该行，模拟"缺失日期"，再回填价格
+        item_id, date = item["item_id"], item["date"]
+        orig = conn.execute("SELECT * FROM price_history WHERE item_id=? AND date=?", (item_id, date)).fetchone()
+        # 清掉该行，模拟“缺失日期”，再回填价格
         conn.execute("DELETE FROM price_history WHERE item_id=? AND date=?", (item_id, date))
         conn.commit()
         db.backfill_price_missing(conn, item_id, [(date, 888.88)])
         row = conn.execute("SELECT price_rmb, volume_day FROM price_history WHERE item_id=? AND date=?", (item_id, date)).fetchone()
         assert row is not None and abs(row["price_rmb"] - 888.88) < 0.01
         assert row["volume_day"] is None  # 原 volume 已被删, 回填不伪造量
-        # 恢复原始行
-        conn.execute("UPDATE price_history SET volume_day=? WHERE item_id=? AND date=?", (vol, item_id, date))
-        conn.commit()
         start = db.item_history_start(conn, item_id)
         assert start and len(start) == 10
     finally:
+        if item_id is not None and date is not None and orig is not None:
+            # 完整恢复原始行，避免污染生产数据
+            conn.execute("DELETE FROM price_history WHERE item_id=? AND date=?", (item_id, date))
+            cols = [d[1] for d in conn.execute("PRAGMA table_info(price_history)").fetchall() if d[1] != "id"]
+            conn.execute("INSERT INTO price_history ({}) VALUES ({})".format(",".join(cols), ",".join("?" * len(cols))), [orig[k] for k in cols])
+            conn.commit()
         conn.close()
 check('backfill_price_missing fills price only, keeps volume', t_backfill_missing)
+
+
+def t_monitor_rank_snapshot():
+    from pipeline import db
+    conn = db.get_conn()
+    try:
+        db.save_monitor_rank_snapshot(conn, "2099-01-02", 9001, 12345, [
+            {"steam_name": "\u5927\u6237A", "steam_id": "s1", "num": 100},
+            {"steam_name": "\u5927\u6237B", "steam_id": "s2", "num": 50},
+            {"steam_name": "\u5927\u6237C", "steam_id": "s3", "num": 0},
+        ])
+        rows = conn.execute("SELECT * FROM monitor_rank_snapshot WHERE date='2099-01-02' ORDER BY rank").fetchall()
+        assert len(rows) == 2, len(rows)  # num=0 行不存
+        assert rows[0]["rank"] == 1 and rows[0]["num"] == 100
+        assert rows[1]["rank"] == 2 and rows[1]["steam_id"] == "s2"
+        # 幂等覆盖
+        db.save_monitor_rank_snapshot(conn, "2099-01-02", 9001, 12345, [{"steam_name": "X", "steam_id": "s9", "num": 7}])
+        rows2 = conn.execute("SELECT COUNT(*) c FROM monitor_rank_snapshot WHERE date='2099-01-02'").fetchone()["c"]
+        assert rows2 == 1, rows2
+    finally:
+        conn.execute("DELETE FROM monitor_rank_snapshot WHERE date='2099-01-02'")
+        conn.commit()
+        conn.close()
+check('save_monitor_rank_snapshot upsert rows', t_monitor_rank_snapshot)
+
 
 
 print()
