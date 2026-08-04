@@ -15,6 +15,15 @@ _log = logging.getLogger(__name__)
 DEFAULT_PAGE_SIZE = 200
 DEFAULT_MAX_PAGES = 25  # 25 页 × 200 = 5000 品（/detail 默认按热度排序，取最热池）
 
+# 磨损过滤（2026-08-04）：枪皮/刀只留崭新出厂；手套只留略磨/久经；无磨损品类（印花/箱/胶囊）保留
+def _keep_wear(name: str, exterior: str) -> bool:
+    """是否保留该磨损档。手套规则与枪皮不同：手套仅略磨+久经，枪皮仅尝新。"""
+    if not exterior:
+        return True  # 无磨损品类（印花/箱/胶囊）保留
+    if "手套" in (name or ""):
+        return exterior in ("略有磨损", "久经沙场")
+    return exterior == "崭新出厂"
+
 
 async def fetch_market_snapshot(max_pages: int = DEFAULT_MAX_PAGES, page_size: int = DEFAULT_PAGE_SIZE):
     """拉取全市场价格快照，返回 list[dict]。
@@ -66,10 +75,16 @@ async def fetch_market_snapshot(max_pages: int = DEFAULT_MAX_PAGES, page_size: i
             if not items:
                 break  # 翻到空页，结束
             for it in items:
+                name = it.get("name") or ""
+                # 过滤 StatTrak/纪念品，仅保留普通版（★ 为普通标记，不过滤）
+                if "StatTrak" in name or "纪念品" in name:
+                    continue
+                if not _keep_wear(name, it.get("exterior_localized_name")):
+                    continue
                 try:
                     rows.append({
                         "good_id": int(it.get("id") or 0),
-                        "name": it.get("name"),
+                        "name": name,
                         "exterior_localized_name": it.get("exterior_localized_name"),
                         "rarity_localized_name": it.get("rarity_localized_name"),
                         "yyyp_sell_price": it.get("yyyp_sell_price"),

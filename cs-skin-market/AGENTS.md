@@ -35,6 +35,15 @@
 
 **StatTrak 过滤**: 自动排除 StatTrak™ 和纪念品版本，仅分析普通版。名称匹配时优先 market_hash_name，失败则通过搜索栏降级查询。
 
+**数据层过滤规则 (2026-08-04 定稿，不动信号算法)**:
+- StatTrak/纪念品排除：`（★）` 是普通标记**不过滤**（StatTrak 刀显示 `（★ StatTrak™）`）。
+- 快照采集 `_keep_wear`：枪皮/刀仅崭新出厂、手套仅略磨+久经、无磨损品类（印花/箱/胶囊）保留 → 5000→1468 品。
+- 单品分析：崭新出厂存世量 <3000 → 存世量过低·不建仓（`survive_too_low`），仅普通版枪皮生效。
+- 存世量口径：`info/good` 的 `statistic_list` 按 good_id 匹配磨损档的 `statistic`，**不是** `buff_sell_num`（在售挂单数）；快照接口 `get_page_list` 无存世量字段，快照层无法按存世量过滤。
+- 每日采集 SQL 排除 `notes LIKE '%存世量过低%'` 的品（成交量/K线/大户三处）。
+- 数据源健康检查见 `references/data-source-health.md`（每周跑一次，防脏数据/错误数据使用）。
+
+
 ## 单品分析引擎 (item_analysis.py)
 
 run_item_analysis(name, prices, volumes, supply_hist, order_book, index_change_7d, market_history, market_pct_90d, market_zscore) 协调以下模块：

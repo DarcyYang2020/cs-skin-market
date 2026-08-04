@@ -999,6 +999,7 @@ def run_item_analysis(
     signal_date: str = None,
     item_meta: dict = None,
     price_anchor: float = None,
+    survive_count: int = 0,
 ):
     """
     Complete single-item analysis pipeline.
@@ -1125,6 +1126,15 @@ def run_item_analysis(
             fd.action_label = "🟡 情绪贪婪·禁止追买"
             fd.action_detail = f"市场情绪贪婪(sent={sentiment_score:.0f})，追买期望为负"
             fd.deduction_sources.append("greedy_no_buy")
+
+    # ---- P0-1b: 存世量过低数据过滤 (2026-08-04): 崭新出厂存世量 <3000 的品流动性差、
+    # 买卖盘失真（如法玛斯 对比涂装 FN 存世量仅 194），不给买入建议。
+    # 口径：仅对普通版枪皮生效；手套/无磨损品类（印花/箱/胶囊）不适用。
+    if fd.action == "buy" and survive_count > 0 and survive_count < 3000:
+        fd.action = "watch"
+        fd.action_label = "\U0001f7e1 \u5b58\u4e16\u91cf\u8fc7\u4f4e\u00b7\u4e0d\u5efa\u4ed3"
+        fd.action_detail = f"\u5b58\u4e16\u91cf\u4ec5 {survive_count} \u4ef6\uff08<3000\uff09\uff0c\u6d41\u52a8\u6027\u5dee\uff0c\u4ef7\u683c\u6613\u5931\u771f"
+        fd.deduction_sources.append("survive_too_low")
 
     # ---- P0-3: Half-way downgrade (pct 25~40 non-resonance: backtest 14d win 28%) ----
     if fd.action == "buy" and position.percentile_90d is not None:

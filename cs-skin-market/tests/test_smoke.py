@@ -1002,6 +1002,55 @@ def t_monitor_rank_snapshot():
 check('save_monitor_rank_snapshot upsert rows', t_monitor_rank_snapshot)
 
 
+def t_is_sunday_order():
+    # 回归防护 (2026-08-04): is_sunday 必须在 _playwright_tasks 定义前赋值,
+    # 否则闭包引用未绑定自由变量 -> NameError -> 周日 K 线全量刷新永久失效。
+    src = open(r"C:\Users\81572\Desktop\codex\cs-model\cs-skin-market\run_daily_collect.py", encoding="utf-8").read()
+    i_assign = src.index("is_sunday = datetime.now")
+    i_def = src.index("async def _playwright_tasks")
+    assert i_assign < i_def, "is_sunday 赋值必须早于 _playwright_tasks 定义"
+    assert "_playwright_tasks" in src and "collect_kline_all" in src
+check('run_daily_collect is_sunday 定义顺序', t_is_sunday_order)
+
+
+def t_keep_wear():
+    from pipeline.collector_snapshot import _keep_wear
+    # 枪皮仅尝新；手套仅略磨+久经；无磨损品保留
+    assert _keep_wear("AWP | 火卫一 (崭新出厂)", "崭新出厂") is True
+    assert _keep_wear("AWP | 火卫一 (略有磨损)", "略有磨损") is False
+    assert _keep_wear("运动手套（★） | 迈阿密风云 (略有磨损)", "略有磨损") is True
+    assert _keep_wear("运动手套（★） | 迈阿密风云 (崭新出厂)", "崭新出厂") is False
+    assert _keep_wear("印花 | 麻将·百中", None) is True
+check('collector_snapshot _keep_wear 磨损过滤', t_keep_wear)
+
+
+def t_survive_filter():
+    from pipeline.item_analysis import run_item_analysis
+    prices = [100 - i for i in range(90)]
+    prices = prices[::-1]  # 升序回升
+    # 存世量过低（194<3000）不给 buy
+    a = run_item_analysis(
+        name="法玛斯 | 对比涂装 (崭新出厂)",
+        prices=prices, volumes=[10]*90, supply_hist=[5]*90,
+        index_change_7d=-1, market_history=[1000]*60, market_pct_90d=20,
+        market_zscore=-1.0, market_cycle="bear", market_th_score=50,
+        market_30d_change=-5, market_drop21=-20, survive_count=194,
+    )
+    fd = a.fusion_decision
+    if fd.get("action") == "buy":
+        assert "survive_too_low" in fd.get("deduction_sources", []), fd
+    # 存世量足够（67256）不触发过滤
+    b = run_item_analysis(
+        name="FN57 | 神祗 (崭新出厂)",
+        prices=prices, volumes=[10]*90, supply_hist=[500]*90,
+        index_change_7d=-1, market_history=[1000]*60, market_pct_90d=20,
+        market_zscore=-1.0, market_cycle="bear", market_th_score=50,
+        market_30d_change=-5, market_drop21=-20, survive_count=67256,
+    )
+    assert "survive_too_low" not in (b.fusion_decision or {}).get("deduction_sources", [])
+check('item_analysis 存世量<3000 不建仓过滤', t_survive_filter)
+
+
 
 print()
 print(f'=== Results: {passed} passed, {failed} failed ===')

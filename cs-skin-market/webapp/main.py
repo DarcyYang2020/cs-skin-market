@@ -894,7 +894,9 @@ async def api_items_search(request: Request, query: str = Form(...)):
             recent_buy_dates=recent_buys,
             signal_date=_today_str(),
             price_anchor=price_rmb,
-        )
+
+            survive_count=getattr(item, "survive_count", 0),
+            )
         # 报告价格锚定悠悠有品 DOM 价（chart fallback 价只补 K 线不参与定价）
         if price_rmb and price_rmb > 0:
             analysis.price_rmb = price_rmb
@@ -1067,7 +1069,9 @@ async def api_items_analyze(
             recent_buy_dates=recent_buys,
             signal_date=_today_str(),
             price_anchor=price_rmb,
-        )
+
+            survive_count=getattr(item, "survive_count", 0),
+            )
         # 报告价格锚定悠悠有品 DOM 价（chart fallback 价只补 K 线不参与定价）
         if price_rmb and price_rmb > 0:
             analysis.price_rmb = price_rmb
@@ -1276,7 +1280,9 @@ async def api_watchlist_analyze(request: Request, item_id: int):
             recent_buy_dates=recent_buys,
             signal_date=_today_str(),
             price_anchor=price_rmb,
-        )
+
+            survive_count=getattr(item, "survive_count", 0),
+            )
         # 报告价格锚定悠悠有品 DOM 价（chart fallback 价只补 K 线不参与定价）
         if price_rmb and price_rmb > 0:
             analysis.price_rmb = price_rmb
@@ -1589,7 +1595,9 @@ async def _scan_item(row, idx, ms, market_th_score, sentiment_score):
             recent_buy_dates=recent_buys,
             signal_date=_today_str(),
             price_anchor=item.price_rmb,
-        )
+
+            survive_count=getattr(item, "survive_count", 0),
+            )
         # 报告价格锚定悠悠有品 DOM 价（chart fallback 价只补 K 线不参与定价）
         if getattr(item, "price_rmb", 0) and item.price_rmb > 0:
             analysis.price_rmb = item.price_rmb
@@ -2010,7 +2018,8 @@ async def _run_discover_task(task_id: str, items: list):
                 market_th_score=ms["th"],
                 market_30d_change=ms["chg30"],
                 market_drop21=ms.get("drop21", 0),
-            )
+                survive_count=getattr(item, "survive_count", 0),
+                )
             analysis_objs[exact_name] = analysis
 
             pos = analysis.position if hasattr(analysis, "position") else {}

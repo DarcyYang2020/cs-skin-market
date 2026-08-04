@@ -72,7 +72,7 @@ async def collect_volume() -> int:
     from pipeline import db
     from pipeline.collector_youpin import fetch_youpin_volume
     conn = db.get_conn()
-    rows = conn.execute("SELECT id, yyyp_id FROM items WHERE yyyp_id IS NOT NULL AND yyyp_id != '' ORDER BY id").fetchall()
+    rows = conn.execute("SELECT id, yyyp_id FROM items WHERE yyyp_id IS NOT NULL AND yyyp_id != '' AND (notes IS NULL OR notes NOT LIKE '%存世量过低%') ORDER BY id").fetchall()
     conn.close()
     if not rows:
         log("无 yyyp_id 记录，跳过成交量（先跑 backfill_yyyp.py）")
@@ -111,7 +111,7 @@ async def collect_volume() -> int:
 async def collect_kline_all() -> int:
     from pipeline import collector_csqaq, db
     conn = db.get_conn()
-    rows = conn.execute("SELECT id, good_id, name FROM items WHERE good_id > 0 ORDER BY id").fetchall()
+    rows = conn.execute("SELECT id, good_id, name FROM items WHERE good_id > 0 AND (notes IS NULL OR notes NOT LIKE '%存世量过低%') ORDER BY id").fetchall()
     conn.close()
     ok = 0
     for r in rows:
@@ -166,7 +166,7 @@ async def collect_monitor_rank(top_n: int = 50) -> int:
     from pipeline.collector_monitor import fetch_monitor_rank
     conn = db.get_conn()
     try:
-        items = conn.execute("SELECT id, good_id, name FROM items WHERE good_id > 0 ORDER BY id").fetchall()
+        items = conn.execute("SELECT id, good_id, name FROM items WHERE good_id > 0 AND (notes IS NULL OR notes NOT LIKE '%存世量过低%') ORDER BY id").fetchall()
     finally:
         conn.close()
     if not items:
@@ -200,6 +200,8 @@ def main():
     ap = argparse.ArgumentParser(description="每日自动采集")
     ap.add_argument("--kline", action="store_true", help="全量刷新 90 日 K 线（慢，建议单独跑）")
     args = ap.parse_args()
+    # 每周日额外全量刷新 90 日 K 线（对齐 docstring；--kline 亦可手动触发）
+    is_sunday = datetime.now(TZ_BJ).isoweekday() == 7
     log("=== 每日采集开始 ===")
     collect_market_index()
     collect_macro()
@@ -227,8 +229,6 @@ def main():
         asyncio.run(_playwright_tasks())
     except Exception as e:
         log(f"浏览器采集任务异常: {e}")
-    # 每周日额外全量刷新 90 日 K 线（对齐 docstring；--kline 亦可手动触发）
-    is_sunday = datetime.now(TZ_BJ).isoweekday() == 7
     log("=== 每日采集完成 ===")
 
 

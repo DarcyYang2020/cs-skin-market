@@ -72,6 +72,7 @@ class ItemData:
         self.turnover_number: int = 0  # Steam market daily volume (from info/good)
         self.yyyp_id: str = ""  # youpin898 template id (from info/good)
         self.in_sale_count: int = 0
+        self.survive_count: int = 0  # 存世量（statistic_list 对应磨损的 statistic）
         self.order_book: Optional[dict] = None
         self.kline_90d: list = []
 
@@ -447,6 +448,14 @@ async def _fetch_item_detail_once(good_id: int):
                         except (TypeError, ValueError):
                             pass
                     item.in_sale_count = int(gi.get('in_sale_count', gi.get('sale_num', gi.get('buff_sell_num', 0))) or 0)
+                    # 存世量：statistic_list 按 good_id 匹配当前磨损档的 statistic（普通版仅留帖纹盘面）
+                    for _sl in (d.get('statistic_list') or []):
+                        try:
+                            if int(_sl.get('id') or 0) == good_id:
+                                item.survive_count = int(_sl.get('statistic') or 0)
+                                break
+                        except (TypeError, ValueError):
+                            continue
                     item.turnover_number = int(gi.get('turnover_number', 0) or 0)
                     item.yyyp_id = str(gi.get('yyyp_id', '') or '')
             except Exception:
