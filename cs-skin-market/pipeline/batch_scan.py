@@ -48,7 +48,9 @@ def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th
         # Non-held: entry advice —— 与单品报告决策同源（fusion_decision），统一口径
         fusion = getattr(analysis, "fusion_decision", {}) or {}
         fusion_action = fusion.get("action", "") if isinstance(fusion, dict) else ""
-        label = (fusion.get("action_label", "") or "").replace("🟢 ", "").replace("🟡 ", "").replace("🟠 ", "").replace("🔴 ", "").replace("🟤 ", "")
+        label = fusion.get("action_label", "") or ""
+        for _em in _EMOJI_PREFIXES:
+            label = label.replace(_em, "")
         action_map = {
             "buy": "可分批建仓",
             "watch": "观望等待机会",
@@ -192,7 +194,8 @@ def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th
         advice["action"] = "持有观察"
         advice["reason"] = f"建议结合大盘走势决策"
     _fusion = getattr(analysis, "fusion_decision", {}) or {}
-    _gd = signal_guidance(_fusion.get("action_label", "") if isinstance(_fusion, dict) else "")
+    _gd = signal_guidance(_fusion.get("action_label", "") if isinstance(_fusion, dict) else "",
+                          (getattr(analysis, "price_zones", None) or {}).get("expectancy"))
     advice["signal_type"] = _gd["signal_type"]
     advice["type_label"] = _gd["type_label"]
     advice["hold_guidance"] = _gd["hold_guidance"]

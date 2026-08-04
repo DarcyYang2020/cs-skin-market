@@ -129,8 +129,8 @@ def do_fit():
         return
     for hold in (14, 30):
         print(f"\n===== hold={hold} deep_value 层 =====")
-        os, ww = one_shot(deep, 0.10, hold=hold)
-        print(f"  一次性 0.10: wavg={os:+.2f}% win={ww:.1f}%")
+        _os, _ww = one_shot(deep, 0.10, hold=hold)
+        print(f"  一次性 0.10: wavg={_os:+.2f}% win={_ww:.1f}%")
         rows = []
         for name, plan in PLANS.items():
             a, w, avgw = aggregate(deep, plan, hold=hold)
@@ -149,8 +149,8 @@ def do_fit():
     mid = by_net[k:-k] if n > 2 * k else deep
     def show(tag, subset):
         a, w, _ = aggregate(subset, best_plan, hold=14)
-        os2, _ = one_shot(subset, 0.10, hold=14)
-        print(f"  {tag:22s} n={len(subset):3d} 一次性={os2:+7.2f}% -> {best_name} {a:+7.2f}% (diff {a-os2:+.2f}pp)")
+        _os2, _ = one_shot(subset, 0.10, hold=14)
+        print(f"  {tag:22s} n={len(subset):3d} 一次性={_os2:+7.2f}% -> {best_name} {a:+7.2f}% (diff {a-_os2:+.2f}pp)")
     show("全量", deep)
     show("中间60%", mid)
     show("pre-1/23", [s for s in deep if in_window(s["date"], "pre123")])

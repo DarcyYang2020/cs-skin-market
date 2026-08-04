@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """每日自动采集脚本（挂 Windows 计划任务）。
 
 - 大盘指数：csQAQ 当日指数落库（复用 collector）
@@ -143,7 +143,9 @@ def main():
         asyncio.run(collect_volume())
     except Exception as e:
         log(f"成交量任务异常: {e}")
-    if args.kline:
+    # 每周日额外全量刷新 90 日 K 线（对齐 docstring；--kline 亦可手动触发）
+    is_sunday = datetime.now(TZ_BJ).isoweekday() == 7
+    if args.kline or is_sunday:
         log("--kline：全量刷新 90 日 K 线")
         try:
             asyncio.run(collect_kline_all())

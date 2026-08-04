@@ -308,6 +308,9 @@ def t_advice():
     assert a['entry_zone'] == {'low': 60.0, 'high': 75.0}
     assert a['avg_cost_after'] > 0, a
     assert '批1' in a['suggest'] and '摊薄成本' in a['suggest'], a['suggest']
+    # 持仓: signal_guidance 传 expectancy -> type_label 覆盖为分层标签(2026-08-04 修复)
+    a = _portfolio_advice(True, 100.0, 10, 80.0, mk(pct=15, z=-1.2, th=45, price_zones={'entry': {'low': 60.0, 'high': 75.0}, 'expectancy': {'label': '深值企稳'}}), market_th=50, sentiment_score=60)
+    assert a['type_label'] == '深值企稳', a['type_label']
     # 非持仓: suggest 给出距建仓参考线的距离
     a = _portfolio_advice(False, 0, 0, 80.0, mk(pct=35, z=-0.8, th=45))
     assert a['action'] == '持有观察', a['action']

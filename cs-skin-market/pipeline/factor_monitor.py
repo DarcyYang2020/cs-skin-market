@@ -1,4 +1,4 @@
-﻿"""Factor decay monitor: compare buy-signal performance across backtest snapshots."""
+"""Factor decay monitor: compare buy-signal performance across backtest snapshots."""
 import json
 from pathlib import Path
 from datetime import datetime, timedelta

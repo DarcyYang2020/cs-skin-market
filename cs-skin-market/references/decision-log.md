@@ -319,4 +319,21 @@
 
 **验证**：test_smoke 全量通过。
 **遗留**：组合层（P0-2）是否套用分批/仓位上限（P2 候选）；等成交量数据积累后统一重拟合档位。
+---
 
+## 工程 bug 检测与修复（2026-08-04）
+
+**检测范围**：全量 py 编译、编码损坏（GBK 乱码/BOM）、重复 dict 键、数据库一致性（重复/NULL/覆盖）、运行服务健康、批量扫描路径审查。
+
+**修复**：
+- **15 个文件去除 UTF-8 BOM**（10 个 py + item-sample-plan.md + 4 个 html 模板）：BOM 会导致 ast.parse/部分工具链解析失败（曾致重复键扫描静默失效）；Python3 可容忍但不规范，统一去除（仅首行 3 字节，无逻辑变化）
+- `run_item_backtest.py`：删除重复 dict 键 `fwd14/fwd30`（后值覆盖前值，值相同无害）
+- `batch_scan.py`：持仓分支 `signal_guidance` 未传 expectancy → 持仓建议 type_label 不显示「深值企稳」等分层标签（与非持仓/报告不一致）；已补传
+- `batch_scan.py`：非持仓 label strip 硬编码 5 个 emoji，改为复用 `_EMOJI_PREFIXES` 循环（防将来新增 emoji 漏 strip）
+- `run_daily_collect.py`：docstring 声明「每周日全量刷新 90 日 K 线」但代码仅 `--kline` 参数触发；补 `isoweekday()==7` 自动触发（对齐文档，闭环「K 线不刷新→当日成交量落不进去」问题）
+- `references/tranche_fit_deepvalue.py`：`os, ww = one_shot(...)` 变量遮蔽 os，改名 `_os/_os2`
+
+**检查通过项**：数据层无重复 (item_id,date)、无异常 NULL（in_sale_count/greedy_index/snapshots 可选字段缺失属正常）；items 覆盖 good_id 99/105、yyyp_id 93/105；服务 200 正常；批量扫描路径脏价校验/DB 落库/快照逻辑完整。
+
+**验证**：test_smoke 33/33 通过（新增持仓 type_label 覆盖断言）。
+**已知待办（非 bug，暂不动）**：main.py 5 处 run_item_analysis 前置样板抽取；signal_guidance 未独立 deep_value 分支（factor_monitor 归入 base 统计）。

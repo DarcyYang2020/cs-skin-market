@@ -1,4 +1,4 @@
-﻿"""Single-item engine backtest runner (offline, data-driven).
+"""Single-item engine backtest runner (offline, data-driven).
 
 Usage:
   python run_item_backtest.py --items "AK-47 | 抽象派 1337 (崭新出厂)" --warmup 60
@@ -135,8 +135,6 @@ def backtest_item(item_id, name, start, end, warmup, market_ctx, cost=0.02):
             "fwd30": round(fwd30, 2) if fwd30 is not None else None,
             "net14": round(net14, 2) if net14 is not None else None,
             "net30": round(net30, 2) if net30 is not None else None,
-            "fwd14": round(fwd14, 2) if fwd14 is not None else None,
-            "fwd30": round(fwd30, 2) if fwd30 is not None else None,
             "max_dd": round(dd, 2),
             "fwd_series": fwd_series,
         })

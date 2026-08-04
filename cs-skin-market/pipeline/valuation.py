@@ -1,4 +1,4 @@
-﻿"""
+"""
 Historical valuation analysis: percentile rank, z-score, cheap/expensive signals.
 """
 

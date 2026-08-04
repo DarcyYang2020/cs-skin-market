@@ -1,4 +1,4 @@
-﻿"""
+"""
 Pipeline configuration — paths, DB location, csQAQ API, model parameters.
 v4: csqaq.com Playwright data source.
 """

@@ -1,4 +1,4 @@
-﻿"""
+"""
 Market index multi-dimensional analysis engine — CS-SKIN SPECIFIC.
 Based on:
   - cs-knowledge.md Ch5: CS2 market features (event-driven, no fundamentals, etc.)

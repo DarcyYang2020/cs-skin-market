@@ -1,4 +1,4 @@
-﻿"""
+"""
 Trend Health Score v3  --- 5-dimension quant engine.
 
 Dimensions & Weights:
