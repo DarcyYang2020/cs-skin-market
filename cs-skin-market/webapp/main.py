@@ -126,10 +126,46 @@ def _cached_youpin_volume(good_id):
     return 0, {}, False
 
 
+# 成交量合理性校验参数（2026-08-05 数据门禁）：单日量为近5日中位数 20 倍以上且绝对量>=30 件，
+# 判为接口抖动/聚合错误的异常峰值（如某日成交 5000+ 而前后日均 <100），剔除不落库。
+_VOL_SPIKE_RATIO = 20.0
+_VOL_SPIKE_MIN = 30
+
+
+def _volume_sane_filter(vol_map):
+    """\u6210\u4ea4\u91cf\u5408\u7406\u6027\u8fc7\u6ee4\uff1a\u5254\u9664\u7591\u4f3c\u5f02\u5e38\u5cf0\u503c\u65e5\uff08\u7eaf\u6570\u636e\u5c42\u9632\u5047\u91cf\uff0c\u4e0d\u89e6\u78b0\u4fe1\u53f7\u5f15\u64ce\uff09\u3002
+    Returns (ok_map, bad_map)\uff1abad_map \u4e3a\u88ab\u5254\u9664\u7684\u5f02\u5e38\u65e5\uff0c\u7528\u4e8e\u65e5\u5fd7\u8bb0\u5f55\u3002
+    """
+    if not vol_map:
+        return {}, {}
+    items = sorted(vol_map.items())
+    ok, bad = {}, {}
+    for i, (d, v) in enumerate(items):
+        try:
+            v = float(v)
+        except (TypeError, ValueError):
+            continue
+        if v <= 0:
+            ok[d] = int(v)
+            continue
+        prev = [float(items[j][1]) for j in range(max(0, i - 5), i)]
+        prev = [x for x in prev if x > 0]
+        if prev:
+            med = sorted(prev)[len(prev) // 2]
+            if v > med * _VOL_SPIKE_RATIO and v >= _VOL_SPIKE_MIN:
+                bad[d] = int(v)
+                continue
+        ok[d] = int(v)
+    return ok, bad
+
+
 def _save_youpin_volume(good_id, vol, vol_map):
     """滚动累积：新 7 天真实量并入历史 map，不丢旧日期（攒够 20+ 天量能项才激活）。"""
     if not good_id:
         return
+    vol_map, _bad = _volume_sane_filter(vol_map or {})
+    if _bad:
+        _web_log.warning(f"youpin volume spike filtered {good_id}: {_bad}")
     conn = db.get_conn()
     try:
         merged = dict(vol_map or {})
@@ -674,6 +710,41 @@ async def api_analysis_results(request: Request):
     return await _analysis_results_partial(request)
 
 
+def _spark_svg(pts, cost):
+    """行内走势图：30日价格折线 + 成本线（纯展示，不触碰任何信号）。"""
+    if not pts or len(pts) < 2:
+        return ""
+    W, H, PAD = 150, 40, 4
+    lo = min(p[1] for p in pts)
+    hi = max(p[1] for p in pts)
+    if cost > 0:
+        lo = min(lo, cost)
+        hi = max(hi, cost)
+    span = (hi - lo) or 1.0
+    step = (W - 2 * PAD) / (len(pts) - 1)
+
+    def _x(i):
+        return PAD + i * step
+
+    def _y(v):
+        return H - PAD - (v - lo) / span * (H - 2 * PAD)
+
+    path = " ".join(
+        ("M" if i == 0 else "L") + f"{_x(i):.1f},{_y(p[1]):.1f}"
+        for i, p in enumerate(pts))
+    below_cost = cost > 0 and pts[-1][1] < cost
+    color = "#f87171" if below_cost else "#34d399"
+    parts = [f'<path d="{path}" fill="none" stroke="{color}" stroke-width="1.5" stroke-linejoin="round"/>']
+    if cost > 0:
+        cy = _y(cost)
+        if 0 <= cy <= H:
+            parts.append(f'<line x1="{PAD}" y1="{cy:.1f}" x2="{W - PAD}" y2="{cy:.1f}" stroke="#fbbf24" stroke-width="1" stroke-dasharray="3,3"/>')
+            parts.append(f'<text x="{W - PAD}" y="{cy - 2:.1f}" font-size="8" fill="#fbbf24" text-anchor="end">\u6210\u672c\u00a5{cost:.2f}</text>')
+    lx, ly = _x(len(pts) - 1), _y(pts[-1][1])
+    parts.append(f'<circle cx="{lx:.1f}" cy="{ly:.1f}" r="2" fill="{color}"/>')
+    return f'<svg width="{W}" height="{H}" viewBox="0 0 {W} {H}">{"".join(parts)}</svg>'
+
+
 # ---- Watchlist page ----
 @app.get("/watchlist", response_class=HTMLResponse)
 async def page_watchlist(request: Request):
@@ -728,9 +799,22 @@ async def page_watchlist(request: Request):
         page = min(page, total_pages)
         items = filtered[(page - 1) * PAGE_SIZE: page * PAGE_SIZE]
 
+        # ---- 持仓盈亏可视化：30 日价格迷你走势 + 成本线 (2026-08-05) ----
+        _spark_ids = [i["id"] for i in items if i.get("holding")]
+        _spark_map = {}
+        if _spark_ids:
+            _marks = ",".join("?" * len(_spark_ids))
+            for _sr in conn.execute(
+                "SELECT item_id, date, price_rmb FROM price_history "
+                "WHERE item_id IN (" + _marks + ") AND price_rmb>0 "
+                "ORDER BY date DESC", _spark_ids).fetchall():
+                _spark_map.setdefault(_sr["item_id"], []).append((_sr["date"], _sr["price_rmb"]))
+
         # Load trend health + parse latest_summary for each item
         import json as _json
         for item in items:
+            _pts = _spark_map.get(item["id"], [])[:30][::-1] if item.get("holding") else []
+            item["spark_svg"] = _spark_svg(_pts, item.get("avg_cost") or 0)
             th_raw = db.get_setting(conn, f"th_{item['id']}", "")
             try:
                 item["trend_health"] = _json.loads(th_raw) if th_raw else None
@@ -1584,20 +1668,22 @@ async def _scan_item(row, idx, ms, market_th_score, sentiment_score):
             recent_buys = _recent_buy_dates(conn_r, item_id)
         finally:
             conn_r.close()
-        analysis = item_analysis.run_item_analysis(
-            name=exact_name, prices=prices, volumes=volumes or None,
-            supply_hist=supply_hist or None, order_book=item.order_book,
-            index_change_7d=getattr(idx, "change_7d", 0),
-            market_cycle=ms["cycle"],
-            market_th_score=ms["th"],
-            market_30d_change=ms["chg30"],
-            market_drop21=ms.get("drop21", 0),
-            recent_buy_dates=recent_buys,
-            signal_date=_today_str(),
-            price_anchor=item.price_rmb,
-
-            survive_count=getattr(item, "survive_count", 0),
-            )
+        analysis = await asyncio.get_running_loop().run_in_executor(
+            None,
+            lambda: item_analysis.run_item_analysis(
+                name=exact_name, prices=prices, volumes=volumes or None,
+                supply_hist=supply_hist or None, order_book=item.order_book,
+                index_change_7d=getattr(idx, "change_7d", 0),
+                market_cycle=ms["cycle"],
+                market_th_score=ms["th"],
+                market_30d_change=ms["chg30"],
+                market_drop21=ms.get("drop21", 0),
+                recent_buy_dates=recent_buys,
+                signal_date=_today_str(),
+                price_anchor=item.price_rmb,
+                survive_count=getattr(item, "survive_count", 0),
+            ),
+        )
         # 报告价格锚定悠悠有品 DOM 价（chart fallback 价只补 K 线不参与定价）
         if getattr(item, "price_rmb", 0) and item.price_rmb > 0:
             analysis.price_rmb = item.price_rmb
@@ -1955,6 +2041,48 @@ async def api_batch_scan_progress(scan_id: str):
 
 
 
+@app.get("/replay", response_class=HTMLResponse)
+async def page_replay(request: Request):
+    """\u4fe1\u53f7\u590d\u76d8\uff1a\u5386\u53f2 buy \u4fe1\u53f7\u7684 14d/30d \u8868\u73b0\u56de\u653e\u3002"""
+    return templates.TemplateResponse(request, "replay.html", {"active_page": "replay"})
+
+
+@app.get("/api/signals/replay")
+async def api_signals_replay():
+    """\u8bfb\u56de\u6d4b\u57fa\u51c6 88 \u4fe1\u53f7 + DB \u5b9e\u65f6\u8865\u6700\u65b0\u4ef7\u683c\u8868\u73b0\uff08\u7eaf\u5c55\u793a\u5c42\uff09\u3002"""
+    import json as _J
+    from pathlib import Path as _P
+    p = _P(__file__).resolve().parent.parent / 'data' / 'item_backtest_latest.json'
+    if not p.exists():
+        return {"found": False}
+    data = _J.loads(p.read_text(encoding='utf-8'))
+    signals = data.get('signals', [])
+    conn = db.get_conn()
+    try:
+        for s in signals:
+            s['latest_price'] = None
+            s['latest_ret'] = None
+            s['net21'] = None
+            _fs = s.get('fwd_series') or []
+            if len(_fs) > 20 and s.get('entry_price'):
+                s['net21'] = round((_fs[20] - s['entry_price']) / s['entry_price'] * 100 - 2.0, 1)
+            try:
+                row = conn.execute("SELECT id FROM items WHERE name=?", (s.get('name', ''),)).fetchone()
+                if not row:
+                    continue
+                px = conn.execute(
+                    "SELECT price_rmb FROM price_history WHERE item_id=? AND price_rmb>0 ORDER BY date DESC LIMIT 1",
+                    (row['id'],)).fetchone()
+                if px and px['price_rmb'] and s.get('entry_price'):
+                    s['latest_price'] = px['price_rmb']
+                    s['latest_ret'] = round((px['price_rmb'] - s['entry_price']) / s['entry_price'] * 100, 1)
+            except Exception:
+                continue
+    finally:
+        conn.close()
+    return {"found": True, "signals": signals}
+
+
 @app.get("/discover", response_class=HTMLResponse)
 async def page_discover(request: Request):
     return templates.TemplateResponse(request, "discover.html", {"active_page": "discover"})
@@ -2010,16 +2138,19 @@ async def _run_discover_task(task_id: str, items: list):
 
             volume_day = vol_today if vol_today > 0 else max(1, (item.volume_total or 0) // 20)
 
-            analysis = _ia.run_item_analysis(
-                name=exact_name, prices=prices, volumes=volumes or None,
-                supply_hist=supply_hist or None, order_book=item.order_book,
-                index_change_7d=0,
-                market_cycle=ms["cycle"],
-                market_th_score=ms["th"],
-                market_30d_change=ms["chg30"],
-                market_drop21=ms.get("drop21", 0),
-                survive_count=getattr(item, "survive_count", 0),
-                )
+            analysis = await asyncio.get_running_loop().run_in_executor(
+                None,
+                lambda: _ia.run_item_analysis(
+                    name=exact_name, prices=prices, volumes=volumes or None,
+                    supply_hist=supply_hist or None, order_book=item.order_book,
+                    index_change_7d=0,
+                    market_cycle=ms["cycle"],
+                    market_th_score=ms["th"],
+                    market_30d_change=ms["chg30"],
+                    market_drop21=ms.get("drop21", 0),
+                    survive_count=getattr(item, "survive_count", 0),
+                ),
+            )
             analysis_objs[exact_name] = analysis
 
             pos = analysis.position if hasattr(analysis, "position") else {}
@@ -2180,7 +2311,7 @@ def _render_discover_html(results, market_th=50):
 async def api_discover_scan_all(request: Request):
     import time as _time
     task_id = f"discover_{int(_time.time())}"
-    _discover_progress[task_id] = {"current": 0, "total": 999, "name": "", "done": False, "html": "", "results": []}
+    _discover_progress[task_id] = {"current": 0, "total": len(DISCOVER_WEAPONS), "name": "", "done": False, "html": "", "results": []}
     asyncio.create_task(_run_discover_scan_all_task(task_id))
     return {"task_id": task_id}
 
@@ -2270,6 +2401,110 @@ async def _run_discover_scan_all_task(task_id: str):
         'market_th': _discover_progress[task_id].get('market_th', None),
     }
     _cache_path.write_text(_json_cache.dumps(_cache_data, ensure_ascii=False), encoding='utf-8')
+
+    # \u9ad8\u5206\u54c1\u8ffd\u8e2a (2026-08-05): top10 \u5b58\u6863\uff0c14/30d \u540e\u56de\u6d4b\u8868\u73b0
+    try:
+        _hist_dir = _Path_cache(__file__).resolve().parent.parent / 'data' / 'discover_history'
+        _hist_dir.mkdir(parents=True, exist_ok=True)
+        _top = [r for r in (_discover_progress[task_id].get('results') or []) if not r.get('error')][:10]
+        _snap = {
+            'time': _cache_data['time'],
+            'market_th': _cache_data['market_th'],
+            'items': [{
+                'name': r.get('name', ''), 'good_id': r.get('good_id'),
+                'price_rmb': r.get('price_rmb'), 'score': r.get('score'),
+                'composite': r.get('composite'), 'pct_90d': r.get('percentile_90d'),
+            } for r in _top],
+        }
+        (_hist_dir / ('discover_' + task_id.replace('discover_', '') + '.json')).write_text(
+            _json_cache.dumps(_snap, ensure_ascii=False), encoding='utf-8')
+        _olds = sorted(_hist_dir.glob('discover_*.json'))
+        for _f in _olds[:-30]:
+            try:
+                _f.unlink()
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+
+def _settle_discover_items(items, scan_time):
+    """\u4ece price_history \u7ed3\u7b97\u5feb\u7167\u54c1\u7684 14/30d \u6536\u76ca\uff08\u626b\u63cf\u65e5\u540e\u7b2c 14/30 \u4e2a\u4ea4\u6613\u65e5 vs \u626b\u63cf\u65e5\u4ef7\uff09\u3002\u7eaf\u5c55\u793a\u5c42\u3002"""
+    from datetime import datetime as _dt
+    try:
+        scan_date = _dt.fromisoformat((scan_time or '')[:10]).strftime('%Y-%m-%d')
+    except Exception:
+        return {'avg14': None, 'win14': None, 'avg30': None, 'win30': None, 'items': []}
+    out = []
+    f14, f30 = [], []
+    conn = db.get_conn()
+    try:
+        for it in items:
+            rec = {'name': it.get('name', ''), 'entry': it.get('price_rmb'), 'fwd14': None, 'fwd30': None, 'days': 0}
+            gid = it.get('good_id')
+            try:
+                row = conn.execute(
+                    "SELECT id FROM items WHERE good_id=? AND name=? LIMIT 1", (gid, it.get('name', ''))).fetchone()
+                item_id = row['id'] if row else None
+            except Exception:
+                item_id = None
+            if item_id and it.get('price_rmb'):
+                rows = conn.execute(
+                    "SELECT date, price_rmb FROM price_history WHERE item_id=? AND date>=? AND price_rmb>0 ORDER BY date",
+                    (item_id, scan_date)).fetchall()
+                prices = [r['price_rmb'] for r in rows]
+                if len(prices) >= 2:
+                    base = prices[0]
+                    if len(prices) > 14:
+                        rec['fwd14'] = round((prices[14] - base) / base * 100, 1)
+                    if len(prices) > 30:
+                        rec['fwd30'] = round((prices[30] - base) / base * 100, 1)
+                    rec['days'] = len(prices)
+            out.append(rec)
+            if rec['fwd14'] is not None:
+                f14.append(rec['fwd14'])
+            if rec['fwd30'] is not None:
+                f30.append(rec['fwd30'])
+    finally:
+        conn.close()
+
+    def _agg(vals):
+        if not vals:
+            return None
+        wins = sum(1 for v in vals if v > 0)
+        return round(sum(vals) / len(vals), 1), round(wins / len(vals) * 100, 0)
+
+    a14, a30 = _agg(f14), _agg(f30)
+    return {
+        'avg14': a14[0] if a14 else None, 'win14': a14[1] if a14 else None,
+        'avg30': a30[0] if a30 else None, 'win30': a30[1] if a30 else None,
+        'items': out,
+    }
+
+
+@app.get("/api/discover/history")
+async def api_discover_history():
+    """\u9ad8\u5206\u54c1\u8ffd\u8e2a\uff1a\u5386\u53f2\u626b\u63cf top10 + 14/30d \u56de\u6d4b\u8868\u73b0\u3002"""
+    from pathlib import Path as _P
+    import json as _J
+    _hist_dir = _P(__file__).resolve().parent.parent / 'data' / 'discover_history'
+    entries = []
+    if _hist_dir.exists():
+        for f in sorted(_hist_dir.glob('discover_*.json'), reverse=True)[:10]:
+            try:
+                d = _J.loads(f.read_text(encoding='utf-8'))
+            except Exception:
+                continue
+            settled = _settle_discover_items(d.get('items', []), d.get('time', ''))
+            entries.append({
+                'time': d.get('time', ''),
+                'market_th': d.get('market_th'),
+                'n': len(d.get('items', [])),
+                'avg14': settled['avg14'], 'win14': settled['win14'],
+                'avg30': settled['avg30'], 'win30': settled['win30'],
+                'items': settled['items'],
+            })
+    return {"entries": entries}
 
 
 @app.get("/api/discover/latest")

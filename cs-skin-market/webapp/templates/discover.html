@@ -40,9 +40,19 @@
 
 <div id="discover-results"></div>
 
+<!-- 高分品追踪 (2026-08-05) -->
+<div class="card" id="discover-history-card" style="display:none;margin-top:16px;">
+  <div class="card-header">
+    <span class="card-title">📈 高分品追踪</span>
+    <span style="font-size:12px;color:var(--text-muted);">每次扫描的 Top10 在 14/30 个交易日后的实际表现（自动结算，验证选品有效性）</span>
+  </div>
+  <div id="discover-history-body" style="padding:10px 14px;font-size:13px;color:var(--text-secondary);"></div>
+</div>
+
 {% endblock %}
 {% block scripts %}
 <script>
+loadDiscoverHistory();
 fetch("/api/discover/latest")
 .then(function(r) { return r.json(); })
 .then(function(d) {
@@ -57,6 +67,35 @@ fetch("/api/discover/latest")
     el.insertBefore(note, el.firstChild);
   }
 });
+
+function loadDiscoverHistory() {
+  fetch("/api/discover/history")
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    var card = document.getElementById("discover-history-card");
+    if (!card) return;
+    var entries = d.entries || [];
+    if (!entries.length) { card.style.display = "none"; return; }
+    card.style.display = "block";
+    var rows = entries.map(function(e) {
+      var f14 = e.avg14 !== null ? e.avg14 + "% (胜率 " + e.win14 + "%)" : "待结算";
+      var f30 = e.avg30 !== null ? e.avg30 + "% (胜率 " + e.win30 + "%)" : "待结算";
+      var items = (e.items || []).map(function(it) {
+        var p14 = it.fwd14 !== null ? it.fwd14 + "%" : "--";
+        var p30 = it.fwd30 !== null ? it.fwd30 + "%" : "--";
+        return '<div style="font-size:11px;color:var(--text-muted);padding:2px 0 0 16px;">' + it.name + ' · 14d ' + p14 + ' · 30d ' + p30 + '</div>';
+      }).join("");
+      return '<div style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.06);">'
+        + '<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px;">'
+        + '<span style="font-weight:600;">' + String(e.time || "").replace("T", " ").slice(0, 16) + '</span>'
+        + '<span>' + e.n + ' 品</span>'
+        + '<span style="color:var(--accent);">14d 均 ' + f14 + '</span>'
+        + '<span style="color:var(--green);">30d 均 ' + f30 + '</span>'
+        + '</div>' + items + '</div>';
+    }).join("");
+    document.getElementById("discover-history-body").innerHTML = rows;
+  });
+}
 
 function refreshDiscover() { startScan(); }
 
@@ -101,6 +140,7 @@ function startScan() {
           if (pd.error) { clearInterval(poll); status.textContent = "❌ 分析失败"; if (mainBtn) { mainBtn.disabled = false; mainBtn.textContent = "🔄 刷新扫描"; } return; }
           if (pd.html) {
             results.innerHTML = pd.html;
+            loadDiscoverHistory();
             progress.style.display = "none";
             if (mainBtn) { mainBtn.disabled = false; mainBtn.textContent = "🔄 刷新扫描"; }
             clearInterval(poll);

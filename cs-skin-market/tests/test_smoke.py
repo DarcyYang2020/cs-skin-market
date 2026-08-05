@@ -559,7 +559,7 @@ def t_guidance():
     from pipeline.batch_scan import signal_guidance
     g = signal_guidance("🟢 恐慌共振·分批建仓")
     assert g["signal_type"] == "panic", g
-    assert "30日" in g["hold_guidance"], g
+    assert "14日" in g["hold_guidance"], g
     g2 = signal_guidance("🟢 周期吸筹·分批建仓")
     assert g2["signal_type"] == "accumulate", g2
     g3 = signal_guidance("🟢 超跌反弹·分批建仓")

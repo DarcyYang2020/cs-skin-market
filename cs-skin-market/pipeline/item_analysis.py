@@ -1576,8 +1576,10 @@ def run_item_analysis(
             if stop_loss_note:
                 strat.append(stop_loss_note)
             if fd.action in ("buy", "hold"):
-                _hold = ITEM_EXIT_RULES["fear" if sentiment_score >= 75 else "neutral"]["hold_days"]
-                strat.append("\u5efa\u8bae\u6301\u4ed3\u7ea6" + str(_hold) + "\u5929(\u56de\u6d4b\u671f\u671b\u6700\u4f18)")
+                # 展示层 (2026-08-05 策略研究): 回测最优持有期 panic 14d / 其他 21d；
+                # 固定百分比止盈截断反弹利润，改以时间退出为主（参数定稿等成交量90天积累后）
+                _hold = 14 if sentiment_score >= 75 else 21
+                strat.append("\u5efa\u8bae\u6301\u4ed3\u7ea6" + str(_hold) + "\u5929\u9000\u51fa(\u56de\u6d4b\u6700\u4f18\uff1b\u56fa\u5b9a\u6b62\u76c8\u4f1a\u622a\u65ad\u53cd\u5f39\u5229\u6da6)")
 
             price_zones = {
                 "entry": {"low": entry_low, "high": entry_high},

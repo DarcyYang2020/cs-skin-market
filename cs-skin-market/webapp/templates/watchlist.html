@@ -89,6 +89,7 @@
           <th style="width:100px;">最新价格</th>
           <th style="width:42px;">评级</th>
           <th style="width:55px;">趋势</th>
+          <th style="width:160px;">30日走势</th>
           <th style="width:155px;">操作</th>
         </tr>
       </thead>
@@ -120,6 +121,7 @@
             </span>
             {% else %}<span class="muted text-sm">--</span>{% endif %}
           </td>
+          <td>{% if item.spark_svg %}{{ item.spark_svg|safe }}{% else %}<span class="muted text-sm">--</span>{% endif %}</td>
           <td>
             <button class="btn btn-outline btn-sm" onclick="openEditModal({{ item.id }},'{{ item.name|e }}',{{ item.holding or 0 }},{{ item.avg_cost or 0 }},{{ item.quantity or 0 }})">编辑</button>
             <button class="btn btn-outline btn-sm" hx-get="/api/watchlist/{{ item.id }}/analyze" hx-target="#modal-body" hx-swap="innerHTML" onclick='showLoadingAndOpen()'>分析</button>
@@ -128,7 +130,7 @@
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted);">暂无持仓，点击上方"添加自选"开始</td></tr>
+        <tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-muted);">暂无持仓，点击上方"添加自选"开始</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -665,8 +667,9 @@ fetch("/api/watchlist/batch-scan-latest")
 
 // ---- 信号中心 + 历史归档 (2026-08-04) ----
 function sigColor(a) {
-  if (a === "可分批补仓") return "var(--green)";
-  if (a === "建议止损") return "var(--red)";
+  if (a === "可分批补仓" || a === "已到买点") return "var(--green)";
+  if (a === "建议止损" || a === "接近止损位") return "var(--red)";
+  if (a === "浮盈可观·考虑止盈") return "var(--yellow)";
   return "var(--accent)";
 }
 function updateScanBadge(signals) {
@@ -690,6 +693,7 @@ function renderSignalCenter(scans, signals) {
   document.getElementById("signal-time").textContent = scans && scans.length ? scans[0].time : "";
   var rows = signals.map(function(s) {
     var gapTxt = (s.gap_pct !== null && s.gap_pct !== undefined) ? "距买点还差 " + s.gap_pct + "%" : "";
+    if (s.pnl_pct !== null && s.pnl_pct !== undefined) gapTxt += (gapTxt ? " · " : "") + "浮亏" + Math.abs(s.pnl_pct) + "%";
     return '<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.06);flex-wrap:wrap;">'
       + '<span style="font-weight:600;">' + s.name + '</span>'
       + '<span class="badge" style="background:rgba(255,255,255,0.08);color:' + sigColor(s.action) + ';">' + (s.holding ? "持仓·" : "") + s.action + '</span>'

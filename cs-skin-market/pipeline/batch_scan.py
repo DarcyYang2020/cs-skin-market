@@ -11,7 +11,7 @@ _log = logging.getLogger("batch_scan")
 _EMOJI_PREFIXES = ("🟢 ", "🟡 ", "🟠 ", "🔴 ", "🟤 ", "💥 ")
 
 
-def signal_guidance(action_label: str = "", expectancy: dict = None) -> dict:
+def signal_guidance(action_label: str = "", expectancy: dict = None, action: str = "") -> dict:
     """Derive signal type + hold guidance from the fusion action label.
 
     Pure display-layer derivation: never changes any engine decision.
@@ -24,16 +24,22 @@ def signal_guidance(action_label: str = "", expectancy: dict = None) -> dict:
     label = raw.strip()
     if "恐慌" in label:
         sig_type, type_label = "panic", "恐慌共振"
-        hold = "恐慌共振类：14d胜率95%，30d胜率83%，可持有30日"
     elif "超跌" in label:
         sig_type, type_label = "oversold", "超跌反弹"
-        hold = "超跌反弹类：默认14日退出（30d期望回落）"
     elif "吸筹" in label:
         sig_type, type_label = "accumulate", "周期吸筹"
-        hold = "周期吸筹类：默认14日退出（非恐慌段30d期望≈0）"
     else:
         sig_type, type_label = "base", "低位低估"
-        hold = "默认14日退出（非恐慌段30d期望≈0，最长14d持仓）"
+    if action and action not in ("buy", "oversold_buy"):
+        hold = "未触发买入信号，暂无持有期建议；已持仓按止损止盈/补仓建议管理"
+    elif sig_type == "panic":
+        hold = "恐慌共振类：回测最优持有14日退出（30d期望回落），止损建议-25%（恐慌深洗勿收太紧）"
+    elif sig_type == "oversold":
+        hold = "超跌反弹类：默认14日退出，止损建议-20%"
+    elif sig_type == "accumulate":
+        hold = "周期吸筹类：建议持有21日退出（同低位低估类回测），止损建议-20%"
+    else:
+        hold = "低位低估类：回测最优持有21日退出，止损建议-20%；固定止盈会截断反弹利润"
     if expectancy and isinstance(expectancy, dict) and expectancy.get("label"):
         type_label = expectancy["label"]
     return {"signal_type": sig_type, "type_label": type_label, "hold_guidance": hold}
@@ -72,7 +78,7 @@ def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th
         _z = getattr(analysis.position, "zscore_90d", 0)
         _th_obj = analysis.trend_health or {}
         _th = _th_obj.get("score", 50) if isinstance(_th_obj, dict) else getattr(_th_obj, "score", 50)
-        _gd = signal_guidance(fusion.get("action_label", ""), (getattr(analysis, "price_zones", None) or {}).get("expectancy"))
+        _gd = signal_guidance(fusion.get("action_label", ""), (getattr(analysis, "price_zones", None) or {}).get("expectancy"), fusion_action)
         if fusion_action == "buy":
             _suggest = "已到建仓区，可分批建仓：" + tranche_plan_text()
             _pz = getattr(analysis, "price_zones", None) or {}
@@ -228,7 +234,7 @@ def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th
         advice["action"] = "持有观察"
         advice["reason"] = f"建议结合大盘走势决策"
     _gd = signal_guidance(_fusion.get("action_label", "") if isinstance(_fusion, dict) else "",
-                          (getattr(analysis, "price_zones", None) or {}).get("expectancy"))
+                          (getattr(analysis, "price_zones", None) or {}).get("expectancy"), _fusion_act)
     advice["signal_type"] = _gd["signal_type"]
     advice["type_label"] = _gd["type_label"]
     advice["hold_guidance"] = _gd["hold_guidance"]
@@ -361,12 +367,21 @@ def extract_signals(results):
             gap = float(gap) if gap is not None else None
         except (TypeError, ValueError):
             gap = None
+        pnl = pa.get("pnl_pct")
+        try:
+            pnl = float(pnl) if pnl is not None else None
+        except (TypeError, ValueError):
+            pnl = None
         if action == "可分批补仓":
             sig_action = "可分批补仓"
         elif action == "趋势走弱，考虑止损":
             sig_action = "建议止损"
         elif gap is not None and gap <= 0:
             sig_action = "已到买点"
+        elif pnl is not None and pnl <= -15:
+            sig_action = "接近止损位"
+        elif pnl is not None and pnl >= 20:
+            sig_action = "浮盈可观·考虑止盈"
         else:
             continue
         signals.append({
@@ -374,9 +389,11 @@ def extract_signals(results):
             "action": sig_action,
             "holding": 1 if r.get("holding") else 0,
             "gap_pct": round(gap, 1) if gap is not None else None,
+            "pnl_pct": round(pnl, 1) if pnl is not None else None,
             "suggest": (pa.get("suggest") or "")[:120],
         })
-    _prio = {"可分批补仓": 0, "建议止损": 1, "已到买点": 2}
+    _prio = {"可分批补仓": 0, "建议止损": 1, "已到买点": 2,
+             "接近止损位": 3, "浮盈可观·考虑止盈": 4}
     signals.sort(key=lambda s: (_prio.get(s["action"], 9),
                                 s["gap_pct"] if s["gap_pct"] is not None else 999))
     return signals

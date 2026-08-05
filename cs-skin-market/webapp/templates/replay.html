@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}CS-Market 信号复盘{% endblock %}
+{% block content %}
+<div style="padding:16px 0;">
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
+    <h2 style="margin:0;font-size:20px;">📊 信号复盘</h2>
+    <span style="font-size:12px;color:var(--text-muted);">回测基准88个 buy 信号的 14d/30d 表现（基准 item_backtest_latest.json，判断当前价格用数据库实时补充）</span>
+    <button class="btn btn-sm btn-outline" onclick="loadReplay()" style="margin-left:auto;">🔄 刷新</button>
+  </div>
+  <div id="replay-stats" style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;"></div>
+  <div class="card" style="padding:0;">
+    <div class="table-wrap" style="max-height:70vh;overflow-y:auto;">
+      <table class="data-table" style="width:100%;font-size:12px;">
+        <thead>
+          <tr>
+            <th>日期</th><th>品名</th><th>类型</th>
+            <th>入场价</th><th>14d</th><th>21d</th><th>30d</th>
+            <th>最新价</th><th>至今收益</th>
+          </tr>
+        </thead>
+        <tbody id="replay-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function fmtPct(v, suffix) {
+  if (v === null || v === undefined) return '<span class="muted">--</span>';
+  var c = v > 0 ? 'var(--green)' : (v < 0 ? 'var(--red)' : 'var(--text-muted)');
+  return '<span style="color:' + c + ';font-weight:600;">' + (v > 0 ? '+' : '') + v + suffix + '</span>';
+}
+function loadReplay() {
+  fetch("/api/signals/replay")
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    var statsEl = document.getElementById("replay-stats");
+    var body = document.getElementById("replay-body");
+    if (!d.found) { body.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--text-muted);">未找到回测基准数据</td></tr>'; return; }
+    var sigs = d.signals || [];
+    var byType = {};
+    sigs.forEach(function(s) {
+      var t = s.signal_type || 'base';
+      if (!byType[t]) byType[t] = { n: 0, r14: [], r21: [], r30: [] };
+      byType[t].n++;
+      if (s.net14 !== null && s.net14 !== undefined) byType[t].r14.push(s.net14);
+      if (s.net21 !== null && s.net21 !== undefined) byType[t].r21.push(s.net21);
+      if (s.net30 !== null && s.net30 !== undefined) byType[t].r30.push(s.net30);
+    });
+    var statsHtml = Object.keys(byType).map(function(t) {
+      var g = byType[t];
+      var w14 = g.r14.length ? Math.round(g.r14.filter(function(x){return x>0;}).length / g.r14.length * 100) : null;
+      var a14 = g.r14.length ? Math.round(g.r14.reduce(function(a,b){return a+b;},0) / g.r14.length * 10) / 10 : null;
+      var w21 = g.r21.length ? Math.round(g.r21.filter(function(x){return x>0;}).length / g.r21.length * 100) : null;
+      var a21 = g.r21.length ? Math.round(g.r21.reduce(function(a,b){return a+b;},0) / g.r21.length * 10) / 10 : null;
+      var w30 = g.r30.length ? Math.round(g.r30.filter(function(x){return x>0;}).length / g.r30.length * 100) : null;
+      var a30 = g.r30.length ? Math.round(g.r30.reduce(function(a,b){return a+b;},0) / g.r30.length * 10) / 10 : null;
+      var label = t === 'panic' ? '恐慌共振' : '低位低估';
+      return '<div class="card" style="padding:10px 14px;min-width:170px;">'
+        + '<div style="font-size:12px;color:var(--text-muted);">' + label + ' (n=' + g.n + ')</div>'
+        + '<div style="font-size:15px;font-weight:700;margin-top:4px;">' + fmtPct(a14, '%') + ' <span style="font-size:11px;color:var(--text-muted);">14d胜率 ' + (w14 !== null ? w14 + '%' : '--') + '</span></div>'
+        + '<div style="font-size:13px;margin-top:2px;">' + fmtPct(a21, '%') + ' <span style="font-size:11px;color:var(--text-muted);">21d胜率 ' + (w21 !== null ? w21 + '%' : '--') + '</span></div>'
+        + '<div style="font-size:13px;margin-top:2px;">' + fmtPct(a30, '%') + ' <span style="font-size:11px;color:var(--text-muted);">30d胜率 ' + (w30 !== null ? w30 + '%' : '--') + '</span></div>'
+        + '</div>';
+    }).join('');
+    statsEl.innerHTML = statsHtml || '<span style="color:var(--text-muted);font-size:13px;">无信号数据</span>';
+
+    var rows = sigs.slice().sort(function(a, b) { return (a.date || '').localeCompare(b.date || ''); }).map(function(s) {
+      var t = s.signal_type === 'panic' ? '恐慌' : '低估';
+      return '<tr>'
+        + '<td>' + (s.date || '') + '</td>'
+        + '<td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (s.name || '') + '</td>'
+        + '<td>' + t + '</td>'
+        + '<td>' + (s.entry_price !== undefined ? '¥' + s.entry_price : '--') + '</td>'
+        + '<td>' + fmtPct(s.net14, '%') + '</td>'
+        + '<td>' + fmtPct(s.net21, '%') + '</td>'
+        + '<td>' + fmtPct(s.net30, '%') + '</td>'
+        + '<td>' + (s.latest_price ? '¥' + s.latest_price : '--') + '</td>'
+        + '<td>' + fmtPct(s.latest_ret, '%') + '</td>'
+        + '</tr>';
+    }).join('');
+    body.innerHTML = rows || '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-muted);">无信号</td></tr>';
+  });
+}
+loadReplay();
+</script>
+{% endblock %}
