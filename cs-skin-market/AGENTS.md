@@ -340,6 +340,12 @@ cs-skin-market/
 | backtest_results | 回测结果 | strategy, sharpe_ratio, max_drawdown_pct |
 | executions | 执行记录+复盘（P0-2） | item_id, name, action, advice_date, exec_price, qty, settle_14/30, pnl_14/30 |
 
+## 风控/信号职责分工（三层闸门，2026-08-06 定稿）
+
+- **组合闸门（portfolio_risk.py）**：组合回撤熔断（10%，收复峰值解除）+ 单票敞口提示（30%，只提示不拒绝）——管「组合层面是否开新仓」。
+- **信号族闸门（未来路由层）**：按市场状态（贪婪禁入/恐慌+深跌=V型底区/恐慌+中跌=阴跌中继区/恐慌浅跌/中性企稳/弱市观望）决定哪些信号族开火——当前由各族门控隐含实现，界面标注见 batch_scan.market_regime。
+- **单品买点（item_analysis 融合决策）**：管「具体品是否到买点」。
+
 ## 常见问题
 
 - **模板中文乱码**: 模板文件必须保存为 UTF-8 编码，不要用 PowerShell 编辑含中文的模板。使用 Python \uXXXX 转义序列生成。

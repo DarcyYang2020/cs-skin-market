@@ -1414,6 +1414,34 @@ def t_health_monitor():
         shutil.rmtree(tmp, ignore_errors=True)
 check('health_monitor 检查→upsert→status 判定', t_health_monitor)
 
+print('[I-1 市场状态标注]')
+def t_regime():
+    from pipeline.batch_scan import market_regime
+    # 贪婪禁入
+    l, c, _ = market_regime(25, -5, 50)
+    assert l == '贪婪禁入' and c == 'regime-greedy', (l, c)
+    # V型底区：恐慌 + 深跌
+    l, c, _ = market_regime(85, -18, 35)
+    assert l == 'V型底区' and c == 'regime-vbottom', (l, c)
+    # 阴跌中继区：恐慌 + 中跌
+    l, c, _ = market_regime(85, -7.6, 35)
+    assert l == '阴跌中继区' and c == 'regime-risky', (l, c)
+    # 恐慌浅跌
+    l, c, _ = market_regime(85, -2, 35)
+    assert l == '恐慌浅跌' and c == 'regime-panic', (l, c)
+    # 中性企稳：非恐慌 + TH>=45
+    l, c, _ = market_regime(60, -5, 50)
+    assert l == '中性企稳' and c == 'regime-ok', (l, c)
+    # 弱市观望：非恐慌 + TH<45
+    l, c, _ = market_regime(60, -5, 40)
+    assert l == '弱市观望' and c == 'regime-weak', (l, c)
+    # 边界：chg30 恰好 -15 属 V型底；-5 属阴跌中继（> -15 且 <= -5）
+    assert market_regime(85, -15, 35)[0] == 'V型底区'
+    assert market_regime(85, -5, 35)[0] == '阴跌中继区'
+    # None 兜底
+    assert market_regime(None, None, None)[0] == '中性企稳'
+check('market_regime 六态判定', t_regime)
+
 print('[B1 风险预算层]')
 def t_b1_risk():
     from pipeline.portfolio_risk import drawdown_from_curve, single_position_exposure

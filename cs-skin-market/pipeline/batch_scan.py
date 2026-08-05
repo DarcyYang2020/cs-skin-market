@@ -44,6 +44,36 @@ def signal_guidance(action_label: str = "", expectancy: dict = None, action: str
     return {"signal_type": sig_type, "type_label": type_label, "hold_guidance": hold}
 
 
+def market_regime(sent, chg30, th=None):
+    """市场状态标注（I-1，2026-08-06，纯展示层，零信号改动）。
+
+    口径沿用补仓回测（2026-08-05）：sent>=80 恐慌，大盘30日跌幅 chg30 区分
+    V型底区（<=-15%）与阴跌中继区（-15~-5%）。返回 (label, css_class, strategy)。
+    用于大盘仪表盘与批量扫描的市场环境条，让使用者一眼看懂当前哪条腿开火。
+    """
+    s = float(sent) if sent is not None else 50.0
+    c = float(chg30) if chg30 is not None else 0.0
+    t = float(th) if th is not None else 50.0  # TH 未知按中性 50 处理
+    if s <= 30:
+        return ("贪婪禁入", "regime-greedy",
+                "市场贪婪（sent≤30）：全腿禁入，逆势抄底期望为负，等情绪转中性/恐惧")
+    if s >= 80 and c <= -15:
+        return ("V型底区", "regime-vbottom",
+                "恐慌+深跌（大盘30日≤-15%）：V型底指纹，抄底腿可提前分批；吸筹腿待企稳后评估")
+    if s >= 80 and -15 < c <= -5:
+        return ("阴跌中继区", "regime-risky",
+                "恐慌+中跌（大盘30日 -15~-5%）：阴跌中继风险（回测7月14d均-8.3%），"
+                "抄底腿防御——等深跌指纹或企稳确认；吸筹腿关闭")
+    if s >= 80:
+        return ("恐慌浅跌", "regime-panic",
+                "恐慌但大盘30日跌幅<5%：抄底腿正常开火，吸筹腿关闭")
+    if t is not None and t >= 45:
+        return ("中性企稳", "regime-ok",
+                "非恐慌+大盘TH≥45：抄底+吸筹双腿可开火（趋势腿需价格平稳+供给收缩）")
+    return ("弱市观望", "regime-weak",
+            "非恐慌但大盘TH<45：抄底腿等待企稳，吸筹腿受门控（禁贪婪弱TH共振）")
+
+
 def _topup_price_plan(avg_cost, qty, current_price, analysis):
     """构建分批补仓价位计划（A方向 2026-08-03，与单品报告 price_zones 同源，纯展示层）。
 
@@ -558,9 +588,13 @@ def build_scan_html(results, total, market_ctx=None, now_str="", name_link=None,
     th_txt = "{:.0f}".format(th) if th is not None else "?"
     sent_txt = "{:.0f}".format(sent) if sent is not None else "?"
     mood = "恐惧" if (sent is not None and sent >= 60) else ("贪婪" if (sent is not None and sent <= 30) else "中性")
+    # I-1 市场状态标注(2026-08-06): V型底区/阴跌中继区等, 纯展示层
+    _regime_label, _regime_cls, _regime_strategy = market_regime(sent, market_ctx.get("chg30"), th)
     h.append('<div class="card" style="margin-bottom:16px;"><div class="card-header"><span class="card-title">市场环境</span></div>'
              '<div style="padding:10px 14px;font-size:13px;color:var(--text-secondary);">'
-             + ("指数 " + _esc("{:.0f}".format(idxv)) + " ｜" if idxv else "") + " 大盘TH=" + th_txt + " ｜ 情绪 " + sent_txt + "（" + mood + "）｜ 周期 " + _esc(str(cycle)))
+             + ("指数 " + _esc("{:.0f}".format(idxv)) + " ｜" if idxv else "") + " 大盘TH=" + th_txt + " ｜ 情绪 " + sent_txt + "（" + mood + "）｜ 周期 " + _esc(str(cycle))
+             + ' ｜ <span class="regime-badge ' + _regime_cls + '">' + _esc(_regime_label) + '</span>')
+    h.append('<br><span style="font-size:12px;color:var(--text-secondary);">策略：' + _esc(_regime_strategy) + '</span>')
     stats = []
     if n_at_buy:
         stats.append(str(n_at_buy) + " 个已到买点")

@@ -625,9 +625,17 @@ async def page_dashboard(request: Request):
     mi, last_update, chart_data = _dashboard_context()
     # Index analysis
     analysis_data = index_analysis.analyze_index_full(chart_data) if chart_data else None
+    # I-1 市场状态标注(2026-08-06): 接线 index_card 的 regime 占位, 纯展示层
+    from pipeline.batch_scan import market_regime
+    _ms_r = _market_snapshot()
+    _regime_label, _regime_cls, _regime_strategy = market_regime(
+        _ms_r.get("sentiment"), _ms_r.get("chg30"), _ms_r.get("th"))
     response = templates.TemplateResponse(request, "dashboard.html", {
         "active_page": "dashboard",
         "index": mi,
+        "regime_label": _regime_label,
+        "regime_class": _regime_cls,
+        "regime_strategy": _regime_strategy,
         "last_update": last_update,
         "chart_data": chart_data,
         "analysis": analysis_data,
@@ -1768,7 +1776,7 @@ async def _run_batch_scan_task(scan_id: str, rows: list):
         final_html = build_scan_html(
             results, total,
             {"th": market_th_score, "sentiment": sentiment_score, "cycle": ms["cycle"],
-             "index": getattr(idx, "value", 0)},
+             "index": getattr(idx, "value", 0), "chg30": ms.get("chg30")},
             now_str=now_str,
             name_link=_item_report_link,
             risk_ctx={"drawdown": _dd_status},
