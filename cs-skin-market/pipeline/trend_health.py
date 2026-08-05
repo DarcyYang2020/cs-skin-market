@@ -20,7 +20,6 @@ Fusion: percentile_90d + corrected trend health -> standardized action.
 from __future__ import annotations
 
 import statistics
-import math
 from dataclasses import dataclass, field
 from .config import THRESHOLDS as T
 
@@ -239,13 +238,6 @@ def _dim_steepness(prices):
         return 50, "stable"
 
     recent_slope = slopes[-1]
-    sl_win = slopes[-min(5, len(slopes)):]
-
-    if len(sl_win) >= 3:
-        chgs = [sl_win[i] - sl_win[i-1] for i in range(1, len(sl_win))]
-        avg_chg = statistics.mean(chgs)
-    else:
-        avg_chg = 0.0
 
     daily_pct = recent_slope * 100
 

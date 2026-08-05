@@ -573,3 +573,17 @@
 - **展示**：持仓列表新增「持仓明细」列（件数/均价/累计买）；编辑弹窗显示只读累计买入。
 - **数据**：功能上线前录入的历史执行不会自动回溯同步；已手工同步用户刚录入的 id=194（FN57 | 霸意大名 add 18.6×9 → qty 27→36、均价 32.0→28.65、累计 864→1031.4）。
 - **测试**：test_smoke 52/52（t_exec_sync_position：buy/add/reduce/sell/清仓/再买/边界/返回值）。
+
+---
+
+## 工程层优化巡检（2026-08-05，技术架构师视角）
+
+- **修复：全新数据库无法启动**：items 建表补齐 holding/avg_cost/quantity/total_bought，持仓列 ALTER 迁移收敛进 db._init_schema（此前只有 webapp 导入时的 _migrate_db 在补，全新库回填 UPDATE 会引用不存在的列而启动失败）；main.py 冗余 _migrate_db 移除。
+- **修复：syncio.run() 在运行中事件循环崩溃**：collector.py 的 401 浏览器 fallback 在 FastAPI 请求上下文里调用 syncio.run 会抛 RuntimeError（实际静默失败）；新增 _run_browser_fallback：脚本/worker 线程正常 syncio.run，运行中 loop 直接放弃并记 warning，且保持旧的容错语义（失败返回 None/[] 不抛异常）。
+- **性能：同步网络调用不再阻塞事件循环**：pi_market_refresh/pi_items_search/pi_items_analyze/批量扫描任务中的 etch_market_index（含 1.1s 限速 sleep + urllib）改为 syncio.to_thread。
+- **健壮性：内存无界增长**：_analysis_cache 封顶 200 条 FIFO 淘汰；_scan_progress/_discover_progress 新增 24h 过期清理。
+- **死代码清理**：pyflakes 全量清零（14 个文件，-121 行）：未用 import/局部变量（含 confidence/ma30/isk_label/mid_start/ecent_chg/vg_chg 等纯死计算）、ield,field,field 重复导入、无占位 f-string、stdout 重复包装防护。
+- **配置运维化**：API_TOKEN 支持 CSQAQ_API_TOKEN 环境变量覆盖；DB_PATH 支持 CS_MODEL_DB 覆盖（测试隔离/多库）。
+- **数据修复**：USP 消音版 | 守护者（id=119，名称多空格）与持仓品 id=6 同 good_id=6554 重复，91 条价格全被 id=6 覆盖、零独有数据，备份后删除；un_data_health 恢复 7/7 通过。
+- **验证**：test_smoke 52/52；全新库建表/迁移冒烟通过；服务重启后全部页面/API 200；数据健康 7/7。
+- **未做（性价比考量）**：main.py 2540 行路由单体拆分（风险>收益，暂缓）；测试库与生产库隔离（测试依赖真实历史数据，且 WAL 复制有风险，暂缓）。

@@ -6,7 +6,7 @@
 快照含悠悠锚价(yyyp_sell_price) + 在售数(yyyp_sell_num)，仅当前快照，无历史。
 """
 import asyncio, json, logging
-from datetime import datetime, timezone, timedelta
+from datetime import timezone, timedelta
 
 from .collector_csqaq import _get_browser, CSQAQ_WEB, _csq_log
 

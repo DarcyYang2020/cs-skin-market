@@ -7,7 +7,6 @@ All statistical windows default to 90 days.
 """
 
 import statistics
-import math
 from .trend_health import compute_trend_health, trend_health_summary, compute_fusion_decision, fusion_decision_summary
 from .valuation import compute_valuation_grid, valuation_grid_summary
 from .supply import analyze_supply, supply_summary
@@ -326,7 +325,6 @@ def _analyze_cycle(prices, volumes=None, sentiment_factor=0.0):
     # Compute percentiles for recent vs mid window
     current = prices[-1]
     window_90 = prices[-min(90, n):]
-    mid_start = max(0, len(window_90) // 2)
 
     # Use simple trend indicators
     ma7  = sum(prices[-min(7, n):]) / min(7, n)
@@ -335,7 +333,6 @@ def _analyze_cycle(prices, volumes=None, sentiment_factor=0.0):
     pct_current = sum(1 for p in window_90 if p < current) / len(window_90) * 100
 
     # Recent 14-day momentum
-    recent_chg = (prices[-1] / prices[-min(15, n)] - 1) * 100 if n >= 15 else 0
 
     # Compute deviation for mild pullback detection
     ma_dev = abs(ma7 / ma30 - 1) * 100 if ma30 > 0 else 100
@@ -633,16 +630,8 @@ def analyze_probability(prices, trend_score=None, whale_prob=0, cycle_phase="unk
 
     base_up = max(10, min(90, base_up))
 
-    # --- Confidence label ---
-    avg_vol_regime = prob.volatility_regime
-    data_quality = "high" if n >= 60 else ("medium" if n >= 20 else "low")
-    if avg_vol_regime in ("high_volatile", "volatile") or data_quality == "low":
-        confidence = "low"
-    elif avg_vol_regime == "normal" and data_quality == "high":
-        confidence = "high"
-    else:
-        confidence = "medium"
-
+    # (Confidence label removed in dead-code cleanup 2026-08-05: 
+    #  probability correction is carried by the prob object itself)
     prob.prob_up_3d  = round(base_up * 1.05, 1)
     prob.prob_up_7d  = round(base_up * 1.10, 1)
     prob.prob_up_30d = round(base_up * 1.15, 1)
@@ -651,7 +640,6 @@ def analyze_probability(prices, trend_score=None, whale_prob=0, cycle_phase="unk
     prob.prob_down_30d = round(100 - prob.prob_up_30d, 1)
 
     # --- Enhanced support/resistance with MA levels ---
-    ma30 = sum(window[-min(30, len(window)):]) / min(30, len(window)) if len(window) >= 10 else current
     ma90 = sum(window) / len(window) if len(window) >= 30 else current
     prob.key_support    = round(max(min(current * 0.85, mean - 2 * std), ma90 * 0.95), 2) if std > 0 else round(current * 0.88, 2)
     prob.key_resistance  = round(min(max(current * 1.15, mean + 2 * std), current * 1.35), 2) if std > 0 else round(current * 1.12, 2)
@@ -1034,7 +1022,7 @@ def run_item_analysis(
         )
 
     # Default risk labels
-    risk_level, risk_label = "C", "较高风险·谨慎介入"
+    risk_level = "C"
 
     current = prices[-1]
     vol_total = supply_hist[-1] if supply_hist else 0
@@ -1311,13 +1299,13 @@ def run_item_analysis(
     risk_score += 3 if liquidity.score >= 50 else (2 if liquidity.score >= 30 else 1)
     risk_score += 3 if whale.level in ("none", "accumulation") else 1
     if risk_score >= 12:
-        risk_level, risk_label = "A", "低风险·可关注"
+        risk_level = "A"
     elif risk_score >= 9:
-        risk_level, risk_label = "B", "中等风险·正常操作"
+        risk_level = "B"
     elif risk_score >= 6:
-        risk_level, risk_label = "C", "较高风险·谨慎介入"
+        risk_level = "C"
     else:
-        risk_level, risk_label = "D", "极度危险·回避"
+        risk_level = "D"
 
     fd_dict = fusion_decision_summary(fd)
 

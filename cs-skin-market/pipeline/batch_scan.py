@@ -1,8 +1,6 @@
 """Batch scan, discover high-score items, and portfolio advice."""
-import asyncio, json, logging, traceback
-from datetime import datetime
+import logging
 
-from . import collector_csqaq, collector, db, item_analysis, index_analysis
 from .buy_distance import tranche_plan_text
 from .config import TOPUP_EXPECTANCY_STATS, PORTFOLIO_CAP_CONCURRENT
 
@@ -167,7 +165,6 @@ def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th
     pnl_pct = (current_price - avg_cost) / avg_cost * 100 if avg_cost > 0 else 0
     th = analysis.trend_health or {}
     th_score = th.get("score", 50)
-    cycle_phase = getattr(analysis.cycle, "phase", "unknown")
 
     advice = {"cost_price": avg_cost, "current_price": current_price, "qty": qty,
               "pnl_pct": round(pnl_pct, 1), "cost_total": round(cost_total, 2), "market_value": round(market_value, 2)}
@@ -273,7 +270,7 @@ def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th
         advice["reason"] = f"盈亏不大({pnl_pct:.1f}%)且趋势健康({th_score})"
     else:
         advice["action"] = "持有观察"
-        advice["reason"] = f"建议结合大盘走势决策"
+        advice["reason"] = "建议结合大盘走势决策"
     _gd = signal_guidance(_fusion.get("action_label", "") if isinstance(_fusion, dict) else "",
                           (getattr(analysis, "price_zones", None) or {}).get("expectancy"), _fusion_act)
     advice["signal_type"] = _gd["signal_type"]

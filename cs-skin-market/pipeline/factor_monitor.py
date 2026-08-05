@@ -1,7 +1,6 @@
 """Factor decay monitor: compare buy-signal performance across backtest snapshots."""
 import json
 from pathlib import Path
-from datetime import datetime, timedelta
 
 SNAPSHOT_DIR = Path(__file__).resolve().parent.parent / "data" / "backtest_snapshots"
 THRESHOLDS = {"14d_win_rate": 0.70, "30d_win_rate": 0.55}

@@ -1,7 +1,7 @@
 # Market Context Anchor -- solves the 30-day item data limitation.
 import statistics, math
-from dataclasses import dataclass, field
-from .index_analysis import _percentile, _zscore  # reuse instead of redefining
+from dataclasses import dataclass
+from .index_analysis import _percentile  # reuse instead of redefining
 
 @dataclass
 class MarketContext:

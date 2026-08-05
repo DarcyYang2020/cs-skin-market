@@ -5,10 +5,8 @@ Navigates directly to goods page and intercepts chart API.
 
 import asyncio, json, re
 import logging
-from collections import defaultdict
 from datetime import datetime, timezone, timedelta
 from typing import Optional
-from .config import CSQAQ_BASE, API_TOKEN
 
 TZ_BJ = timezone(timedelta(hours=8))
 _csq_log = logging.getLogger(__name__)
@@ -84,7 +82,6 @@ def _chart_to_daily_ohlc(cd: dict) -> list:
     price_arr = cd.get("main_data", [])
     num_arr = cd.get("num_data", [])
     tx_arr = cd.get("tx_data", [])
-    amount_arr = cd.get("amount_data", [])
     tx_count_arr = cd.get("txcount_data", [])
     survive_arr = cd.get("survive_data", [])
 
@@ -243,8 +240,8 @@ async def search_good_id(query: str) -> tuple[int, str]:
         except Exception:
             pass
         
-        # Trigger autocomplete via React fiber
-        result = await page.evaluate("""
+        # Trigger autocomplete via React fiber (inject value; return value unused)
+        await page.evaluate("""
             async (q) => {
                 const el = document.querySelector("#rc_select_0");
                 if (!el) return "no el";

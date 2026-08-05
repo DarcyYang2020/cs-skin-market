@@ -11,7 +11,6 @@ Core algorithm path:
 """
 
 import statistics
-from .config import FEE_RATE
 from dataclasses import dataclass, field
 
 
@@ -476,7 +475,6 @@ def analyze_index(index_history: list) -> dict:
     vol_14d = rolling_vols[-1] if rolling_vols else 0
     vol_regime = _volatility_regime(vol_14d)
     mom_7d = _momentum(values, 7)
-    mom_14d = _momentum(values, 14)
     mom_30d = _momentum(values, min(30, len(values)-1))
     z = _zscore(values[-90:], values[-1])
     pct = _percentile(values[-90:], values[-1])
@@ -708,7 +706,6 @@ def analyze_probability_integrated(prices, pct_90d, zscore_90d,
     Base: Z-score mean-reversion probability.
     Modifiers: breadth, sentiment, online trend, position.
     """
-    import statistics
     from .market_macro import (compute_breadth_score, compute_sentiment_score, event_risk_coefficient,
                                  compute_online_trend_score)
 

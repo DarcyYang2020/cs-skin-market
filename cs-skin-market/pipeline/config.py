@@ -3,16 +3,19 @@ Pipeline configuration — paths, DB location, csQAQ API, model parameters.
 v4: csqaq.com Playwright data source.
 """
 
+import os
 from pathlib import Path
 
 # ---- Paths ----
 ROOT_DIR = Path(__file__).resolve().parent.parent  # cs-skin-market/
 DATA_DIR = ROOT_DIR / "data"
-DB_PATH = DATA_DIR / "market.db"
+# ?????? CS_MODEL_DB ???????/???????? data/market.db
+DB_PATH = Path(os.environ.get("CS_MODEL_DB", str(DATA_DIR / "market.db")))
 
 # ---- csQAQ API ----
 CSQAQ_BASE = "https://api.csqaq.com/api/v1"
-API_TOKEN = "RMYAF1H7O8O4N1Q2B6J0F1F2"
+# ?????? CSQAQ_API_TOKEN ????? token ????/???????
+API_TOKEN = os.environ.get("CSQAQ_API_TOKEN", "RMYAF1H7O8O4N1Q2B6J0F1F2")
 API_RATE_LIMIT = 1.1  # seconds between calls (1 req/sec)
 
 # ---- Four-factor model weights ----

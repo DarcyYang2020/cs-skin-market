@@ -14,8 +14,6 @@ import sqlite3
 
 from datetime import datetime, timezone, timedelta
 
-from pathlib import Path
-
 
 
 from .config import DB_PATH, DATA_DIR
@@ -97,6 +95,10 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         souvenir INTEGER DEFAULT 0,
 
         notes TEXT,
+        holding INTEGER DEFAULT 0,
+        avg_cost REAL DEFAULT 0,
+        quantity INTEGER DEFAULT 0,
+        total_bought REAL DEFAULT 0,
 
         created_at TEXT DEFAULT (datetime('now','localtime')),
 
@@ -117,14 +119,27 @@ def _init_schema(conn: sqlite3.Connection) -> None:
     except sqlite3.OperationalError:
         pass  # column already exists
 
+    # Migrate: add holding/avg_cost/quantity if missing (??????? webapp ??????
+    # 2026-08-05 ??? schema?????/????????)
+    for _col, _defn in (("holding", "INTEGER DEFAULT 0"),
+                        ("avg_cost", "REAL DEFAULT 0"),
+                        ("quantity", "INTEGER DEFAULT 0")):
+        try:
+            conn.execute("ALTER TABLE items ADD COLUMN %s %s" % (_col, _defn))
+        except sqlite3.OperationalError:
+            pass  # column already exists
+
     # Migrate: add total_bought (累计买入金额, 2026-08-05) if missing
     # 语义: 只增不减的累计买入成本(不含卖出); 历史持仓按 avg_cost*quantity 回填(幂等, 只补 0/NULL)
     try:
         conn.execute("ALTER TABLE items ADD COLUMN total_bought REAL DEFAULT 0")
     except sqlite3.OperationalError:
         pass  # column already exists
-    conn.execute("UPDATE items SET total_bought = ROUND(avg_cost * quantity, 2) "
-                 "WHERE holding = 1 AND quantity > 0 AND (total_bought IS NULL OR total_bought = 0)")
+    try:
+        conn.execute("UPDATE items SET total_bought = ROUND(avg_cost * quantity, 2) "
+                     "WHERE holding = 1 AND quantity > 0 AND (total_bought IS NULL OR total_bought = 0)")
+    except sqlite3.OperationalError:
+        pass  # ??????????????????????
 
 
 

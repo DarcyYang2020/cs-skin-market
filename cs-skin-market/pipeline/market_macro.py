@@ -12,8 +12,7 @@ All data cached for 10 minutes to avoid rate limiting.
 """
 
 import time as _time
-import urllib.request, json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 _cache_ts = 0
 _cache_data = None

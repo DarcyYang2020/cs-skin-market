@@ -1,25 +1,28 @@
 """CS-Market Web App - FastAPI application."""
 
-import sys, io, asyncio, json, re, traceback, copy
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
-sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+import sys, io, asyncio, json, re, traceback, copy, time
+if getattr(sys.stdout, "encoding", "").lower().replace("-", "") != "utf8":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+if getattr(sys.stderr, "encoding", "").lower().replace("-", "") != "utf8":
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from fastapi import FastAPI, Request, Form, Query
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import logging
-from pipeline import config, db, collector, valuation, index_analysis, item_analysis
+from pipeline import db, collector, index_analysis, item_analysis
 from pipeline import collector_csqaq, collector_youpin
 
 _web_log = logging.getLogger("webapp")
 
 # In-memory analysis cache
 _analysis_cache = {}
+_ANALYSIS_CACHE_MAX = 200  # ????????????????????
 
 def _cached_analysis(item_id, compute_fn):
     import time as _time
@@ -28,6 +31,12 @@ def _cached_analysis(item_id, compute_fn):
     if entry and (now - entry[0]) < 1800:
         return entry[1]
     result = compute_fn()
+    if len(_analysis_cache) >= _ANALYSIS_CACHE_MAX:
+        try:
+            _oldest = next(iter(_analysis_cache))
+            del _analysis_cache[_oldest]
+        except (StopIteration, KeyError):
+            pass
     _analysis_cache[item_id] = (now, result)
     return result
 
@@ -588,30 +597,6 @@ async def favicon():
     return HTMLResponse("", status_code=204)
 
 
-# ---- DB migration ----
-def _migrate_db():
-    conn = db.get_conn()
-    try:
-        for col, defn in [
-            ("holding", "INTEGER DEFAULT 0"),
-            ("avg_cost", "REAL DEFAULT 0"),
-            ("quantity", "INTEGER DEFAULT 0"),
-        ]:
-            try:
-                conn.execute(f"ALTER TABLE items ADD COLUMN {col} {defn}")
-            except Exception:
-                pass
-        try:
-            conn.execute("ALTER TABLE snapshots ADD COLUMN report_html TEXT DEFAULT ''")
-        except Exception:
-            pass
-        conn.commit()
-    finally:
-        conn.close()
-
-_migrate_db()
-
-
 # ---- Dashboard context ----
 def _dashboard_context():
     conn = db.get_conn()
@@ -851,7 +836,7 @@ async def page_watchlist(request: Request):
 @app.post("/api/market/refresh")
 async def api_market_refresh(request: Request):
     try:
-        idx = collector.fetch_market_index()
+        idx = await asyncio.to_thread(collector.fetch_market_index)
         if idx is None:
             return HTMLResponse(_ae("获取大盘数据失败"))
         conn = db.get_conn()
@@ -906,7 +891,7 @@ async def api_items_search(request: Request, query: str = Form(...)):
             return HTMLResponse('<div class="card"><div class="empty-state" style="text-align:center;padding:40px;color:var(--text-muted);">搜索结果与查询不匹配，请尝试更精确的关键词</div></div>')
 
         # Step 3: Run full analysis (same as /api/items/analyze)
-        idx = collector.fetch_market_index()
+        idx = await asyncio.to_thread(collector.fetch_market_index)
         if idx is None or idx.value == 0:
             idx = collector.MarketIndex(value=0, change_7d=0, mood="neutral")
 
@@ -1057,10 +1042,9 @@ async def api_items_analyze(
     discontinued_years: float = Query(default=0),
 ):
     """Run comprehensive single-item analysis using item_analysis engine."""
-    is_discontinued = discontinued_years > 0
 
     try:
-        idx = collector.fetch_market_index()
+        idx = await asyncio.to_thread(collector.fetch_market_index)
         if idx is None or idx.value == 0:
             idx = collector.MarketIndex(value=0, change_7d=0, mood="neutral")
 
@@ -1292,7 +1276,7 @@ async def api_watchlist_analyze(request: Request, item_id: int):
         conn.close()
 
     try:
-        idx = collector.fetch_market_index()
+        idx = await asyncio.to_thread(collector.fetch_market_index)
         if idx is None or idx.value == 0:
             idx = collector.MarketIndex(value=0, change_7d=0, mood="neutral")
 
@@ -1302,7 +1286,7 @@ async def api_watchlist_analyze(request: Request, item_id: int):
 
         item = await collector_csqaq.fetch_item_detail(good_id)
         if item is None:
-            return HTMLResponse(_ae(f"详情获取失败"))
+            return HTMLResponse(_ae("详情获取失败"))
 
         exact_name = _clean_csqaq_name(item.name or page_title or name)
         # 回写 good_id/yyyp_id，避免 watchlist 品下次分析重新搜索（csqaq 搜索易风控）
@@ -1391,10 +1375,6 @@ async def api_watchlist_analyze(request: Request, item_id: int):
             except Exception as _pe:
                 _web_log.warning("kline persist failed: " + str(_pe))
 
-
-        grade = analysis.value.grade
-        score = analysis.value.score
-        th = analysis.trend_health or {}
 
         # Save report to snapshots for "report" button
         conn_save = db.get_conn()
@@ -1549,7 +1529,6 @@ def _render_report_html(report_md, date, grade, total_score):
             is_header = all(c.strip().replace("-","").replace(":","") == "" for c in cells)
             if is_header:
                 continue
-            tag = "th" if not in_table else "td"
             row_html = "<tr>" + "".join(
                 f'<td style="padding: 4px 8px; border-bottom: 1px solid var(--border);">{_fmt_bold(c.strip())}</td>'
                 for c in cells
@@ -1607,6 +1586,14 @@ async def api_watchlist_set_assets(request: Request, amount: float = Form(...)):
 # ---- Batch Scan Progress ----
 _scan_progress: dict = {}
 
+
+def _prune_progress(store, max_age=86400):
+    """清理超过 max_age 秒的进度条目，防长跑任务内存无界增长。"""
+    now = time.time()
+    stale = [k for k, v in store.items() if isinstance(v, dict) and (now - v.get("ts", 0)) > max_age]
+    for k in stale:
+        store.pop(k, None)
+
 def _item_report_link(name):
     """批量扫描结果中可点击的名称链接：弹窗查看已存报告（不重新分析）。"""
     esc = str(name).replace("'", "\\'").replace('"', "&quot;")
@@ -1617,7 +1604,7 @@ async def _scan_item(row, idx, ms, market_th_score, sentiment_score):
     """批量扫描单个物品（可并发调用，共享 Playwright 浏览器多 page）。"""
     import json as _json
     from pipeline.batch_scan import _portfolio_advice, summarize_buy_distance
-    from pipeline import collector_csqaq, item_analysis, collector
+    from pipeline import collector_csqaq, item_analysis
     item_id, name, holding, avg_cost, qty = row["id"], row["name"], row["holding"] or 0, row["avg_cost"] or 0, row["quantity"] or 0
     try:
         good_id, _ = await _resolve_good_id(name)
@@ -1740,7 +1727,7 @@ async def _run_batch_scan_task(scan_id: str, rows: list):
     from pipeline.batch_scan import build_scan_html, sort_results, _esc
     from pipeline import collector
     try:
-        idx = collector.fetch_market_index()
+        idx = await asyncio.to_thread(collector.fetch_market_index)
         if idx is None or idx.value == 0:
             idx = type("obj", (object,), {"value": 0, "change_7d": 0})()
         # Compute market TH + sentiment once for resonance-aware portfolio advice
@@ -2033,7 +2020,8 @@ async def api_watchlist_batch_scan_selected(request: Request):
         return HTMLResponse('<div class="card" style="padding:20px;">\u672a\u627e\u5230\u7269\u54c1</div>')
     import uuid
     scan_id = uuid.uuid4().hex[:8]
-    _scan_progress[scan_id] = {"current": 0, "total": len(rows), "name": "", "done": False, "html": ""}
+    _prune_progress(_scan_progress)
+    _scan_progress[scan_id] = {"current": 0, "total": len(rows), "name": "", "done": False, "html": "", "ts": time.time()}
     asyncio.create_task(_run_batch_scan_task(scan_id, rows))
     html = '<div class="card" id="scan-progress-{sid}" data-scanid="{sid}"><div class="card-header"><span class="card-title">\u626b\u63cf\u8fdb\u5ea6</span></div><div class="card-body" id="scan-status-{sid}"><p style="text-align:center;padding:20px;">\u6b63\u5728\u51c6\u5907\u626b\u63cf... <span class="spinner"></span></p></div></div>'.format(sid=scan_id)
     return HTMLResponse(html)
@@ -2109,7 +2097,6 @@ async def _run_discover_task(task_id: str, items: list):
     _discover_progress[task_id]["market_th"] = market_th
     results = []
     analysis_objs = {}
-    total = len(items)
     skipped = 0
     for i, (good_id, name, price_rmb) in enumerate(items):
         _discover_progress[task_id]["current"] = i + 1
@@ -2141,8 +2128,6 @@ async def _run_discover_task(task_id: str, items: list):
             _apply_volume_map(daily_bars, vol_map)
             volumes = [k.volume for k in daily_bars] if daily_bars else []
             supply_hist = [k.in_sale_count for k in daily_bars] if daily_bars else []
-
-            volume_day = vol_today if vol_today > 0 else max(1, (item.volume_total or 0) // 20)
 
             analysis = await asyncio.get_running_loop().run_in_executor(
                 None,
@@ -2290,8 +2275,6 @@ def _render_discover_html(results, market_th=50):
             continue
         g = r.get("grade", "Z")
         grade_cls = {"S":"grade-s","A":"grade-a","B":"grade-b","C":"grade-c"}.get(g, "grade-z")
-        fusion = r.get("fusion", {}) or {}
-        action = fusion.get("action", "") if isinstance(fusion, dict) else ""
         cp = r.get("cycle_label", "") or r.get("cycle_phase", "")
         pct = r.get("percentile_90d", 50)
         pct_clr = "green" if pct <= 25 else ("yellow" if pct <= 50 else "red")
@@ -2317,7 +2300,8 @@ def _render_discover_html(results, market_th=50):
 async def api_discover_scan_all(request: Request):
     import time as _time
     task_id = f"discover_{int(_time.time())}"
-    _discover_progress[task_id] = {"current": 0, "total": len(DISCOVER_WEAPONS), "name": "", "done": False, "html": "", "results": []}
+    _prune_progress(_discover_progress)
+    _discover_progress[task_id] = {"current": 0, "total": len(DISCOVER_WEAPONS), "name": "", "done": False, "html": "", "results": [], "ts": time.time()}
     asyncio.create_task(_run_discover_scan_all_task(task_id))
     return {"task_id": task_id}
 
@@ -2518,7 +2502,6 @@ async def api_discover_latest():
     """Return cached discover result if available and < 24h old."""
     from pathlib import Path as _P
     import json as _J
-    from datetime import datetime, timedelta
     cache_path = _P(__file__).resolve().parent.parent / "data" / "discover_latest.json"
     if not cache_path.exists():
         return {"found": False}

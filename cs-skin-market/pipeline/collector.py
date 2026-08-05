@@ -10,9 +10,9 @@ import json
 import time
 import urllib.request
 import urllib.parse
-from dataclasses import dataclass, field, field, field
+import asyncio
+from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
-from pathlib import Path
 from typing import Optional
 
 from .config import CSQAQ_BASE, API_TOKEN, API_RATE_LIMIT, DATA_DIR
@@ -142,6 +142,30 @@ def _parse_int(raw) -> int:
 # ============================================================
 
 
+
+def _run_browser_fallback(coro_factory, label):
+    """Run a browser-fallback coroutine from sync code.
+
+    - ???????????/worker ????asyncio.run ????
+    - ????????FastAPI ??????????????? async_playwright
+      ??????? loop?? loop ???????????? warning????????
+      ???? asyncio.run RuntimeError?
+    """
+    try:
+        asyncio.get_running_loop()
+        in_loop = True
+    except RuntimeError:
+        in_loop = False
+    if in_loop:
+        _log.warning(f"{label}: API 401 fallback skipped (running event loop, browser is loop-bound)")
+        return None
+    try:
+        return asyncio.run(coro_factory())
+    except Exception as e:
+        _log.error(f"{label}: browser fallback failed: {e}")
+        return None
+
+
 def _current_data_with_fallback() -> dict | None:
     """Fetch /current_data?type=init with 401 fallback to browser."""
     resp = _api_get("/current_data?type=init")
@@ -149,13 +173,8 @@ def _current_data_with_fallback() -> dict | None:
     
     if resp.get("code") == 401 and not data:
         _log.warning("current_data: API 401 (IP binding mismatch), falling back to browser")
-        try:
-            import asyncio
-            from .collector_csqaq import fetch_current_data_via_browser
-            return asyncio.run(fetch_current_data_via_browser())
-        except Exception as e:
-            _log.error(f"current_data: browser fallback failed: {e}")
-            return None
+        from .collector_csqaq import fetch_current_data_via_browser
+        return _run_browser_fallback(fetch_current_data_via_browser, "current_data")
     
     return data
 
@@ -226,15 +245,11 @@ def _fetch_index_kline_raw() -> list:
     # Fallback: 401 -> browser interception (same session-bypass as current_data)
     if resp.get("code") == 401 and not data:
         _log.warning("fetch_index_kline: API 401, falling back to browser")
-        try:
-            import asyncio as _asyncio
-            from .collector_csqaq import fetch_index_kline_via_browser
-            points = _asyncio.run(fetch_index_kline_via_browser())
-            if points:
-                return points
-            _log.warning("fetch_index_kline: browser fallback returned empty")
-        except Exception as _e:
-            _log.error(f"fetch_index_kline: browser fallback failed: {_e}")
+        from .collector_csqaq import fetch_index_kline_via_browser
+        points = _run_browser_fallback(fetch_index_kline_via_browser, "index_kline")
+        if points:
+            return points
+        _log.warning("fetch_index_kline: browser fallback returned empty")
         return []
     
     if not data or not isinstance(data, list):
