@@ -1689,7 +1689,7 @@ async def _scan_item(row, idx, ms, market_th_score, sentiment_score):
             analysis.price_rmb = item.price_rmb
         analysis.volume_day = volume_day
         analysis.volume_total = item.volume_total or 0
-        pa = _portfolio_advice(holding, avg_cost, qty, item.price_rmb, analysis, market_th=market_th_score, sentiment_score=sentiment_score)
+        pa = _portfolio_advice(holding, avg_cost, qty, item.price_rmb, analysis, market_th=market_th_score, sentiment_score=sentiment_score, market_30d_change=ms["chg30"])
         _fd_lim = (getattr(analysis, "fusion_decision", {}) or {}).get("position_limit", 0) or 0
         result = dict(
             name=exact_name, holding=holding, avg_cost=avg_cost, qty=qty,

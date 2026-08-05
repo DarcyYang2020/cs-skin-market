@@ -1384,6 +1384,41 @@ def run_item_analysis(
                 fd.position_limit = 0.10
                 fd_dict = fusion_decision_summary(fd)
 
+    # ---- P0-9: Panic-easing deep-drop bottom (2026-08-05, 24,123-day replay) ----
+    # 补 P0-5(sent>=75 恐慌高峰) 与 P0-8(大盘企稳 mth>=40) 之间的退潮真空期:
+    # 5/28~6/02 恐慌退潮(sent 70->58)但大盘30日跌幅仍深(-16~-20%, 未企稳) -> 0 信号漏买(fwd14 均+24%)
+    # 触发: watch/avoid + pct<=20 + z<=-1 + 55<=sent<=80 + market_30d_change<=-15 + 止跌(no_new_low2) + 7天去重
+    # 回测(完整回放 recent_buy_dates 模拟, 事件级去重46, 全部5/28-31): 14d 87%/+19.8%(净+17.8%), 30d 78%/+15.0%
+    # 防过拟合依据: 参数平台(sent 55~80 与 mchg30 -15~-18 邻域结果一致); mchg30>-12(2月初阴跌中继)
+    #   与 sent>85(P0-5 主区)不触发; 未止跌(4/23 半山腰底 / 5/11 崩盘途中 no_new_low2 全 False)不触发
+    # P0-8 反弹护栏回测无效(正负组字段无区分度) -> P0-8 保持原样, 不加护栏
+    if fd.action in ("watch", "avoid") and position.percentile_90d is not None and position.zscore_90d is not None:
+        _pe_stop = len(prices) >= 3 and current >= prices[-2] and current >= prices[-3]
+        _pe_ok = (position.percentile_90d <= 20 and position.zscore_90d <= -1
+                  and 55 <= sentiment_score <= 80 and market_30d_change <= -15 and _pe_stop)
+        if _pe_ok:
+            _dup = False
+            if recent_buy_dates:
+                from datetime import datetime as _dt
+                _d_now = signal_date or _dt.now().strftime("%Y-%m-%d")
+                for _d0 in recent_buy_dates:
+                    try:
+                        _gap = (_dt.strptime(_d_now[:10], "%Y-%m-%d") - _dt.strptime(_d0[:10], "%Y-%m-%d")).days
+                    except ValueError:
+                        continue
+                    if 0 <= _gap <= 7:
+                        _dup = True
+                        break
+            if not _dup:
+                fd.action = "buy"
+                fd.action_label = "🟢 恐慌退潮·深跌止跌·分批建仓"
+                fd.action_detail = (f"恐慌退潮(sent={sentiment_score:.0f})+大盘30日跌幅{market_30d_change:.1f}%(未企稳)"
+                                    f"+深跌止跌(pct={position.percentile_90d:.0f}%,Z={position.zscore_90d:.1f})·"
+                                    f"回测14d+19.8%/30d+15.0%(轻仓0.10)·分批:首仓10%→跌10%加20%→跌15%加30%")
+                fd.deduction_sources.append("panic_easing_deep_bottom")
+                fd.position_limit = 0.10
+                fd_dict = fusion_decision_summary(fd)
+
     # ---- Apply fusion decision to value score ----
     if fd.action == "buy":
         value.score = min(10, value.score + 1.5)

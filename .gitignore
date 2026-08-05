@@ -43,4 +43,5 @@ cs-skin-market/data/uu_headers.json
 
 # Replay outputs (regenerable, large) - do not commit
 **/data/*_tmp.json
+**/data/topup_replay_*.json
 **/data/scan_history/

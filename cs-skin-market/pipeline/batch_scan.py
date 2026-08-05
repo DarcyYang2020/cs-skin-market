@@ -45,12 +45,45 @@ def signal_guidance(action_label: str = "", expectancy: dict = None, action: str
     return {"signal_type": sig_type, "type_label": type_label, "hold_guidance": hold}
 
 
-def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th=None, sentiment_score=50.0):
+def _topup_price_plan(avg_cost, qty, current_price, analysis):
+    """构建分批补仓价位计划（A方向 2026-08-03，与单品报告 price_zones 同源，纯展示层）。
+
+    返回 (add_positions, entry_zone, avg_cost_after, suggest)；买入区间未放行时前三个为 None，
+    suggest 退化为按批数加仓的通用提示。深跌恐慌提前补分支(2026-08-05)复用本函数。
+    """
+    _pz = getattr(analysis, "price_zones", None) or {}
+    _entry = _pz.get("entry") or {}
+    _cur = _pz.get("current") or current_price
+    _e_lo = _entry.get("low", 0) or 0
+    _e_hi = _entry.get("high", 0) or 0
+    _q = max(1, qty // 3)
+    _stats = TOPUP_EXPECTANCY_STATS["topup_ok"]
+    _base = f"（回测：补仓点14d胜率{_stats['win14']:.0f}%、均值+{_stats['avg14']:.1f}%）"
+    if _e_lo > 0 and _e_hi > 0 and _e_hi < _cur:
+        _mid = round((_e_lo + _e_hi) / 2, 2)
+        _steps = [(_e_hi, _q), (_mid, _q), (_e_lo, _q)]
+        _drops = [round((p - _cur) / _cur * 100, 1) for p, _ in _steps]
+        _cost_after = round((avg_cost * qty + sum(p * n for p, n in _steps)) / (qty + sum(n for _, n in _steps)), 2)
+        add_positions = [{"price": p, "qty": n, "drop_pct": d} for (p, n), d in zip(_steps, _drops)]
+        suggest = (f"可分3批补仓，每批约{_q}件：批1 ¥{_e_hi:.2f}({_drops[0]:.1f}%)、"
+                   f"批2 ¥{_mid:.2f}({_drops[1]:.1f}%)、批3 ¥{_e_lo:.2f}({_drops[2]:.1f}%)；"
+                   f"补满后摊薄成本约¥{_cost_after:.2f}；单批不超过仓位上限15%{_base}")
+        return add_positions, {"low": _e_lo, "high": _e_hi}, _cost_after, suggest
+    suggest = (f"可分2~3批加仓{_q}件，单批不超过仓位上限15%{_base}"
+               f"（当前周期结构未放行买入区间，待企稳后更新补仓价位）")
+    return None, None, None, suggest
+
+
+def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th=None, sentiment_score=50.0, market_30d_change=None):
     """Generate personalized portfolio advice based on cost basis and current position.
     sentiment_score: contrarian 0-100 (0=extreme greed, 100=extreme fear), default neutral.
     补仓分层阈值来自全量日记录回放(2026-08-04, 2025-11-02~2026-07-13, warmup=60, 只读引擎):
       可分批补仓(条件+融合buy): 14d胜率54%/均值+5.4% | 半山腰(25~40): 14d均值≈0 |
       sent<=30(贪婪): 14d均值-2.4% | 大盘未配合(mth<45): 14d均值-1.0%
+      2026-08-05 补仓触发优化(24123条日记录回放, 事件级去重): 大盘30日跌幅是区分V型底/阴跌中继的唯一稳健变量
+        深跌恐慌提前补(V型底指纹): sent>=80 + 大盘30日跌幅>=15% + pct<=20 + z<=-1 -> 不等TH/大盘确认, 5月V型底 win87%/均+43.7%
+        中跌恐慌暂缓(阴跌中继): sent>=80 + 大盘30日跌幅5~15% -> 禁补区(7月中跌 win16%/均-8.3%)
+        现行确认链路(TH>=40+大盘TH>=45+融合buy)保持不变
     """
     if not holding or avg_cost <= 0:
         # Non-held: entry advice —— 与单品报告决策同源（fusion_decision），统一口径
@@ -167,6 +200,32 @@ def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th
             advice["reason"] = f"浮亏{pnl_pct:.0f}%但市场贪婪(sent={sent:.0f})，逆势抄底期望为负"
             advice["suggest"] = (f"情绪贪婪(sent={sent:.0f}，≤30禁补)，距可补区间还差{max(0, 30 - sent):.0f}分，"
                                  f"等情绪转中性/恐惧再考虑（回测：贪婪期补仓14d均值{TOPUP_EXPECTANCY_STATS['greedy']['avg14']:+.1f}%）")
+        # 深跌恐慌提前补（2026-08-05 V型底指纹）: 恐慌(sent>=80) + 大盘30日跌幅>=15% + 单品深跌
+        # 回测(2026-08-05 全量回放): 5月V型底 win87%/均+43.7%（现行确认链路因单品TH未达40错过该段行情）
+        # 必须保留 sent>=80：2025-11 深底去掉sent限制后验证失败(均-0.16%)
+        elif (market_30d_change is not None and market_30d_change <= -15 and sent >= 80
+              and pct <= 20 and z <= -1):
+            advice["action"] = "可分批补仓"
+            advice["reason"] = (f"浮亏{pnl_pct:.0f}%但恐慌共振(sent={sent:.0f})、大盘30日跌幅{market_30d_change:.1f}%，"
+                                f"呈V型底指纹(pct={pct:.0f}%, z={z:.2f})，不等确认提前分批补"
+                                f"（回测：深跌恐慌5月V型底14d胜率87%/均+43.7%）")
+            _adds, _zone, _cost_after, _suggest = _topup_price_plan(avg_cost, qty, current_price, analysis)
+            if _adds:
+                advice["add_positions"] = _adds
+                advice["entry_zone"] = _zone
+                advice["avg_cost_after"] = _cost_after
+            advice["suggest"] = _suggest
+        # 中跌恐慌暂缓（2026-08-05 阴跌中继风险）: 恐慌(sent>=80)但大盘30日跌幅仅5~15%
+        # 回测(2026-08-05 全量回放): 7月阴跌中继 win16%/均-8.3%（禁补区，等深跌指纹或企稳确认）
+        elif (market_30d_change is not None and -15 < market_30d_change <= -5 and sent >= 80
+              and pct <= 20 and z <= -1):
+            advice["action"] = "暂缓补仓"
+            advice["reason"] = (f"浮亏{pnl_pct:.0f}%、恐慌(sent={sent:.0f})但大盘30日跌幅仅{market_30d_change:.1f}%，"
+                                f"处阴跌中继区（5~15%），V型底概率低、易再阴跌"
+                                f"（回测：中跌恐慌14d胜率16%/均-8.3%）")
+            advice["suggest"] = (f"当前处中跌恐慌：sent={sent:.0f}、大盘30日跌幅{market_30d_change:.1f}%；"
+                                 f"历史同场景易阴跌（14d均-8.3%），建议等大盘30日跌幅≥15%的深跌指纹，"
+                                 f"或等大盘企稳(TH≥45)+融合buy确认再补")
         # 半山腰（pct 25~40）：14d胜率仅28%，不构成补仓点
         elif 25 < pct <= 40:
             advice["action"] = "暂缓补仓"
@@ -179,31 +238,13 @@ def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th
               and (market_th is None or market_th >= 45) and _fusion_act == "buy"):
             advice["action"] = "可分批补仓"
             advice["reason"] = f"浮亏{pnl_pct:.0f}%但深度低估(pct={pct:.0f}%, z={z:.2f})，趋势分{th_score}，大盘TH={market_th}，融合决策buy"
-            # A方向(2026-08-03): 引用price_zones买入区间给出补仓价位+摊薄成本（与报告同源）
-            _pz = getattr(analysis, "price_zones", None) or {}
-            _entry = _pz.get("entry") or {}
-            _cur = _pz.get("current") or current_price
-            _e_lo = _entry.get("low", 0) or 0
-            _e_hi = _entry.get("high", 0) or 0
-            _q = max(1, qty // 3)
-            if _e_lo > 0 and _e_hi > 0 and _e_hi < _cur:
-                _mid = round((_e_lo + _e_hi) / 2, 2)
-                _steps = [(_e_hi, _q), (_mid, _q), (_e_lo, _q)]
-                _drops = [round((p - _cur) / _cur * 100, 1) for p, _ in _steps]
-                _cost_after = round((avg_cost * qty + sum(p * n for p, n in _steps)) / (qty + sum(n for _, n in _steps)), 2)
-                advice["add_positions"] = [{"price": p, "qty": n, "drop_pct": d} for (p, n), d in zip(_steps, _drops)]
-                advice["entry_zone"] = {"low": _e_lo, "high": _e_hi}
+            # A方向(2026-08-03) + 价位复用(2026-08-05): 与单品报告 price_zones 同源，深跌恐慌分支共用
+            _adds, _zone, _cost_after, _suggest = _topup_price_plan(avg_cost, qty, current_price, analysis)
+            if _adds:
+                advice["add_positions"] = _adds
+                advice["entry_zone"] = _zone
                 advice["avg_cost_after"] = _cost_after
-                advice["suggest"] = (f"可分3批补仓，每批约{_q}件：批1 ¥{_e_hi:.2f}({_drops[0]:.1f}%)、"
-                                     f"批2 ¥{_mid:.2f}({_drops[1]:.1f}%)、批3 ¥{_e_lo:.2f}({_drops[2]:.1f}%)；"
-                                     f"补满后摊薄成本约¥{_cost_after:.2f}；单批不超过仓位上限15%"
-                                     f"（回测：补仓点14d胜率{TOPUP_EXPECTANCY_STATS['topup_ok']['win14']:.0f}%、"
-                                     f"均值+{TOPUP_EXPECTANCY_STATS['topup_ok']['avg14']:.1f}%）")
-            else:
-                advice["suggest"] = (f"可分2~3批加仓{_q}件，单批不超过仓位上限15%"
-                                     f"（回测：补仓点14d胜率{TOPUP_EXPECTANCY_STATS['topup_ok']['win14']:.0f}%、"
-                                     f"均值+{TOPUP_EXPECTANCY_STATS['topup_ok']['avg14']:.1f}%）"
-                                     f"（当前周期结构未放行买入区间，待企稳后更新补仓价位）")
+            advice["suggest"] = _suggest
         # 深度低估但融合决策未放行：暂缓等确认(回测: watch子集14d均值-0.3%)
         elif pct <= 25 and th_score >= 40 and z <= -0.5 and (market_th is None or market_th >= 45):
             advice["action"] = "暂缓补仓"

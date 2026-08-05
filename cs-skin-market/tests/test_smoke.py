@@ -294,6 +294,14 @@ def t_advice():
     # 市场贪婪 sent<=30 → 禁止补仓
     a = _portfolio_advice(True, 100.0, 10, 80.0, mk(pct=15, z=-1.2, th=45), market_th=50, sentiment_score=20)
     assert a['action'] == '禁止补仓', a['action']
+    # 深跌恐慌提前补(2026-08-05): sent>=80 + 大盘30日跌幅<=-15% + pct<=20 + z<=-1 → 不等确认
+    a = _portfolio_advice(True, 100.0, 10, 80.0, mk(pct=15, z=-1.2, th=25, fusion='watch'), market_th=30, sentiment_score=85, market_30d_change=-18.0)
+    assert a['action'] == '可分批补仓', a['action']
+    assert 'V型底指纹' in a['reason'], a['reason']
+    # 中跌恐慌暂缓(2026-08-05): sent>=80 + 大盘30日跌幅5~15% → 阴跌中继风险
+    a = _portfolio_advice(True, 100.0, 10, 80.0, mk(pct=15, z=-1.2, th=45), market_th=50, sentiment_score=85, market_30d_change=-8.0)
+    assert a['action'] == '暂缓补仓', a['action']
+    assert '阴跌中继' in a['reason'], a['reason']
     # 深度低估但大盘TH<45 → 暂缓补仓
     a = _portfolio_advice(True, 100.0, 10, 80.0, mk(pct=15, z=-1.2, th=45), market_th=40, sentiment_score=60)
     assert a['action'] == '暂缓补仓', a['action']
@@ -363,6 +371,55 @@ def t_p08_deep_value_tranche():
         (ia._analyze_position, ia.compute_sentiment_score, ia.compute_sentiment_factor,
          ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision) = orig
 check('P0-8 deep-value buy carries tranche advice (2026-08-04)', t_p08_deep_value_tranche)
+
+def t_p09_panic_easing_deep_bottom():
+    from types import SimpleNamespace
+    import pipeline.item_analysis as ia
+    pos = SimpleNamespace(percentile_90d=10.0, zscore_90d=-1.5, high_90d=100.0,
+                          low_90d=50.0, mean_90d=80.0, median_90d=82.0,
+                          current_price=55.0, data_points=90, valuation_tier='undervalued')
+    orig = (ia._analyze_position, ia.compute_sentiment_score, ia.compute_sentiment_factor,
+            ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision)
+    ia._analyze_position = lambda prices: pos
+    ia.compute_sentiment_score = lambda: 60          # 55<=sent<=80 恐慌退潮区
+    ia.compute_sentiment_factor = lambda: 0.0
+    ia.event_risk_coefficient = lambda: 1.0
+    ia.compute_micro_th = lambda prices: 30          # microTH 弱, 基础/P0-5 均不触发
+    def fake_fd(*a, **k):
+        return SimpleNamespace(action='watch', action_label='🟡 观望', action_detail='',
+                               deduction_sources=[], zone='undervalued', zone_label='低估',
+                               liquidity_filtered=False, percentile_90d=10.0,
+                               raw_th_score=30, corrected_th_score=30, position_limit=0.0)
+    ia.compute_fusion_decision = fake_fd
+    kw = dict(name='Test', volumes=[0] * 90, market_pct_90d=10.0,
+              market_cycle='consolidation', market_zscore=-1.5, market_th_score=30,
+              market_30d_change=-18.0, market_drop21=-18.0, recent_buy_dates=[], signal_date='2026-05-28')
+    # 1) 深跌 + 恐慌退潮 + 止跌(55,54,55) -> P0-9 触发
+    prices = [60.0]*80 + [57.0, 56.0, 55.0, 54.0, 55.0]
+    try:
+        res = ia.run_item_analysis(prices=prices, **kw)
+        fd = res.fusion_decision
+        assert fd['action'] == 'buy', fd['action']
+        assert 'panic_easing_deep_bottom' in fd['deduction_sources'], fd['deduction_sources']
+        assert '恐慌退潮' in fd['action_label'], fd['action_label']
+        assert fd['position_limit'] == 0.10, fd['position_limit']
+    finally:
+        pass
+    # 2) 7天去重: 5/25 已 buy -> 5/28 不触发
+    kw2 = dict(kw, recent_buy_dates=['2026-05-25'])
+    res = ia.run_item_analysis(prices=prices, **kw2)
+    assert res.fusion_decision['action'] == 'watch', res.fusion_decision['action']
+    # 3) 未止跌(55,54,53 继续创新低) -> 不触发
+    prices2 = [60.0]*80 + [57.0, 56.0, 55.0, 54.0, 53.0]
+    res = ia.run_item_analysis(prices=prices2, **kw)
+    assert res.fusion_decision['action'] == 'watch', res.fusion_decision['action']
+    # 4) 大盘30日跌幅不够深(-10) -> 不触发(阴跌中继)
+    kw3 = dict(kw, market_30d_change=-10.0)
+    res = ia.run_item_analysis(prices=prices, **kw3)
+    assert res.fusion_decision['action'] == 'watch', res.fusion_decision['action']
+    (ia._analyze_position, ia.compute_sentiment_score, ia.compute_sentiment_factor,
+     ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision) = orig
+check('P0-9 panic-easing deep-drop buy + 7d dedup (2026-08-05)', t_p09_panic_easing_deep_bottom)
 
 print('[Batch Scan: 信号提取]')
 def t_extract_signals():
