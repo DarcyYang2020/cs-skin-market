@@ -1207,6 +1207,157 @@ def t_bd_cell_badges():
 check('batch_scan ??????????', t_bd_cell_badges)
 
 
+def t_cluster_report():
+    from pipeline.backtest_methodology import signal_cluster_report
+    # adjacent dates (within +-3d) form one event cluster; duplicates count as signals
+    dates = ["2026-05-22", "2026-05-23", "2026-05-24",
+             "2026-06-15", "2026-06-16", "2026-07-01", "2026-07-02"]
+    r = signal_cluster_report(dates, window=3)
+    assert r["signal_count"] == 7
+    assert r["cluster_count"] == 3 and r["event_count"] == 3
+    assert r["unique_dates"] == 7
+    # effective event days 3 < 5 -> warning
+    assert r["flagged"] is True
+    assert any("有效事件日" in w for w in r["warnings"]), r["warnings"]
+    # same date repeated 4x: signal count 5, still 2 clusters
+    r2 = signal_cluster_report(["2026-05-22"] * 4 + ["2026-06-15"], window=3)
+    assert r2["signal_count"] == 5 and r2["cluster_count"] == 2
+    # single cluster share > 50% -> warning
+    r3 = signal_cluster_report(["2026-05-22"] * 4 + ["2026-06-15", "2026-06-16"], window=3)
+    assert r3["max_cluster_share"] > 0.5
+    assert any("50%" in w for w in r3["warnings"]), r3["warnings"]
+check('backtest_methodology 信号时间聚类', t_cluster_report)
+
+
+def t_walkforward():
+    import random
+    from datetime import date, timedelta
+    from pipeline.backtest_methodology import walk_forward_split
+    base = date(2026, 1, 1)
+    recs = []
+    for i in range(100):
+        d = (base + timedelta(days=i)).isoformat()
+        rng = random.Random(i)
+        win = 0.9 if i < 70 else 0.5
+        recs.append({"date": d, "fwd14": 5.0 if rng.random() < win else -3.0})
+    r = walk_forward_split(recs, anchor_ratio=0.7)
+    assert r["valid"] is True and r["strict_after"] is True
+    assert r["train"]["n"] == 70 and r["test"]["n"] == 30
+    # test segment strictly after train segment
+    assert r["test"]["date_range"][0] > r["train"]["date_range"][1]
+    assert r["train"]["win_rate"] > 0.8 and r["test"]["win_rate"] < 0.7
+    # same-date boundary -> split moves forward to keep strict ordering
+    recs2 = [{"date": "2026-01-01", "fwd14": 1.0}] * 8 + [{"date": "2026-01-02", "fwd14": -1.0}] * 2
+    r2 = walk_forward_split(recs2, anchor_ratio=0.7, min_samples=2)
+    assert r2["train"]["n"] == 8 and r2["test"]["n"] == 2
+    assert r2["strict_after"] is True and r2["valid"] is True
+check('backtest_methodology walk-forward 切分', t_walkforward)
+
+
+def t_permutation():
+    import random
+    from pipeline.backtest_methodology import permutation_baseline
+    # all positive returns -> observed win rate 100%, tiny p-value
+    r = permutation_baseline([1.0] * 20, n_perm=200, seed=42)
+    assert r["observed_win_rate"] == 1.0 and r["p_value"] < 0.01
+    # random signs -> observed win rate near 50%, large p-value
+    rng = random.Random(1)
+    rets = [1.0 if rng.random() < 0.5 else -1.0 for _ in range(100)]
+    r2 = permutation_baseline(rets, n_perm=200, seed=42)
+    assert 0.3 < r2["observed_win_rate"] < 0.7
+    assert r2["p_value"] > 0.05
+    # same seed is reproducible
+    a = permutation_baseline([1.0, -2.0, 3.0] * 10, n_perm=100, seed=7)
+    b = permutation_baseline([1.0, -2.0, 3.0] * 10, n_perm=100, seed=7)
+    assert a["p_value"] == b["p_value"]
+    # None values are dropped
+    r3 = permutation_baseline([1.0, None, 2.0, -1.0], n_perm=50, seed=1)
+    assert r3["n"] == 3
+check('backtest_methodology 置换检验 p 值', t_permutation)
+
+
+print('[Health Monitor: A1 自动校验告警 (2026-08-05)]')
+def t_health_monitor():
+    # run_health_monitor 复用 run_data_health 检查 → health_checks 表 upsert + status 判定。
+    # 用临时 DB 构造 pass（基线齐全）与 fail（空表）两例，不触碰线上 data/market.db。
+    from datetime import date, timedelta
+    import tempfile, shutil, sqlite3
+    from run_health_monitor import run_monitor
+    from pipeline import db as _db
+
+    def build(path, ok):
+        """构造健康检查基线数据；ok=True 全通过，ok=False 空表触发 FAIL。"""
+        conn = sqlite3.connect(path)
+        try:
+            _db._init_schema(conn)
+            c = conn.cursor()
+            if not ok:
+                return  # 空表：除 items 元数据（无持仓品）外全部 FAIL
+            today = date.today().isoformat()
+            yesterday = (date.today() - timedelta(days=1)).isoformat()
+            # 1. 大盘指数（value>1000、mood 三态、近 4 日内）
+            c.execute("INSERT INTO market_index (date, value, change_7d, mood) VALUES (?, 1551.82, -1.2, ?)",
+                      (today, "恐惧"))
+            # 2/3. 单品 K 线 + 悠悠成交量（10 品全量覆盖/有量）
+            for i in range(1, 11):
+                c.execute("INSERT INTO items (id, good_id, name, in_watchlist) VALUES (?, ?, ?, 1)",
+                          (i, 900000 + i, "测试品%d" % i))
+                c.execute("INSERT INTO price_history (item_id, date, price_rmb, volume_day) VALUES (?, ?, 100.0, 5)",
+                          (i, today))
+                c.execute("INSERT INTO price_history (item_id, date, price_rmb, volume_day) VALUES (?, ?, 99.0, 4)",
+                          (i, yesterday))
+            # 4. 贪婪/卡价（greedy>=55 点、card>=170 点）
+            for k in range(200):
+                dd = (date.today() - timedelta(days=400 - k)).isoformat()
+                c.execute("INSERT INTO macro_history (date, greedy_index, card_price) VALUES (?, 60.0, 179.0)", (dd,))
+            # 5. 全市场快照（1400~3500 行，无 StatTrak/纪念品）
+            c.executemany("INSERT INTO market_snapshot (date, good_id, name) VALUES (?, ?, ?)",
+                          [(today, 800000 + i, "快照品%d" % i) for i in range(1500)])
+            # 6. 大户集中度（>=90 品、>=4000 行）
+            rows = [(today, it, 900000 + it, r, "大户%d" % r, "", 100)
+                    for it in range(1, 96) for r in range(1, 45)]
+            c.executemany(
+                "INSERT INTO monitor_rank_snapshot (date, item_id, good_id, rank, steam_name, steam_id, num) VALUES (?,?,?,?,?,?,?)",
+                rows)
+            conn.commit()
+        finally:
+            conn.close()
+
+    tmp = tempfile.mkdtemp()
+    try:
+        pass_db = os.path.join(tmp, "pass.db")
+        fail_db = os.path.join(tmp, "fail.db")
+        build(pass_db, ok=True)
+        build(fail_db, ok=False)
+        # pass 例：status=pass、无 FAIL
+        r1 = run_monitor(db_path=pass_db, check_date="2099-01-01")
+        assert r1["status"] == "pass" and r1["fail_count"] == 0, r1
+        # fail 例：status=fail、有 FAIL
+        r2 = run_monitor(db_path=fail_db, check_date="2099-01-02")
+        assert r2["status"] == "fail" and r2["fail_count"] > 0, r2
+        # 表写入验证：pass 行内容正确；同日重复运行 upsert 不新增行
+        conn = sqlite3.connect(pass_db)
+        try:
+            row = conn.execute("SELECT date, status, checks_json FROM health_checks WHERE date='2099-01-01'").fetchone()
+            assert row and row[1] == "pass", row
+            assert "大盘指数" in row[2] and "PASS" in row[2], row[2]
+            n1 = conn.execute("SELECT COUNT(*) FROM health_checks").fetchone()[0]
+            run_monitor(db_path=pass_db, check_date="2099-01-01")
+            n2 = conn.execute("SELECT COUNT(*) FROM health_checks").fetchone()[0]
+            assert n1 == n2, (n1, n2)
+        finally:
+            conn.close()
+        # fail 行同时写入
+        conn = sqlite3.connect(fail_db)
+        try:
+            row = conn.execute("SELECT status FROM health_checks WHERE date='2099-01-02'").fetchone()
+            assert row and row[0] == "fail", row
+        finally:
+            conn.close()
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+check('health_monitor 检查→upsert→status 判定', t_health_monitor)
+
 print()
 print(f'=== Results: {passed} passed, {failed} failed ===')
 if failures:

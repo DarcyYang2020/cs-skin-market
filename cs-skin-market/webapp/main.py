@@ -1994,6 +1994,28 @@ async def api_data_progress():
         conn.close()
 
 
+@app.get("/api/health/status")
+async def api_health_status():
+    """数据健康监控最新状态 (A1, 2026-08-05): 最新一条 health_checks + FAIL 项列表。"""
+    conn = db.get_conn()
+    try:
+        row = conn.execute(
+            "SELECT date, status, checks_json, created_at FROM health_checks ORDER BY date DESC, id DESC LIMIT 1"
+        ).fetchone()
+    finally:
+        conn.close()
+    if not row:
+        return {"found": False}
+    try:
+        checks = json.loads(row["checks_json"] or "[]")
+    except (TypeError, ValueError):
+        checks = []
+    fail_list = [c.get("name") for c in checks if c.get("level") == "FAIL"]
+    return {"found": True, "date": row["date"], "status": row["status"],
+            "created_at": row["created_at"], "checks": checks,
+            "fail_list": fail_list, "fail_count": len(fail_list)}
+
+
 @app.get("/api/portfolio/dashboard")
 async def api_portfolio_dashboard():
     """组合仓位仪表: 持仓分布 + 并发建议仓位占用。"""

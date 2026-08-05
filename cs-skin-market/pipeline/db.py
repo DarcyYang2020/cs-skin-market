@@ -348,6 +348,14 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         UNIQUE(date, item_id, rank))""")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_monitor_snapshot_date ON monitor_rank_snapshot(date)")
 
+    # 数据源健康监控 (A1, 2026-08-05): 健康检查结果按日 upsert, 供 Web 展示/告警
+    conn.execute("""CREATE TABLE IF NOT EXISTS health_checks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT NOT NULL UNIQUE,
+        status TEXT NOT NULL CHECK (status IN ('pass','warn','fail')),
+        checks_json TEXT NOT NULL,
+        created_at TEXT DEFAULT (datetime('now','localtime')))""")
+
     conn.execute("""CREATE TABLE IF NOT EXISTS backtest_results (
 
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -780,6 +788,23 @@ def save_monitor_rank_snapshot(conn, date, item_id, good_id, rows):
         [(date, item_id, good_id, i + 1, r.get("steam_name"), r.get("steam_id"), r.get("num"))
          for i, r in enumerate(rows) if r.get("num")])
     conn.commit()
+def save_health_check(conn, check_date, status, checks_json):
+    """健康检查结果 upsert（A1, 2026-08-05）：按日期每天一条，重复运行覆盖。
+
+    status ∈ pass/warn/fail；checks_json 为检查明细 JSON 字符串
+    （[{name, level, detail}]，level ∈ PASS/FAIL）。
+    """
+    conn.execute(
+        """INSERT INTO health_checks (date, status, checks_json)
+           VALUES (?,?,?)
+           ON CONFLICT(date) DO UPDATE SET
+               status=excluded.status,
+               checks_json=excluded.checks_json,
+               created_at=datetime('now','localtime')""",
+        (check_date, status, checks_json))
+    conn.commit()
+
+
 def backfill_price_missing(conn, item_id, rows):
     """仅补缺失日期的历史价格（simple/chartAll 回填用）。
 

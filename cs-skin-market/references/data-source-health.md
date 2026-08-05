@@ -5,6 +5,47 @@
 
 ---
 
+
+## 自动化运行方式（2026-08-05 A1）
+
+> 2026-08-05 起由 run_health_monitor.py 自动执行并把结果持久化，替代人工不定期跑。
+
+### 1. 入口与退出码
+
+```bash
+cd cs-skin-market
+python run_health_monitor.py            # 人类可读摘要，退出码 0/2（与 run_data_health 一致）
+python run_health_monitor.py --json     # JSON 输出（供告警/日志系统）
+```
+
+退出码语义：
+- 0 = 全部通过（无 FAIL）
+- 2 = 存在 FAIL，需人工核查
+
+### 2. 结果持久化（health_checks 表）
+
+每次运行把结果 upsert 进 SQLite `health_checks` 表（pipeline/db.py `_init_schema` 建表，按 date 每天一条覆盖）：
+
+| 列 | 说明 |
+|---|---|
+| id | 自增主键 |
+| date | 检查日期（YYYY-MM-DD，唯一，同日重复运行覆盖）|
+| status | pass / warn / fail（任一检查 FAIL → fail）|
+| checks_json | 检查明细 JSON：[{name, level, detail}]（level ∈ PASS/FAIL）|
+| created_at | 写入时间 |
+
+### 3. 自动触发
+
+- **每日采集收尾**：`run_daily_collect.py` 结尾自动调用 `run_health_monitor.run_monitor()`，失败仅记录日志、不中断采集主流程（现有 Windows 计划任务即覆盖本检查）。
+- **独立调度**（可选告警）：另建计划任务运行 `python run_health_monitor.py`，以退出码 0/2 判定健康状态。
+
+### 4. Web 展示
+
+- `GET /api/health/status`：返回最新一条 health_checks（date/status/created_at/checks/fail_list/fail_count）。
+- 大盘仪表盘 `/` 新增「数据健康」卡片：最新状态（PASS/WARN/FAIL 徽标）+ 最近检查时间 + FAIL 项摘要。
+
+---
+
 ## 检查方式总览
 
 | 数据源 | 检查方法 | 关键验收点 |
@@ -210,7 +251,21 @@ EOF
 
 ---
 
-## 八、审计历史
+## 八、BUFF 数据源验证记录（2026-08-05，**已停止使用**）
+
+**结论：BUFF 无法提供历史成交量，已于 2026-08-05 停止使用**（cookie 登录态验证过，记录封存以防重复尝试）：
+
+| 端点 | 结果 | 说明 |
+|---|---|---|
+| `/api/market/goods/bill_order` | 不可用于历史量 | 每品固定 ~10-20 条，page_num/page_size 无效，多页返回同一批 |
+| `/api/market/goods/price_history` | 无成交量 | days=90/180/365 均仅稀疏价格点 [ts, price] |
+| 搜索/详情 | 仅当前快照 | sell_num/buy_num/transacted_num=0，无历史 |
+| detail/trend/volume 等候选路径 | 404 | 模拟源不存在 |
+
+
+---
+
+## 九、审计历史
 
 | 日期 | 结果 | 处理 |
 |---|---|---|
@@ -219,4 +274,4 @@ EOF
 | 2026-08-04 | 快照含 1883 StatTrak/纪念品 | 采集器过滤 + 磨损过滤，5000→1468 |
 | 2026-08-04 | 存世量口径错误（误用挂单数）| 改从 statistic_list 解析，<3000 不建仓 
 | 2026-08-04 | items 重复 good_id=863（FN57 神祇 id=7 / 神祗 id=30）| 删除脏行 id=7（名称误匹配脏价），持仓以 id=30 为准 |
-|
+| 2026-08-05 | BUFF cookie 验证历史成交量 | bill_order 上限 20 条/无分页、price_history 无成交量字段 → 不可用；历史成交量仍靠悠悠有品逐日积累 |

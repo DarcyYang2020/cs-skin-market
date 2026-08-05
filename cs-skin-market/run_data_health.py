@@ -15,7 +15,6 @@
 import sys, io, os, json, sqlite3, argparse
 from datetime import date, datetime
 
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 BASE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE, "data", "market.db")
 LOG_PATH = os.path.join(BASE, "data", "health_check.log")
@@ -31,6 +30,14 @@ def _q(c, sql, args=()):
         return [("__ERR__", str(e))]
 
 
+def _cnt(c, sql, args=()):
+    """COUNT 查询包装：表缺失/查询失败按 0 处理（避免 __ERR__ 字符串参与比较）。"""
+    r = _q(c, sql, args)
+    if not r or r[0][0] == "__ERR__":
+        return 0
+    return r[0][0]
+
+
 def _days_since(dstr):
     if not dstr:
         return 999
@@ -40,8 +47,12 @@ def _days_since(dstr):
         return 999
 
 
-def run_checks():
-    conn = sqlite3.connect(DB_PATH, timeout=10)
+def run_checks(db_path=None):
+    """运行全部健康检查，返回 [(检查名, PASS/FAIL, 详情)]。
+
+    db_path: 可指定数据库路径（默认 data/market.db），供 run_health_monitor/测试复用。
+    """
+    conn = sqlite3.connect(db_path or DB_PATH, timeout=10)
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
     rows = []
@@ -95,8 +106,8 @@ def run_checks():
         rows.append(("成交量", "FAIL", "近7日无 volume_day>0（检查 uu_headers 登录态）"))
 
     # 4. 贪婪/卡价
-    g = _q(c, "SELECT COUNT(*) FROM macro_history WHERE greedy_index IS NOT NULL")[0][0]
-    k = _q(c, "SELECT COUNT(*) FROM macro_history WHERE card_price IS NOT NULL")[0][0]
+    g = _cnt(c, "SELECT COUNT(*) FROM macro_history WHERE greedy_index IS NOT NULL")
+    k = _cnt(c, "SELECT COUNT(*) FROM macro_history WHERE card_price IS NOT NULL")
     bad = []
     if g < 55:
         bad.append(f"greedy={g}")
@@ -117,7 +128,7 @@ def run_checks():
             bad.append(f"行数{n}>3500（疑似未过滤，基线1468）")
         if age > 4:
             bad.append(f"latest={d} 距今{age}天")
-        st = _q(c, "SELECT COUNT(*) FROM market_snapshot WHERE name LIKE '%StatTrak%' OR name LIKE '%纪念品%'")[0][0]
+        st = _cnt(c, "SELECT COUNT(*) FROM market_snapshot WHERE name LIKE '%StatTrak%' OR name LIKE '%纪念品%'")
         if st:
             bad.append(f"StatTrak/纪念品残留{st}")
         rows.append(("全市场快照", "FAIL" if bad else "PASS",
@@ -143,8 +154,8 @@ def run_checks():
         rows.append(("大户集中度", "FAIL", "monitor_rank_snapshot 无数据"))
 
     # 7. items 元数据
-    no_good = _q(c, "SELECT COUNT(*) FROM items WHERE good_id<=0 AND in_watchlist=1")[0][0]
-    dupe = _q(c, "SELECT COUNT(*) FROM (SELECT good_id FROM items WHERE good_id>0 GROUP BY good_id HAVING COUNT(*)>1)")[0][0]
+    no_good = _cnt(c, "SELECT COUNT(*) FROM items WHERE good_id<=0 AND in_watchlist=1")
+    dupe = _cnt(c, "SELECT COUNT(*) FROM (SELECT good_id FROM items WHERE good_id>0 GROUP BY good_id HAVING COUNT(*)>1)")
     bad = []
     if no_good:
         bad.append(f"持仓品缺good_id×{no_good}")
@@ -158,6 +169,8 @@ def run_checks():
 
 
 def main():
+    if sys.stdout is sys.__stdout__:
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser()
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args()

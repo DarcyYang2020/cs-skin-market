@@ -526,23 +526,23 @@
 
 ---
 
-## ?????????????? + ???????2026-08-05???????
+## 补仓触发优化（2026-08-05，功能层落地）
 
-- **??**???????????TH?40 + ??TH?45 + ??buy??????2??????? +6.9%?? 5? V ?? **0 ??**??? TH ?? 40??? +43% ??????????
-- **??**?`references/topup_replay.py` ? `data/topup_replay_tmp.json`?24123 ???? + ???????
-  - **?? 30 ????mchg30?????V ?????????????????**
-  - ?? + mchg30?-15%?V ???? ? 5? win87% / ?+43.7%??-20% ?? win100% / ?+66%?
-  - ?? + mchg30 5~15%????? ? 7? win16% / ? **-8.3%**?????
-  - ???????????? OR ????????? win66% / ?+24.9%?2025-11 / 2? / 5??????????
-  - **???**?2025-11 ????? sent ????????? -0.16%?? **???? sent?80 ??**
-- **??**???????? / ???? 88 ??????
-  - `_portfolio_advice` ?? `market_30d_change` ??????????? `ms["chg30"]`
-  - ?????sent?80 + mchg30?-15% + pct?20 + z?-1?? **?????**??????reason ?? V ?????
-  - ?????sent?80 + -15<mchg30?-5 + pct?20 + z?-1?? **????**?reason ?????????
-  - ?? `_topup_price_plan` ?????? A ?????? / ????????? 40 ???
-- **????**?mchg30=-8.3% ?????? ? ???????????????????
-- **??**?????????????????????????????????? `references/topup_replay.py` ???
+> 注：本节原内容写入时发生编码损坏（中文被替换为 ?，git 历史中已不可逆），已按 `batch_scan._portfolio_advice` docstring 与 commit 1e021b3 重建，仅保留可验证数据。
 
+- **回测**（`references/topup_replay.py` + `data/topup_replay_tmp.json`，24123 条日记录回放、事件级去重）：
+  - **大盘 30 日跌幅是区分 V 型底 / 阴跌中继的唯一稳健变量**。
+  - 深跌恐慌提前补（V 型底指纹）：sent≥80 + 大盘30日跌幅≤-15% + pct≤20 + z≤-1 → 不等单品 TH/大盘企稳确认直接补 → 5 月 V 型底 win87% / 均 +43.7%；更深处（≤-20%）win100% / 均 +66%。
+  - 中跌恐慌暂缓（阴跌中继）：sent≥80 + 大盘30日跌幅 -15%~-5% → 禁补区（7 月中跌 win16% / 均 -8.3%）。
+  - 贪婪期（sent≤30）禁止补仓：回测 30d 胜率 0%、均 -14%。
+  - 现行确认链路（单品TH≥40 + 大盘TH≥45 + 融合buy）保持不变：回测 win54.2% / 均 +5.4%。
+- **落地**（`batch_scan._portfolio_advice`）：
+  - 改用 `market_30d_change`（`ms["chg30"]`）修正原 30 日涨跌判断口径。
+  - sent≥80 + mchg30≤-15% + pct≤20 + z≤-1 → **可分批补仓**（提前补，reason 附回测数据）。
+  - sent≥80 + -15<mchg30≤-5 + pct≤20 + z≤-1 → **暂缓补仓**（reason 说明阴跌中继、等深跌指纹或企稳确认再补）。
+  - `_topup_price_plan` 提取复用 A 方向价位（与单品报告 `price_zones` 同源，每批 40% 仓位）。
+- **验证**：mchg30=-8.3% 弱反弹场景不触发补仓。
+- **测试**：test_smoke 51/51（新增补仓 2 例 + P0-9 四例）。
 
 ---
 
@@ -566,9 +566,9 @@
 
 - **需求**：执行记录与复盘新增记录后，自动同步持仓信息（数量、摊薄均价、累计买入）。
 - **设计**：
-  - items 新增 	otal_bought（累计买入金额，只增不减、不含卖出）；迁移按 vg_cost*quantity 幂等回填历史持仓（仅补 0/NULL，不覆盖后续累计值）。
-  - uy/add：数量+=、均价=(旧均价×旧数量+成交价×qty)/新数量、	otal_bought+=成交价×qty、holding=1。
-  - educe/sell：数量-=（不为负），均价与累计买入不变；清仓后 holding=0。
+  - items 新增 total_bought（累计买入金额，只增不减、不含卖出）；迁移按 avg_cost*quantity 幂等回填历史持仓（仅补 0/NULL，不覆盖后续累计值）。
+  - Buy/add：数量+=、均价=(旧均价×旧数量+成交价×qty)/新数量、total_bought+=成交价×qty、holding=1。
+  - Reduce/sell：数量-=（不为负），均价与累计买入不变；清仓后 holding=0。
   - item_id=0（未匹配系统物品）：仍记录执行，返回 warning 不同步持仓。
 - **展示**：持仓列表新增「持仓明细」列（件数/均价/累计买）；编辑弹窗显示只读累计买入。
 - **数据**：功能上线前录入的历史执行不会自动回溯同步；已手工同步用户刚录入的 id=194（FN57 | 霸意大名 add 18.6×9 → qty 27→36、均价 32.0→28.65、累计 864→1031.4）。
@@ -579,11 +579,88 @@
 ## 工程层优化巡检（2026-08-05，技术架构师视角）
 
 - **修复：全新数据库无法启动**：items 建表补齐 holding/avg_cost/quantity/total_bought，持仓列 ALTER 迁移收敛进 db._init_schema（此前只有 webapp 导入时的 _migrate_db 在补，全新库回填 UPDATE 会引用不存在的列而启动失败）；main.py 冗余 _migrate_db 移除。
-- **修复：syncio.run() 在运行中事件循环崩溃**：collector.py 的 401 浏览器 fallback 在 FastAPI 请求上下文里调用 syncio.run 会抛 RuntimeError（实际静默失败）；新增 _run_browser_fallback：脚本/worker 线程正常 syncio.run，运行中 loop 直接放弃并记 warning，且保持旧的容错语义（失败返回 None/[] 不抛异常）。
-- **性能：同步网络调用不再阻塞事件循环**：pi_market_refresh/pi_items_search/pi_items_analyze/批量扫描任务中的 etch_market_index（含 1.1s 限速 sleep + urllib）改为 syncio.to_thread。
+- **修复：asyncio.run() 在运行中事件循环崩溃**：collector.py 的 401 浏览器 fallback 在 FastAPI 请求上下文里调用 asyncio.run 会抛 RuntimeError（实际静默失败）；新增 _run_browser_fallback：脚本/worker 线程正常 asyncio.run，运行中 loop 直接放弃并记 warning，且保持旧的容错语义（失败返回 None/[] 不抛异常）。
+- **性能：同步网络调用不再阻塞事件循环**：api_market_refresh/api_items_search/api_items_analyze/批量扫描任务中的 fetch_market_index（含 1.1s 限速 sleep + urllib）改为 asyncio.to_thread。
 - **健壮性：内存无界增长**：_analysis_cache 封顶 200 条 FIFO 淘汰；_scan_progress/_discover_progress 新增 24h 过期清理。
-- **死代码清理**：pyflakes 全量清零（14 个文件，-121 行）：未用 import/局部变量（含 confidence/ma30/isk_label/mid_start/ecent_chg/vg_chg 等纯死计算）、ield,field,field 重复导入、无占位 f-string、stdout 重复包装防护。
+- **死代码清理**：pyflakes 全量清零（14 个文件，-121 行）：未用 import/局部变量（含 confidence/ma30/
+isk_label/mid_start/recent_chg/avg_chg 等纯死计算）、field,field,field 重复导入、无占位 f-string、stdout 重复包装防护。
 - **配置运维化**：API_TOKEN 支持 CSQAQ_API_TOKEN 环境变量覆盖；DB_PATH 支持 CS_MODEL_DB 覆盖（测试隔离/多库）。
-- **数据修复**：USP 消音版 | 守护者（id=119，名称多空格）与持仓品 id=6 同 good_id=6554 重复，91 条价格全被 id=6 覆盖、零独有数据，备份后删除；un_data_health 恢复 7/7 通过。
+- **数据修复**：USP 消音版 | 守护者（id=119，名称多空格）与持仓品 id=6 同 good_id=6554 重复，91 条价格全被 id=6 覆盖、零独有数据，备份后删除；
+un_data_health 恢复 7/7 通过。
 - **验证**：test_smoke 52/52；全新库建表/迁移冒烟通过；服务重启后全部页面/API 200；数据健康 7/7。
 - **未做（性价比考量）**：main.py 2540 行路由单体拆分（风险>收益，暂缓）；测试库与生产库隔离（测试依赖真实历史数据，且 WAL 复制有风险，暂缓）。
+
+---
+
+## 数据源验证：BUFF 历史成交量（2026-08-05，已停止使用）
+
+- **背景**：用户提供 BUFF 登录态 cookie，验证能否补充历史真实成交量（悠悠有品仅 day=7 逐笔完整，day=30/90/180 为固定采样）。
+- **决定（用户 2026-08-05）**：**停止使用 BUFF**。验证已完成，结论为不可用，此记录封存以防重复尝试。
+- **结论：BUFF 无法提供历史成交量**：
+  - `bill_order`（成交记录）：每品仅固定返回 ~10-20 条（活跃品 M4A1-S 守护者 FN 也仅 20 条），`page_num`/`page_size`（5/30/100/500）全部无效、多页返回同一批数据 → 无法翻页获取完整历史。
+  - `price_history`（days=90/180/365）：仅稀疏价格采样点 [时间戳, 价格]（365 天 169 点），无任何成交量字段；price_type/data_type 参数不改变结构。
+  - 候选路径 detail/trend/volume/trade_history/transactions 均 404。
+  - 搜索/详情仅有当前快照（sell_num/buy_num/transacted_num=0），无历史。
+- **BUFF 可用价值**：不接入。当前挂牌量快照（sell_num/buy_num）本可作供给分析旁证，但按用户决定整体不用 BUFF；供给分析继续用 csQAQ 在售数量，定价锚维持既有 悠悠有品 > BUFF > C5GAME 回退链不变。
+- **影响**：历史真实成交量仍靠**悠悠有品逐日积累**（day=7 逐笔按日聚合回填 K 线），90 天积累路线不变；BUFF 历史回填方案取消。
+- **工程**：cookie 已弃用，不落盘、不再使用；探测脚本临时文件已清理；后续不再复测。
+
+---
+
+## 文档编码纪律（2026-08-05）
+
+- **问题**：decision-log.md 多次出现编码损坏——① 补仓段中文被替换为 `?`（commit 1e021b3 时已损坏，git 历史不可逆）；② 英文首字母被替换为控制字符（`a→\x07`、`t→\t`、`B→\x08`、`f→\x0c`、`r/R→\n`，commit 9ab0dd3/c9bfb01 引入）。
+- **根因**：写入侧对 UTF-8 文本做了带 replace 的 GBK 解码（中文→?）或字符级转义损坏，未走统一 UTF-8 通道。
+- **处置**：损坏段已按代码 docstring/commit 重建；控制字符已按上下文修复；文件统一 LF + 无 BOM UTF-8。
+- **纪律（写入本类文档必须遵守）**：
+  1. 用 Python `open(path, "w", encoding="utf-8")` 或 `Set-Content -Encoding UTF8` 写，禁止默认 GBK 编码。
+  2. 中文内容禁止经 stdin 管道传入（会 GBK 乱码）；用 UTF-8 脚本文件或 `\u` 转义。
+  3. 写完校验：UTF-8 可解码、无 `?` 连串（≥4）、无控制字符（除换行）。
+
+---
+
+## A3 趋势腿研究：非恐慌上涨段的买入通道（2026-08-05，研究先行）
+
+- **背景**：全系统 buy 均为「恐慌抄底 + 均值回归」单策略族，非恐慌上涨段无买入通道（用户定为本轮优化重中之重，研究先行、实施殿后）。
+- **窗口**：W1=2025-11-02~2026-01-23（崩后非恐慌修复段）、W2=2026-01-23~2026-03-17（1/23~3/17 反弹段，指数 +12%）。
+- **缺口验证（修正原假设）**：现有引擎并非盲区——W1 55 buy（7天去重）30d net +25.4%；W2 59 buy 30d net 仅 +5.3%。**真正缺口 = 趋势段收益效率低 + 错过主升浪启动前位置**。
+- **三候选信号回测**（price+in_sale only，扣 2% 成本）：
+  - S1 突破（创20日高+前20日涨≥8%）：W1 30d net -1.97% → **v1 舍弃**。
+  - S2 回踩（MA7>MA30 + 回踩 MA30±3% + 前10日涨≥4%）：W1 +15.45% / W2 +22.53%，双窗皆正多簇 → **v1 主信号**。
+  - S3 吸筹（在售7日均量≤30日×0.85 + 7日|涨跌|≤3%）：W2 30d net +31.42%（2/11~3/4 启动前埋伏）→ **v1 主信号**。
+- **全窗口分桶（路由依据）**：S3 近全桶为正（最佳 sent<40|TH≥45|volatile 30d +40~47%，win 88-90%），仅 贪婪+弱TH 禁入；S2 强选择性——正期望仅 中性|TH45-60|volatile(+40.1%) 与 恐惧|深跌th0|bear(+22.9%)，贪婪/恐惧未深跌桶为负。
+- **路由层草案 v0**：恐慌期→仅抄底腿；深跌恐慌→抄底+S3；中性震荡/修复反弹→S2+S3；强牛→暂不新增；贪婪弱TH→全腿禁入。
+- **协同发现**：S3 在恐慌桶也正期望（+19~22%），可作 P0 族"启动前前置信号"，需做相关性/同日去重测试。
+- **风险**：W2 的 S3 为单一市场事件簇；分桶去簇后 n 偏小；量能确认为 v2（等 90 天成交量）。
+- **文件**：`references/trend_leg_research.py`（W1/W2 回测）、`references/trend_leg_robust.py`（分桶）、`references/trend_leg_research.md`（报告）、`data/trend_leg_research.json`、`data/trend_leg_robust.json`。
+- **待办**：A2 方法学在 S2/S3 重跑 → S3 与 P0 族去重测试 → 路由门控阈值平台验证 → 仓位预算 → C1 落地（新 P 系列）。
+
+---
+
+## A1 采集自动校验告警（2026-08-05，工程落地）
+
+- **目标**：数据源健康检查从「人工不定期」变为「自动校验 + 告警闭环」，防止脏数据/错误数据使用。
+- **落地**：
+  - `pipeline/db.py` 新增 `health_checks` 表（date 唯一，status pass/warn/fail）+ `save_health_check()` 按日 upsert。
+  - 新增 `run_health_monitor.py`：复用 `run_data_health.run_checks()` → 写表 → 摘要/--json；退出码 0/2 与 run_data_health 一致，支持 --db。
+  - `run_daily_collect.py` 收尾自动触发监控（失败仅记录不中断采集）；Windows 计划任务接入方式写入 docstring。
+  - Web：`GET /api/health/status`（最新一条 + fail_list）+ 大盘仪表盘「🩺 数据健康」卡片（PASS/WARN/FAIL + 最近检查时间 + FAIL 摘要）。
+  - 测试 t_health_monitor（临时库 pass/fail 两例 + 同日 upsert 覆盖）。
+- **顺带修复**：`run_data_health.py` 空库缺表崩溃（_cnt 兜底）、stdout 包装移入 main（避免导入时丢缓冲）；`trend_leg_*.py` BOM 剥离。
+- **验证**：test_smoke 56/56；编码检查 PASS；实库监控显示 fail=大户集中度（15/100 品，当日采集中途的真实状态，健康检查正确捕获）。
+
+---
+
+## A2 回测方法学升级（2026-08-05，工程落地）
+
+- **目标**：让"胜率提升"不再自证——walk-forward + 信号时间聚类 + 置换检验。
+- **落地**：
+  - `pipeline/backtest_methodology.py`：`signal_cluster_report(dates, window=3)`（事件簇/最大簇占比/去重事件数）、`walk_forward_split(records, anchor_ratio=0.7)`（test 严格晚于 train）、`permutation_baseline(fwd, n_perm=1000)`（符号置换单尾 p 值）。
+  - `references/methodology_report.py`：基于 `data/item_backtest_latest.json`（88 条 buy 明细，免重放）跑三检验 → `data/methodology_report.json`。
+  - 文档 `references/backtest-methodology.md`；测试 t_cluster_report/t_walkforward/t_permutation。
+- **当前结论（88 buy，2025-11-15~2026-06-21）**：
+  - 聚类：25 唯一日期 / 11 事件簇；最大簇 5/22~5/26 占 47.7%、次大 6/12~6/21 占 38.6%，**前两大簇合计 86.4%** → 胜率集中于两段行情，自证风险仍在。
+  - 事件级 net14 胜率 72.7%（信号级 79.5%，下调 ~7pp）。
+  - walk-forward 样本外：net14 56.5%（样本内 87.7%）、net30 34.8%（样本内 70.8%）→ **30d 样本外近抛硬币，14d 相对稳健**。
+  - 置换 p 值均显著（fwd14 p=0.001、net30 p=0.017），但未按事件聚类修正，需结合聚类解读。
+- **口径说明**：分析基于现有 buy 信号明细，未改任何引擎/回测口径。

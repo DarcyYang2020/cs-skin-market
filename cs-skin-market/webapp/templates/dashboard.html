@@ -7,6 +7,15 @@
 {% include "partials/index_analysis.html" %}
 </div>
 
+<!-- 数据健康 (A1, 2026-08-05): run_health_monitor 自动检查结果, 每日采集收尾/手动触发写 health_checks -->
+<div class="card" id="health-card" style="display:none;margin-top:16px;">
+  <div class="card-header">
+    <span class="card-title">🩺 数据健康</span>
+    <span id="health-time" style="font-size:12px;color:var(--text-muted);"></span>
+  </div>
+  <div id="health-body" style="padding:10px 14px;font-size:13px;"></div>
+</div>
+
 <!-- 信号中心 (2026-08-05): 最近一次批量扫描信号摘要 -->
 <div class="card" id="signal-center" style="display:none;margin-top:16px;">
   <div class="card-header">
@@ -28,6 +37,30 @@
 
 {% block scripts %}
 <script>
+// ---- 数据健康 (A1, 2026-08-05): 最新健康检查状态 + FAIL 项摘要 ----
+fetch("/api/health/status")
+.then(function(r) { return r.json(); })
+.then(function(d) {
+  var card = document.getElementById("health-card");
+  if (!card || !d.found) return;
+  card.style.display = "block";
+  var labels = {pass: "PASS 正常", warn: "WARN 警告", fail: "FAIL 异常"};
+  var colors = {pass: "var(--green)", warn: "var(--yellow)", fail: "var(--red)"};
+  var st = d.status || "pass";
+  var color = colors[st] || "var(--text-muted)";
+  document.getElementById("health-time").textContent = "最近检查 " + (d.created_at || "--");
+  var html = '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">'
+    + '<span class="badge" style="background:rgba(255,255,255,0.08);color:' + color + ';font-weight:700;">' + (labels[st] || st) + '</span>'
+    + '<span style="font-size:11px;color:var(--text-muted);">数据日期 ' + (d.date || "--") + '</span>'
+    + '</div>';
+  if (d.fail_count > 0) {
+    html += '<div style="margin-top:8px;color:var(--red);">FAIL 项：' + (d.fail_list || []).join("、") + ' —— 建议运行 <code>python run_health_monitor.py</code> 核查。</div>';
+  } else {
+    html += '<div style="margin-top:8px;color:var(--text-secondary);">各数据源检查通过，无 FAIL 项。</div>';
+  }
+  document.getElementById("health-body").innerHTML = html;
+});
+
 // ---- 信号中心 (2026-08-05): 复用 watchlist 扫描信号数据源 ----
 fetch("/api/watchlist/scan-history")
 .then(function(r) { return r.json(); })

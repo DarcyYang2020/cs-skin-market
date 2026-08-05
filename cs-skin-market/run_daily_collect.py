@@ -11,7 +11,8 @@
 import sys, io, os, asyncio, json
 from datetime import datetime, timezone, timedelta
 
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+if sys.stdout is sys.__stdout__:
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 TZ_BJ = timezone(timedelta(hours=8))
@@ -229,6 +230,17 @@ def main():
         asyncio.run(_playwright_tasks())
     except Exception as e:
         log(f"浏览器采集任务异常: {e}")
+    # ---- 数据源健康监控 (A1, 2026-08-05) ----
+    # 采集收尾自动体检：复用 run_health_monitor（写 health_checks 表，退出码 0/2）。
+    # 失败仅记录，不中断采集主流程。
+    # 定时接入说明：本项目由 Windows 计划任务每日调用本脚本，健康检查随收尾自动执行；
+    # 如需独立告警调度，可另建计划任务运行 `python run_health_monitor.py`（退出码 0/2 供告警系统判定）。
+    try:
+        from run_health_monitor import run_monitor
+        res = run_monitor()
+        log(f"数据健康: status={res['status']} FAIL={res['fail_count']}（已写入 health_checks）")
+    except Exception as e:
+        log(f"数据健康检查异常（不中断采集）: {e}")
     log("=== 每日采集完成 ===")
 
 
