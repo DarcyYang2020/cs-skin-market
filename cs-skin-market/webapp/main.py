@@ -1600,7 +1600,7 @@ def _item_report_link(name):
     return ('<a href="javascript:void(0)" onclick="showItemReport(\'' + esc + '\')" '
             'style="color:var(--accent);text-decoration:none;cursor:pointer;font-weight:600;">' + str(name) + '</a>')
 
-async def _scan_item(row, idx, ms, market_th_score, sentiment_score):
+async def _scan_item(row, idx, ms, market_th_score, sentiment_score, total_assets=0.0):
     """批量扫描单个物品（可并发调用，共享 Playwright 浏览器多 page）。"""
     import json as _json
     from pipeline.batch_scan import _portfolio_advice, summarize_buy_distance
@@ -1676,7 +1676,7 @@ async def _scan_item(row, idx, ms, market_th_score, sentiment_score):
             analysis.price_rmb = item.price_rmb
         analysis.volume_day = volume_day
         analysis.volume_total = item.volume_total or 0
-        pa = _portfolio_advice(holding, avg_cost, qty, item.price_rmb, analysis, market_th=market_th_score, sentiment_score=sentiment_score, market_30d_change=ms["chg30"])
+        pa = _portfolio_advice(holding, avg_cost, qty, item.price_rmb, analysis, market_th=market_th_score, sentiment_score=sentiment_score, market_30d_change=ms["chg30"], total_assets=total_assets)
         _fd_lim = (getattr(analysis, "fusion_decision", {}) or {}).get("position_limit", 0) or 0
         result = dict(
             name=exact_name, holding=holding, avg_cost=avg_cost, qty=qty,
@@ -1734,6 +1734,14 @@ async def _run_batch_scan_task(scan_id: str, rows: list):
         ms = _market_snapshot()
         market_th_score = ms["th"]
         sentiment_score = ms["sentiment"]
+        # B1 风险预算层(2026-08-05): 组合回撤熔断状态 + 总资产(单票敞口提示)
+        from pipeline import portfolio_risk
+        _conn_r = db.get_conn()
+        try:
+            _dd_status = portfolio_risk.drawdown_status(_conn_r)
+            _total_assets = float(db.get_setting(_conn_r, "total_assets", 0) or 0)
+        finally:
+            _conn_r.close()
         total = len(rows)
         _scan_progress[scan_id]["total"] = total
         _scan_progress[scan_id]["name"] = "准备扫描..."
@@ -1745,7 +1753,7 @@ async def _run_batch_scan_task(scan_id: str, rows: list):
         async def _one(row):
             nonlocal done
             async with sem:
-                res = await _scan_item(row, idx, ms, market_th_score, sentiment_score)
+                res = await _scan_item(row, idx, ms, market_th_score, sentiment_score, total_assets=_total_assets)
                 done += 1
                 _scan_progress[scan_id]["current"] = done
                 if res:
@@ -1763,6 +1771,7 @@ async def _run_batch_scan_task(scan_id: str, rows: list):
              "index": getattr(idx, "value", 0)},
             now_str=now_str,
             name_link=_item_report_link,
+            risk_ctx={"drawdown": _dd_status},
         )
         _scan_progress[scan_id]["html"] = final_html
         _scan_progress[scan_id]["done"] = True

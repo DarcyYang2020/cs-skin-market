@@ -1407,6 +1407,42 @@ def run_item_analysis(
                 fd.position_limit = 0.10
                 fd_dict = fusion_decision_summary(fd)
 
+    # ---- P1-0: Supply-contraction pre-launch accumulation (2026-08-05, C1 v1) ----
+    # 趋势腿研究(A3)落地: 见 references/trend_leg_research.md §8.
+    # 全窗口 walk-forward test 段(2/26~8/2, 跨5月深底/6月反弹/7月阴跌) 14d win 83.0%/30d 65.5%;
+    # 门控 9 邻域 30d net 26.9~27.2% 极稳; 与引擎 buy 重叠仅 1.7%; 置换 p=0.001
+    # 触发: watch/avoid + 在售7日均量<=30日均量x0.85 + 7日|涨跌|<=3%
+    #       + 禁(贪婪 sent<40 且 大盘TH<45) + 7天去重 + 存世量>=3000
+    # 仓位 0.10 轻仓(与 P0-8/P0-9 同档); 事件簇纪律: 未来同类行情(中性回升段)积累后复验
+    if fd.action in ("watch", "avoid") and len(supply_hist) >= 30 and len(prices) >= 8 \
+            and not (survive_count > 0 and survive_count < 3000):
+        _s7 = sum(supply_hist[-7:]) / 7
+        _s30 = sum(supply_hist[-30:]) / 30
+        _c7 = (current / prices[-8] - 1) * 100
+        _gate_ok = not (sentiment_score < 40 and market_th_score < 45)
+        if _s30 > 0 and _s7 <= _s30 * 0.85 and abs(_c7) <= 3 and _gate_ok:
+            _dup = False
+            if recent_buy_dates:
+                from datetime import datetime as _dt
+                _d_now = signal_date or _dt.now().strftime("%Y-%m-%d")
+                for _d0 in recent_buy_dates:
+                    try:
+                        _gap = (_dt.strptime(_d_now[:10], "%Y-%m-%d") - _dt.strptime(_d0[:10], "%Y-%m-%d")).days
+                    except ValueError:
+                        continue
+                    if 0 <= _gap <= 7:
+                        _dup = True
+                        break
+            if not _dup:
+                fd.action = "buy"
+                fd.action_label = "\U0001f7e2 \u4f9b\u7ed9\u6536\u7f29\u00b7\u542f\u52a8\u524d\u5438\u7b79\u00b7\u5206\u6279\u5efa\u4ed3"
+                fd.action_detail = (f"\u5728\u552e\u91cf\u6536\u7f29(7\u65e5\u5747{_s7:.0f}\u226430\u65e5\u5747{_s30:.0f}\u00d70.85)+\u4ef7\u683c\u5e73\u7a33(7\u65e5{_c7:+.1f}%)\u00b7"
+                                    f"\u542f\u52a8\u524d\u5438\u7b79\u00b7\u56de\u6d4b14d+11.2%/30d+27.2%(\u8f7b\u4ed30.10)\u00b7"
+                                    f"\u5206\u6279:\u9996\u4ed310%\u2192\u8dcc10%\u52a020%\u2192\u8dcc15%\u52a030%")
+                fd.deduction_sources.append("supply_contraction_accumulation")
+                fd.position_limit = 0.10
+                fd_dict = fusion_decision_summary(fd)
+
     # ---- Apply fusion decision to value score ----
     if fd.action == "buy":
         value.score = min(10, value.score + 1.5)

@@ -135,6 +135,14 @@ TOPUP_EXPECTANCY_STATS = {
 PORTFOLIO_CAP_CONCURRENT = 0.8
 
 
+# ---- B1 风险预算层 (2026-08-05 回测验证, data/b1_risk_validation.json) ----
+# 301 信号组合回放: cap0.8 基线 总收益+54.6%/maxDD-15.3%;
+# cap0.8 + 组合回撤熔断10%(权益自峰值回撤10%暂停新信号, 收复峰值解除) -> +60.5%/-12.0%, 熔断生效约18%交易日;
+# 熔断15%+ 几乎不触发(无效); 单票10%硬上限误伤 panic 0.3 仓位(收益跌至+24.6%) -> 单票只做提示不做拒绝。
+PORTFOLIO_DRAWDOWN_BREAKER = 0.10   # 组合权益自峰值回撤阈值(熔断建议)
+POSITION_CAP_SINGLE = 0.30          # 单票敞口提示阈值: (持仓市值+建议补仓)/总资产
+
+
 # ---- Transaction fees ----
 FEE_RATE = 0.01         # 悠悠 1% 手续费
 

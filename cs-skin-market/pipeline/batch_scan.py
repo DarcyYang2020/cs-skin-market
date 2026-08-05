@@ -3,6 +3,7 @@ import logging
 
 from .buy_distance import tranche_plan_text
 from .config import TOPUP_EXPECTANCY_STATS, PORTFOLIO_CAP_CONCURRENT
+from .portfolio_risk import single_position_exposure
 
 _log = logging.getLogger("batch_scan")
 
@@ -72,7 +73,7 @@ def _topup_price_plan(avg_cost, qty, current_price, analysis):
     return None, None, None, suggest
 
 
-def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th=None, sentiment_score=50.0, market_30d_change=None):
+def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th=None, sentiment_score=50.0, market_30d_change=None, total_assets=0.0):
     """Generate personalized portfolio advice based on cost basis and current position.
     sentiment_score: contrarian 0-100 (0=extreme greed, 100=extreme fear), default neutral.
     补仓分层阈值来自全量日记录回放(2026-08-04, 2025-11-02~2026-07-13, warmup=60, 只读引擎):
@@ -271,6 +272,9 @@ def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th
     else:
         advice["action"] = "持有观察"
         advice["reason"] = "建议结合大盘走势决策"
+    # B1 单票敞口提示(2026-08-05): (持仓市值+建议补仓额)/总资产 超阈值时提示。
+    # 纯展示不拒绝——回测: 单票硬上限误伤 panic 0.3 仓位(收益+54.6%->+24.6%)
+    _apply_exposure_hint(advice, market_value, total_assets)
     _gd = signal_guidance(_fusion.get("action_label", "") if isinstance(_fusion, dict) else "",
                           (getattr(analysis, "price_zones", None) or {}).get("expectancy"), _fusion_act)
     advice["signal_type"] = _gd["signal_type"]
@@ -278,6 +282,31 @@ def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th
     advice["hold_guidance"] = _gd["hold_guidance"]
     advice["buy_distance"] = summarize_buy_distance(getattr(analysis, "buy_distance", None) or {})
     return advice
+
+def _apply_exposure_hint(advice, market_value, total_assets):
+    """B1 单票敞口提示（纯展示）：(持仓市值 + 建议补仓额) / 总资产 超阈值时在 suggest 追加警示。
+
+    不回绝任何信号——回测(data/b1_risk_validation.json)显示单票硬上限会误伤
+    panic 0.3 仓位信号（组合收益 +54.6% 跌至 +24.6%）。
+    """
+    if not total_assets or total_assets <= 0:
+        return None
+    adds = advice.get("add_positions") or []
+    if not adds:
+        # 无实际补仓计划时不提示（避免「削减补仓规模」文案误挂到无补仓建议的场景）
+        return None
+    add_amount = 0.0
+    for _ap in adds:
+        add_amount += float(_ap.get("price") or 0) * float(_ap.get("qty") or 0)
+    expo = single_position_exposure(market_value, add_amount, total_assets)
+    if expo and expo["over"]:
+        advice["exposure"] = expo
+        _extra = ("｜单票敞口警示：持仓+建议补仓占总资产{:.0f}%（上限{:.0f}%），"
+                  "超{:.0f}pp；建议削减本次补仓规模或分批拉长，避免单票过度集中").format(
+            expo["after_pct"], expo["cap_pct"], expo["over_pct"])
+        advice["suggest"] = (advice.get("suggest") or "") + _extra
+    return expo
+
 
 def summarize_buy_distance(bd):
     """从距买点结果提取表格列摘要（target/gap/进度条），批量扫描与单品报告同源。
@@ -503,7 +532,7 @@ def _bd_cell(bd):
             + cond_row)
 
 
-def build_scan_html(results, total, market_ctx=None, now_str="", name_link=None):
+def build_scan_html(results, total, market_ctx=None, now_str="", name_link=None, risk_ctx=None):
     """批量扫描结果 → HTML（市场条 + 汇总统计 + 持仓/关注表格 + 距买点列）。
 
     展示层函数：不调用任何信号引擎。
@@ -549,6 +578,15 @@ def build_scan_html(results, total, market_ctx=None, now_str="", name_link=None)
                   '超出 {:.0f}%：信号扎堆时优先处理排序靠前的建仓/补仓，避免单日同时开仓过多'
                   '（回测：超限持仓并发最高1200%、回撤可达-85%）</span>').format(
             demand * 100, PORTFOLIO_CAP_CONCURRENT * 100, (demand - PORTFOLIO_CAP_CONCURRENT) * 100))
+    # B1 组合回撤熔断提示(2026-08-05): 持仓市值距峰值回撤超阈值 -> 建议暂停新开仓/补仓
+    # 回测(data/b1_risk_validation.json): cap0.8+熔断10% 总收益+60.5%/maxDD-12.0%, 优于无熔断+54.6%/-15.3%
+    _dd = (risk_ctx or {}).get("drawdown") or {}
+    if _dd.get("breaker_active"):
+        h.append(('<br><span style="color:var(--red);font-weight:600;">组合回撤熔断：持仓市值距峰值回撤 '
+                  '{:.1f}%（阈值 {:.0f}%，收复峰值解除），建议暂停新开仓/补仓'
+                  '（回测：熔断10%组合总收益+60.5%、最大回撤-12.0%，优于无熔断+54.6%/-15.3%）'
+                  '</span>').format(
+            _dd["drawdown_pct"], _dd["threshold_pct"]))
     h.append("</div></div>")
     # 持仓分析
     if held:

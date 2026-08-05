@@ -421,6 +421,62 @@ def t_p09_panic_easing_deep_bottom():
      ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision) = orig
 check('P0-9 panic-easing deep-drop buy + 7d dedup (2026-08-05)', t_p09_panic_easing_deep_bottom)
 
+def t_p1_supply_accumulation():
+    from types import SimpleNamespace
+    import pipeline.item_analysis as ia
+    pos = SimpleNamespace(percentile_90d=45.0, zscore_90d=-0.3, high_90d=100.0,
+                          low_90d=50.0, mean_90d=80.0, median_90d=82.0,
+                          current_price=60.0, data_points=90, valuation_tier='fair')
+    orig = (ia._analyze_position, ia.compute_sentiment_score, ia.compute_sentiment_factor,
+            ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision)
+    ia._analyze_position = lambda prices: pos
+    ia.compute_sentiment_score = lambda: 50          # 中性, P1-0 门控放行(禁 贪婪+弱TH)
+    ia.compute_sentiment_factor = lambda: 0.0
+    ia.event_risk_coefficient = lambda: 1.0
+    ia.compute_micro_th = lambda prices: 30          # microTH 弱, 基础/P0-5 不触发
+    def fake_fd(*a, **k):
+        return SimpleNamespace(action='watch', action_label='🟡 观望', action_detail='',
+                               deduction_sources=[], zone='fair', zone_label='合理',
+                               liquidity_filtered=False, percentile_90d=45.0,
+                               raw_th_score=40, corrected_th_score=40, position_limit=0.0)
+    ia.compute_fusion_decision = fake_fd
+    supply = [100] * 23 + [60] * 7        # 30日均量90.7 -> 7日均量60 (0.66x < 0.85, 收缩)
+    prices = [60.0] * 83 + [59.5, 60.2, 60.8, 60.0, 60.5, 60.3, 60.7]  # 7日|涨跌|<=3%
+    kw = dict(name='Test', volumes=[0] * 90, supply_hist=supply, market_pct_90d=50.0,
+              market_cycle='volatile', market_zscore=0.0, market_th_score=50,
+              market_30d_change=-5.0, market_drop21=-3.0, recent_buy_dates=[], signal_date='2026-03-01')
+    # 1) 供给收缩+价格平稳+门控放行 -> P1-0 buy(轻仓0.10)
+    res = ia.run_item_analysis(prices=prices, **kw)
+    fd = res.fusion_decision
+    assert fd['action'] == 'buy', fd['action']
+    assert 'supply_contraction_accumulation' in fd['deduction_sources'], fd['deduction_sources']
+    assert '吸筹' in fd['action_label'], fd['action_label']
+    assert fd['position_limit'] == 0.10, fd['position_limit']
+    # 2) 门控拦截: 贪婪(sent=30) + 大盘弱TH(40) -> 不触发
+    ia.compute_sentiment_score = lambda: 30
+    kw2 = dict(kw, market_th_score=40)
+    res = ia.run_item_analysis(prices=prices, **kw2)
+    assert res.fusion_decision['action'] == 'watch', res.fusion_decision['action']
+    ia.compute_sentiment_score = lambda: 50
+    # 3) 供给未收缩(7日均100 = 30日均100) -> 不触发
+    supply2 = [100] * 30
+    res = ia.run_item_analysis(prices=prices, **dict(kw, supply_hist=supply2))
+    assert res.fusion_decision['action'] == 'watch', res.fusion_decision['action']
+    # 4) 7天去重: 2/26 已 buy -> 3/1 不触发
+    kw3 = dict(kw, recent_buy_dates=['2026-02-26'])
+    res = ia.run_item_analysis(prices=prices, **kw3)
+    assert res.fusion_decision['action'] == 'watch', res.fusion_decision['action']
+    # 5) 价格不稳(7日涨8%) -> 不触发
+    prices2 = [60.0] * 83 + [62.0, 63.0, 63.5, 64.0, 64.5, 64.8, 64.8]
+    res = ia.run_item_analysis(prices=prices2, **kw)
+    assert res.fusion_decision['action'] == 'watch', res.fusion_decision['action']
+    # 6) 存世量过低(<3000) -> 不触发
+    res = ia.run_item_analysis(prices=prices, **dict(kw, survive_count=500))
+    assert res.fusion_decision['action'] == 'watch', res.fusion_decision['action']
+    (ia._analyze_position, ia.compute_sentiment_score, ia.compute_sentiment_factor,
+     ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision) = orig
+check('P1-0 supply-contraction accumulation buy + gate/dedup/survive', t_p1_supply_accumulation)
+
 print('[Batch Scan: 信号提取]')
 def t_extract_signals():
     from pipeline.batch_scan import extract_signals
@@ -1357,6 +1413,49 @@ def t_health_monitor():
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 check('health_monitor 检查→upsert→status 判定', t_health_monitor)
+
+print('[B1 风险预算层]')
+def t_b1_risk():
+    from pipeline.portfolio_risk import drawdown_from_curve, single_position_exposure
+    from pipeline.batch_scan import _portfolio_advice
+    from types import SimpleNamespace
+    # 回撤 5% -> 未触发；15% -> 触发；数据不足 -> None
+    base = [('2026-01-01', 100.0)]
+    assert drawdown_from_curve(base) is None
+    d5 = drawdown_from_curve([('2026-01-01', 100.0), ('2026-01-02', 95.0)], threshold=0.10)
+    assert d5['drawdown_pct'] == -5.0 and d5['breaker_active'] is False, d5
+    d15 = drawdown_from_curve([('2026-01-01', 100.0), ('2026-01-02', 85.0)], threshold=0.10)
+    assert d15['drawdown_pct'] == -15.0 and d15['breaker_active'] is True, d15
+    assert d15['threshold_pct'] == 10.0 and d15['days'] == 2
+    # 收复峰值 -> 解除
+    drec = drawdown_from_curve([('2026-01-01', 100.0), ('2026-01-02', 85.0), ('2026-01-03', 100.0)], threshold=0.10)
+    assert drec['breaker_active'] is False, drec
+    # 单票敞口：超阈值提示、未超不提示、资产为 0 返回 None
+    e1 = single_position_exposure(30000, 20000, 100000)
+    assert e1['after_pct'] == 50.0 and e1['over'] is True and e1['over_pct'] == 20.0, e1
+    e2 = single_position_exposure(20000, 5000, 100000)
+    assert e2['after_pct'] == 25.0 and e2['over'] is False, e2
+    assert single_position_exposure(10000, 0, 0) is None
+    # _portfolio_advice 带 total_assets：补仓建议超单票敞口时给出警示（纯展示不改 action）
+    pos = SimpleNamespace(percentile_90d=15.0, zscore_90d=-1.2)
+    mk = SimpleNamespace(
+        position=pos, trend_health={'score': 45},
+        cycle=SimpleNamespace(phase='consolidation'),
+        fusion_decision={'action': 'buy'},
+        value=SimpleNamespace(score=5.0, grade='C'),
+        risk_level='D',
+        price_zones={'entry': {'low': 60.0, 'high': 75.0}, 'current': 80.0},
+    )
+    # 浮亏(avg=100, cur=80, qty=100): 市值8000(8%) + 补仓约6682 -> 敞口约14.7% 不超 30%
+    a = _portfolio_advice(True, 100.0, 100, 80.0, mk, market_th=50, sentiment_score=60, total_assets=100000.0)
+    assert a['action'] == '可分批补仓', a['action']
+    assert 'exposure' not in a, a.get('exposure')
+    # 浮亏但市值占资产 40%: 补仓后敞口超 30% -> 提示（纯展示不改 action）
+    a2 = _portfolio_advice(True, 100.0, 500, 80.0, mk, market_th=50, sentiment_score=60, total_assets=100000.0)
+    assert a2['action'] == '可分批补仓', a2['action']
+    assert 'exposure' in a2 and a2['exposure']['over'] is True, a2.get('exposure')
+    assert '单票敞口警示' in a2['suggest'], a2['suggest']
+check('B1 熔断状态 + 单票敞口提示', t_b1_risk)
 
 print()
 print(f'=== Results: {passed} passed, {failed} failed ===')

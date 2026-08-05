@@ -312,6 +312,7 @@ cs-skin-market/
     index_analysis.py    -- 大盘指数分析引擎
     market_macro.py      -- 市场宏观（涨跌比/贪婪/在线/活跃卡/抄底信号）
     market_th.py         -- 大盘趋势健康度 + 大盘融合决策
+    portfolio_risk.py    -- B1 风险预算层（组合回撤熔断 + 单票敞口提示，纯展示层）
     market_context.py    -- 大盘上下文构建（供单品分析参考）
     supply.py            -- 供给端追踪
     batch_scan.py        -- 自选批量扫描（信号提取/按建议执行按钮）
