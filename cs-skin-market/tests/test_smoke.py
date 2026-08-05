@@ -1064,6 +1064,50 @@ def t_encoding():
 check('repo text files encoding health', t_encoding)
 
 
+
+def t_buy_distance_plain():
+    # ??? summary ???(2026-08-05): ?? pct30/z-1.5 ??, ???/????; stage ?????
+    from pipeline.buy_distance import compute_buy_distance
+    prices = [200 - i for i in range(90)]
+    class _P:
+        percentile_90d = 25
+        zscore_90d = -1.0
+    bd = compute_buy_distance(prices, _P(), th_score=26)
+    assert bd and bd["scenario"] == "bottom", bd
+    s = bd["summary"]
+    assert "pct30" not in s and "z-1.5" not in s, s
+    assert "\u4f4e\u4f30" in s, s  # ????
+    assert bd["stage"] in (2, 3), bd
+    assert bd["pct_ok"] is True and bd["th_ok"] is False, bd
+check('buy_distance summary ???+stage', t_buy_distance_plain)
+
+
+def t_proximity_sort():
+    # ???????(2026-08-05): ????????, ????????
+    from pipeline.batch_scan import _proximity_key
+    def mk(gap, pct_gap=5.6, z_gap=1.12, th_gap=29.0, scenario="bottom"):
+        return {"buy_distance": {"gap_pct": gap, "scenario": scenario,
+                                 "pct_gap": pct_gap, "z_gap": z_gap, "th_gap": th_gap}}
+    a = mk(1.0)                                  # ???????(?????)
+    b = mk(1.7, pct_gap=0.0, z_gap=0.11)         # ????, ??? 0.11
+    c = mk(5.7, pct_gap=0.0, z_gap=0.0)          # ????+??
+    ka, kb, kc = _proximity_key(a), _proximity_key(b), _proximity_key(c)
+    assert kc < kb < ka, (ka, kb, kc)
+check('batch_scan ???????', t_proximity_sort)
+
+
+def t_bd_cell_badges():
+    # ??????????(2026-08-05): ???? ?, ????? ? X
+    from pipeline.batch_scan import _bd_cell
+    bd = {"scenario": "bottom", "gap_pct": 1.7, "bar_pct": 8,
+          "scenario_label": "\u4e0b\u8dcc\u5bfb\u5e95", "target_price": 100.0,
+          "pct_gap": 0.0, "z_gap": 0.11, "th_gap": 29.0}
+    html = _bd_cell(bd)
+    assert "\u2713" in html, html  # ???? ?
+    assert "\u5dee" in html, html  # ??? ? X
+check('batch_scan ??????????', t_bd_cell_badges)
+
+
 print()
 print(f'=== Results: {passed} passed, {failed} failed ===')
 if failures:

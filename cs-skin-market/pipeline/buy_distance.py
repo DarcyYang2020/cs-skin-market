@@ -125,11 +125,32 @@ def _finish(scenario, scenario_label, cur, target, st, th, pct, z,
         if abs(dev) >= 15.0:
             anchor_note = ("悠悠锚价 ¥{:.2f} 与K线收盘 ¥{:.2f} 偏差 {:.0f}%，距买点按K线口径计算（与百分位同源），建议核实K线数据".format(
                 anchor, round(cur, 2), dev))
+    # stage 按价格与参考线比较（与 summary 分支严格一致），pct/z 仅作展示
+    if scenario == "done":
+        stage = 0
+    elif scenario == "extreme":
+        stage = 4
+    elif scenario == "bottom":
+        if cur > st["pct30_price"]:
+            stage = 1
+        elif z15 and cur > z15:
+            stage = 2
+        else:
+            stage = 3
+    else:
+        stage = None
+    pct_ok = bool(cur <= st["pct30_price"])
+    z_ok = bool(z15 and cur <= z15)
+    th_ok = bool(th >= th_target)
     return {
         "kind": "item",
         "scenario": scenario,
         "scenario_label": scenario_label,
-        "ref": "下跌寻底=估值线(pct30→z-1.5→90日低)｜等待回踩=买入区上沿｜强势回踩=MA支撑",
+        "stage": stage,
+        "pct_ok": pct_ok,
+        "z_ok": z_ok,
+        "th_ok": th_ok,
+        "ref": "下跌寻底=低估线→超跌线→90日最低｜等待回踩=买入区上沿｜强势回踩=MA支撑",
         "current_price": round(cur, 2),
         "anchor_price": anchor,
         "anchor_note": anchor_note,
@@ -208,22 +229,24 @@ def compute_buy_distance(prices, position, th_score, price_zones=None, cycle_pha
     # 下跌寻底：估值线逐级下探 pct30 -> z-1.5 -> 90日低
     if cur > pct30_price:
         target = pct30_price
-        summary = "再跌 {:.1f}% 到 ¥{:.2f} 触及估值线（pct30）".format(_gap_pct(cur, target), target)
+        summary = "现价 ¥{:.2f}，距低估参考价 ¥{:.2f} 还差 {:.1f}%（约 ¥{:.2f}）".format(
+            cur, target, _gap_pct(cur, target), cur - target)
         return _finish("bottom", "下跌寻底", cur, target, st, th, pct, z, entry_zone,
                        summary=summary, anchor_price=anchor_price)
     if z15_price and cur > z15_price:
         target = z15_price
-        summary = "已过 pct30 线 ¥{:.2f}，再跌 {:.1f}% 到 ¥{:.2f} 触 z-1.5 线".format(
-            pct30_price, _gap_pct(cur, target), target)
+        summary = "已进入低估区（现价低于 ¥{:.2f}）；距超跌参考价 ¥{:.2f} 还差 {:.1f}%（约 ¥{:.2f}）".format(
+            pct30_price, target, _gap_pct(cur, target), cur - target)
         return _finish("bottom", "下跌寻底", cur, target, st, th, pct, z, entry_zone,
                        summary=summary, anchor_price=anchor_price)
     if low90 < cur:
         target = low90
-        summary = "已过 z-1.5 线 ¥{:.2f}，再跌到 90 日低 ¥{:.2f} 为止".format(z15_price or 0, target)
+        summary = "已进入超跌区（现价低于 ¥{:.2f}）；再跌 {:.1f}% 到 90 日最低 ¥{:.2f}".format(
+            z15_price or 0, _gap_pct(cur, target), target)
         return _finish("bottom", "下跌寻底", cur, target, st, th, pct, z, entry_zone,
                        summary=summary, anchor_price=anchor_price)
     return _finish("extreme", "极端超跌", cur, cur, st, th, pct, z, entry_zone,
-                   summary="已低于 90 日低 ¥{:.2f}，极端超跌，等待企稳信号".format(low90))
+                   summary="已跌破 90 日最低价 ¥{:.2f}，极端超跌，等待企稳信号".format(low90))
 
 
 def compute_market_buy_distance(values, pct, z, th_score, regime="unknown", action="watch", action_label=""):
@@ -259,27 +282,47 @@ def compute_market_buy_distance(values, pct, z, th_score, regime="unknown", acti
         summary = "回踩 参考支撑 {:.0f}（-{:.1f}%）".format(target, _gap_pct(cur, target))
     elif cur > pct30_price:
         target, scenario, sl = pct30_price, "bottom", "深值寻底"
-        summary = "再跌 {:.1f}% 到 {:.0f} 触及估值线（pct30）".format(_gap_pct(cur, target), target)
+        summary = "现指数 {:.0f}，距低估参考位 {:.0f} 还差 {:.1f}%（约 {:.0f} 点）".format(
+            cur, target, _gap_pct(cur, target), cur - target)
     elif z15_price and cur > z15_price:
         target, scenario, sl = z15_price, "bottom", "深值寻底"
-        summary = "已过 pct30 线 {:.0f}，再跌 {:.1f}% 到 {:.0f} 触企稳线".format(
-            pct30_price, _gap_pct(cur, target), target)
+        summary = "已进入低估区（{:.0f} 以下）；距企稳参考位 {:.0f} 还差 {:.1f}%（约 {:.0f} 点）".format(
+            pct30_price, target, _gap_pct(cur, target), cur - target)
     elif low90 < cur:
         target, scenario, sl = low90, "bottom", "深值寻底"
-        summary = "已过企稳线 {:.0f}，再跌到 90 日低 {:.0f} 为止".format(z15_price or 0, target)
+        summary = "已进入企稳区（低于 {:.0f}）；再跌 {:.1f}% 到 90 日最低 {:.0f}".format(
+            z15_price or 0, _gap_pct(cur, target), target)
     else:
         target, scenario, sl = cur, "extreme", "极端超跌"
-        summary = "已低于 90 日低 {:.0f}，极端超跌，等待企稳信号".format(low90)
+        summary = "已跌破 90 日最低 {:.0f}，极端超跌，等待企稳信号".format(low90)
 
     gap_pct = _gap_pct(cur, target)
     gap_rmb = round(cur - target, 2)
     bar = min(100.0, max(0.0, gap_pct / BAR_CAP * 100)) if gap_pct > 0 else 100.0
 
+    # stage 按指数与参考线比较（与 summary 分支严格一致）
+    if scenario == "done":
+        stage = 0
+    elif scenario == "extreme":
+        stage = 4
+    elif scenario == "bottom":
+        if cur > pct30_price:
+            stage = 1
+        elif z15_price and cur > z15_price:
+            stage = 2
+        else:
+            stage = 3
+    else:
+        stage = None
     return {
         "kind": "market",
         "scenario": scenario,
         "scenario_label": sl,
-        "ref": "深值寻底=估值线(pct30→z0企稳线→90日低)｜强势回踩=MA支撑",
+        "stage": stage,
+        "pct_ok": bool(cur <= pct30_price),
+        "z_ok": bool(z15_price and cur <= z15_price),
+        "th_ok": bool(th >= th_target),
+        "ref": "深值寻底=低估线→企稳线→90日最低｜强势回踩=MA支撑",
         "current_price": round(cur, 2),
         "target_price": round(target, 2),
         "gap_pct": gap_pct,

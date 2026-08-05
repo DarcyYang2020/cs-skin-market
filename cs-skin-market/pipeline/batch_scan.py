@@ -90,8 +90,20 @@ def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th
                 if _entry.get("low") and _entry.get("high"):
                     _suggest += "｜买入区 ¥{:.2f}~¥{:.2f}".format(_entry["low"], _entry["high"])
                 if _bd.get("pct_gap", 0) or _bd.get("z_gap", 0) or _bd.get("th_gap", 0):
-                    _suggest += "｜条件：pct距30%还差{:.1f}pp、z距-1.5还差{:.2f}、TH距55还差{:.0f}分".format(
-                        _bd.get("pct_gap", 0), _bd.get("z_gap", 0), _bd.get("th_gap", 0))
+                    _conds = []
+                    if _bd.get("pct_gap", 0) > 0:
+                        _conds.append("估值还差{:.1f}个百分点".format(_bd["pct_gap"]))
+                    else:
+                        _conds.append("已进低估区")
+                    if _bd.get("z_gap", 0) > 0:
+                        _conds.append("超跌分还差{:.2f}".format(_bd["z_gap"]))
+                    else:
+                        _conds.append("已进超跌区")
+                    if _bd.get("th_gap", 0) > 0:
+                        _conds.append("趋势分还差{:.0f}".format(_bd["th_gap"]))
+                    else:
+                        _conds.append("趋势分已达标")
+                    _suggest += "｜条件：" + "、".join(_conds)
                 _suggest += "（详见单品报告）"
             else:
                 _gaps = []
@@ -249,10 +261,20 @@ def summarize_buy_distance(bd):
     return {
         "scenario": bd.get("scenario", ""),
         "scenario_label": bd.get("scenario_label", ""),
+        "stage": bd.get("stage"),
+        "pct_ok": bool(bd.get("pct_ok")),
+        "z_ok": bool(bd.get("z_ok")),
+        "th_ok": bool(bd.get("th_ok")),
         "current_price": round(cur, 2),
         "target_price": round(target, 2),
         "gap_pct": gap,
         "bar_pct": bar,
+        "pct_gap": bd.get("pct_gap"),
+        "z_gap": bd.get("z_gap"),
+        "th_gap": bd.get("th_gap"),
+        "pct30_price": bd.get("pct30_price"),
+        "z15_price": bd.get("z15_price"),
+        "low90_price": bd.get("low90_price"),
         "summary": bd.get("summary", ""),
     }
 
@@ -275,17 +297,46 @@ def _buy_gap(r):
         return 999.0
 
 
-def sort_results(results):
-    """批量扫描结果排序：统一按距买点 gap 升序（最接近买点在前）。
+def _proximity_key(r):
+    """买点接近度排序键：(优先级, 已达标条件数, 档内剩余距离, gap_pct)。
 
-    持仓与非持仓各自区块内排序，两区块口径一致；同 gap 时持仓按浮亏升序（亏损多优先）。
+    优先级 0=已到买点 1=极端超跌(等企稳) 2=下跌寻底 3=其他场景。
+    下跌寻底按「已过低估线 + 已过超跌线」条数分层，条数越多越接近买点；
+    层内按关键剩余距离升序（未过低估线看估值差、已过低估看超跌差、全过看价格距离）。
+    展示层排序，不影响任何引擎信号。
+    """
+    bd = r.get("buy_distance") or {}
+    gap = _buy_gap(r)
+    scenario = bd.get("scenario", "")
+    if gap <= 0:
+        return (0, 0, 0.0, 0.0) if scenario != "extreme" else (1, 0, 0.0, 0.0)
+    if scenario == "bottom":
+        pct_gap = bd.get("pct_gap")
+        z_gap = bd.get("z_gap")
+        pct_ok = 1 if (pct_gap is not None and pct_gap <= 0) else 0
+        z_ok = 1 if (z_gap is not None and z_gap <= 0) else 0
+        n_ok = pct_ok + z_ok
+        if n_ok == 0:
+            sub = float(pct_gap if pct_gap is not None else 99)
+        elif n_ok == 1:
+            sub = float(z_gap if z_gap is not None else 99)
+        else:
+            sub = float(gap)
+        return (2, -n_ok, sub, float(gap))
+    return (3, 0, float(gap), 0.0)
+
+
+def sort_results(results):
+    """批量扫描结果排序：按「买点接近度」排序（条件达标越多、剩余距离越近在前）。
+
+    持仓与非持仓各自区块内排序，两区块口径一致；同接近度时持仓按浮亏升序（亏损多优先）。
     展示层排序，不影响任何引擎信号。
     """
     held, unheld = [], []
     for r in results:
         (held if r.get("holding") else unheld).append(r)
-    held.sort(key=lambda r: (_buy_gap(r), _pnl_pct(r)))
-    unheld.sort(key=_buy_gap)
+    held.sort(key=lambda r: (_proximity_key(r), _pnl_pct(r)))
+    unheld.sort(key=_proximity_key)
     return held + unheld
 
 
@@ -359,7 +410,7 @@ def _exec_btn(name, pa, price):
 
 
 def _bd_cell(bd):
-    """距买点表格单元格：目标价 + 下杀幅度 + 微型进度条 + 场景标签。"""
+    """距买点表格单元格：目标价 + 下杀幅度 + 微型进度条 + 条件达标徽标 + 场景标签。"""
     if not bd:
         return '<span style="font-size:11px;color:var(--text-muted);">—</span>'
     gap = bd.get("gap_pct")
@@ -367,12 +418,34 @@ def _bd_cell(bd):
     at = gap is not None and gap <= 0
     color = "#4ade80" if at else "#fbbf24"
     gap_txt = "已到" if at else "还差 {:.1f}%".format(gap)
+    # 条件达标徽标（下跌寻底场景）：估值线 / 超跌线 / 趋势分，直观展示接近程度
+    conds = []
+    if bd.get("scenario") == "bottom":
+        for label, key, fmt in (("估值", "pct_gap", "{:.1f}个百分点"),
+                                ("超跌", "z_gap", "{:.2f}"),
+                                ("趋势分", "th_gap", "{:.0f}分")):
+            v = bd.get(key)
+            if v is None:
+                continue
+            try:
+                v = float(v)
+            except (TypeError, ValueError):
+                continue
+            if v <= 0:
+                conds.append('<span style="padding:1px 5px;border-radius:3px;background:rgba(34,197,94,0.15);color:#4ade80;font-size:10px;">'
+                             + label + " ✓</span>")
+            else:
+                conds.append('<span style="padding:1px 5px;border-radius:3px;background:rgba(245,158,11,0.15);color:#fbbf24;font-size:10px;">'
+                             + label + " 差" + fmt.format(v) + "</span>")
+    cond_row = ('<div style="margin-top:3px;display:flex;gap:3px;flex-wrap:wrap;">'
+                + "".join(conds) + "</div>") if conds else ""
     return ('<span style="font-size:11px;color:var(--text-muted);">'
             + bd.get("scenario_label", "") + "</span><br>"
             + '<b style="color:{c};">¥{t:.2f}</b>'.format(c=color, t=bd.get("target_price") or 0)
             + ' <span style="color:{c};font-size:11px;">（{g}）</span>'.format(c=color, g=gap_txt)
             + '<div style="height:5px;background:rgba(255,255,255,0.06);border-radius:3px;margin-top:3px;overflow:hidden;">'
-            + '<div style="height:100%;width:{b:.0f}%;background:linear-gradient(90deg,#3b82f6,#22c55e);"></div></div>'.format(b=bar))
+            + '<div style="height:100%;width:{b:.0f}%;background:linear-gradient(90deg,#3b82f6,#22c55e);"></div></div>'.format(b=bar)
+            + cond_row)
 
 
 def build_scan_html(results, total, market_ctx=None, now_str="", name_link=None):
