@@ -1058,6 +1058,48 @@ def t_monitor_rank_snapshot():
         conn.close()
 check('save_monitor_rank_snapshot upsert rows', t_monitor_rank_snapshot)
 
+def t_exec_sync_position():
+    # 执行记录同步持仓 (2026-08-05): buy/add 摊薄均价+累计买入; reduce/sell 减数量
+    from pipeline import db
+    conn = db.get_conn()
+    TEST = "__TEST_EXEC_SYNC__"
+    try:
+        conn.execute("DELETE FROM items WHERE name=?", (TEST,))
+        conn.commit()
+        iid = db.upsert_item(conn, TEST, in_watchlist=1)
+        conn.execute("UPDATE items SET holding=1, avg_cost=10.0, quantity=5, total_bought=50.0 WHERE id=?", (iid,))
+        conn.commit()
+        # buy: 数量+=, 均价=(10*5+15*5)/10=12.5, 累计=50+75=125
+        r = db.apply_execution_to_position(conn, iid, "buy", 15.0, 5)
+        row = conn.execute("SELECT holding, avg_cost, quantity, total_bought FROM items WHERE id=?", (iid,)).fetchone()
+        assert row["quantity"] == 10 and row["avg_cost"] == 12.5 and row["total_bought"] == 125.0 and row["holding"] == 1, dict(row)
+        assert r == {"holding": 1, "quantity": 10, "avg_cost": 12.5, "total_bought": 125.0}, r
+        # add: 同 buy
+        db.apply_execution_to_position(conn, iid, "add", 17.5, 2)
+        row = conn.execute("SELECT avg_cost, quantity, total_bought FROM items WHERE id=?", (iid,)).fetchone()
+        assert row["quantity"] == 12 and row["avg_cost"] == 13.33 and row["total_bought"] == 160.0, dict(row)
+        # reduce: 数量减, 均价/累计不变
+        db.apply_execution_to_position(conn, iid, "reduce", 20.0, 4)
+        row = conn.execute("SELECT holding, avg_cost, quantity, total_bought FROM items WHERE id=?", (iid,)).fetchone()
+        assert row["quantity"] == 8 and row["avg_cost"] == 13.33 and row["total_bought"] == 160.0 and row["holding"] == 1, dict(row)
+        # sell 清仓: quantity=0, holding=0
+        db.apply_execution_to_position(conn, iid, "sell", 20.0, 99)
+        row = conn.execute("SELECT holding, avg_cost, quantity FROM items WHERE id=?", (iid,)).fetchone()
+        assert row["quantity"] == 0 and row["holding"] == 0, dict(row)
+        # 再买: 均价=成交价, 累计延续
+        db.apply_execution_to_position(conn, iid, "buy", 20.0, 3)
+        row = conn.execute("SELECT holding, avg_cost, quantity, total_bought FROM items WHERE id=?", (iid,)).fetchone()
+        assert row["quantity"] == 3 and row["avg_cost"] == 20.0 and row["total_bought"] == 220.0 and row["holding"] == 1, dict(row)
+        # item_id=0 / 不存在 -> None 不崩
+        assert db.apply_execution_to_position(conn, 0, "buy", 10.0, 1) is None
+        assert db.apply_execution_to_position(conn, 99999999, "buy", 10.0, 1) is None
+    finally:
+        conn.execute("DELETE FROM items WHERE name=?", (TEST,))
+        conn.commit()
+        conn.close()
+check('execution syncs position (avg cost/qty/total bought)', t_exec_sync_position)
+
+
 
 def t_is_sunday_order():
     # 回归防护 (2026-08-04): is_sunday 必须在 _playwright_tasks 定义前赋值,

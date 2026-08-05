@@ -1975,7 +1975,13 @@ async def api_add_execution(request: Request):
                 item_id = row2["id"]
         eid = db.add_execution(conn, item_id, name, action, advice_date, price, qty,
                                advice_signal=body.get("advice_signal", "") or "")
-        return {"ok": True, "id": eid}
+        # 2026-08-05: 执行记录同步持仓（buy/add 摊薄均价+累计买入; reduce/sell 减数量）
+        warning = ""
+        if item_id > 0:
+            db.apply_execution_to_position(conn, item_id, action, price, qty)
+        else:
+            warning = "未匹配到系统物品(id=0)，已记录但未同步持仓；可先添加自选再录入"
+        return {"ok": True, "id": eid, "warning": warning}
     finally:
         conn.close()
 

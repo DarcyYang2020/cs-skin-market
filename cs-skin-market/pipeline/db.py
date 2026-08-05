@@ -117,6 +117,15 @@ def _init_schema(conn: sqlite3.Connection) -> None:
     except sqlite3.OperationalError:
         pass  # column already exists
 
+    # Migrate: add total_bought (累计买入金额, 2026-08-05) if missing
+    # 语义: 只增不减的累计买入成本(不含卖出); 历史持仓按 avg_cost*quantity 回填(幂等, 只补 0/NULL)
+    try:
+        conn.execute("ALTER TABLE items ADD COLUMN total_bought REAL DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass  # column already exists
+    conn.execute("UPDATE items SET total_bought = ROUND(avg_cost * quantity, 2) "
+                 "WHERE holding = 1 AND quantity > 0 AND (total_bought IS NULL OR total_bought = 0)")
+
 
 
     conn.execute("""CREATE TABLE IF NOT EXISTS market_index (
@@ -659,6 +668,43 @@ def add_execution(conn, item_id, name, action, advice_date, exec_price, qty=1, a
 
 def list_executions(conn):
     return [dict(r) for r in conn.execute("SELECT * FROM executions ORDER BY id DESC")]
+
+
+def apply_execution_to_position(conn, item_id, action, exec_price, qty):
+    """执行记录同步持仓（2026-08-05）：buy/add 加权摊薄均价+累计买入；reduce/sell 减数量。
+
+    纯数据层：不改任何信号/引擎。与 watchlist 编辑口径一致。
+    - buy/add: 数量+=qty, 均价=(旧均价*旧数量+成交价*qty)/新数量, total_bought+=成交价*qty, holding=1
+    - reduce/sell: 数量-=qty(不为负), 均价/总买入不变; 清仓后 holding=0
+    """
+    if item_id <= 0 or qty <= 0:
+        return None
+    row = conn.execute(
+        "SELECT holding, avg_cost, quantity, total_bought FROM items WHERE id=?", (item_id,)).fetchone()
+    if not row:
+        return None
+    avg_cost = float(row["avg_cost"] or 0)
+    quantity = int(row["quantity"] or 0)
+    total_bought = float(row["total_bought"] or 0)
+    if action in ("buy", "add"):
+        new_qty = quantity + qty
+        new_avg = round((avg_cost * quantity + exec_price * qty) / new_qty, 2) if new_qty > 0 else round(exec_price, 2)
+        new_total = round(total_bought + exec_price * qty, 2)
+        conn.execute("UPDATE items SET holding=1, avg_cost=?, quantity=?, total_bought=?, "
+                     "updated_at=datetime('now','localtime') WHERE id=?",
+                     (new_avg, new_qty, new_total, item_id))
+        ret = {"holding": 1, "quantity": new_qty, "avg_cost": new_avg, "total_bought": new_total}
+    elif action in ("reduce", "sell"):
+        new_qty = max(0, quantity - qty)
+        conn.execute("UPDATE items SET quantity=?, holding=?, "
+                     "updated_at=datetime('now','localtime') WHERE id=?",
+                     (new_qty, 1 if new_qty > 0 else 0, item_id))
+        ret = {"holding": 1 if new_qty > 0 else 0, "quantity": new_qty,
+               "avg_cost": avg_cost, "total_bought": total_bought}
+    else:
+        return None
+    conn.commit()
+    return ret
 
 
 def delete_execution(conn, eid):

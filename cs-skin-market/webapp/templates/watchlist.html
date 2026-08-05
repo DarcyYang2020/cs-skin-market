@@ -86,6 +86,7 @@
           <th style="width:28px;"><input type="checkbox" onclick="toggleAllCheckboxes(this)"></th>
           <th style="min-width:160px;">物品名称</th>
           <th style="width:50px;">持仓</th>
+          <th style="width:150px;">持仓明细</th>
           <th style="width:100px;">最新价格</th>
           <th style="width:42px;">评级</th>
           <th style="width:55px;">趋势</th>
@@ -99,6 +100,13 @@
           <td><input type="checkbox" class="wl-checkbox" value="{{ item.id }}"></td>
           <td><strong>{{ item.name }}</strong></td>
           <td><span>{% if item.holding %}✅{% else %}⬜{% endif %}</span></td>
+          <td>
+            {% if item.holding %}
+            <span style="font-size:12px;">{{ item.quantity or 0 }} 件</span><br>
+            <span style="font-size:11px;color:var(--text-muted);">均价 ¥{{ "%.2f"|format(item.avg_cost or 0) }}</span><br>
+            <span style="font-size:11px;color:var(--text-muted);">累计买 ¥{{ "%.2f"|format(item.total_bought or 0) }}</span>
+            {% else %}<span class="muted text-sm">--</span>{% endif %}
+          </td>
           <td class="{% if item.pnl_pct is not none and item.pnl_pct > 5 %}green{% elif item.pnl_pct is not none and item.pnl_pct < -5 %}red{% endif %}">
             <span id="wl-price-{{ item.id }}">{% if item.latest_price %}¥{{ "%.2f"|format(item.latest_price) }}{% else %}<span class="muted">--</span>{% endif %}</span>
             {% if item.pnl_pct is not none %}<br><span style="font-size:11px;{% if item.pnl_pct >= 0 %}color:var(--green);{% else %}color:var(--red);{% endif %}">{{ "%+.1f"|format(item.pnl_pct) }}%</span>{% endif %}
@@ -123,7 +131,7 @@
           </td>
           <td>{% if item.spark_svg %}{{ item.spark_svg|safe }}{% else %}<span class="muted text-sm">--</span>{% endif %}</td>
           <td>
-            <button class="btn btn-outline btn-sm" onclick="openEditModal({{ item.id }},'{{ item.name|e }}',{{ item.holding or 0 }},{{ item.avg_cost or 0 }},{{ item.quantity or 0 }})">编辑</button>
+            <button class="btn btn-outline btn-sm" onclick="openEditModal({{ item.id }},'{{ item.name|e }}',{{ item.holding or 0 }},{{ item.avg_cost or 0 }},{{ item.quantity or 0 }},{{ item.total_bought or 0 }})">编辑</button>
             <button class="btn btn-outline btn-sm" hx-get="/api/watchlist/{{ item.id }}/analyze" hx-target="#modal-body" hx-swap="innerHTML" onclick='showLoadingAndOpen()'>分析</button>
             <button class="btn btn-outline btn-sm" hx-get="/api/watchlist/{{ item.id }}/report" hx-target="#modal-body" hx-swap="innerHTML" onclick="openModal('analysis-modal')">📄 报告</button>
             <button class="btn btn-danger btn-sm" hx-delete="/api/watchlist/{{ item.id }}" hx-target="#wl-row-{{ item.id }}" hx-swap="outerHTML" hx-confirm="确认删除？">删除</button>
@@ -267,6 +275,10 @@
           <label>持有数量</label>
           <input type="number" id="edit-qty" class="form-input" min="1">
         </div>
+      </div>
+      <div class="form-group">
+        <label>累计买入 (RMB，由执行记录累计，只读)</label>
+        <div id="edit-totalbought" style="padding:8px 0;font-weight:600;color:var(--accent);">0.00</div>
       </div>
       <div class="modal-actions">
         <button type="button" class="btn btn-outline" onclick="closeModal('edit-modal')">取消</button>
@@ -456,12 +468,13 @@ async function doAdd(e) {
 }
 
 // ---- Edit ----
-function openEditModal(id, name, holding, avgCost, qty) {
+function openEditModal(id, name, holding, avgCost, qty, totalBought) {
   document.getElementById('edit-id').value = id;
   document.getElementById('edit-name').value = name;
   document.getElementById('edit-holding').value = holding;
   document.getElementById('edit-avgcost').value = avgCost || 0;
   document.getElementById('edit-qty').value = qty || 0;
+  document.getElementById('edit-totalbought').textContent = (totalBought || 0).toFixed(2);
   toggleEditCostQty();
   openModal('edit-modal');
 }
@@ -816,7 +829,12 @@ function submitExec() {
   fetch('/api/watchlist/executions', {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)})
   .then(function(r) { return r.json(); })
   .then(function(d) {
-    if (d.ok) { closeModal('exec-modal'); showToast('✅ 已记录执行'); loadExecutions(); }
+    if (d.ok) {
+      closeModal('exec-modal');
+      showToast(d.warning ? ('⚠️ ' + d.warning) : '✅ 已记录执行并同步持仓');
+      if (d.warning) { loadExecutions(); }
+      else { location.reload(); }
+    }
     else { showToast('❌ ' + (d.error || '记录失败'), 'error'); }
   });
 }
