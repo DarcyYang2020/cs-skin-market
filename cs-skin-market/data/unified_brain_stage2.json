@@ -1,0 +1,73 @@
+{
+ "cut": "2026-02-23",
+ "train_n": 300,
+ "test_n": 281,
+ "baseline": {
+  "n": 281,
+  "net14_n": 281,
+  "win14": 59.4,
+  "avg14": 13.34,
+  "net30_n": 272,
+  "win30": 52.9,
+  "avg30": 11.83,
+  "wavg14": 21.43,
+  "wavg30": 17.43,
+  "cluster": {
+   "events": 11,
+   "unique_dates": 50,
+   "max_cluster_share": 0.331,
+   "flagged": false
+  }
+ },
+ "planA": {
+  "n": 281,
+  "net14_n": 281,
+  "win14": 59.4,
+  "avg14": 13.34,
+  "net30_n": 272,
+  "win30": 52.9,
+  "avg30": 11.83,
+  "wavg14": 24.82,
+  "wavg30": 19.97,
+  "cluster": {
+   "events": 11,
+   "unique_dates": 50,
+   "max_cluster_share": 0.331,
+   "flagged": false
+  }
+ },
+ "planB": {
+  "n": 281,
+  "net14_n": 281,
+  "win14": 59.4,
+  "avg14": 13.34,
+  "net30_n": 272,
+  "win30": 52.9,
+  "avg30": 11.83,
+  "wavg14": 24.82,
+  "wavg30": 19.97,
+  "cluster": {
+   "events": 11,
+   "unique_dates": 50,
+   "max_cluster_share": 0.331,
+   "flagged": false
+  }
+ },
+ "planC": {
+  "n": 281,
+  "net14_n": 281,
+  "win14": 59.4,
+  "avg14": 13.34,
+  "net30_n": 272,
+  "win30": 52.9,
+  "avg30": 11.83,
+  "wavg14": 17.64,
+  "wavg30": 17.16,
+  "cluster": {
+   "events": 11,
+   "unique_dates": 50,
+   "max_cluster_share": 0.331,
+   "flagged": false
+  }
+ }
+}
