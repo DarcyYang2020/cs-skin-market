@@ -1,6 +1,8 @@
 # CS-Market 单品分析引擎文档
 
 > 最后更新: 2026-08-01 | 版本: v4.2
+> ⚠️ **本文档已过时**：单品引擎已并入统一大脑 K-2（信号族注册制 + deep_value 阴跌闸门 + TH 三区语义），
+> 当前口径以 `engine-unified.md` + `th_calibration.md` 为准，本文保留作 v4.2 历史参考。
 
 ---
 
@@ -356,5 +358,5 @@ spread_pct / highest_buy / bid_7d_chg / bid_30d_chg / spread_avg / bid_count / d
 - pct≤25 + 单品TH≥40 + z≤-0.5 + 大盘TH≥45 → 可分批补仓（14d 胜率 75%）
 - pct≤25 但大盘TH<45 → 暂缓，等大盘共振
 - 单品TH<30 → 止损优先
-| references/backtest_results.json | 大盘 2025-11-02 ~ 2026-07-21, 232条 |
-| pipeline/config.py THRESHOLDS | TH_STRONG=55, TH_NEUTRAL=35 |
+| data/item_backtest_full_2025.json | K-2 引擎 458 信号回放（2026-08-06；backtest_results.json 已移除） |
+| pipeline/config.py THRESHOLDS | TH_STRONG=55, TH_NEUTRAL=35（抄底语义已被 TH 三区取代，见 th_calibration.md） |

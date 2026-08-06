@@ -1,5 +1,8 @@
 # 大盘引擎分层回测报表
 
+> ⚠️ **本文档已过时**：TH_STRONG=55 / TH_NEUTRAL=35 抄底语义已被 2026-08-06 TH 矫正取代（TH 三区：恐慌<35 黄金坑 / 35-54 摩擦带 / ≥55 趋势确认），
+> 当前引擎回放见 `data/item_backtest_full_2025.json`（K-2 458 信号）+ `references/th_calibration.md`。
+
 口径: 统一回测窗口 2025-11-02 起（2025-10-24 五合一后市场），`run_backtest.py` 默认 cluster=3 天
 参数: TH_STRONG=55, TH_NEUTRAL=35
 

@@ -888,3 +888,15 @@ un_data_health 恢复 7/7 通过。
 
 **原则沉淀**：TH 三区语义是解释层/展示层语义；引擎层由信号族注册制自动实现（恐慌→panic 族、摩擦带→deep_value+闸门、趋势→accumulate）；直接改 TH 门槛需引擎回放验证。
 
+
+
+## 系统整理：清理过时数据与文档（2026-08-06）
+
+- **数据清理（26 个 untracked/gitignored）**：全部 `*.log`（daily_collect / server_* / health_check / manual_collect / backfill* / pre123 / full_backtest / _bf 等 22 个）+ 可再生的回放临时产物（advice_replay_tmp / deepvalue_replay_tmp / topup_replay_tmp / topup_replay_p09，共约 22MB，均可由 `references/*.py` 再生成）。
+- **git rm 3 个一次性回填报告**：backfill_csqaq365_report.json / backfill_youpin_report.json / sample_collect_report.txt（仅被 scripts-archive 旧脚本引用，结论已沉淀在决策记录）。
+- **保留项（清理前已核对引用）**：`scan_history/`（webapp 信号中心 + 历史下拉使用，保留 30 份）、`backup/`（FN57/USP 合并操作回滚点，本日志有记录）、`backtest_snapshots/`（因子监控）、`uu_headers.json`（悠悠登录态，勿删）。
+- **文档修正**：
+  - 失效引用：`references/backtest_results.json` 已于 12ea421 移除，AGENTS.md / analysis-engine.md / market-engine.md 统一改指 `data/item_backtest_full_2025.json`（K-2 458 信号）；
+  - superseded 标注：analysis-engine（v4.2）/ market-engine（v5.2）/ backtest_layered → 当前口径以 engine-unified + th_calibration 为准（TH 三区语义）；
+  - item-sample-plan 状态头「待执行」→「已执行」（2026-08-02~04，51/57）；AGENTS.md 补 TH 三区语义与超跌例外数据口径。
+- **防回归**：删除前均确认无生产代码引用（仅 references/ 研究脚本引用可再生成产物）；test_smoke 编码健康检查 + 61/61 全通过。

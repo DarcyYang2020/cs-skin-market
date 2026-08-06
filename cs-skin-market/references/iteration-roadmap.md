@@ -7,6 +7,7 @@
 
 ## 版本历史
 
+- **v12（2026-08-06）**：系统整理——清理过时数据与文档：删除 26 个日志/可再生的回放临时产物（advice/deepvalue/topup replay、全部 *.log，均 gitignore 覆盖）；git rm 3 个一次性回填报告（backfill_csqaq365_report/backfill_youpin_report/sample_collect_report）；修复失效引用（references/backtest_results.json 已于 12ea421 移除 → 统一指到 data/item_backtest_full_2025.json）；analysis-engine/market-engine/backtest_layered 标注 superseded 并指向 engine-unified + th_calibration；item-sample-plan 状态头改「已执行」；AGENTS.md 补 TH 三区语义 + 超跌例外数据口径。test_smoke 61/61 → 学到新思路（清理前先核对 gitignore 与代码引用：scan_history/ 被 webapp 信号中心使用、backup/ 是合并操作回滚点，均保留；回放临时产物脚本可再生成故直接清）。
 - **v11（2026-08-06）**：TH 矫正预研与落地——TH 三区语义确立（<35 恐慌黄金坑 / 35-54 摩擦带 / >=55 趋势确认，解释层）；X2（deep_value 改 TH 门槛）被回放证伪（avg14 12.35→11.78，离线桶≠引擎族口径）；C2 落地 = I-6 部分（deep_value 加大盘 chg30 闸门排除 [-3,3) 横盘段，回放 win14 +2.0pp / avg14 +1.20 / wavg14 +1.09 前后半段一致）；豁免候选全失败保持一刀切；展示层距买点 TH 三区化 → 学到新思路（TH 三区是解释层语义，引擎层由族注册制覆盖；TH 门槛直接改需引擎回放验证，离线桶口径不能替代）。
 - **v10（2026-08-06）**：黑天鹅事件日历落地——新增 EVENT_CALENDAR（纪念品炼金 05-25 / 黄盾 07-16 / 五合一崩盘 10-24）+ historical_event_impact() 标注 + 信号复盘「事件标注」列；**10-14~18「崩盘前夜陷阱」修正为五合一黑天鹅外生冲击**（S3 剔除事件影响后干净 52 信号 win30 90.4% / avg +44.41%，受影响 13 信号中 8 个 fwd30 全落崩盘期 avg -17.3%）；test_smoke 61/61 → 学到新思路（牛市/熊市只是市场数据体现，最终目标是符合整个市场的投资工具；趋势腿不落地会踏空下一轮牛市 → I-8 提升为战略级；事件影响应从策略评估中剔除：标注而非调参）。
 - **v9（2026-08-06）**：数据对接修复——信号复盘升级 K-2 503 信号（88 旧基准废弃）、期望统计三键重算（panic 92/2事件、deep_value 211/33、accumulate 200/23）、死文件清理（backup_price_history_20260802/topup_replay_tmp）、test_smoke 新增数据对接硬校验（60/60）→ 学到新思路（展示层统计常量必须与回放产物同源，用测试固化防漂移）。

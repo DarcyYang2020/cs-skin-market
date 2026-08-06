@@ -70,8 +70,8 @@ csQAQ chart API 提供 price + in_sale_count（不含真实成交量）。成交
 
 当标准融合决策无法触发 buy 时，额外检查超跌反弹：
 - pct<=15% + Z<=-2.0 + 跌速衰减(no_new_low2 + chg3d>0%) → 超跌反弹·分批建仓
-- 回测: 2025-11~2026-07, buy信号16次, 14d胜率88%, 均收益+9.65%
-- 数据见 `cs-skin-market/references/backtest_results.json`
+- 回测: 早期预研 2025-11~2026-07 buy 16次 / 14d 88% / +9.65%（K-2 回放窗口未触发该通道，见 `references/engine-unified.md`）
+- 数据见 `cs-skin-market/data/item_backtest_full_2025.json`（K-2 引擎 458 信号回放）
 
 ### 参数拟合建议
 
