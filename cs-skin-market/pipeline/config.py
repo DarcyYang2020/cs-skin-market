@@ -77,12 +77,12 @@ ITEM_EXIT_RULES = {
 # 42 item buy signals (2026-04-21 ~ 2026-08-01, run_item_backtest.py --warmup 30).
 # Shown next to price zones so investors see the mathematical expectancy of the
 # signal type instead of trading on gut feeling (project principle #1/#2).
-# 黑天鹅事件日历（2026-08-06，用户市场知识录入；黄盾日期为 7 月中近似，待校准）
+# 黑天鹅事件日历（2026-08-06，用户市场知识录入；黄盾 2025-07-16 已校准）
 # 用途：信号复盘/回测统计标注「fwd 窗口与事件影响期重叠」，外生冲击不算策略负贡献；
 #       实时事件风险用 settings.event_active（event_risk_coefficient），此为历史日历。
 EVENT_CALENDAR = [
     {"name": "纪念品炼金", "date": "2025-05-25", "impact_days": 30, "type": "souvenir_recipe"},
-    {"name": "黄盾", "date": "2025-07-15", "impact_days": 30, "type": "collection"},
+    {"name": "黄盾", "date": "2025-07-16", "impact_days": 30, "type": "collection"},
     {"name": "五合一崩盘", "date": "2025-10-24", "impact_days": 35, "type": "crash"},
 ]
 

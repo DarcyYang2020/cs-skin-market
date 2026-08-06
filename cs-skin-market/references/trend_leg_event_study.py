@@ -14,10 +14,10 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 COST = 0.02
 BULL_START, BULL_END = "2025-01-01", "2025-10-31"
 
-# 黑天鹅事件日历（用户 2026-08-06 提供；黄盾日期为 7 月中近似，待校准）
+# 黑天鹅事件日历（用户 2026-08-06 提供；黄盾 2025-07-16 已校准）
 EVENTS = [
     {"name": "纪念品炼金", "date": "2025-05-25", "impact_days": 30},
-    {"name": "黄盾", "date": "2025-07-15", "impact_days": 30},
+    {"name": "黄盾", "date": "2025-07-16", "impact_days": 30},
     {"name": "五合一崩盘", "date": "2025-10-24", "impact_days": 35},
 ]
 
