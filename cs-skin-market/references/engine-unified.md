@@ -210,11 +210,25 @@ train 估计「族×状态桶」net14 期望表（6 格 n>=3），test 段应用
 
 ### 5.3 该架构带来什么
 - **新增信号族零成本**：S2 回踩 / 牛动量（I-8）只需注册进 `SIGNAL_FAMILIES` 并声明闸门，不再追加 if 块。
-- **闸门统一实验入口**：后置族当前自带条件不经过守卫2/供给过滤（与旧链路一致，行为保真）；
-  若要验证「deep_value/panic_easing 是否应加飞刀确认/供给扩张闸门」，改一族 guards 即可跑回放对比（K-2）。
+- **闸门统一实验入口**：后置族自带条件不经过守卫2（与旧链路一致，行为保真）；
+  K-2（2026-08-06）已验证 deep_value 应叠加 supply_expansion 闸门并已落地（`guards=("supply_expansion",)`，
+  剔除 91 供给扩张坏信号，聚合全维度改善）；panic_easing/supply_accum 经预研不叠加（期望反降/消灭信号），
+  仍保持自带条件。后续新族只需在注册表声明 guards 即可复用统一守卫层。
 - **展示层接线**：state_bucket 已随 fd_dict 输出，J-1/I-1 展示层可直接复用。
 
 ### 5.4 保真保留的已知行为（留待研究，不在本轮改动）
-- 后置族（deep_value 等）在供给扩张过滤之后评估 → 可「绕过」供给扩张闸门重新升级（旧链路即如此）；
-  是否应统一闸门属 K-2 研究项，需回测先行。
+- 后置族在供给扩张过滤之后评估：deep_value 已由 K-2（2026-08-06）叠加 supply_expansion 闸门修正；
+  panic_easing/supply_accum 仍自带条件（预研显示叠加会期望反降/消灭信号，维持现状）。
 - 恐慌共振不经过市场弱/存世量/半山腰/飞刀守卫（设计使然：恐慌场景就是市场 TH 弱时救回 V 型底）。
+
+
+### 5.5 K-2 守卫统一实验（2026-08-06，deep_value + supply_expansion）
+- **预研**（data/k2_guard_prestudy.json，581 信号离线模拟）：deep_value+supply_expansion 是唯一正收益组合
+  （14d +3.50→+5.58 / 30d +12.21→+16.68，前后半段一致，事件 31→33 不减）；supply_accum 剔除 14d -2.61 且事件减半、
+  panic_easing 加 micro_th 即消灭信号（5 月单事件簇）→ 不叠加。
+- **落地**：deep_value `guards=("supply_expansion",)`；后置族循环升级后统一执行族级守卫（`if fam.guards`）。
+- **引擎回放**（581→503）：gone 91 全部 deep_value（被剔 14d 胜率 33%、avg -1.30，拦的是坏信号）；
+  added 13 为**去重释放**转出 deep_dip（前置 deep_value 剔除 → 7 天去重释放 → deep_dip 豁免路径，avg +4.00）；
+  聚合 win14 57.8→62.2%、avg14 +10.4→+12.35、wavg14 +15.73→+17.41、win30 62.8→66.0%、avg30 +17.97→+20.37，
+  前后半段一致改善。
+- **验证**：test_smoke 59/59（网络桩离线）；回放数据 data/item_backtest_full_2025.json（2026-08-06 12:43 版）。

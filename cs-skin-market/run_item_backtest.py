@@ -18,6 +18,7 @@ from datetime import datetime
 sys.path.insert(0, ".")
 from pipeline import db
 import pipeline.item_analysis as ia
+from pipeline.index_analysis import compute_micro_th
 from pipeline.backtest_common import approx_sentiment, patch_sentiment, build_market_context
 from pipeline.batch_scan import signal_guidance
 
@@ -136,6 +137,13 @@ def backtest_item(item_id, name, start, end, warmup, market_ctx, cost=0.02):
             "net14": round(net14, 2) if net14 is not None else None,
             "net30": round(net30, 2) if net30 is not None else None,
             "max_dd": round(dd, 2),
+            # K-2 守卫实验特征（2026-08-06）：供离线模拟守卫叠加效果，不参与信号判定
+            "micro_th": compute_micro_th(prices[:i + 1]),
+            "chg3d": round((prices[i] / prices[i - 4] - 1) * 100, 2) if i >= 4 else None,
+            "chg7": round((prices[i] / prices[i - 8] - 1) * 100, 2) if i >= 8 else None,
+            "supply_change_30d": (res.supply_analysis or {}).get("supply_change_30d"),
+            "mkt_chg30": round(mc.get("chg30", 0), 2),
+            "mkt_drop21": round(mc.get("drop21", 0), 2),
             "fwd_series": fwd_series,
         })
     return {"item_id": item_id, "name": name, "days": len(dates),

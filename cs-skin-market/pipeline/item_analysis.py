@@ -1060,7 +1060,7 @@ SIGNAL_FAMILIES = (
             and not _dedup_hit(F["recent_buy_dates"], F["signal_date"])
         ),
         buckets=("中性企稳", "弱市观望"),
-        guards=(),
+        guards=("supply_expansion",),
         detail=lambda F: (
             f"深值低估(pct={F['pct']:.0f}%,Z={F['z']:.1f})"
             f"+大盘企稳(TH={F['market_th']},21日跌幅{F['drop21']:.1f}%)·"
@@ -1376,10 +1376,15 @@ def decide_fusion_signal(
     _apply_guards(fd, F, ("supply_expansion",))
 
     # ---- 升级族2：后置族（深值企稳 > 恐慌退潮 > 供给收缩，固定优先级）----
+    # K-2（2026-08-06，预研 k2_guard_prestudy.json）：deep_value 叠加 supply_expansion 闸门，
+    # 剔除供给扩张 91 信号后 14d +3.50→+5.58 / 30d +12.21→+16.68，前后半段一致；
+    # supply_accum/panic_easing 不叠加（结构与通用守卫冲突/期望反降）。
     if fd.action in ("watch", "avoid"):
         for fam in _POST_FAMILIES:
             if fam.trigger(F):
                 _apply_buy(fd, fam, F)
+                if fam.guards:
+                    _apply_guards(fd, F, fam.guards)
                 break
 
     return fd, bucket
