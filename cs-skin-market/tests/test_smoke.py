@@ -538,9 +538,11 @@ def t_batch_scan_display():
               dict(holding=0, avg_cost=0, price_rmb=100.0, name="近", buy_distance={"gap_pct": 2.0})]
     out = sort_results(held + unheld)
     assert [r["name"] for r in out] == ["赚", "亏", "近", "远"], [r["name"] for r in out]
-    # 持仓同 gap 时浮亏大在前（次级排序）
-    held_tie = [dict(holding=1, avg_cost=100.0, price_rmb=130.0, name="赚", buy_distance={"gap_pct": 5.0}),
-                dict(holding=1, avg_cost=100.0, price_rmb=70.0, name="亏", buy_distance={"gap_pct": 5.0})]
+    # 同层级(止损层)时浮亏大在前（次级排序）
+    held_tie = [dict(holding=1, avg_cost=100.0, price_rmb=70.0, name="亏", buy_distance={"gap_pct": 5.0},
+                     portfolio_advice={"action": "趋势走弱，考虑止损"}),
+                dict(holding=1, avg_cost=100.0, price_rmb=130.0, name="赚", buy_distance={"gap_pct": 5.0},
+                     portfolio_advice={"action": "趋势走弱，考虑止损"})]
     assert [r["name"] for r in sort_results(held_tie)] == ["亏", "赚"]
     # 无 buy_distance 的品排最后
     held_no = [dict(holding=1, avg_cost=100.0, price_rmb=130.0, name="A", buy_distance={"gap_pct": 3.0}),
@@ -1303,6 +1305,31 @@ def t_buy_distance_plain():
 check('buy_distance summary ???+stage', t_buy_distance_plain)
 
 
+def t_action_level_sort():
+    # 信号层级排序(2026-08-07): 可分批补仓 > 趋势走弱止损 > 持有观察 > 观望等待机会(最低)
+    # 观望组内按下跌最严重: 持仓浮亏大在前 / 非持仓 percentile 低(深跌)在前
+    from pipeline.batch_scan import sort_results
+    def mk(name, action, holding=0, pnl=None, pct=50.0, gap=5.0):
+        return dict(name=name, holding=holding, avg_cost=(100.0 if holding else 0),
+                    price_rmb=((100.0 + pnl) if holding and pnl is not None else 100.0),
+                    percentile_90d=pct, buy_distance={"gap_pct": gap},
+                    portfolio_advice={"action": action, "suggest": "", "hold_guidance": ""})
+    results = [
+        mk("观望B", "观望等待机会", pct=30.0),
+        mk("观望A", "观望等待机会", pct=60.0),
+        mk("补仓", "可分批补仓", holding=1, pnl=-12.0),
+        mk("持有", "持有观察", holding=1, pnl=-5.0),
+        mk("止损", "趋势走弱，考虑止损", holding=1, pnl=-20.0),
+        mk("观望持仓2", "观望等待机会", holding=1, pnl=-8.0),
+        mk("观望持仓", "观望等待机会", holding=1, pnl=-25.0),
+    ]
+    names = [r["name"] for r in sort_results(results)]
+    # 持仓区块: 补仓(0) > 止损(1) > 持有(5) > 观望持仓(7, 浮亏大在前)
+    assert names[:5] == ["补仓", "止损", "持有", "观望持仓", "观望持仓2"], names
+    # 非持仓区块: 观望组内深跌(pct 低)在前
+    assert names[5:] == ["观望B", "观望A"], names
+
+
 def t_proximity_sort():
     # ???????(2026-08-05): ????????, ????????
     from pipeline.batch_scan import _proximity_key
@@ -1314,6 +1341,7 @@ def t_proximity_sort():
     c = mk(5.7, pct_gap=0.0, z_gap=0.0)          # ????+??
     ka, kb, kc = _proximity_key(a), _proximity_key(b), _proximity_key(c)
     assert kc < kb < ka, (ka, kb, kc)
+check('batch_scan 信号层级排序 (2026-08-07)', t_action_level_sort)
 check('batch_scan ???????', t_proximity_sort)
 
 

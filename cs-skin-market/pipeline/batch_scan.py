@@ -63,10 +63,10 @@ def market_regime(sent, chg30, th=None):
     if label == "阴跌中继区":
         return ("阴跌中继区", "regime-risky",
                 "恐慌+中跌（大盘30日 -15~-5%）：阴跌中继风险（回测7月14d均-8.3%），"
-                "抄底腿防御——等深跌指纹或企稳确认；吸筹腿关闭")
+                "抄底腿防御——等深跌指纹或企稳确认；吸筹腿观望（需单品在售量收缩+价格平稳方可触发）")
     if label == "恐慌浅跌":
         return ("恐慌浅跌", "regime-panic",
-                "恐慌但大盘30日跌幅<5%：抄底腿正常开火，吸筹腿关闭")
+                "恐慌但大盘30日跌幅<5%：抄底腿正常开火，吸筹腿观望（需单品供给收缩+价格平稳）")
     if label == "中性企稳":
         return ("中性企稳", "regime-ok",
                 "非恐慌+大盘TH≥45：抄底+吸筹双腿可开火（趋势腿需价格平稳+供给收缩）")
@@ -434,17 +434,67 @@ def _proximity_key(r):
     return (3, 0, float(gap), 0.0)
 
 
-def sort_results(results):
-    """批量扫描结果排序：按「买点接近度」排序（条件达标越多、剩余距离越近在前）。
+# ---- 信号层级排序 (2026-08-07): 批量扫描按建议动作分层, 强信号在前、下跌观望最低 ----
+# 层级数字越小越靠前; 与 extract_signals 优先级同向(建仓/补仓 > 风控 > 止盈 > 等待 > 观望)
+_ACTION_LEVELS = {
+    "可分批补仓": 0,
+    "可分批建仓": 0,
+    "趋势走弱，考虑止损": 1,
+    "建议止盈减仓": 2,
+    "大幅盈利，部分止盈": 2,
+    "禁止补仓": 3,
+    "暂缓补仓": 4,
+    "继续持有观望": 5,
+    "持有观察": 5,
+    "暂不建议入场": 6,
+    "观望等待机会": 7,   # 下跌观望类, 级别最低
+}
 
-    持仓与非持仓各自区块内排序，两区块口径一致；同接近度时持仓按浮亏升序（亏损多优先）。
-    展示层排序，不影响任何引擎信号。
+
+def _action_level(r):
+    """建议动作 -> 信号层级（0 最高, 越大越靠后; 未识别动作按 9 排最后）。"""
+    pa = r.get("portfolio_advice") or {}
+    act = (pa.get("action") or "").strip()
+    return _ACTION_LEVELS.get(act, 9)
+
+
+def _level_subkey(r):
+    """层级内次级键：
+    - 建仓/补仓(0): 买点接近度（已到买点/条件达标多在前）
+    - 止损(1): 浮亏越多越前
+    - 止盈(2): 盈利越多越前
+    - 观望类(>=6): 下跌最严重在前（持仓按浮亏、非持仓按 90 日分位低=深跌）
+    - 其余: 距买点剩余距离升序
+    """
+    level = _action_level(r)
+    gap = _buy_gap(r)
+    if level == 0:
+        return _proximity_key(r)
+    if level == 1:
+        return _pnl_pct(r)
+    if level == 2:
+        return -_pnl_pct(r)
+    if 6 <= level < 9:  # 明确观望/暂不建议类: 下跌最严重在前（未识别动作 level=9 走通用 gap）
+        if r.get("holding"):
+            return _pnl_pct(r)
+        pct = r.get("percentile_90d")
+        try:
+            return float(pct) if pct is not None else 50.0
+        except (TypeError, ValueError):
+            return 50.0
+    return gap
+
+
+def sort_results(results):
+    """批量扫描结果排序：先按建议动作信号层级（可建仓/补仓 > 止损 > 止盈 > 等待 > 下跌观望最低），
+    层级内按对应度量排序（观望类按下跌最严重：持仓浮亏大在前、非持仓深跌在前）。
+    持仓/非持仓各自区块内统一口径；展示层排序，不影响任何引擎信号。
     """
     held, unheld = [], []
     for r in results:
         (held if r.get("holding") else unheld).append(r)
-    held.sort(key=lambda r: (_proximity_key(r), _pnl_pct(r)))
-    unheld.sort(key=_proximity_key)
+    held.sort(key=lambda r: (_action_level(r), _level_subkey(r)))
+    unheld.sort(key=lambda r: (_action_level(r), _level_subkey(r)))
     return held + unheld
 
 
