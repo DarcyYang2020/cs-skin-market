@@ -969,6 +969,431 @@ def compute_bid_support(order_book):
 
     return {"score": min(100, score), "signals": signals, "note": ""}
 
+
+# ============================================================
+# 统一大脑阶段3：信号族注册制 + 状态桶 + 统一决策核心
+# ============================================================
+# 设计依据 references/engine-unified.md §3：
+# - 不做期望排序/分档（阶段2 walk-forward 已证伪：条件期望跨时段漂移）
+# - 固定经验优先级（与阶段2 前串行链代码顺序一致，重构保真）
+# - 每族 = {触发条件, 状态桶标注, 固定仓位, 适用闸门集, 标签/详情/来源}
+# - 闸门层按族声明：基础族全闸门，恐慌族守卫2+供给，后置族自带条件不额外加闸门
+# - 新增信号族（S2回踩/牛动量）只需向 SIGNAL_FAMILIES 注册并声明闸门
+
+
+@dataclass
+class SignalFamily:
+    """信号族定义（注册制）。
+
+    - trigger: callable(features) -> bool，命中即候选
+    - buckets: 状态桶标注（引擎口径，暂不硬性门控，供展示与研究）
+    - guards:  命中后追加的闸门键（见 _GUARDS）；() = 自带条件不再追加
+    - detail/sources: 决策条详情与 deduction 来源
+    """
+
+    key: str
+    label: str
+    priority: int
+    limit: float | None = None
+    trigger: object = None
+    buckets: tuple = ()
+    guards: tuple = ()
+    detail: object = None
+    sources: tuple = ()
+
+
+def _dedup_hit(recent_buy_dates, signal_date):
+    """7 天内同品已触发买入信号 → 返回命中日期（用于去重）。"""
+    if not recent_buy_dates:
+        return None
+    from datetime import datetime as _dt
+    if signal_date is None:
+        signal_date = _dt.now().strftime("%Y-%m-%d")
+    for d0 in recent_buy_dates:
+        try:
+            gap = (_dt.strptime(signal_date[:10], "%Y-%m-%d") - _dt.strptime(d0[:10], "%Y-%m-%d")).days
+        except ValueError:
+            continue
+        if 0 <= gap <= 7:
+            return d0[:10]
+    return None
+
+
+def _state_bucket(sentiment_score, market_th_score, market_30d_change):
+    """六态状态桶（引擎口径 sent>=75 判恐慌，与展示层 80 分口径区分，见 engine-unified.md §3.3）。"""
+    if sentiment_score <= 30:
+        return "贪婪禁入"
+    if sentiment_score >= 75:
+        if market_30d_change <= -15:
+            return "V型底区"
+        if market_30d_change <= -5:
+            return "阴跌中继区"
+        return "恐慌浅跌"
+    if market_th_score >= 45:
+        return "中性企稳"
+    return "弱市观望"
+
+
+SIGNAL_FAMILIES = (
+    SignalFamily(
+        key="panic_resonance",
+        label="🟢 恐慌共振·分批建仓",
+        priority=60,
+        limit=0.30,
+        trigger=lambda F: (
+            F["micro_th"] >= 60 and F["sent"] >= 75
+            and "印花" not in F["name"] and "贴纸" not in F["name"]
+            and F["current"] >= 15 and F["z"] is not None and F["z"] >= -2.2
+            and F["drop21"] <= -18
+            and F["pct"] is not None and F["pct"] <= 15
+            and F["z"] is not None and F["z"] <= -1.5
+            and not _dedup_hit(F["recent_buy_dates"], F["signal_date"])
+        ),
+        buckets=("V型底区",),
+        guards=("micro_th", "bid", "bid_boost", "market_distribution", "z_gate", "consecutive"),
+        detail=lambda F: (
+            f"极端恐慌(sent={F['sent']:.0f})+深度超跌(pct={F['pct']:.0f}%,Z={F['z']:.1f})"
+            f"+短期反转(microTH={F['micro_th']})"
+        ),
+        sources=("panic_resonance_upgrade",),
+    ),
+    SignalFamily(
+        key="deep_value",
+        label="🟢 深值·大盘企稳·分批建仓",
+        priority=50,
+        limit=0.10,
+        trigger=lambda F: (
+            F["pct"] is not None and F["pct"] <= 20
+            and F["z"] is not None and F["z"] <= -0.5
+            and F["th"] >= 35 and F["market_th"] >= 40
+            and 40 <= F["sent"] <= 65 and F["drop21"] >= -5
+            and not _dedup_hit(F["recent_buy_dates"], F["signal_date"])
+        ),
+        buckets=("中性企稳", "弱市观望"),
+        guards=(),
+        detail=lambda F: (
+            f"深值低估(pct={F['pct']:.0f}%,Z={F['z']:.1f})"
+            f"+大盘企稳(TH={F['market_th']},21日跌幅{F['drop21']:.1f}%)·"
+            f"回测14d+4.2%/30d+8.2%(轻仓0.10)·分批:首仓10%→跌10%加20%→跌15%加30%"
+            f"(241信号14d资金加权+11.0%)"
+        ),
+        sources=("deep_value_stable_market",),
+    ),
+    SignalFamily(
+        key="panic_easing",
+        label="🟢 恐慌退潮·深跌止跌·分批建仓",
+        priority=40,
+        limit=0.10,
+        trigger=lambda F: (
+            F["pct"] is not None and F["pct"] <= 20
+            and F["z"] is not None and F["z"] <= -1
+            and 55 <= F["sent"] <= 80 and F["mchg30"] <= -15
+            and F["stopped"]
+            and not _dedup_hit(F["recent_buy_dates"], F["signal_date"])
+        ),
+        buckets=("V型底区", "阴跌中继区"),
+        guards=(),
+        detail=lambda F: (
+            f"恐慌退潮(sent={F['sent']:.0f})+大盘30日跌幅{F['mchg30']:.1f}%(未企稳)"
+            f"+深跌止跌(pct={F['pct']:.0f}%,Z={F['z']:.1f})·"
+            f"回测14d+19.8%/30d+15.0%(轻仓0.10)·分批:首仓10%→跌10%加20%→跌15%加30%"
+        ),
+        sources=("panic_easing_deep_bottom",),
+    ),
+    SignalFamily(
+        key="supply_accum",
+        label="🟢 供给收缩·启动前吸筹·分批建仓",
+        priority=30,
+        limit=0.10,
+        trigger=lambda F: (
+            len(F["supply_hist"]) >= 30 and len(F["prices"]) >= 8
+            and not (F["survive"] > 0 and F["survive"] < 3000)
+            and F["s30"] is not None and F["s30"] > 0
+            and F["s7"] is not None and F["s7"] <= F["s30"] * 0.85
+            and F["chg7"] is not None and abs(F["chg7"]) <= 3
+            and not (F["sent"] < 40 and F["market_th"] < 45)
+            and not _dedup_hit(F["recent_buy_dates"], F["signal_date"])
+        ),
+        buckets=("中性企稳", "弱市观望"),
+        guards=(),
+        detail=lambda F: (
+            f"在售量收缩(7日均{F['s7']:.0f}≤30日均{F['s30']:.0f}×0.85)+价格平稳(7日{F['chg7']:+.1f}%)·"
+            f"启动前吸筹·回测14d+11.2%/30d+27.2%(轻仓0.10)·"
+            f"分批:首仓10%→跌10%加20%→跌15%加30%"
+        ),
+        sources=("supply_contraction_accumulation",),
+    ),
+)
+
+SIGNAL_FAMILY_BY_KEY = {fam.key: fam for fam in SIGNAL_FAMILIES}
+# 后置升级族（守卫链之后评估）：深值企稳 > 恐慌退潮 > 供给收缩（固定优先级，与现链路代码顺序一致）
+_POST_FAMILIES = tuple(sorted(
+    (fam for fam in SIGNAL_FAMILIES if fam.key != "panic_resonance"),
+    key=lambda f: -f.priority,
+))
+
+
+# ---- 闸门实现：返回 (label, detail, source) 或 None（不命中）----
+def _g_market_weak(fd, F):
+    if fd.action != "buy":
+        return None
+    if F["market_th"] < 45 and F["mchg30"] < 0:
+        return ("🟡 大盘走弱·观望",
+                f"大盘TH={F['market_th']}且30日跌幅{F['mchg30']:.1f}%，弱势环境禁止新开仓",
+                "market_weak_filter")
+    if F["sent"] <= 30:
+        return ("🟡 情绪贪婪·禁止追买",
+                f"市场情绪贪婪(sent={F['sent']:.0f})，追买期望为负",
+                "greedy_no_buy")
+    return None
+
+
+def _g_survive(fd, F):
+    if fd.action != "buy" or not (0 < F["survive"] < 3000):
+        return None
+    return ("🟡 存世量过低·不建仓",
+            f"存世量仅 {F['survive']} 件（<3000），流动性差，价格易失真",
+            "survive_too_low")
+
+
+def _g_halfway(fd, F):
+    if fd.action != "buy" or F["pct"] is None or not (25 <= F["pct"] <= 40) or F["sent"] >= 85:
+        return None
+    return ("🟡 半山腰·观望",
+            f"pct={F['pct']:.0f}%处于半山腰且无恐慌共振，回测14d胜率仅28%",
+            "halfway_downgrade")
+
+
+def _g_dedup(fd, F):
+    if fd.action != "buy":
+        return None
+    hit = _dedup_hit(F["recent_buy_dates"], F["signal_date"])
+    if not hit:
+        return None
+    return ("🟡 已在买点区·等待回调",
+            f"7日内({hit})已触发买入信号，避免重复建仓",
+            "buy_cluster_dedup")
+
+
+def _g_falling_knife(fd, F):
+    if fd.action != "buy" or F["z"] is None or F["z"] >= -2 or len(F["prices"]) < 4:
+        return None
+    low3 = min(F["prices"][-3:])
+    if F["current"] <= low3 and F["chg3d"] is not None and F["chg3d"] <= 0:
+        return ("🟡 飞刀未止跌·观望",
+                f"Z={F['z']:.1f}深度超跌但仍在创新低且3日续跌{F['chg3d']:.1f}%，等待止跌确认",
+                "falling_knife_filter")
+    return None
+
+
+def _g_micro_th(fd, F):
+    if fd.action != "buy" or F["micro_th"] >= 45:
+        return None
+    return ("🟡 短期动能弱·观望",
+            f"14日微型TH={F['micro_th']}，短期动能不足，等待反转确认",
+            "micro_th_weak")
+
+
+def _g_bid(fd, F):
+    if fd.action != "buy" or F["bid_score"] > 25:
+        return None
+    return ("🟡 求购承接弱·观望",
+            f"求购承接弱(score={F['bid_score']})，买盘意愿不足，暂缓建仓",
+            "bid_support_weak")
+
+
+def _g_bid_boost(fd, F):
+    """求购承接增强注解（仅 watch 状态；与现链路 G7 的 elif 分支位置一致）。"""
+    if fd.action == "watch" and F["bid_score"] >= 75 and F["pct"] is not None and F["pct"] <= 30:
+        fd.action_label = "🟡 底部观察·承接增强"
+        fd.action_detail = "低位但求购承接增强，可轻仓试探"
+        fd.position_limit = max(fd.position_limit, 0.08)
+    return None
+
+
+def _g_market_distribution(fd, F):
+    if F["market_cycle"] != "distribution" or fd.action not in ("buy", "hold"):
+        return None
+    return ("🟡 大盘出货期·观望",
+            fd.action_detail + "（大盘处于出货期，建仓/持有信号降级为观望）",
+            "market_distribution_filter")
+
+
+def _g_z_gate(fd, F):
+    if fd.action != "buy" or F["z"] is None:
+        return None
+    gates = {"accumulation": -0.5, "consolidation": -1.0, "distribution": -1.5, "markup": 0, "unknown": -1.0}
+    thr = gates.get(F["cycle_phase"], -1.0)
+    if F["z"] > thr:
+        return ("🟡 Z偏高·等待更优入场",
+                f"Z={F['z']} 要求≤{thr}，估值未达极端低位",
+                "item_z_gate")
+    return None
+
+
+def _g_consecutive(fd, F):
+    if fd.action != "buy" or len(F["prices"]) < 7 or F["pct"] is None or F["pct"] <= 5:
+        return None
+    if F["chg3d"] is not None and abs(F["chg3d"]) < 1.5:
+        return ("🟡 已在买入区·等待回调",
+                f"3日价格变动{F['chg3d']:+.1f}%，无需重复触发买入",
+                "consecutive_buy")
+    return None
+
+
+def _g_supply_expansion(fd, F):
+    if fd.action not in ("buy", "oversold_buy"):
+        return None
+    chg = F["supply_change_30d"]
+    if chg and chg > 5 and "deep_dip_exemption" not in fd.deduction_sources:
+        return ("🟡 供给扩张·观望",
+                f"在售量30日扩张{round(chg, 1)}%，抛压堆积，历史buy信号30d胜率0%(回测5/5负期望)",
+                "supply_expansion_filter")
+    return None
+
+
+_GUARDS = {
+    "market_weak": _g_market_weak,
+    "survive": _g_survive,
+    "halfway": _g_halfway,
+    "dedup7": _g_dedup,
+    "falling_knife": _g_falling_knife,
+    "micro_th": _g_micro_th,
+    "bid": _g_bid,
+    "bid_boost": _g_bid_boost,
+    "market_distribution": _g_market_distribution,
+    "z_gate": _g_z_gate,
+    "consecutive": _g_consecutive,
+    "supply_expansion": _g_supply_expansion,
+}
+
+# 基础族闸门集（守卫1 在恐慌升级前；守卫2 在升级/变换后，buy/hold/watch 均评估）
+_GUARD1 = ("market_weak", "survive", "halfway", "dedup7", "falling_knife")
+_GUARD2 = ("micro_th", "bid", "bid_boost", "market_distribution", "z_gate", "consecutive")
+
+
+def _apply_guards(fd, F, keys):
+    """按序执行闸门，首个命中即降级为 watch（与现串行链一致，后续闸门跳过）。"""
+    for k in keys:
+        veto = _GUARDS[k](fd, F)
+        if veto is None:
+            continue
+        label, detail, src = veto
+        fd.action = "watch"
+        fd.action_label = label
+        fd.action_detail = detail
+        fd.deduction_sources.append(src)
+        fd.position_limit = 0.0
+        return k
+    return None
+
+
+def _apply_buy(fd, fam, F):
+    fd.action = "buy"
+    fd.action_label = fam.label
+    fd.action_detail = fam.detail(F) if fam.detail else fam.label
+    fd.deduction_sources.append(fam.sources[0] if fam.sources else fam.key)
+    if fam.limit is not None:
+        fd.position_limit = fam.limit
+
+
+def _deep_dip_transform(fd, F):
+    """P0-7b：周期吸筹 buy 需大盘深跌共振；D方案深度回调低吸例外。"""
+    if not (fd.action == "buy" and "吸筹" in fd.action_label and F["drop21"] > -18):
+        return False
+    if F["dd30"] <= -22 and F["chg14"] <= -6:
+        fd.action_label = "🟢 深度回调低吸·分批建仓"
+        fd.action_detail = ("周期吸筹但大盘未深跌，单品深度回调"
+                            f"(dd30={F['dd30']:.0f}%,chg14={F['chg14']:.0f}%)二次探底，回测14d期望正值")
+        fd.deduction_sources.append("deep_dip_exemption")
+    else:
+        fd.action = "watch"
+        fd.action_label = "🟡 周期吸筹需大盘共振·观望"
+        fd.action_detail = "周期吸筹但大盘20日跌幅" + str(round(F["drop21"], 1)) + "%~18%，等大盘深跌共振再建仓（回测：非深跌场景4/4信号30d负期望）"
+        fd.deduction_sources.append("cycle_accumulation_needs_market_drop")
+        fd.position_limit = 0.0
+    return True
+
+
+def decide_fusion_signal(
+    fd, *, position, cycle, th, value, prices, current, n, name,
+    survive_count, sentiment_score, market_th_score, market_30d_change,
+    market_drop21, market_cycle, supply, supply_hist, bid_support, micro_th,
+    recent_buy_dates, signal_date,
+):
+    """统一决策核心：基础融合决策 + 信号族注册制升级 + 族级闸门。
+
+    语义与阶段2 前串行链保真（engine-unified.md §4.2：阶段3 只做架构统一，不做期望分档）。
+    返回 (fd, state_bucket)。
+    """
+    F = {
+        "name": name, "current": current, "prices": prices, "n": n,
+        "pct": position.percentile_90d, "z": position.zscore_90d,
+        "th": th.score if hasattr(th, "score") else 50,
+        "micro_th": micro_th,
+        "sent": sentiment_score, "market_th": market_th_score,
+        "mchg30": market_30d_change, "drop21": market_drop21,
+        "market_cycle": market_cycle,
+        "cycle_phase": cycle.phase if hasattr(cycle, "phase") else "unknown",
+        "survive": survive_count, "supply_hist": supply_hist,
+        "s7": sum(supply_hist[-7:]) / 7 if len(supply_hist) >= 7 else None,
+        "s30": sum(supply_hist[-30:]) / 30 if len(supply_hist) >= 30 else None,
+        "chg7": (current / prices[-8] - 1) * 100 if len(prices) >= 8 else None,
+        "dd30": (current / max(prices[-30:]) - 1) * 100 if len(prices) >= 30 else 0.0,
+        "chg14": (current / prices[-15] - 1) * 100 if len(prices) >= 15 else 0.0,
+        "chg3d": (current - prices[-4]) / prices[-4] * 100 if len(prices) >= 4 else None,
+        "stopped": len(prices) >= 3 and current >= prices[-2] and current >= prices[-3],
+        "recent_buy_dates": recent_buy_dates, "signal_date": signal_date,
+        "bid_score": bid_support.get("score", 50) if isinstance(bid_support, dict) else 50,
+        "supply_change_30d": getattr(supply, "supply_change_30d", None),
+    }
+    bucket = _state_bucket(sentiment_score, market_th_score, market_30d_change)
+
+    # ---- 基础族：守卫1（市场弱/存世量/半山腰/7天去重/飞刀确认）----
+    _apply_guards(fd, F, _GUARD1)
+
+    # ---- 升级族1：恐慌共振（守卫1 之后评估；跳过守卫1，保留守卫2+供给）----
+    panic_fam = SIGNAL_FAMILY_BY_KEY["panic_resonance"]
+    if fd.action in ("watch", "avoid") and panic_fam.trigger(F):
+        _apply_buy(fd, panic_fam, F)
+    elif fd.action == "buy":
+        # ---- P0-7b：周期吸筹需大盘深跌共振；D方案深度回调低吸例外 ----
+        _deep_dip_transform(fd, F)
+    # ---- 守卫2（微型TH/求购/Z门/大盘出货/连买抑制；buy/hold/watch 均评估）----
+    _apply_guards(fd, F, _GUARD2)
+
+    # ---- 分级仓位（基础/恐慌族：价值分 + 情绪修正；后置族固定仓位覆盖）----
+    if fd.action in ("buy", "hold"):
+        pl_score = value.score
+        if sentiment_score >= 75:
+            pl_score += 2.0
+        elif sentiment_score <= 30:
+            pl_score -= 1.5
+        if pl_score >= 8.5:
+            fd.position_limit = 0.30
+        elif pl_score >= 7.0:
+            fd.position_limit = 0.20
+        elif pl_score >= 5.0:
+            fd.position_limit = 0.12
+        elif pl_score >= 3.0:
+            fd.position_limit = 0.05
+        else:
+            fd.position_limit = 0.0
+    else:
+        fd.position_limit = 0.0
+
+    # ---- 供给扩张过滤（基础/恐慌/深跌低吸；D方案豁免）----
+    _apply_guards(fd, F, ("supply_expansion",))
+
+    # ---- 升级族2：后置族（深值企稳 > 恐慌退潮 > 供给收缩，固定优先级）----
+    if fd.action in ("watch", "avoid"):
+        for fam in _POST_FAMILIES:
+            if fam.trigger(F):
+                _apply_buy(fd, fam, F)
+                break
+
+    return fd, bucket
+
 def run_item_analysis(
     name: str,
     prices: list,
@@ -1102,194 +1527,37 @@ def run_item_analysis(
         sentiment_score=sentiment_score,
     )
 
-    # ---- P0-1: Market environment hard filter (2026-07 item signals all lost in bear market) ----
-    if fd.action == "buy":
-        if market_th_score < 45 and market_30d_change < 0:
-            fd.action = "watch"
-            fd.action_label = "🟡 大盘走弱·观望"
-            fd.action_detail = f"大盘TH={market_th_score}且30日跌幅{market_30d_change:.1f}%，弱势环境禁止新开仓"
-            fd.deduction_sources.append("market_weak_filter")
-        elif sentiment_score <= 30:
-            fd.action = "watch"
-            fd.action_label = "🟡 情绪贪婪·禁止追买"
-            fd.action_detail = f"市场情绪贪婪(sent={sentiment_score:.0f})，追买期望为负"
-            fd.deduction_sources.append("greedy_no_buy")
-
-    # ---- P0-1b: 存世量过低数据过滤 (2026-08-04): 崭新出厂存世量 <3000 的品流动性差、
-    # 买卖盘失真（如法玛斯 对比涂装 FN 存世量仅 194），不给买入建议。
-    # 口径：仅对普通版枪皮生效；手套/无磨损品类（印花/箱/胶囊）不适用。
-    if fd.action == "buy" and survive_count > 0 and survive_count < 3000:
-        fd.action = "watch"
-        fd.action_label = "\U0001f7e1 \u5b58\u4e16\u91cf\u8fc7\u4f4e\u00b7\u4e0d\u5efa\u4ed3"
-        fd.action_detail = f"\u5b58\u4e16\u91cf\u4ec5 {survive_count} \u4ef6\uff08<3000\uff09\uff0c\u6d41\u52a8\u6027\u5dee\uff0c\u4ef7\u683c\u6613\u5931\u771f"
-        fd.deduction_sources.append("survive_too_low")
-
-    # ---- P0-3: Half-way downgrade (pct 25~40 non-resonance: backtest 14d win 28%) ----
-    if fd.action == "buy" and position.percentile_90d is not None:
-        if 25 <= position.percentile_90d <= 40 and sentiment_score < 85:
-            fd.action = "watch"
-            fd.action_label = "🟡 半山腰·观望"
-            fd.action_detail = f"pct={position.percentile_90d:.0f}%处于半山腰且无恐慌共振，回测14d胜率仅28%"
-            fd.deduction_sources.append("halfway_downgrade")
-
-    # ---- P0-2: 7-day signal clustering (same item, avoid repeat buy spam) ----
-    if fd.action == "buy" and recent_buy_dates:
-        from datetime import datetime as _dt
-        if signal_date is None:
-            signal_date = _dt.now().strftime("%Y-%m-%d")
-        for d0 in recent_buy_dates:
-            try:
-                gap = (_dt.strptime(signal_date[:10], "%Y-%m-%d") - _dt.strptime(d0[:10], "%Y-%m-%d")).days
-            except ValueError:
-                continue
-            if 0 <= gap <= 7:
-                fd.action = "watch"
-                fd.action_label = "🟡 已在买点区·等待回调"
-                fd.action_detail = f"7日内({d0[:10]})已触发买入信号，避免重复建仓"
-                fd.deduction_sources.append("buy_cluster_dedup")
-                break
-
-    # ---- P0-4: Extreme oversold falling-knife confirmation (z<-2 must stabilize) ----
-    # Backtest 2025-11~2026-07: z<-2 signals still making new lows lost 100% (0/2).
-    # Keep deep-oversold buys only when decline decelerates (no new low OR 3d up).
-    if fd.action == "buy" and position.zscore_90d is not None and position.zscore_90d < -2 and len(prices) >= 4:
-        low3 = min(prices[-3:])
-        chg3d = (current - prices[-4]) / prices[-4] * 100
-        if current <= low3 and chg3d <= 0:
-            fd.action = "watch"
-            fd.action_label = "🟡 飞刀未止跌·观望"
-            fd.action_detail = f"Z={position.zscore_90d:.1f}深度超跌但仍在创新低且3日续跌{chg3d:.1f}%，等待止跌确认"
-            fd.deduction_sources.append("falling_knife_filter")
-
-    # ---- P0-5: Panic-resonance reversal upgrade (V-bottom capture, 2026-05-22~27) ----
-    # Backtest: watch/avoid missed the 5/22-5/27 capitulation window entirely
-    # (fwd14 +16%~+292%). Deep oversold + 14d reversal + extreme fear is a
-    # high-expected-value entry even when the broad market TH is weak.
+    # ==================== 统一大脑阶段3：统一决策核心 ====================
+    # 信号族注册制 + 六态状态桶 + 固定优先级 + 族级闸门
+    # 见 references/engine-unified.md §3：阶段3 聚焦架构统一，不做期望分档；
+    # 语义与阶段2 前串行链保真，新族（S2回踩/牛动量）只需注册到 SIGNAL_FAMILIES。
     micro_th = compute_micro_th(prices)
-    # P0-7 (2026-08-02, 181d backtest): panic-resonance item/market filters.
-    # Full-window data: raw resonance 30d 51%; non-sticker + price>=15 + z>=-2.2
-    # + market 21d drop<=-18% -> 14d 100% / 30d 86% (n=14). Filters out the 04-23
-    # half-way bottom (market only -13%) and cold-item traps (deep z, stickers).
-    _pr_item_ok = ("\u5370\u82b1" not in (name or "") and "\u8d34\u7eb8" not in (name or "")
-                   and current >= 15 and position.zscore_90d is not None and position.zscore_90d >= -2.2)
-    _pr_market_ok = market_drop21 <= -18
-    if fd.action in ("watch", "avoid") and micro_th >= 60 and sentiment_score >= 75 and _pr_item_ok and _pr_market_ok:
-        if (position.percentile_90d is not None and position.percentile_90d <= 15
-                and position.zscore_90d is not None and position.zscore_90d <= -1.5):
-            _dup = False
-            if recent_buy_dates:
-                from datetime import datetime as _dt
-                if signal_date is None:
-                    signal_date = _dt.now().strftime("%Y-%m-%d")
-                for _d0 in recent_buy_dates:
-                    try:
-                        _gap = (_dt.strptime(signal_date[:10], "%Y-%m-%d") - _dt.strptime(_d0[:10], "%Y-%m-%d")).days
-                    except ValueError:
-                        continue
-                    if 0 <= _gap <= 7:
-                        _dup = True
-                        break
-            if not _dup:
-                fd.action = "buy"
-                fd.action_label = "\U0001f7e2 \u6050\u614c\u5171\u632f\u00b7\u5206\u6279\u5efa\u4ed3"
-                fd.action_detail = (f"\u6781\u7aef\u6050\u614c(sent={sentiment_score:.0f})+\u6df1\u5ea6\u8d85\u8dcc("
-                                    f"pct={position.percentile_90d:.0f}%,Z={position.zscore_90d:.1f})+"
-                                    f"\u77ed\u671f\u53cd\u8f6c(microTH={micro_th})")
-                fd.deduction_sources.append("panic_resonance_upgrade")
-
-
-    # P0-7b (2026-08-02, 181d backtest): cycle-accumulation buy needs deep market drop too.
-    # Full-window replay: 4 accumulate buys had 30d avg -20% (1/4 positive) because they
-    # fired outside capitulation (03-22/06-11/06-19/07-02, market 21d drop only -3~+8%).
-    # D-exemption (2026-08-02, 181d replay, ex-珊瑚树): deep-dip low-buy. When the market 21d
-    # drop is not deep enough but the item is in a deep drawdown from its 30d high (dd30<=-22)
-    # with 14d change still weak (chg14<=-6), keep the accumulation buy. Grid-scan (dd30 x chg14)
-    # on the 181d window: -22/-6 is the optimum zone - 14d total exp 2555 (peak 2556), 30d total
-    # exp 2203 (highest in grid), 14d win 88%, PF 7.5 vs baseline 41 signals / 100% / +22%.
-    if fd.action == "buy" and "\u5438\u7b79" in fd.action_label and market_drop21 > -18:
-        dd30 = (current / max(prices[-30:]) - 1) * 100 if len(prices) >= 30 else 0.0
-        chg14 = (current / prices[-15] - 1) * 100 if len(prices) >= 15 else 0.0
-        if dd30 <= -22 and chg14 <= -6:
-            fd.action_label = "\U0001f7e2 \u6df1\u5ea6\u56de\u8c03\u4f4e\u5438\u00b7\u5206\u6279\u5efa\u4ed3"
-            fd.action_detail = ("\u5468\u671f\u5438\u7b79\u4f46\u5927\u76d8\u672a\u6df1\u8dcc\uff0c\u5355\u54c1\u6df1\u5ea6\u56de\u8c03"
-                                f"(dd30={dd30:.0f}%,chg14={chg14:.0f}%)\u4e8c\u6b21\u63a2\u5e95\uff0c\u56de\u6d4b14d\u671f\u671b\u6b63\u503c")
-            fd.deduction_sources.append("deep_dip_exemption")
-        else:
-            fd.action = "watch"
-            fd.action_label = "\U0001f7e1 \u5468\u671f\u5438\u7b79\u9700\u5927\u76d8\u5171\u632f\u00b7\u89c2\u671b"
-            fd.action_detail = "\u5468\u671f\u5438\u7b79\u4f46\u5927\u76d820\u65e5\u8dcc\u5e45" + str(round(market_drop21, 1)) + "%~18%\uff0c\u7b49\u5927\u76d8\u6df1\u8dcc\u5171\u632f\u518d\u5efa\u4ed3\uff08\u56de\u6d4b\uff1a\u975e\u6df1\u8dcc\u573a\u666f4/4\u4fe1\u53f730d\u8d1f\u671f\u671b\uff09"
-            fd.deduction_sources.append("cycle_accumulation_needs_market_drop")
-            fd.position_limit = 0.0
-        fd_dict = fusion_decision_summary(fd)
-
-    # ---- P0-6: Micro-TH buy confirmation (weak short-term momentum blocks buy) ----
-    if fd.action == "buy" and micro_th < 45:
-        fd.action = "watch"
-        fd.action_label = "\U0001f7e1 \u77ed\u671f\u52a8\u80fd\u5f31\u00b7\u89c2\u671b"
-        fd.action_detail = f"14\u65e5\u5fae\u578bTH={micro_th}\uff0c\u77ed\u671f\u52a8\u80fd\u4e0d\u8db3\uff0c\u7b49\u5f85\u53cd\u8f6c\u786e\u8ba4"
-        fd.deduction_sources.append("micro_th_weak")
-
-    # ---- Bid support (v4.6): real buy-side willingness snapshot ----
     bid_support = compute_bid_support(order_book)
-    bid_score = bid_support["score"]
-    if bid_score <= 25 and fd.action == "buy":
-        fd.action = "watch"
-        fd.action_label = "🟡 求购承接弱·观望"
-        fd.action_detail = f"求购承接弱(score={bid_score})，买盘意愿不足，暂缓建仓"
-        fd.deduction_sources.append("bid_support_weak")
-    elif bid_score >= 75 and fd.action == "watch" and position.percentile_90d <= 30:
-        fd.action_label = "🟡 底部观察·承接增强"
-        fd.action_detail = "低位但求购承接增强，可轻仓试探"
-        fd.position_limit = max(fd.position_limit, 0.08)
+    supply = analyze_supply(prices, supply_hist, vol_total, item_meta)
+    fd, state_bucket = decide_fusion_signal(
+        fd,
+        position=position, cycle=cycle, th=th, value=value,
+        prices=prices, current=current, n=n, name=name,
+        survive_count=survive_count,
+        sentiment_score=sentiment_score,
+        market_th_score=market_th_score,
+        market_30d_change=market_30d_change,
+        market_drop21=market_drop21,
+        market_cycle=market_cycle,
+        supply=supply, supply_hist=supply_hist,
+        bid_support=bid_support, micro_th=micro_th,
+        recent_buy_dates=recent_buy_dates, signal_date=signal_date,
+    )
+    fd_dict = fusion_decision_summary(fd)
+    fd_dict["state_bucket"] = state_bucket
+    supply_dict = supply_summary(supply)
 
-    # Market cycle filter: during market distribution, downgrade buy signals
-    if market_cycle == "distribution" and fd.action in ("buy", "hold"):
-        fd.action = "watch"
-        fd.action_label = "\U0001f7e1 大盘出货期·观望"
-        fd.action_detail = fd.action_detail + "（大盘处于出货期，建仓/持有信号降级为观望）"
-        fd.deduction_sources.append("market_distribution_filter")
-
-
-    # ---- Item-level Z-gate: tighten buy at shallow dips ----
-    if fd.action == "buy" and position.zscore_90d is not None:
-        item_z_gates = {"accumulation": -0.5, "consolidation": -1.0, "distribution": -1.5, "markup": 0, "unknown": -1.0}
-        item_z_threshold = item_z_gates.get(cycle.phase, -1.0)
-        if position.zscore_90d > item_z_threshold:
-            fd.action = "watch"
-            fd.action_label = "🟡 Z偏高·等待更优入场"
-            fd.action_detail = f"Z={position.zscore_90d} 要求≤{item_z_threshold}，估值未达极端低位"
-            fd.deduction_sources.append("item_z_gate")
-
-
-    # ---- Consecutive buy suppression (3-day cooldown) ----
-    if fd.action == "buy" and n >= 7 and position.percentile_90d > 5:
-        price_3d = prices[-4]
-        chg_3d = (current - price_3d) / price_3d * 100
-        if abs(chg_3d) < 1.5:
-            fd.action = "watch"
-            fd.action_label = "🟡 已在买入区·等待回调"
-            fd.action_detail = f"3日价格变动{chg_3d:+.1f}%，无需重复触发买入"
-            fd.deduction_sources.append("consecutive_buy")
-
-    # ---- Position limit (graded by value + sentiment) ----
-    if fd.action in ("buy", "hold"):
-        pl_score = value.score
-        if sentiment_score >= 75:
-            pl_score += 2.0
-        elif sentiment_score <= 30:
-            pl_score -= 1.5
-        if pl_score >= 8.5:
-            fd.position_limit = 0.30
-        elif pl_score >= 7.0:
-            fd.position_limit = 0.20
-        elif pl_score >= 5.0:
-            fd.position_limit = 0.12
-        elif pl_score >= 3.0:
-            fd.position_limit = 0.05
-        else:
-            fd.position_limit = 0.0
-    else:
-        fd.position_limit = 0.0
+    # ---- Valuation Grid (3x4) ----
+    # Signal conflict detection
+    conflicts, decision_certainty = detect_signal_conflicts(position, cycle, th.score, whale.probability)
+    vg = compute_valuation_grid(position.percentile_90d, th, whale.probability)
+    vg_dict = valuation_grid_summary(vg)
+    # ==================== 决策核心结束 ====================
 
     # ---- Risk level label (A/B/C/D) ----
     risk_score = 0
@@ -1307,141 +1575,6 @@ def run_item_analysis(
     else:
         risk_level = "D"
 
-    fd_dict = fusion_decision_summary(fd)
-
-
-    # ---- Valuation Grid (3x4) ----
-    # Signal conflict detection
-    conflicts, decision_certainty = detect_signal_conflicts(position, cycle, th.score, whale.probability)
-
-    vg = compute_valuation_grid(position.percentile_90d, th, whale.probability)
-    vg_dict = valuation_grid_summary(vg)
-
-    # ---- Supply Analysis ----
-    supply = analyze_supply(prices, supply_hist, vol_total, item_meta)
-    supply_dict = supply_summary(supply)
-
-    # ---- Supply-expansion filter (2026-08-02 data fit) ----
-    # 42 buy 信号回测：供给扩张(in_sale 30日变化>5%) 的5个信号30d胜率0%，均为负期望
-    # 过滤后剩 37 个信号，14d 89%/30d 76%；供给扩张时 buy 不开仓
-    # 深度回调低吸(D方案)例外：恐慌共振供给扩张为负期望，
-    # 但深度回调场景供给扩张反而是正期望(dedup 37信号 14d胜率67.6%均+14.9)
-    if fd.action in ("buy", "oversold_buy") and supply.supply_change_30d and supply.supply_change_30d > 5 \
-            and "deep_dip_exemption" not in fd.deduction_sources:
-        fd.action = "watch"
-        fd.action_label = "\U0001f7e1 \u4f9b\u7ed9\u6269\u5f20\u00b7\u89c2\u671b"
-        fd.action_detail = ("\u5728\u552e\u91cf30\u65e5\u6269\u5f20" + str(round(supply.supply_change_30d, 1)) +
-                            "%\uff0c\u629b\u538b\u5806\u79ef\uff0c\u5386\u53f2buy\u4fe1\u53f730d\u80dc\u73870%(\u56de\u6d4b5/5\u8d1f\u671f\u671b)")
-        fd.deduction_sources.append("supply_expansion_filter")
-        fd.position_limit = 0.0
-        fd_dict = fusion_decision_summary(fd)
-
-    # ---- P0-8: Deep-value stable-market low-buy (2026-08-03, 24,123-day replay) ----
-    # A方向(深值+大盘企稳)补充层: 补恐慌共振休眠期/TH>=55突破期缺口(2月漏买根因: 大盘mth<40)
-    # 触发: pct<=20 z<=-0.5 单品TH>=35 大盘TH>=40 40<=sent<=65 drop21>=-5; watch/avoid升级buy; 7天去重
-    # 266 信号(补充,与引擎buy零重叠): 14d 48.1%/+4.20, 30d 45.5%/+8.17
-    # pre-1/23 护栏 80 信号: 14d 61.3%/+10.05, 30d 61.3%/+17.60
-    # 1/23~2/12 底部区 17 信号: 14d 70.6%/+4.10, 30d 76.5%/+27.29
-    # 右偏(中位数-0.47/-1.14), 单笔波动大 -> 仓位 0.10 轻仓
-    # 2026-08-04 分批拟合(241信号): 首仓10%->跌10%加20%->跌15%加30%, hold14资金加权 +3.81%->+11.01%
-    if fd.action in ("watch", "avoid") and position.percentile_90d is not None and position.zscore_90d is not None:
-        _dv_ok = (position.percentile_90d <= 20 and position.zscore_90d <= -0.5
-                  and th.score >= 35 and market_th_score >= 40
-                  and 40 <= sentiment_score <= 65 and market_drop21 >= -5)
-        if _dv_ok:
-            _dup = False
-            if recent_buy_dates:
-                from datetime import datetime as _dt
-                _d_now = signal_date or _dt.now().strftime("%Y-%m-%d")
-                for _d0 in recent_buy_dates:
-                    try:
-                        _gap = (_dt.strptime(_d_now[:10], "%Y-%m-%d") - _dt.strptime(_d0[:10], "%Y-%m-%d")).days
-                    except ValueError:
-                        continue
-                    if 0 <= _gap <= 7:
-                        _dup = True
-                        break
-            if not _dup:
-                fd.action = "buy"
-                fd.action_label = "🟢 深值·大盘企稳·分批建仓"
-                fd.action_detail = (f"深值低估(pct={position.percentile_90d:.0f}%,Z={position.zscore_90d:.1f})"
-                                    f"+大盘企稳(TH={market_th_score},21日跌幅{market_drop21:.1f}%)·"
-                                    f"回测14d+4.2%/30d+8.2%(轻仓0.10)·分批:首仓10%→跌10%加20%→跌15%加30%"
-                                    f"(241信号14d资金加权+11.0%)")
-                fd.deduction_sources.append("deep_value_stable_market")
-                fd.position_limit = 0.10
-                fd_dict = fusion_decision_summary(fd)
-
-    # ---- P0-9: Panic-easing deep-drop bottom (2026-08-05, 24,123-day replay) ----
-    # 补 P0-5(sent>=75 恐慌高峰) 与 P0-8(大盘企稳 mth>=40) 之间的退潮真空期:
-    # 5/28~6/02 恐慌退潮(sent 70->58)但大盘30日跌幅仍深(-16~-20%, 未企稳) -> 0 信号漏买(fwd14 均+24%)
-    # 触发: watch/avoid + pct<=20 + z<=-1 + 55<=sent<=80 + market_30d_change<=-15 + 止跌(no_new_low2) + 7天去重
-    # 回测(完整回放 recent_buy_dates 模拟, 事件级去重46, 全部5/28-31): 14d 87%/+19.8%(净+17.8%), 30d 78%/+15.0%
-    # 防过拟合依据: 参数平台(sent 55~80 与 mchg30 -15~-18 邻域结果一致); mchg30>-12(2月初阴跌中继)
-    #   与 sent>85(P0-5 主区)不触发; 未止跌(4/23 半山腰底 / 5/11 崩盘途中 no_new_low2 全 False)不触发
-    # P0-8 反弹护栏回测无效(正负组字段无区分度) -> P0-8 保持原样, 不加护栏
-    if fd.action in ("watch", "avoid") and position.percentile_90d is not None and position.zscore_90d is not None:
-        _pe_stop = len(prices) >= 3 and current >= prices[-2] and current >= prices[-3]
-        _pe_ok = (position.percentile_90d <= 20 and position.zscore_90d <= -1
-                  and 55 <= sentiment_score <= 80 and market_30d_change <= -15 and _pe_stop)
-        if _pe_ok:
-            _dup = False
-            if recent_buy_dates:
-                from datetime import datetime as _dt
-                _d_now = signal_date or _dt.now().strftime("%Y-%m-%d")
-                for _d0 in recent_buy_dates:
-                    try:
-                        _gap = (_dt.strptime(_d_now[:10], "%Y-%m-%d") - _dt.strptime(_d0[:10], "%Y-%m-%d")).days
-                    except ValueError:
-                        continue
-                    if 0 <= _gap <= 7:
-                        _dup = True
-                        break
-            if not _dup:
-                fd.action = "buy"
-                fd.action_label = "🟢 恐慌退潮·深跌止跌·分批建仓"
-                fd.action_detail = (f"恐慌退潮(sent={sentiment_score:.0f})+大盘30日跌幅{market_30d_change:.1f}%(未企稳)"
-                                    f"+深跌止跌(pct={position.percentile_90d:.0f}%,Z={position.zscore_90d:.1f})·"
-                                    f"回测14d+19.8%/30d+15.0%(轻仓0.10)·分批:首仓10%→跌10%加20%→跌15%加30%")
-                fd.deduction_sources.append("panic_easing_deep_bottom")
-                fd.position_limit = 0.10
-                fd_dict = fusion_decision_summary(fd)
-
-    # ---- P1-0: Supply-contraction pre-launch accumulation (2026-08-05, C1 v1) ----
-    # 趋势腿研究(A3)落地: 见 references/trend_leg_research.md §8.
-    # 全窗口 walk-forward test 段(2/26~8/2, 跨5月深底/6月反弹/7月阴跌) 14d win 83.0%/30d 65.5%;
-    # 门控 9 邻域 30d net 26.9~27.2% 极稳; 与引擎 buy 重叠仅 1.7%; 置换 p=0.001
-    # 触发: watch/avoid + 在售7日均量<=30日均量x0.85 + 7日|涨跌|<=3%
-    #       + 禁(贪婪 sent<40 且 大盘TH<45) + 7天去重 + 存世量>=3000
-    # 仓位 0.10 轻仓(与 P0-8/P0-9 同档); 事件簇纪律: 未来同类行情(中性回升段)积累后复验
-    if fd.action in ("watch", "avoid") and len(supply_hist) >= 30 and len(prices) >= 8 \
-            and not (survive_count > 0 and survive_count < 3000):
-        _s7 = sum(supply_hist[-7:]) / 7
-        _s30 = sum(supply_hist[-30:]) / 30
-        _c7 = (current / prices[-8] - 1) * 100
-        _gate_ok = not (sentiment_score < 40 and market_th_score < 45)
-        if _s30 > 0 and _s7 <= _s30 * 0.85 and abs(_c7) <= 3 and _gate_ok:
-            _dup = False
-            if recent_buy_dates:
-                from datetime import datetime as _dt
-                _d_now = signal_date or _dt.now().strftime("%Y-%m-%d")
-                for _d0 in recent_buy_dates:
-                    try:
-                        _gap = (_dt.strptime(_d_now[:10], "%Y-%m-%d") - _dt.strptime(_d0[:10], "%Y-%m-%d")).days
-                    except ValueError:
-                        continue
-                    if 0 <= _gap <= 7:
-                        _dup = True
-                        break
-            if not _dup:
-                fd.action = "buy"
-                fd.action_label = "\U0001f7e2 \u4f9b\u7ed9\u6536\u7f29\u00b7\u542f\u52a8\u524d\u5438\u7b79\u00b7\u5206\u6279\u5efa\u4ed3"
-                fd.action_detail = (f"\u5728\u552e\u91cf\u6536\u7f29(7\u65e5\u5747{_s7:.0f}\u226430\u65e5\u5747{_s30:.0f}\u00d70.85)+\u4ef7\u683c\u5e73\u7a33(7\u65e5{_c7:+.1f}%)\u00b7"
-                                    f"\u542f\u52a8\u524d\u5438\u7b79\u00b7\u56de\u6d4b14d+11.2%/30d+27.2%(\u8f7b\u4ed30.10)\u00b7"
-                                    f"\u5206\u6279:\u9996\u4ed310%\u2192\u8dcc10%\u52a020%\u2192\u8dcc15%\u52a030%")
-                fd.deduction_sources.append("supply_contraction_accumulation")
-                fd.position_limit = 0.10
-                fd_dict = fusion_decision_summary(fd)
 
     # ---- Apply fusion decision to value score ----
     if fd.action == "buy":

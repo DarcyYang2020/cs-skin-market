@@ -140,7 +140,7 @@ buy 信号由**一串 P0/P1 顺序 if 块**产出：
 | 1a | 全窗口引擎回放（池A，不覆盖88基准） | data/item_backtest_full_2025.json（581信号） | ✅ 完成 |
 | 1b | 信号族×状态桶条件期望表 | data/unified_brain_expectancy.json | ✅ 完成 |
 | 2 | 决策函数原型回测：统一排序 vs 现引擎（walk-forward+聚类对比） | 对比报告 | ⏳ 待做 |
-| 3 | 落地重构：item_analysis 信号族注册制 + 状态桶 + 决策函数 | 代码+测试 | ⏳ 待做 |
+| 3 | 落地重构：item_analysis 信号族注册制 + 状态桶 + 决策函数 | 代码+测试 | ✅ 完成 (2026-08-06) |
 | 4 | 展示层接入：期望标签/状态桶标注（复用 J-1 事件数成果） | 界面 | ⏳ 待做 |
 
 **阶段2关键对比项**：统一大脑的「同日多族去重取最高期望」能否提升组合期望 vs 现引擎串行链；
@@ -181,3 +181,38 @@ train 估计「族×状态桶」net14 期望表（6 格 n>=3），test 段应用
   它解决「两套引擎分裂」的可维护性问题，但不承诺短期期望提升；阶段 3 聚焦架构重构，不做仓位分档。
 - **过程发现**：deep_value@中性企稳是全系统最广信号源（252 信号/27 事件），14d 46.8% 期望平庸是**触发条件层**问题，
   不是仓位层能解决的——留待更多样本后做条件筛选研究（I-6 关联）。
+
+
+---
+
+## 五、阶段3 架构重构落地（2026-08-06）
+
+### 5.1 改动内容（pipeline/item_analysis.py）
+把原 400 行串行 if 链（守卫1→恐慌升级→中间守卫→仓位→供给→后置升级）重构为**统一决策核心**：
+- **信号族注册制**：`SIGNAL_FAMILIES`（SignalFamily 数据类）注册 4 个独立信号族——
+  panic_resonance(恐慌共振) / deep_value(深值企稳) / panic_easing(恐慌退潮) / supply_accum(供给收缩吸筹)；
+  每族 = {key, label, 固定仓位, 触发条件, 状态桶标注, 适用闸门集, 详情/来源}。
+- **六态状态桶**：`_state_bucket()`（引擎口径 sent>=75 判恐慌），随决策输出 state_bucket 字段供展示。
+- **固定优先级**（不做期望排序——阶段2 已证伪）：panic_resonance(60) > deep_value(50) > panic_easing(40) > supply_accum(30)，
+  与现链路代码顺序一致；base 族为基础融合决策回退。
+- **闸门层解耦**：12 个闸门注册进 `_GUARDS`（market_weak/survive/halfway/dedup7/falling_knife/micro_th/bid/bid_boost/
+  market_distribution/z_gate/consecutive/supply_expansion），按族声明：基础族全闸门、恐慌族守卫2+供给、后置族自带条件。
+- **决策函数**：`decide_fusion_signal(fd, ...)` 单一输出（action/label/detail/position_limit/sources），
+  阶段3 不做仓位分档（分级仓位仅基础/恐慌族沿用，后置族固定 0.10）。
+
+### 5.2 保真验证（关键）
+- 全窗口回放（池A 96 老品，2025-01-01~2026-08-05，warmup=30）重构前后逐信号对比：
+  **581/581 信号一致，0 差异**（date/action/label/position_limit/risk/pct/z/th/value 等全部字段），
+  聚合指标完全一致（14d wavg +15.73 / 30d wavg +20.49）。
+- test_smoke 59/59 通过；webapp 导入正常。
+
+### 5.3 该架构带来什么
+- **新增信号族零成本**：S2 回踩 / 牛动量（I-8）只需注册进 `SIGNAL_FAMILIES` 并声明闸门，不再追加 if 块。
+- **闸门统一实验入口**：后置族当前自带条件不经过守卫2/供给过滤（与旧链路一致，行为保真）；
+  若要验证「deep_value/panic_easing 是否应加飞刀确认/供给扩张闸门」，改一族 guards 即可跑回放对比（K-2）。
+- **展示层接线**：state_bucket 已随 fd_dict 输出，J-1/I-1 展示层可直接复用。
+
+### 5.4 保真保留的已知行为（留待研究，不在本轮改动）
+- 后置族（deep_value 等）在供给扩张过滤之后评估 → 可「绕过」供给扩张闸门重新升级（旧链路即如此）；
+  是否应统一闸门属 K-2 研究项，需回测先行。
+- 恐慌共振不经过市场弱/存世量/半山腰/飞刀守卫（设计使然：恐慌场景就是市场 TH 弱时救回 V 型底）。
