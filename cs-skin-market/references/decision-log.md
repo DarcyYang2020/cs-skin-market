@@ -791,3 +791,15 @@ un_data_health 恢复 7/7 通过。
 - **学到的新思路**：后置族（deep_value 等）在供给扩张过滤之后评估，可「绕过」供给闸门重新升级（旧链路行为保真，但确属
   闸门不对称）；恐慌共振天然跳过守卫1（设计使然）。→ 映射 roadmap v6 新增 K-2（守卫统一实验，回测先行）。
 - **下一步**：展示层接线 state_bucket（阶段4）；K-2 守卫统一实验；I-8 路由层用注册制低成本落地 S2/牛动量族。
+
+
+## 统一大脑阶段4：展示层状态桶接入 + 恐慌口径对齐（2026-08-06）
+
+- **背景**：阶段3 重构后 state_bucket 已随 fd_dict 输出，但展示层未接线；且展示层 market_regime 用 sent>=80 判恐慌、引擎 P0-7 用 sent>=75（I-1 遗留），两套口径长期共存易再漂移。
+- **改动**（纯展示层，零信号改动）：
+  - `market_context.state_bucket()` 成为单一口径源（PANIC_SENT_THRESHOLD=75），item_analysis._state_bucket 与 batch_scan.market_regime 均引用之（禁止各自定义）；
+  - 展示层 market_regime 恐慌判定 80→75（V型底/阴跌中继/恐慌浅跌判定逻辑不变，仅边界对齐引擎）；
+  - 单品报告决策条新增「市场状态」状态桶徽章（fusion_decision.state_bucket，regime-badge 配色）；
+  - 批量扫描市场环境条与大盘仪表盘自动生效（同一 market_regime）。
+- **边界纪律**：补仓引擎的 sent>=80 恐慌阈值是 2026-08-05 回测参数（V型底指纹 win87%），不随展示口径改动；三层口径（引擎信号 75 / 展示 75 / 补仓 80）已在文档标注，防止误改。
+- **验证**：口径边界用例（75/78/72/30/85）全部符合预期；单品分析输出 state_bucket；analysis.html 徽章渲染正常；build_scan_html 市场环境条 sent=78 → 阴跌中继区；test_smoke 通过；webapp 导入正常。

@@ -153,3 +153,37 @@ def context_summary(ctx):
         "data_quality": ctx.data_quality,
     }
 
+# ============================================================
+# 统一状态桶（统一大脑阶段3/4：单一口径来源，禁止各处自行定义）
+# ============================================================
+# 引擎口径：恐慌阈值 sent>=75（P0-7 恐慌共振引擎阈值，engine-unified.md §3.3）。
+# 展示层此前用 80 分口径（I-1 遗留），阶段4 已对齐——item_analysis 与 batch_scan
+# 都必须引用本函数，避免口径再次漂移。补仓引擎的 80 分恐慌阈值是回测参数，不在本函数内。
+
+PANIC_SENT_THRESHOLD = 75
+
+
+def state_bucket(sentiment_score, market_th_score, market_30d_change):
+    """六态市场状态桶（引擎口径）→ label。
+
+    - 贪婪禁入: sent<=30
+    - V型底区(恐慌深跌): sent>=75 & chg30<=-15
+    - 阴跌中继区(恐慌中跌): sent>=75 & -15<chg30<=-5
+    - 恐慌浅跌: sent>=75 & chg30>-5
+    - 中性企稳: sent<75 & TH>=45
+    - 弱市观望: sent<75 & TH<45
+    """
+    s = float(sentiment_score) if sentiment_score is not None else 50.0
+    t = float(market_th_score) if market_th_score is not None else 50.0
+    c = float(market_30d_change) if market_30d_change is not None else 0.0
+    if s <= 30:
+        return "贪婪禁入"
+    if s >= PANIC_SENT_THRESHOLD:
+        if c <= -15:
+            return "V型底区"
+        if c <= -5:
+            return "阴跌中继区"
+        return "恐慌浅跌"
+    if t >= 45:
+        return "中性企稳"
+    return "弱市观望"

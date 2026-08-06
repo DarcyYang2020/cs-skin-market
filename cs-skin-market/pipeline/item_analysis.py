@@ -10,7 +10,7 @@ import statistics
 from .trend_health import compute_trend_health, trend_health_summary, compute_fusion_decision, fusion_decision_summary
 from .valuation import compute_valuation_grid, valuation_grid_summary
 from .supply import analyze_supply, supply_summary
-from .market_context import build_market_context, context_summary
+from .market_context import build_market_context, context_summary, state_bucket
 from .market_macro import compute_sentiment_factor, compute_sentiment_score, event_risk_coefficient
 from .config import ITEM_EXIT_RULES
 from .config import ITEM_EXPECTANCY_STATS
@@ -1020,18 +1020,8 @@ def _dedup_hit(recent_buy_dates, signal_date):
 
 
 def _state_bucket(sentiment_score, market_th_score, market_30d_change):
-    """六态状态桶（引擎口径 sent>=75 判恐慌，与展示层 80 分口径区分，见 engine-unified.md §3.3）。"""
-    if sentiment_score <= 30:
-        return "贪婪禁入"
-    if sentiment_score >= 75:
-        if market_30d_change <= -15:
-            return "V型底区"
-        if market_30d_change <= -5:
-            return "阴跌中继区"
-        return "恐慌浅跌"
-    if market_th_score >= 45:
-        return "中性企稳"
-    return "弱市观望"
+    """六态状态桶（引擎口径，单一来源 market_context.state_bucket；展示层已对齐）。"""
+    return state_bucket(sentiment_score, market_th_score, market_30d_change)
 
 
 SIGNAL_FAMILIES = (

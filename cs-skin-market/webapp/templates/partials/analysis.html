@@ -30,6 +30,10 @@
       {{ fusion_decision.action_label }}
     </span>
     <span style="font-size:14px;color:var(--text-muted);margin-left:8px;">{{ fusion_decision.zone_label }}</span>
+    {% if fusion_decision.state_bucket %}
+    <span style="font-size:12px;color:var(--text-muted);margin-left:8px;">市场状态</span>
+    <span class="regime-badge {{ {'V型底区':'regime-vbottom','阴跌中继区':'regime-risky','恐慌浅跌':'regime-panic','中性企稳':'regime-ok','弱市观望':'regime-weak','贪婪禁入':'regime-greedy'}.get(fusion_decision.state_bucket, '') }}">{{ fusion_decision.state_bucket }}</span>
+    {% endif %}
   </div>
   {% if fusion_decision.action_detail %}
   <div style="padding:8px 14px;font-size:13px;line-height:1.5;color:var(--text-secondary);">

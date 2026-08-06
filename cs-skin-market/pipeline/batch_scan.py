@@ -47,27 +47,27 @@ def signal_guidance(action_label: str = "", expectancy: dict = None, action: str
 def market_regime(sent, chg30, th=None):
     """市场状态标注（I-1，2026-08-06，纯展示层，零信号改动）。
 
-    口径沿用补仓回测（2026-08-05）：sent>=80 恐慌，大盘30日跌幅 chg30 区分
-    V型底区（<=-15%）与阴跌中继区（-15~-5%）。返回 (label, css_class, strategy)。
-    用于大盘仪表盘与批量扫描的市场环境条，让使用者一眼看懂当前哪条腿开火。
+    口径 = 统一状态桶（market_context.state_bucket，引擎口径 sent>=75 判恐慌，阶段4 对齐
+    engine-unified §3.3；补仓引擎的 80 分恐慌阈值是回测参数，不在此函数内）。
+    返回 (label, css_class, strategy)。用于大盘仪表盘与批量扫描的市场环境条，
+    让使用者一眼看懂当前哪条腿开火。
     """
-    s = float(sent) if sent is not None else 50.0
-    c = float(chg30) if chg30 is not None else 0.0
-    t = float(th) if th is not None else 50.0  # TH 未知按中性 50 处理
-    if s <= 30:
+    from .market_context import state_bucket
+    label = state_bucket(sent, th, chg30)
+    if label == "贪婪禁入":
         return ("贪婪禁入", "regime-greedy",
                 "市场贪婪（sent≤30）：全腿禁入，逆势抄底期望为负，等情绪转中性/恐惧")
-    if s >= 80 and c <= -15:
+    if label == "V型底区":
         return ("V型底区", "regime-vbottom",
                 "恐慌+深跌（大盘30日≤-15%）：V型底指纹，抄底腿可提前分批；吸筹腿待企稳后评估")
-    if s >= 80 and -15 < c <= -5:
+    if label == "阴跌中继区":
         return ("阴跌中继区", "regime-risky",
                 "恐慌+中跌（大盘30日 -15~-5%）：阴跌中继风险（回测7月14d均-8.3%），"
                 "抄底腿防御——等深跌指纹或企稳确认；吸筹腿关闭")
-    if s >= 80:
+    if label == "恐慌浅跌":
         return ("恐慌浅跌", "regime-panic",
                 "恐慌但大盘30日跌幅<5%：抄底腿正常开火，吸筹腿关闭")
-    if t is not None and t >= 45:
+    if label == "中性企稳":
         return ("中性企稳", "regime-ok",
                 "非恐慌+大盘TH≥45：抄底+吸筹双腿可开火（趋势腿需价格平稳+供给收缩）")
     return ("弱市观望", "regime-weak",
