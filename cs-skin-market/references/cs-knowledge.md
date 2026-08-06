@@ -334,7 +334,7 @@ Body: {\"good_id\": int, \"key\": \"sell_price|sell_num|buy_price|buy_num|turnov
 | /api/v1/stat/case | POST | 获取武器箱开箱数量统计（daily/weekly/monthly/total + cn_name/good_id/ground_at） | 新 |
 | /api/v1/info/roi | POST | 获取武器箱开箱回报率列表（roi/income/price/num + comment 掉落状态） | 新·已实测 |
 | /api/v1/info/roi_detail | GET | 获取单个武器箱开箱回报率走势（?id=，小时级 {income,roi,date}） | 新 |
-| /api/v1/stat/case/chart | POST | 获取单个武器箱历史开箱量（body case_id → [{daily,date}] 日序列） | 新 |
+| /api/v1/stat/case/chart | POST | 获取单个武器箱开箱量（body case_id → [{daily,date}]；**仅最近 32 天**，小时级 24 点/日 date 截断为日，日总量≈当日最后一点；旧箱多为 0/稀疏） | 新·已实测（32 天上限） |
 | /api/v1/info/container_data_info | POST | 获取所有收藏品列表 | 新 |
 | /api/v1/info/good/container_detail | - | 获取单个收藏品的包含物 | 新 |
 | /api/v1/info/vol_data_info | POST | 获取成交量数据信息（**武器箱维度**，statistic/avg_price/sum_price；非单品真实成交量） | 新 |
@@ -350,7 +350,8 @@ Body: {\"good_id\": int, \"key\": \"sell_price|sell_num|buy_price|buy_num|turnov
 - **历史深度（已落地）**：simple/chartAll(plat=2 悠悠价) 多窗口向前翻页可回补至 2023-08。经研判 **2024 及更早市场逻辑已过时，回填起点定为 2025-01-01**（覆盖 2025-02 反弹、2025-05 深底、2026-02 小牛，全部关键样本点）。`run_backfill_history.py` 给现有品补 2025-01-01~2025-08-03 缺失价格（仅补缺失、不覆盖已有 volume_day）。
 - **全市场快照（已落地）**：`collector_snapshot.py` 用 get_page_list 翻页（200/页，按热度取前 5000 品 ≈ 25 页 ≈ 2 分钟/天）每日采集悠悠锚价+在售数，存 market_snapshot 表，为未来全市场选品/估值分布/异动扫描积累面板，与成交量积累并行。
 - **P1 已落地（2026-08-04）**：monitor/rank 大户集中度每日快照（collector_monitor.py，每品 Top50 大户持有量，存 monitor_rank_snapshot，挂 run_daily_collect 每日任务）；复验期回测「集中度变化」能否提升吸筹信号（等数据积累 2~3 个月）。
-- **P2 待办**：stat/case 开箱量 + info/roi 回报率 → 事件/热度因子量化；get_all_goods_* 权限确认后做全市场估值分布。
+- **P2 开箱量因子：预研暂缓（2026-08-06）**——开箱量为同步/滞后热度指标（32 天窗口无领先预测力）、历史仅 32 天、自选品与活跃箱交集≈0，无边际信息不投产；详见 decision-log「P2 开箱量因子预研」。
+- **待办**：get_all_goods_* 权限确认后做全市场估值分布。
 
 ## 八、csQAQ API 数据字典
 
