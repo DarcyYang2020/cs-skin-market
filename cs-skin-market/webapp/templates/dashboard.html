@@ -44,11 +44,12 @@ fetch("/api/health/status")
   var card = document.getElementById("health-card");
   if (!card || !d.found) return;
   card.style.display = "block";
-  var labels = {pass: "PASS 正常", warn: "WARN 警告", fail: "FAIL 异常"};
+  var labels = {pass: "实时检查 · 正常", warn: "实时检查 · 警告", fail: "实时检查 · 异常"};
   var colors = {pass: "var(--green)", warn: "var(--yellow)", fail: "var(--red)"};
   var st = d.status || "pass";
   var color = colors[st] || "var(--text-muted)";
-  document.getElementById("health-time").textContent = "最近检查 " + (d.created_at || "--");
+  var autoTxt = (d.last_auto && d.last_auto.created_at) ? "自动 " + d.last_auto.created_at : "无自动检查记录";
+  document.getElementById("health-time").textContent = "实时 " + (d.checked_at || "--") + " · " + autoTxt;
   var html = '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">'
     + '<span class="badge" style="background:rgba(255,255,255,0.08);color:' + color + ';font-weight:700;">' + (labels[st] || st) + '</span>'
     + '<span style="font-size:11px;color:var(--text-muted);">数据日期 ' + (d.date || "--") + '</span>'
@@ -59,6 +60,13 @@ fetch("/api/health/status")
     html += '<div style="margin-top:8px;color:var(--text-secondary);">各数据源检查通过，无 FAIL 项。</div>';
   }
   document.getElementById("health-body").innerHTML = html;
+})
+.catch(function(e) {
+  var card = document.getElementById("health-card");
+  if (!card) return;
+  card.style.display = "block";
+  document.getElementById("health-time").textContent = "";
+  document.getElementById("health-body").innerHTML = '<div style="color:var(--red);">健康检查接口暂不可用：' + e + '</div>';
 });
 
 // ---- 信号中心 (2026-08-05): 复用 watchlist 扫描信号数据源 ----
@@ -121,10 +129,11 @@ fetch("/api/data/progress")
   if (fam && fam.display_keys) {
     var dk = fam.display_keys;
     function _dk(key, field) { return dk[key] ? (dk[key][field] != null ? dk[key][field] : "-") : "-"; }
+    function _dkLatest(key) { var r = dk[key] && dk[key].date_range; return (r && r[1]) ? r[1] : "-"; }
     var famRows = [
-      ["恐慌族(共振+退潮)", _dk("panic","n") + " 信号 · " + _dk("panic","events") + " 次独立事件 · 14d胜率 " + _dk("panic","win14") + "%"],
-      ["深值·大盘企稳", _dk("deep_value","n") + " 信号 · " + _dk("deep_value","events") + " 次独立事件 · 14d胜率 " + _dk("deep_value","win14") + "%"],
-      ["吸筹族(供给收缩等)", _dk("accumulate","n") + " 信号 · " + _dk("accumulate","events") + " 次独立事件 · 14d胜率 " + _dk("accumulate","win14") + "%"]
+      ["恐慌族(共振+退潮)", _dk("panic","n") + " 信号 · " + _dk("panic","events") + " 次独立事件 · 最近 " + _dkLatest("panic")],
+      ["深值·大盘企稳", _dk("deep_value","n") + " 信号 · " + _dk("deep_value","events") + " 次独立事件 · 最近 " + _dkLatest("deep_value")],
+      ["吸筹族(供给收缩等)", _dk("accumulate","n") + " 信号 · " + _dk("accumulate","events") + " 次独立事件 · 最近 " + _dkLatest("accumulate")]
     ];
     html += '<div style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.08);padding-top:8px;">'
       + '<div style="color:var(--text-muted);font-size:12px;margin-bottom:4px;">信号族样本深度（K-2 回放 ' + (fam.total_signals || 0) + ' 信号 · ' + _dpFmt(fam.generated) + ' 口径）</div>'

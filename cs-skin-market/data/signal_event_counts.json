@@ -9,6 +9,10 @@
   "events": 2,
   "unique_dates": 7,
   "max_cluster_share": 0.9778,
+  "date_range": [
+   "2025-10-24",
+   "2026-05-27"
+  ],
   "win14": 100.0,
   "avg14": 49.73,
   "win30": 77.8,
@@ -20,6 +24,10 @@
   "events": 1,
   "unique_dates": 3,
   "max_cluster_share": 1.0,
+  "date_range": [
+   "2026-05-28",
+   "2026-05-31"
+  ],
   "win14": 83.0,
   "avg14": 17.83,
   "win30": 80.9,
@@ -31,6 +39,10 @@
   "events": 28,
   "unique_dates": 77,
   "max_cluster_share": 0.0974,
+  "date_range": [
+   "2025-01-31",
+   "2026-07-12"
+  ],
   "win14": 55.8,
   "avg14": 6.9,
   "win30": 61.7,
@@ -42,6 +54,10 @@
   "events": 16,
   "unique_dates": 52,
   "max_cluster_share": 0.8412,
+  "date_range": [
+   "2025-09-06",
+   "2026-07-17"
+  ],
   "win14": 59.4,
   "avg14": 9.17,
   "win30": 70.4,
@@ -53,6 +69,10 @@
   "events": 5,
   "unique_dates": 11,
   "max_cluster_share": 0.8788,
+  "date_range": [
+   "2025-05-10",
+   "2026-06-21"
+  ],
   "win14": 54.5,
   "avg14": 12.53,
   "win30": 42.4,
@@ -64,6 +84,10 @@
   "events": 8,
   "unique_dates": 9,
   "max_cluster_share": 0.2222,
+  "date_range": [
+   "2025-02-12",
+   "2026-06-12"
+  ],
   "win14": 55.6,
   "avg14": 10.49,
   "win30": 66.7,
@@ -76,6 +100,10 @@
    "events": 2,
    "unique_dates": 10,
    "max_cluster_share": 0.9891,
+   "date_range": [
+    "2025-10-24",
+    "2026-05-31"
+   ],
    "n": 92,
    "win14": 91.3,
    "avg14": 33.44,
@@ -89,6 +117,10 @@
    "events": 28,
    "unique_dates": 77,
    "max_cluster_share": 0.0974,
+   "date_range": [
+    "2025-01-31",
+    "2026-07-12"
+   ],
    "n": 154,
    "win14": 55.8,
    "avg14": 6.9,
@@ -102,6 +134,10 @@
    "events": 23,
    "unique_dates": 69,
    "max_cluster_share": 0.6792,
+   "date_range": [
+    "2025-02-12",
+    "2026-07-17"
+   ],
    "n": 212,
    "win14": 58.5,
    "avg14": 9.75,

@@ -1195,6 +1195,33 @@ def t_exec_sync_position():
 check('execution syncs position (avg cost/qty/total bought)', t_exec_sync_position)
 
 
+def t_upsert_space_dedup():
+    # 回归防复发 (2026-08-06): USP 守护者空格变体重复条目两次被 health 检出（id=162 删、id=209 再犯）。
+    # upsert_item 必须按「忽略半角/全角空格」归一匹配，命中复用原行并保留规范名。
+    import sqlite3 as _sq
+    from pipeline import db
+    conn = _sq.connect(":memory:")
+    conn.row_factory = _sq.Row
+    db._init_schema(conn)
+    try:
+        canonical = "USP消音版 | 守护者 (崭新出厂)"
+        id1 = db.upsert_item(conn, canonical, good_id=6554, in_watchlist=1)
+        id2 = db.upsert_item(conn, "USP 消音版 | 守护者 (崭新出厂)", good_id=6554, in_watchlist=1)
+        id3 = db.upsert_item(conn, "USP\u3000消音版 | 守护者 (崭新出厂)", good_id=6554, in_watchlist=1)
+        assert id1 == id2 == id3, (id1, id2, id3)
+        n = conn.execute("SELECT COUNT(*) c FROM items").fetchone()["c"]
+        assert n == 1, f"空格变体应复用同一行, 实际 {n} 行"
+        name = conn.execute("SELECT name FROM items WHERE id=?", (id1,)).fetchone()["name"]
+        assert name == canonical, f"应保留规范名, 实际 {name}"
+        # 真正不同的品不应误合并
+        id4 = db.upsert_item(conn, "AK-47 | 精英之作 (战痕累累)", good_id=30)
+        assert id4 != id1
+    finally:
+        conn.close()
+check('upsert_item 空格变体去重 (半角/全角复用规范名)', t_upsert_space_dedup)
+
+
+
 
 def t_is_sunday_order():
     # 回归防护 (2026-08-04): is_sunday 必须在 _playwright_tasks 定义前赋值,

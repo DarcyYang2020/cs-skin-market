@@ -42,6 +42,12 @@ def _today() -> str:
 
 
 
+# 2026-08-06 性能修复：get_conn 每次连接都跑 _init_schema（32 条 DDL），
+# 在 WAL 写竞争下每条 execute 可达 ~0.1s，导致分析链（event_risk_coefficient 等）单次连接 ~11s。
+# 改为按 DB 路径缓存：同一进程内文件库只初始化一次；:memory: 每连接都是新库，不缓存。
+_SCHEMA_INIT_PATHS: set = set()
+
+
 def get_conn() -> sqlite3.Connection:
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -54,7 +60,11 @@ def get_conn() -> sqlite3.Connection:
 
     conn.execute("PRAGMA foreign_keys=ON")
 
-    _init_schema(conn)
+    key = str(DB_PATH)
+
+    if key not in _SCHEMA_INIT_PATHS:
+        _init_schema(conn)
+        _SCHEMA_INIT_PATHS.add(key)
 
     return conn
 
@@ -402,8 +412,17 @@ def _init_schema(conn: sqlite3.Connection) -> None:
 def upsert_item(conn, name, steam_name="", weapon="", skin="", wear="",
                 rarity="", source="", is_discontinued=0, discontinued_years=0,
                 stat_trak=0, souvenir=0, notes="", in_watchlist=0, good_id=0, yyyp_id="") -> int:
-    cur = conn.execute("SELECT id, in_watchlist FROM items WHERE name = ?", (name,))
+    # 2026-08-06 复发修复：按精确 name 匹配会漏掉仅差半角/全角空格的变体（USP消音版 vs USP 消音版，
+    # 同 good_id 重复条目两次被 health 检出：id=162 已删、id=209 再犯）。
+    # 统一在唯一入口归一匹配：命中则复用原行并保留规范名，分析/搜索/自选三条路径一并覆盖。
+    cur = conn.execute(
+        "SELECT id, in_watchlist FROM items "
+        "WHERE REPLACE(REPLACE(name,' ',''),'\u3000','') = ?",
+        (name.replace(" ", "").replace("\u3000", ""),))
     row = cur.fetchone()
+    if row is None:
+        cur = conn.execute("SELECT id, in_watchlist FROM items WHERE name = ?", (name,))
+        row = cur.fetchone()
     now = _now()
     if row:
         conn.execute("""UPDATE items SET steam_name=?,weapon=?,skin=?,wear=?,rarity=?,

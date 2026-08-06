@@ -62,9 +62,11 @@ def display_key(action_label: str) -> str:
 
 def family_stats(dates):
     cl = signal_cluster_report(dates, window=3)
+    ds = sorted(set(d for d in dates if d))
     return {"signals": cl["signal_count"], "events": cl["event_count"],
             "unique_dates": cl["unique_dates"],
-            "max_cluster_share": round(cl["max_cluster_share"], 4)}
+            "max_cluster_share": round(cl["max_cluster_share"], 4),
+            "date_range": [ds[0], ds[-1]] if ds else None}
 
 
 def pnl_stats(sigs):

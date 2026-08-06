@@ -2062,23 +2062,28 @@ async def api_data_progress():
 
 @app.get("/api/health/status")
 async def api_health_status():
-    """数据健康监控最新状态 (A1, 2026-08-05): 最新一条 health_checks + FAIL 项列表。"""
+    """数据健康监控：实时运行只读检查（run_data_health.run_checks）+ 最近一次自动检查时间。
+
+    实时检查避免 health_checks 快照过期导致误报（2026-08-06: 22:00 自动检查 FAIL 后数据已修复，
+    但快照仍显示 FAIL）。检查为纯 SQLite 只读查询，毫秒级。
+    """
+    from run_data_health import run_checks
+    try:
+        checks = run_checks()
+    except Exception as e:
+        return {"found": False, "error": str(e)}
+    fail_list = [n for n, lv, _ in checks if lv == "FAIL"]
     conn = db.get_conn()
     try:
         row = conn.execute(
-            "SELECT date, status, checks_json, created_at FROM health_checks ORDER BY date DESC, id DESC LIMIT 1"
+            "SELECT date, status, created_at FROM health_checks ORDER BY date DESC, id DESC LIMIT 1"
         ).fetchone()
     finally:
         conn.close()
-    if not row:
-        return {"found": False}
-    try:
-        checks = json.loads(row["checks_json"] or "[]")
-    except (TypeError, ValueError):
-        checks = []
-    fail_list = [c.get("name") for c in checks if c.get("level") == "FAIL"]
-    return {"found": True, "date": row["date"], "status": row["status"],
-            "created_at": row["created_at"], "checks": checks,
+    return {"found": True, "date": datetime.now().strftime("%Y-%m-%d"), "status": "fail" if fail_list else "pass",
+            "checked_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "last_auto": {"date": row["date"], "created_at": row["created_at"]} if row else None,
+            "checks": [{"name": n, "level": lv, "detail": dt} for n, lv, dt in checks],
             "fail_list": fail_list, "fail_count": len(fail_list)}
 
 
