@@ -1,0 +1,339 @@
+{
+ "generated": "2026-08-06 11:13",
+ "source": "data/item_backtest_full_2025.json",
+ "cost": 0.02,
+ "n": 581,
+ "families": {
+  "deep_value": 302,
+  "base": 24,
+  "supply_accum": 163,
+  "panic": 92
+ },
+ "buckets": {
+  "中性企稳": 382,
+  "V型底区": 43,
+  "弱市观望": 150,
+  "贪婪禁入": 5,
+  "阴跌中继区": 1
+ },
+ "table": {
+  "panic": {
+   "V型底区": {
+    "n": 41,
+    "cluster": {
+     "events": 2,
+     "unique_dates": 6,
+     "max_cluster_share": 0.976,
+     "flagged": true
+    },
+    "net14": {
+     "n": 41,
+     "win%": 100.0,
+     "avg%": 51.1,
+     "wavg%": 51.1
+    },
+    "net30": {
+     "n": 41,
+     "win%": 75.6,
+     "avg%": 40.88,
+     "wavg%": 40.88
+    }
+   },
+   "阴跌中继区": {
+    "n": 0
+   },
+   "恐慌浅跌": {
+    "n": 0
+   },
+   "中性企稳": {
+    "n": 0
+   },
+   "弱市观望": {
+    "n": 51,
+    "cluster": {
+     "events": 2,
+     "unique_dates": 4,
+     "max_cluster_share": 0.922,
+     "flagged": true
+    },
+    "net14": {
+     "n": 51,
+     "win%": 84.3,
+     "avg%": 19.23,
+     "wavg%": 21.47
+    },
+    "net30": {
+     "n": 51,
+     "win%": 82.4,
+     "avg%": 13.72,
+     "wavg%": 14.43
+    }
+   },
+   "贪婪禁入": {
+    "n": 0
+   }
+  },
+  "oversold": {
+   "V型底区": {
+    "n": 0
+   },
+   "阴跌中继区": {
+    "n": 0
+   },
+   "恐慌浅跌": {
+    "n": 0
+   },
+   "中性企稳": {
+    "n": 0
+   },
+   "弱市观望": {
+    "n": 0
+   },
+   "贪婪禁入": {
+    "n": 0
+   }
+  },
+  "deep_value": {
+   "V型底区": {
+    "n": 0
+   },
+   "阴跌中继区": {
+    "n": 0
+   },
+   "恐慌浅跌": {
+    "n": 0
+   },
+   "中性企稳": {
+    "n": 252,
+    "cluster": {
+     "events": 27,
+     "unique_dates": 101,
+     "max_cluster_share": 0.238,
+     "flagged": false
+    },
+    "net14": {
+     "n": 252,
+     "win%": 46.8,
+     "avg%": 3.06,
+     "wavg%": 3.06
+    },
+    "net30": {
+     "n": 252,
+     "win%": 50.8,
+     "avg%": 9.22,
+     "wavg%": 9.22
+    }
+   },
+   "弱市观望": {
+    "n": 50,
+    "cluster": {
+     "events": 8,
+     "unique_dates": 14,
+     "max_cluster_share": 0.24,
+     "flagged": false
+    },
+    "net14": {
+     "n": 50,
+     "win%": 48.0,
+     "avg%": 5.72,
+     "wavg%": 5.72
+    },
+    "net30": {
+     "n": 42,
+     "win%": 73.8,
+     "avg%": 30.17,
+     "wavg%": 30.17
+    }
+   },
+   "贪婪禁入": {
+    "n": 0
+   }
+  },
+  "supply_accum": {
+   "V型底区": {
+    "n": 2,
+    "cluster": {
+     "events": 1,
+     "unique_dates": 2,
+     "max_cluster_share": 1.0,
+     "flagged": true
+    },
+    "net14": {
+     "n": 2,
+     "win%": 100.0,
+     "avg%": 86.76,
+     "wavg%": 86.76
+    },
+    "net30": {
+     "n": 2,
+     "win%": 100.0,
+     "avg%": 101.73,
+     "wavg%": 101.73
+    }
+   },
+   "阴跌中继区": {
+    "n": 1,
+    "cluster": {
+     "events": 1,
+     "unique_dates": 1,
+     "max_cluster_share": 1.0,
+     "flagged": true
+    },
+    "net14": {
+     "n": 1,
+     "win%": 0.0,
+     "avg%": -29.67,
+     "wavg%": -29.67
+    },
+    "net30": {
+     "n": 0,
+     "win%": null,
+     "avg%": null,
+     "wavg%": null
+    }
+   },
+   "恐慌浅跌": {
+    "n": 0
+   },
+   "中性企稳": {
+    "n": 108,
+    "cluster": {
+     "events": 8,
+     "unique_dates": 30,
+     "max_cluster_share": 0.889,
+     "flagged": true
+    },
+    "net14": {
+     "n": 108,
+     "win%": 63.0,
+     "avg%": 8.23,
+     "wavg%": 8.23
+    },
+    "net30": {
+     "n": 108,
+     "win%": 68.5,
+     "avg%": 24.24,
+     "wavg%": 24.24
+    }
+   },
+   "弱市观望": {
+    "n": 47,
+    "cluster": {
+     "events": 5,
+     "unique_dates": 15,
+     "max_cluster_share": 0.808,
+     "flagged": true
+    },
+    "net14": {
+     "n": 47,
+     "win%": 53.2,
+     "avg%": 7.78,
+     "wavg%": 7.78
+    },
+    "net30": {
+     "n": 47,
+     "win%": 76.6,
+     "avg%": 16.11,
+     "wavg%": 16.11
+    }
+   },
+   "贪婪禁入": {
+    "n": 5,
+    "cluster": {
+     "events": 4,
+     "unique_dates": 4,
+     "max_cluster_share": 0.4,
+     "flagged": true
+    },
+    "net14": {
+     "n": 5,
+     "win%": 40.0,
+     "avg%": 10.2,
+     "wavg%": 10.2
+    },
+    "net30": {
+     "n": 5,
+     "win%": 60.0,
+     "avg%": 71.89,
+     "wavg%": 71.89
+    }
+   }
+  },
+  "accumulate": {
+   "V型底区": {
+    "n": 0
+   },
+   "阴跌中继区": {
+    "n": 0
+   },
+   "恐慌浅跌": {
+    "n": 0
+   },
+   "中性企稳": {
+    "n": 0
+   },
+   "弱市观望": {
+    "n": 0
+   },
+   "贪婪禁入": {
+    "n": 0
+   }
+  },
+  "base": {
+   "V型底区": {
+    "n": 0
+   },
+   "阴跌中继区": {
+    "n": 0
+   },
+   "恐慌浅跌": {
+    "n": 0
+   },
+   "中性企稳": {
+    "n": 22,
+    "cluster": {
+     "events": 9,
+     "unique_dates": 13,
+     "max_cluster_share": 0.636,
+     "flagged": true
+    },
+    "net14": {
+     "n": 22,
+     "win%": 54.5,
+     "avg%": 18.47,
+     "wavg%": 17.29
+    },
+    "net30": {
+     "n": 22,
+     "win%": 45.5,
+     "avg%": 15.65,
+     "wavg%": 14.34
+    }
+   },
+   "弱市观望": {
+    "n": 2,
+    "cluster": {
+     "events": 2,
+     "unique_dates": 2,
+     "max_cluster_share": 0.5,
+     "flagged": true
+    },
+    "net14": {
+     "n": 2,
+     "win%": 50.0,
+     "avg%": 26.04,
+     "wavg%": 26.04
+    },
+    "net30": {
+     "n": 2,
+     "win%": 100.0,
+     "avg%": 14.82,
+     "wavg%": 14.82
+    }
+   },
+   "贪婪禁入": {
+    "n": 0
+   }
+  }
+ }
+}
