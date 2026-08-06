@@ -7,6 +7,7 @@
 
 ## 版本历史
 
+- **v14（2026-08-06）**：csQAQ 接口迁移（数据源修复）——绑定 IP 后旧直连端点仍 401，确诊为接口改版永久废弃：search_items→`/search/suggest`、hash→id→`/goods/getPriceByMarketHashName`、详情→`/info/good?id=`（goods_info 直取盘口/日量，去掉 422 的 info/chart 调用）；新增 `bind_local_ip()`（POST /sys/bind_local_ip）并接入 `run_daily_collect` 每日自动重绑；大盘 kline / current_data / volume 实测不受影响；test_smoke 61/61 → 学到新思路（数据源是工程的硬依赖：接口改版会静默破坏采集，需要「每日 IP 重绑 + 直连接口回归硬校验」守护 → I-11）。
 - **v13（2026-08-06）**：模拟量激活实验 + 趋势腿边界验证——2025 全年回放核实（25 牛市段 deep_value 49 信号 win14 38.8%/avg -0.22 = 抄底族牛市弱点量化，非「零成绩」；458 信号中 S3 趋势腿已占 37%（170 信号 30d +23.52））；S3 强牛边界 sent<40+TH≥60 回放 30d +46.28（引擎已隐含放行，零改动仅显式化）；模拟成交量（真实在售量×周转率基准，references/sim_vol_replay.py）回放 458→474 期望持平略降（avg14 -0.38 / avg30 -0.69，净新增 29 个 th=35 边缘 deep_value 质量差 win30 39.3%）→ 结论：模拟量只激活链路不带来信息，**不污染生产基线**，真实量 90 天到位直接切换 + 趋势腿量能确认 v2 → 学到新思路（「无成绩」≠「零信号」；族分布须按触发通道拆解；模拟数据可证伪「激活即更好」）。
 - **v12（2026-08-06）**：系统整理——清理过时数据与文档：删除 26 个日志/可再生的回放临时产物（advice/deepvalue/topup replay、全部 *.log，均 gitignore 覆盖）；git rm 3 个一次性回填报告（backfill_csqaq365_report/backfill_youpin_report/sample_collect_report）；修复失效引用（references/backtest_results.json 已于 12ea421 移除 → 统一指到 data/item_backtest_full_2025.json）；analysis-engine/market-engine/backtest_layered 标注 superseded 并指向 engine-unified + th_calibration；item-sample-plan 状态头改「已执行」；AGENTS.md 补 TH 三区语义 + 超跌例外数据口径。test_smoke 61/61 → 学到新思路（清理前先核对 gitignore 与代码引用：scan_history/ 被 webapp 信号中心使用、backup/ 是合并操作回滚点，均保留；回放临时产物脚本可再生成故直接清）。
 - **v11（2026-08-06）**：TH 矫正预研与落地——TH 三区语义确立（<35 恐慌黄金坑 / 35-54 摩擦带 / >=55 趋势确认，解释层）；X2（deep_value 改 TH 门槛）被回放证伪（avg14 12.35→11.78，离线桶≠引擎族口径）；C2 落地 = I-6 部分（deep_value 加大盘 chg30 闸门排除 [-3,3) 横盘段，回放 win14 +2.0pp / avg14 +1.20 / wavg14 +1.09 前后半段一致）；豁免候选全失败保持一刀切；展示层距买点 TH 三区化 → 学到新思路（TH 三区是解释层语义，引擎层由族注册制覆盖；TH 门槛直接改需引擎回放验证，离线桶口径不能替代）。
@@ -42,6 +43,7 @@
 | 11 | 阶段3 落地：后置族（deep_value/panic_easing）自带条件但**不经过守卫2/供给扩张闸门**（旧链路保真） | **K-2** 守卫统一实验：deep_value 叠加供给扩张闸门（剔除 91 坏信号 14d avg -1.30，回放聚合全维度改善，见 decision-log）；supply_accum/panic_easing 经预研不叠加（期望反降/消灭信号） | 第二批 | 无（581 信号预研 + 引擎回放） | **完成（2026-08-06）** |
 | 9 | 黑天鹅事件日历（2026-08-06）：10-14~18 是五合一黑天鹅外生冲击（黄盾 07-16 / 纪念品炼金 05-25 同批标记），非策略误判 | **I-10** S3 崩盘前夜标注（非陷阱守卫）：复盘/回测对 fwd 窗口与事件影响期重叠的信号自动标注（EVENT_CALENDAR + historical_event_impact），外生冲击不算策略负贡献；不调参 | 第一批 | 无（数据现成） | **完成（2026-08-06）** |
 | 13 | 「牛市先不着急做吧」已过期（2026-08-06）：牛熊只是数据体现，最终要做符合整个市场的投资工具 | **I-8** 趋势腿落地优先级提升（战略级）：等成交量 90 天 + 独立事件门槛（J-2）数据到位后优先落地趋势腿，避免下一轮牛市踏空 | 第二批 | 数据积累（J-2 门槛） | 待做（优先级↑） |
+| 14 | 数据源是工程的硬依赖（2026-08-06）：csQAQ 接口改版导致旧直连端点绑定 IP 后仍 401，采集静默失效 | **I-11** 数据源接口回归守护：`bind_local_ip()` 每日自动重绑（已入 run_daily_collect）+ test_smoke 直连接口硬校验（搜索/详情/hash 解析），接口变更时第一时间暴露 | 第一批 | 无（已落地） | **完成（2026-08-06）** |
 
 ## 批次
 

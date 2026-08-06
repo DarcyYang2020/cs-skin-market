@@ -919,3 +919,20 @@ un_data_health 恢复 7/7 通过。
 - 量价因子的真正增量在**趋势腿量能确认（S2/S3 v2）**而非抄底腿——真实量到位后做「S3 叠加量能温和放大」验证。
 
 **学到的新思路**：①「无成绩」≠「零信号」，牛市段负期望信号也是信息（抄底族在牛市段的弱点被量化）；② 信号族分布要按触发通道拆解（accumulate 212 里 170 是 S3），不能只看展示键；③ 模拟数据激活链路≠带来信息，实验可证伪「激活后更好」的假设，避免把模拟量写进生产。
+
+
+## csQAQ 接口迁移：三个旧直连端点永久废弃（2026-08-06，数据源修复）
+
+**背景**：绑定 IP 后直连接口仍 401，定位为 csQAQ 接口改版，旧端点永久废弃、非 IP 问题。
+
+**废弃端点（绑定 IP 后实测仍 401，修复无望）**：
+- `GET /goods/search_good_id?keyword=`（搜索）→ 迁移至 **`GET /search/suggest?text=`**（返回 `[{id: 字符串, value: 中文全名}]`，id 即 good_id）；
+- `POST /goods/get_good_id`（MarketHashName→id）→ 迁移至 **`POST /goods/getPriceByMarketHashName`**（body `marketHashNameList[]` → `success[hash].goodId`，可批量；`info/get_good_id` 实测为分页目录需翻页，未采用）；
+- `GET /info/good_detail?good_id=`（详情）→ 迁移至 **`GET /info/good?id=`**（`data.goods_info`，含 buff 买卖价/在售数/yyyp 价/turnover_number 日成交件数，盘口与日量可直接取，不再依赖 info/chart）。
+
+**不受影响的直连接口（实测 200）**：`current_data?type=init`、`current_data?type=volume`（market_macro）、`sub/kline?id=1&type=1day`（大盘 K 线）。
+
+**IP 绑定方案（已生效）**：`POST /sys/bind_local_ip`（body `{}`）返回当前绑定 IP；动态运营商 IP 可能变化，`run_daily_collect.py` 每日采集开头新增 `collect_bind_ip()` 自动重绑。文档同步：cs-knowledge.md（新旧接口对照/核心接口详情/官方端点表状态）、AGENTS.md（白名单说明）。
+
+**落地范围**：`collector.py` search_items / get_good_id_by_market_hash / fetch_item_detail 三函数迁移 + `bind_local_ip()` 新增；同步 `fetch_item_detail` 改为 goods_info 直取盘口与日量（去掉 422 的 info/chart 调用）。异步 Playwright 路径（collector_csqaq）拦截的是网站自身 `info/good?id=` + `info/chart`，不受影响。实测：search_items('AK-47') 返回 5 条、hash 解析 id=30、详情字段齐全、bind 成功；test_smoke 61/61。
+

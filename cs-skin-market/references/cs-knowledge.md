@@ -220,15 +220,17 @@ CS2饰品市场**不是随机波动市场，而是「周期规律+事件驱动+�
 | 响应格式 | {\"code\": 200, \"msg\": \"Success\", \"data\": ...} |
 | IP 绑定 | POST /api/v1/sys/bind_local_ip（30秒/次）|
 
+> **IP 绑定方案已生效（2026-08-06 实测）**：直连接口需先 `POST /sys/bind_local_ip`（body `{}`）把当前公网 IP 加入白名单；动态运营商 IP 可能变化，`run_daily_collect.py` 每日采集开头自动重绑。**旧版直连接口（goods/search_good_id、goods/get_good_id、info/good_detail）绑定 IP 后仍返回 401，属永久废弃**，已迁移到新版接口（见下方对照表）。
+
 ### 新旧接口对照
 
 |---|---|---|
 | 大盘指数 | Playwright 抓首页 | GET /api/v1/current_data?type=init |
 | 大盘K线 | 响应拦截 API | GET /api/v1/current_data?type=kline |
 | 板块/分类 | document.body.innerText 解析 | current_data 的 sub_index_data(23项) + chg_type_data(75项) |
-| 饰品搜索 | SPA 搜索页 | GET /api/v1/goods/search_good_id?keyword= |
-| 饰品ID查询 | 无(用MarketHashName) | POST /api/v1/goods/get_good_id |
-| 饰品详情 | Nuxt JSON 解析 | GET /api/v1/info/good_detail?good_id= |
+| 饰品搜索 | 联想接口 | GET /api/v1/search/suggest?text=（旧 search_good_id 已废弃 401） |
+| 饰品ID查询 | 无(用MarketHashName) | POST /api/v1/goods/getPriceByMarketHashName（旧 get_good_id 已废弃 401） |
+| 饰品详情 | JSON | GET /api/v1/info/good?id=（data.goods_info；旧 good_detail 已废弃 401） |
 | K线数据 | 响应拦截 API | POST /api/v1/info/kline |
 | 存世量走势 | K线API提取 | GET /api/v1/info/survive?good_id= |
 | 批量价格 | 逐个抓取 | POST /api/v1/goods/get_multi_sell_info |
@@ -254,13 +256,17 @@ ate_data — 涨平跌家数统计
 - lteration[] — 异动监控
 - iew_count[] — 浏览热度排行
 
-#### 2. 饰品搜索 GET /api/v1/goods/search_good_id?keyword=
+#### 2. 饰品搜索 GET /api/v1/search/suggest?text=（新版，2026-08-06 迁移）
 
-返回匹配饰品列表: {id, name, market_hash_name, img, price, rln(品质)}
+旧 `goods/search_good_id` 已废弃（绑定 IP 后仍 401）。返回 `data: [{id: 字符串, value: 中文全名}]`，id 即 good_id；名称/价格等详情由 `info/good` 补齐。
 
-#### 3. 饰品详情 GET /api/v1/info/good_detail?good_id=
+#### 3. 饰品详情 GET /api/v1/info/good?id=（新版，2026-08-06 迁移）
 
-返回: {id, name, market_hash_name, img, buff_sell_price, buff_sell_num, buff_buy_price, buff_buy_num, yyyp_sell_price, yyyp_sell_num, c5_sell_price, steam_sell_price, ...}
+旧 `info/good_detail` 已废弃（绑定 IP 后仍 401）。返回 `data.goods_info`：name / market_hash_name / buff_sell_price / buff_sell_num / buff_buy_price / buff_buy_num / yyyp_sell_price / yyyp_sell_num / steam_sell_price / turnover_number（日成交件数）等；盘口与日成交量可直接取 goods_info，不再依赖 info/chart。
+
+#### 3.1 MarketHashName → good_id：POST /api/v1/goods/getPriceByMarketHashName（新版，2026-08-06 迁移）
+
+旧 `goods/get_good_id` 已废弃（绑定 IP 后仍 401）。Body: `{"marketHashNameList": ["AK-47 | Elite Build (Battle-Scarred)"]}` → `data.success[hash].goodId`；未命中项进 `data.error`。可批量。
 
 #### 4. K线 POST /api/v1/info/kline
 
@@ -279,8 +285,8 @@ Body: {\"good_id\": int, \"key\": \"sell_price|sell_num|buy_price|buy_num|turnov
 
 ### 官方接口文档 (docs.csqaq.com) 端点清单
 
-> 学习日期: 2026-08-04。官方文档托管于 Apifox（docs.csqaq.com，项目 ID 4711104），共收录 37 个端点。
-> 项目直连 API 均受 IP 白名单限制（当前返回 401），**通过 Playwright 访问对应页面、拦截 /proxies/api/v1/* 响应即可绕过**（复用 collector_csqaq._capture_proxies_api 机制，无需 ApiToken）。
+> 学习日期: 2026-08-04；接口实测更新 2026-08-06。官方文档托管于 Apifox（docs.csqaq.com，项目 ID 4711104），共收录 37 个端点。
+> 直连 API 需 IP 白名单：先 `POST /sys/bind_local_ip` 绑定当前公网 IP（每日采集自动重绑，见 run_daily_collect.collect_bind_ip）；**旧版直连端点（search_good_id / get_good_id / good_detail）绑定后仍 401 属永久废弃**。浏览器绕过路径仍可用：Playwright 访问对应页面、拦截 /proxies/api/v1/* 响应（复用 collector_csqaq._capture_proxies_api 机制，无需 ApiToken）。
 
 #### 页面 → 端点映射（2026-08-04 实测）
 
@@ -306,11 +312,11 @@ Body: {\"good_id\": int, \"key\": \"sell_price|sell_num|buy_price|buy_num|turnov
 | /api/v1/info/simple/chartAll | POST | 简化日线 [{t,o,c,h,l,v}]（body good_id/plat/periods/max_time，max_time 向前翻页每窗口150天，实测可回补至 2023-08；plat=2 为悠悠价；v 口径未确认） | 新·已实测(历史回填) |
 | /api/v1/info/get_popular_goods | POST | 获取全量饰品热度排名（rank_num + change + turnover_number） | 新·触发方式待确认 |
 | /api/v1/goods/get_goods_template | POST | 获取饰品模板（含 container/income/roi、buff_id/yyyp_id/steam_id/c5_id 跨平台映射） | 新 |
-| /api/v1/info/get_good_id | - | 获取饰品的ID信息（项目在用 goods/get_good_id，等价） | 已用(等价) |
-| /api/v1/search/suggest | GET | 联想查询饰品（搜索框自动补全 ?text=） | 新 |
-| /api/v1/info/good | GET | 获取单件饰品详情（Playwright 拦截 info/good?id=） | 已用 |
+| /api/v1/info/get_good_id | - | 获取饰品的ID信息（分页目录；实测需翻页定位 hash，未采用） | 新·未采用 |
+| /api/v1/search/suggest | GET | 联想查询饰品（搜索框自动补全 ?text=） | 已用(2026-08-06) |
+| /api/v1/info/good | GET | 获取单件饰品详情（Playwright 拦截 info/good?id=；同步直连已迁移至此） | 已用 |
 | /api/v1/info/good/statistic | GET | 获取单件饰品存世量走势（?id=，[{statistic,created_at}] 日序列） | 新 |
-| /api/v1/goods/getPriceByMarketHashName | POST | 批量获取出售价格（body marketHashNameList[] → success{goodId, buff/yyyp/steam 价} + error[]） | 新 |
+| /api/v1/goods/getPriceByMarketHashName | POST | 批量获取出售价格（body marketHashNameList[] → success{goodId, buff/yyyp/steam 价} + error[]） | 已用(2026-08-06, hash→goodId) |
 | /api/v1/info/chart | POST | 获取单件饰品图表数据（sell_price/sell_num/buy_price/buy_num/turnover_number） | 已用 |
 | /api/v1/info/chartAll | - | 获取单件饰品全量图表数据 | 暂停使用 |
 | /api/v1/info/get_rank_list | POST | 获取排行榜单信息 | 新 |

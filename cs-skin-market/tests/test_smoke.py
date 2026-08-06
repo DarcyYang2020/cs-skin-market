@@ -76,13 +76,27 @@ check('index analysis produces complete output', t_ianalysis)
 print('[API: Item Search]')
 def t_search():
     from pipeline import collector
-    # csQAQ search API requires properly formatted names
-    # Verify function exists and handles errors gracefully
-    assert hasattr(collector, 'search_items')
     results = collector.search_items('AK-47')
-    # API may return empty for certain queries, but function should not crash
-    assert isinstance(results, list)
-check('item search function works (no crash)', t_search)
+    # New suggest API: must return real items with valid good_id (hard dependency check)
+    assert isinstance(results, list) and len(results) > 0, f'empty search results: {results}'
+    assert results[0].good_id > 0, f'bad good_id: {results[0].good_id}'
+    assert results[0].name, 'missing item name'
+check('item search returns real items (suggest API)', t_search)
+
+print('[API: MarketHash -> good_id]')
+def t_hash():
+    from pipeline import collector
+    gid = collector.get_good_id_by_market_hash('AK-47 | Elite Build (Battle-Scarred)')
+    assert gid > 0, f'resolve failed: {gid}'
+check('market hash resolves to good_id (getPriceByMarketHashName)', t_hash)
+
+print('[API: Item Detail]')
+def t_detail():
+    from pipeline import collector
+    det = collector.fetch_item_detail(good_id=30)
+    assert det is not None and det.good_id == 30, f'detail missing: {det}'
+    assert det.name and det.price_rmb > 0, f'incomplete fields: name={det.name} price={det.price_rmb}'
+check('item detail via info/good returns fields', t_detail)
 
 print('[Analysis: Item]')
 def t_ia():

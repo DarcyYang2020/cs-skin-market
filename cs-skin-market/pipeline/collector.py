@@ -119,6 +119,19 @@ def _api_post(path: str, body: dict) -> dict:
     return _api_call("POST", path, body)
 
 
+def bind_local_ip() -> str:
+    """(Re)bind current public IP to csQAQ API whitelist (POST /sys/bind_local_ip).
+
+    Direct API requires IP whitelist; dynamic ISP IPs can change.
+    Called at the start of daily collection (30s/次 rate limit)."""
+    resp = _api_post("/sys/bind_local_ip", {})
+    data = resp.get("data")
+    if resp.get("code") == 200 and data:
+        _log.info(f"bind_local_ip ok: {data}")
+        return str(data)
+    _log.warning(f"bind_local_ip failed: code={resp.get('code')} msg={resp.get('msg')}")
+    return ""
+
 def _parse_good_id(raw: int | None) -> int:
     if raw is None:
         return 0
@@ -146,10 +159,10 @@ def _parse_int(raw) -> int:
 def _run_browser_fallback(coro_factory, label):
     """Run a browser-fallback coroutine from sync code.
 
-    - ???????????/worker ????asyncio.run ????
-    - ????????FastAPI ??????????????? async_playwright
-      ??????? loop?? loop ???????????? warning????????
-      ???? asyncio.run RuntimeError?
+    - In worker/background threads, asyncio.run works fine.
+    - In FastAPI request context an event loop already exists; the Playwright
+      browser instance is bound to that loop, so asyncio.run would raise
+      RuntimeError. In that case skip the fallback (API 401 persists).
     """
     try:
         asyncio.get_running_loop()
@@ -277,31 +290,39 @@ def _fetch_index_kline_raw() -> list:
 
 
 def search_items(query: str, max_results: int = 10) -> list[ItemData]:
-    """Search items by keyword via csQAQ autocomplete API."""
+    """Search items by keyword via csQAQ suggest API (GET /search/suggest?text=).
+
+    Old /goods/search_good_id is permanently deprecated (401 even after IP binding).
+    suggest returns [{id: str, value: 中文全名}]; price/hash are filled later
+    by fetch_item_detail (goods_info)."""
     encoded = urllib.parse.quote(query, safe="")
-    resp = _api_get(f"/goods/search_good_id?keyword={encoded}")
+    resp = _api_get(f"/search/suggest?text={encoded}")
     items_data = resp.get("data")
-    if not items_data:
+    if not items_data or not isinstance(items_data, list):
         return []
 
     results = []
     for sd in items_data[:max_results]:
         item = ItemData()
-        item.name = sd.get("name", "")
-        item.steam_name = sd.get("market_hash_name", "")
+        item.name = sd.get("value", "")
         item.good_id = _parse_good_id(sd.get("id"))
-        item.price_rmb = _parse_price(sd.get("price", sd.get("buff_sell_price")))
         results.append(item)
     return results
 
 
 def get_good_id_by_market_hash(market_hash_name: str) -> int:
-    """Resolve a MarketHashName to csQAQ good_id."""
-    resp = _api_post("/goods/get_good_id", {"market_hash_name": market_hash_name})
-    data = resp.get("data")
-    if data and isinstance(data, dict):
-        return _parse_good_id(data.get("id"))
-    # fallback: search
+    """Resolve a MarketHashName to csQAQ good_id.
+
+    Old /goods/get_good_id is permanently deprecated (401 even after IP binding);
+    use /goods/getPriceByMarketHashName (batch hash -> goodId)."""
+    resp = _api_post("/goods/getPriceByMarketHashName", {"marketHashNameList": [market_hash_name]})
+    data = resp.get("data") or {}
+    success = data.get("success") or {}
+    hit = success.get(market_hash_name) or {}
+    gid = _parse_good_id(hit.get("goodId"))
+    if gid:
+        return gid
+    # fallback: suggest search (Chinese name may still match)
     results = search_items(market_hash_name, max_results=1)
     if results:
         return results[0].good_id
@@ -329,9 +350,11 @@ def fetch_item_detail(name_or_hash: str | None = None, good_id: int = 0,
         _log.warning("fetch_item_detail: no good_id found")
         return None
 
-    # 1. Get basic detail
-    resp = _api_get(f"/info/good_detail?good_id={good_id}")
-    detail = resp.get("data")
+    # 1. Get basic detail (old /info/good_detail is permanently deprecated 401;
+    #    new /info/good?id= returns data.goods_info with price/volume/order book)
+    resp = _api_get(f"/info/good?id={good_id}")
+    payload = resp.get("data") or {}
+    detail = payload.get("goods_info") or {}
     if not detail:
         return None
 
@@ -350,49 +373,12 @@ def fetch_item_detail(name_or_hash: str | None = None, good_id: int = 0,
         detail.get("buff_sell_num") or
         detail.get("yyyp_sell_num")
     )
+    item.volume_day = _parse_int(detail.get("turnover_number"))
 
-    # 2. Get chart data for volume and order book
-    chart_resp = _api_post("/info/chart", {
-        "good_id": good_id,
-        "key": "sell_num",
-        "platform": 1,  # BUFF
-    })
-    chart_data = chart_resp.get("data", [])
-    if chart_data and isinstance(chart_data, list):
-        # Last point is current
-        last = chart_data[-1]
-        if isinstance(last, list) and len(last) >= 2:
-            item.volume_total = _parse_int(last[1])
-
-    # Get buy price for order book
-    buy_resp = _api_post("/info/chart", {
-        "good_id": good_id,
-        "key": "buy_price",
-        "platform": 1,
-    })
-    buy_data = buy_resp.get("data", [])
-    highest_buy = 0.0
-    if buy_data and isinstance(buy_data, list):
-        last_buy = buy_data[-1]
-        if isinstance(last_buy, list) and len(last_buy) >= 2:
-            highest_buy = _parse_price(last_buy[1])
-
-    # Get turnover for volume_day
-    vol_resp = _api_post("/info/chart", {
-        "good_id": good_id,
-        "key": "turnover_number",
-        "platform": 3,  # Steam
-    })
-    vol_data = vol_resp.get("data", [])
-    if vol_data and isinstance(vol_data, list):
-        last_vol = vol_data[-1]
-        if isinstance(last_vol, list) and len(last_vol) >= 2:
-            item.volume_day = _parse_int(last_vol[1])
-
-    # Build order book
+    # Build order book from goods_info bid/ask
     ob = OrderBook()
-    ob.lowest_sell = item.price_rmb
-    ob.highest_buy = round(highest_buy, 2)
+    ob.lowest_sell = _parse_price(detail.get("buff_sell_price"))
+    ob.highest_buy = round(_parse_price(detail.get("buff_buy_price")), 2)
     ob.sell_count = item.volume_total
     if ob.lowest_sell > 0 and ob.highest_buy > 0:
         ob.spread_rmb = round(ob.lowest_sell - ob.highest_buy, 2)

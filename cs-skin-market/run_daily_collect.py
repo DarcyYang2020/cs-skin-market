@@ -29,6 +29,21 @@ def log(msg: str):
         pass
 
 
+def collect_bind_ip() -> bool:
+    """重绑 csQAQ IP 白名单（直连 API 依赖；动态运营商 IP 可能变化，每天重绑一次）。"""
+    from pipeline import collector
+    try:
+        info = collector.bind_local_ip()
+        if info:
+            log(f"csQAQ IP 绑定: {info}")
+            return True
+        log("csQAQ IP 绑定失败（后续直连接口可能 401）")
+        return False
+    except Exception as e:
+        log(f"csQAQ IP 绑定异常: {e}")
+        return False
+
+
 def collect_market_index() -> bool:
     from pipeline import collector, db
     try:
@@ -204,6 +219,7 @@ def main():
     # 每周日额外全量刷新 90 日 K 线（对齐 docstring；--kline 亦可手动触发）
     is_sunday = datetime.now(TZ_BJ).isoweekday() == 7
     log("=== 每日采集开始 ===")
+    collect_bind_ip()
     collect_market_index()
     collect_macro()
     try:
