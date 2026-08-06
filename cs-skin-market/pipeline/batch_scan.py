@@ -87,7 +87,10 @@ def _topup_price_plan(avg_cost, qty, current_price, analysis):
     _e_hi = _entry.get("high", 0) or 0
     _q = max(1, qty // 3)
     _stats = TOPUP_EXPECTANCY_STATS["topup_ok"]
-    _base = f"（回测：补仓点14d胜率{_stats['win14']:.0f}%、均值+{_stats['avg14']:.1f}%）"
+    _base = f"（回测：补仓点14d胜率{_stats['win14']:.0f}%、均值+{_stats['avg14']:.1f}%"
+    if _stats.get("events"):
+        _base += f"、{_stats['events']}次独立事件"
+    _base += "）"
     if _e_lo > 0 and _e_hi > 0 and _e_hi < _cur:
         _mid = round((_e_lo + _e_hi) / 2, 2)
         _steps = [(_e_hi, _q), (_mid, _q), (_e_lo, _q)]

@@ -86,6 +86,7 @@ ITEM_EXPECTANCY_STATS = {
     "panic": {
         "label": "恐慌共振",
         "n": 21,
+        "events": 1,  # J-1 独立事件数(±3天去簇, 2026-08-06审计: 42信号全部集中在5/22~5/26单次事件)
         "win14": 95.0, "avg14": 61.4, "ci14_lo": 76.4, "ci14_hi": 99.1,
         "win30": 83.3, "avg30": 74.6,
     },
@@ -101,6 +102,7 @@ ITEM_EXPECTANCY_STATS = {
     "deep_value": {
         "label": "深值企稳",
         "n": 241,
+        "events": 13,  # J-1 独立事件数(±3天去簇, 2026-08-06审计, deepvalue_replay)
         "win14": 48.1, "avg14": 3.8, "ci14_lo": 41.8, "ci14_hi": 54.4,
         "win30": 46.1, "avg30": 8.3,
     },
@@ -116,7 +118,7 @@ ITEM_EXPECTANCY_STATS = {
 #       fusion=watch 子集 14d 均值-0.30% → 补仓需融合决策放行(buy)才触发(正期望门控)。
 TOPUP_EXPECTANCY_STATS = {
     # 补仓条件满足 + 融合决策 buy: 触发可分批补仓
-    "topup_ok":   {"label": "可分批补仓", "n": 448, "win14": 54.2, "avg14": 5.4, "win30": 44.0, "avg30": 5.2},
+    "topup_ok":   {"label": "可分批补仓", "n": 448, "events": 9, "win14": 54.2, "avg14": 5.4, "win30": 44.0, "avg30": 5.2},  # J-1 事件数≈9(topup_replay_p09近似复现, 2026-08-06)
     # 补仓条件满足但融合未放行: 降级暂缓
     "topup_wait": {"label": "融合未确认", "n": 394, "win14": 37.8, "avg14": -0.3, "win30": 38.2, "avg30": 4.2},
     # 半山腰 pct 25~40: 14d 期望≈0

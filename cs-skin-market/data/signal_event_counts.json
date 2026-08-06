@@ -1,0 +1,35 @@
+{
+ "generated": "2026-08-06",
+ "window": 3,
+ "note": "事件簇数=±3天去簇; 与展示 n(信号数)不同源, 单独展示防误读",
+ "panic": {
+  "signals": 42,
+  "events": 1,
+  "max_cluster_share": 1.0,
+  "source": "item_backtest_latest(88buy)"
+ },
+ "base": {
+  "signals": 46,
+  "events": 10,
+  "max_cluster_share": 0.7391,
+  "source": "item_backtest_latest(88buy)"
+ },
+ "deep_value": {
+  "signals": 241,
+  "events": 13,
+  "max_cluster_share": 0.2407,
+  "source": "deepvalue_replay(301)"
+ },
+ "p10": {
+  "signals": 169,
+  "events": 48,
+  "max_cluster_share": 0.0,
+  "source": "c1_p10_replay(生产去重后交易日)"
+ },
+ "topup_ok": {
+  "signals": 127,
+  "events": 9,
+  "max_cluster_share": 0.4094,
+  "source": "topup_replay_p09(近似复现, 口径2026-08-05)"
+ }
+}

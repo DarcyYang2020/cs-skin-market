@@ -111,7 +111,7 @@
     <div style="margin-top:6px;font-size:11px;color:var(--text-muted);line-height:1.5;">说明：低估参考=近90日30%分位价；超跌参考=均价-1.5倍波幅；趋势分=趋势健康度（≥55 更可靠，恐慌共振时更低也可参考）</div>
     {% if price_zones and price_zones.expectancy %}
     <div style="background:#eff6ff;border:1px solid #dbeafe;padding:8px 10px;border-radius:8px;margin-top:10px;font-size:13px;color:#1e40af;">
-      历史同类信号(<b>{{ price_zones.expectancy.label }}</b>, {{ price_zones.expectancy.n }}个): 14日胜率 {{ price_zones.expectancy.win14 }}% <span style="color:#94a3b8;">(95%CI {{ price_zones.expectancy.ci14_lo }}~{{ price_zones.expectancy.ci14_hi }}%)</span> / 均收益 {{ "%+.1f"|format(price_zones.expectancy.avg14) }}% · 30日胜率 {{ price_zones.expectancy.win30 }}% / 均收益 {{ "%+.1f"|format(price_zones.expectancy.avg30) }}%
+      历史同类信号(<b>{{ price_zones.expectancy.label }}</b>, {{ price_zones.expectancy.n }}个{% if price_zones.expectancy.events %}, {{ price_zones.expectancy.events }}次独立事件{% endif %}): 14日胜率 {{ price_zones.expectancy.win14 }}% <span style="color:#94a3b8;">(95%CI {{ price_zones.expectancy.ci14_lo }}~{{ price_zones.expectancy.ci14_hi }}%)</span> / 均收益 {{ "%+.1f"|format(price_zones.expectancy.avg14) }}% · 30日胜率 {{ price_zones.expectancy.win30 }}% / 均收益 {{ "%+.1f"|format(price_zones.expectancy.avg30) }}%
       <span style="color:#64748b;font-size:12px;">(回测口径)</span>
     </div>
     {% endif %}
