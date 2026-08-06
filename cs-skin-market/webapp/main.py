@@ -1957,6 +1957,10 @@ async def api_add_execution(request: Request):
     except (TypeError, ValueError):
         return {"ok": False, "error": "数量和价格格式不正确"}
     advice_date = str(body.get("advice_date", "")).strip() or __import__("datetime").date.today().isoformat()
+    try:
+        advice_price = float(body["advice_price"]) if body.get("advice_price") else None
+    except (TypeError, ValueError):
+        advice_price = None
     if not name:
         return {"ok": False, "error": "请选择物品"}
     if action not in EXEC_ACTIONS:
@@ -1978,7 +1982,7 @@ async def api_add_execution(request: Request):
             if row2:
                 item_id = row2["id"]
         eid = db.add_execution(conn, item_id, name, action, advice_date, price, qty,
-                               advice_signal=body.get("advice_signal", "") or "")
+                               advice_signal=body.get("advice_signal", "") or "", advice_price=advice_price)
         # 2026-08-05: 执行记录同步持仓（buy/add 摊薄均价+累计买入; reduce/sell 减数量）
         warning = ""
         if item_id > 0:

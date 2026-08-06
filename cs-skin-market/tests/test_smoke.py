@@ -473,6 +473,14 @@ def t_p1_supply_accumulation():
     # 6) 存世量过低(<3000) -> 不触发
     res = ia.run_item_analysis(prices=prices, **dict(kw, survive_count=500))
     assert res.fusion_decision['action'] == 'watch', res.fusion_decision['action']
+    # 7) 强牛段放行（I-8 边界，2026-08-06 回放 sent<40+TH>=60 -> 30d +46.3%）:
+    #    贪婪(sent=30) + 大盘强TH(60) 不满足禁入(sent<40 AND th<45) -> 仍触发
+    ia.compute_sentiment_score = lambda: 30
+    res7 = ia.run_item_analysis(prices=prices, **dict(kw, market_th_score=60))
+    fd7 = res7.fusion_decision
+    assert fd7['action'] == 'buy', fd7['action']
+    assert fd7['position_limit'] == 0.10, fd7['position_limit']
+    ia.compute_sentiment_score = lambda: 50
     (ia._analyze_position, ia.compute_sentiment_score, ia.compute_sentiment_factor,
      ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision) = orig
 check('P1-0 supply-contraction accumulation buy + gate/dedup/survive', t_p1_supply_accumulation)
@@ -909,7 +917,8 @@ def t_exec_crud():
     conn = db.get_conn()
     eids = []
     try:
-        eid = db.add_execution(conn, 0, '__smoke_test_item__', 'buy', '2026-07-01', 100.0, 2, advice_signal='已到买点')
+        eid = db.add_execution(conn, 0, '__smoke_test_item__', 'buy', '2026-07-01', 100.0, 2,
+                               advice_signal='已到买点', advice_price=95.0)
         eids.append(eid)
         rows = [r for r in db.list_executions(conn) if r['id'] == eid]
         assert len(rows) == 1, rows

@@ -347,6 +347,14 @@ cs-skin-market/
 - **信号族闸门（未来路由层）**：按市场状态（贪婪禁入/恐慌+深跌=V型底区/恐慌+中跌=阴跌中继区/恐慌浅跌/中性企稳/弱市观望）决定哪些信号族开火——当前由各族门控隐含实现，界面标注见 batch_scan.market_regime。
 - **单品买点（item_analysis 融合决策）**：管「具体品是否到买点」。
 
+## 运维（2026-08-06）
+
+- **数据库自动备份**：`python backup_db.py`（SQLite online backup API → `data/backup/market_YYYYMMDD_HHMMSS.db`，默认保留 14 份）；计划任务 `CS_DB_Backup` 每日 23:30。
+- **健康告警**：`python notify_alert.py --monitor`（健康检查 FAIL 时推送）；`.env` 配 `NOTIFY_WEBHOOK_URL`（钉钉机器人）后生效，未配置则静默；计划任务 `CS_Health_Alert` 每日 21:30。
+- **计划任务安装**：`powershell -ExecutionPolicy Bypass -File install_tasks.ps1`（在 cs-skin-market 目录）。
+- **本地 CI（pre-commit hook）**：`powershell -ExecutionPolicy Bypass -File install_hooks.ps1` → 每次 `git commit` 自动跑 `tests/test_smoke.py`，失败则拦截提交。
+- **执行记录滑点统计**：`executions.advice_price`（建议价，批量扫描「按建议执行」自动带入）；复盘页显示单笔滑点与平均滑点，用于校准 2% 双边成本假设。
+
 ## 常见问题
 
 - **模板中文乱码**: 模板文件必须保存为 UTF-8 编码，不要用 PowerShell 编辑含中文的模板。使用 Python \uXXXX 转义序列生成。

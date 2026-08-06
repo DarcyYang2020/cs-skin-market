@@ -311,6 +311,7 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         action TEXT NOT NULL,
         advice_date TEXT NOT NULL,
         advice_signal TEXT,
+        advice_price REAL,
         exec_price REAL NOT NULL,
         qty INTEGER NOT NULL DEFAULT 1,
         settle_14 REAL,
@@ -319,6 +320,10 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         pnl_30 REAL,
         created_at TEXT DEFAULT (datetime('now','localtime')))""")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_executions_date ON executions(advice_date)")
+    # 滑点统计(2026-08-06): 旧库惰性补 advice_price 列
+    _exec_cols = [r[1] for r in conn.execute("PRAGMA table_info(executions)").fetchall()]  # 索引访问兼容无 row_factory 连接
+    if "advice_price" not in _exec_cols:
+        conn.execute("ALTER TABLE executions ADD COLUMN advice_price REAL")
 
     # 全市场快照(2026-08-04): 每日 get_page_list 拉全市场价格/在售数快照, 样本扩容
     conn.execute("""CREATE TABLE IF NOT EXISTS market_snapshot (
@@ -679,12 +684,12 @@ def get_latest_snapshot_report(conn, item_id):
 # ---- Executions (P0-2, 2026-08-04) ----
 
 
-def add_execution(conn, item_id, name, action, advice_date, exec_price, qty=1, advice_signal=""):
+def add_execution(conn, item_id, name, action, advice_date, exec_price, qty=1, advice_signal="", advice_price=None):
     """新增执行记录（按建议执行：建仓/补仓/减仓/清仓）。"""
     cur = conn.execute(
-        "INSERT INTO executions (item_id, name, action, advice_date, advice_signal, exec_price, qty) "
-        "VALUES (?,?,?,?,?,?,?)",
-        (item_id, name, action, advice_date, advice_signal, exec_price, qty))
+        "INSERT INTO executions (item_id, name, action, advice_date, advice_signal, advice_price, exec_price, qty) "
+        "VALUES (?,?,?,?,?,?,?,?)",
+        (item_id, name, action, advice_date, advice_signal, advice_price, exec_price, qty))
     conn.commit()
     return cur.lastrowid
 
