@@ -1945,6 +1945,36 @@ async def api_executions():
         conn.close()
 
 
+@app.get("/api/watchlist/executions/ref-price")
+async def api_execution_ref_price(name: str = "", date: str = ""):
+    """执行记录参考价（P1 执行闭环，2026-08-06）：按名称+日期带出 price_history 锚定收盘价（悠悠定价锚）。
+
+    只带出不写库——持仓均价仍以用户确认的 exec_price 为准，避免参考价污染持仓成本。
+    """
+    conn = db.get_conn()
+    try:
+        name = name.strip()
+        if not name:
+            return {"ok": False, "error": "缺少物品名称"}
+        row = conn.execute("SELECT id FROM items WHERE name=? LIMIT 1", (name,)).fetchone()
+        if not row:
+            return {"ok": False, "error": "未匹配到系统物品，请先添加自选"}
+        item_id = row["id"]
+        if date:
+            r = conn.execute(
+                "SELECT price_rmb, date FROM price_history WHERE item_id=? AND date<=? ORDER BY date DESC LIMIT 1",
+                (item_id, date)).fetchone()
+        else:
+            r = conn.execute(
+                "SELECT price_rmb, date FROM price_history WHERE item_id=? ORDER BY date DESC LIMIT 1",
+                (item_id,)).fetchone()
+        if r and r["price_rmb"] and r["price_rmb"] > 0:
+            return {"ok": True, "price": round(float(r["price_rmb"]), 2), "date": r["date"]}
+        return {"ok": False, "error": "该日期区间无价格记录"}
+    finally:
+        conn.close()
+
+
 @app.post("/api/watchlist/executions")
 async def api_add_execution(request: Request):
     """新增执行记录（按建议执行：建仓/补仓/减仓/清仓）。"""

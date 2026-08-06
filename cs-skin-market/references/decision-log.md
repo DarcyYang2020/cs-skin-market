@@ -936,3 +936,20 @@ un_data_health 恢复 7/7 通过。
 
 **落地范围**：`collector.py` search_items / get_good_id_by_market_hash / fetch_item_detail 三函数迁移 + `bind_local_ip()` 新增；同步 `fetch_item_detail` 改为 goods_info 直取盘口与日量（去掉 422 的 info/chart 调用）。异步 Playwright 路径（collector_csqaq）拦截的是网站自身 `info/good?id=` + `info/chart`，不受影响。实测：search_items('AK-47') 返回 5 条、hash 解析 id=30、详情字段齐全、bind 成功；test_smoke 61/61。
 
+
+## J-3 信号族样本深度 + P1 执行参考价（2026-08-06，展示层/执行闭环）
+
+**J-3 落地（各族样本深度并入数据积累进度卡）**：
+- 升级 `references/j1_event_counts.py`：数据源从已清理的旧文件（item_backtest_latest 88buy / deepvalue_replay_tmp 等）改为 **K-2 引擎回放同源**（`data/item_backtest_full_2025.json`，458 信号，含 C2 阴跌闸门），消除脚本与产物不同源的漂移隐患（K-3 纪律）。
+- 产出 `data/signal_event_counts.json` 新结构：细族（恐慌共振 45/2 事件、恐慌退潮 47/1、深值 154/28、供给收缩 170/16、深度回调 33/5、基础 9/8）+ 展示键（panic 92/2、deep_value 154/28、accumulate 212/23）+ win14/avg14/win30/avg30 + Wilson 95% CI（ci14 口径与 config 旧值一致）。
+- `dashboards.data_progress` 新增 `families` 区（读 signal_event_counts.json）；dashboard 进度卡新增「信号族样本深度」区块：各族「信号数 · 独立事件数 · 14d胜率」+ J-2 重拟合门槛进度（恐慌独立事件 ≥3，当前 2）。
+- 同步 `config.ITEM_EXPECTANCY_STATS`：deep_value win14 57.0→55.8 / avg14 7.3→6.9（ci 48.0~63.5）、accumulate win14 58.8→58.5 / avg14 9.9→9.8（ci 51.8~64.9）——旧值为历史回放版本，现与脚本产出同源；n/events 已一致未动。
+- test_smoke：`t_data_progress` 新增 families 同源硬校验（进度卡 n == 回放 display_keys 计数、total_signals == 回放信号数）。
+
+**P1 执行闭环：成交参考价带出（真实成交价回填的可行性落地方案）**：
+- 评估结论：真正"自动回填历史真实成交价"需悠悠逐日成交均价链路（代价大、登录态维护）；性价比最高的是**参考价带出**——执行记录添加时成交价留空，前端自动从 `price_history`（悠悠定价锚日收盘）带出参考价填入，用户确认后提交。
+- 落地：`GET /api/watchlist/executions/ref-price?name=&date=`（取当日或最近一日 price_history.price_rmb，只带出不写库）+ watchlist.html submitExec 留空时自动请求并提示「已带出参考价（锚定收盘），请确认」。
+- 边界：持仓均价/滑点统计仍以用户确认的 exec_price 为准，参考价不绕过确认、不污染持仓成本。
+
+**学到的新思路**：① 展示统计必须与回放产物同源——config 手工同步常量已两次漂移（accumulate 注释 163/31/6 与当前 170/33/9 不符、win14 旧版），今后改期望统计一律以 `j1_event_counts.py` 输出为准；② 执行闭环的"真实价"瓶颈在历史逐日成交价，锚定收盘价是当前数据下的最佳参考，等成交量积累后可升级为悠悠成交均价。
+

@@ -1,14 +1,16 @@
 # -*- coding: utf-8 -*-
-"""J-1 胜率事件上下文：固化各族「独立事件数（去簇）」。
+"""J-1/J-3 信号族样本深度：从当前引擎回放同源统计各族「信号数 / 独立事件数（±3天去簇）」。
 
-口径：signal_cluster_report(dates, window=3) 的 event_count（±3 天内算同一事件簇）。
-数据源（只读）：
-- panic / base：data/item_backtest_latest.json（88 buy，2025-11-02 起）
-- deep_value：data/deepvalue_replay_tmp.json（limit≈0.10 的 241 信号）
-- p10：data/c1_p10_replay.json（生产 7 天去重后 48 交易日）
-- topup_ok：data/topup_replay_p09.json 近似复现补仓分层（pct<=25+th>=40+z<=-0.5+mth>=45+action=buy）
+口径（K-3：展示统计必须与回放产物同源）：
+- 数据源：data/item_backtest_full_2025.json（K-2 引擎 458 信号，含 C2 deep_value 阴跌闸门）
+- 细族划分：按 action_label 关键词（恐慌共振/恐慌退潮/深值/供给收缩/深度回调/分批建仓）
+- 展示键：action_label 匹配（含「恐慌」→panic / 含「深值」→deep_value / 其余→accumulate，与 config.ITEM_EXPECTANCY_STATS 同口径）
+- 事件数：backtest_methodology.signal_cluster_report(dates, window=3) 的 event_count
+- win/avg：net14/net30（回放内已扣 2% 双边成本）；ci14 = Wilson 95% 区间（与 config 旧口径一致）
 
-结果写入 data/signal_event_counts.json；config.py 常量中的 events 字段由本脚本产出手工同步（定期刷新）。
+产出：data/signal_event_counts.json（供数据积累进度卡 J-3 展示「信号数/独立事件数」随采集增长；
+      display_keys 与 config.ITEM_EXPECTANCY_STATS 同源，改 config 时以本脚本输出为准）。
+运行：python references/j1_event_counts.py
 """
 import io
 import json
@@ -17,43 +19,114 @@ import sys
 sys.path.insert(0, ".")
 from pipeline.backtest_methodology import signal_cluster_report
 
+REPLAY = "data/item_backtest_full_2025.json"
+OUT = "data/signal_event_counts.json"
+
+FAMILIES = [
+    ("panic_resonance", "恐慌共振"),
+    ("panic_easing", "恐慌退潮"),
+    ("deep_value", "深值"),
+    ("supply_accum", "供给收缩"),
+    ("deep_dip", "深度回调"),
+    ("base", None),  # 其余（基础分批）
+]
+
+
+def wilson_ci(k: int, n: int, z: float = 1.96):
+    """Wilson 95% 置信区间（百分比）。"""
+    if n <= 0:
+        return (0.0, 0.0)
+    p = k / n
+    denom = 1 + z * z / n
+    center = (p + z * z / (2 * n)) / denom
+    half = z * ((p * (1 - p) / n + z * z / (4 * n * n)) ** 0.5) / denom
+    return (round(100.0 * max(0.0, center - half), 1), round(100.0 * min(1.0, center + half), 1))
+
+
+def assign_family(action_label: str) -> str:
+    label = action_label or ""
+    for key, kw in FAMILIES:
+        if kw and kw in label:
+            return key
+    return "base"
+
+
+def display_key(action_label: str) -> str:
+    label = action_label or ""
+    if "恐慌" in label:
+        return "panic"
+    if "深值" in label:
+        return "deep_value"
+    return "accumulate"
+
+
+def family_stats(dates):
+    cl = signal_cluster_report(dates, window=3)
+    return {"signals": cl["signal_count"], "events": cl["event_count"],
+            "unique_dates": cl["unique_dates"],
+            "max_cluster_share": round(cl["max_cluster_share"], 4)}
+
+
+def pnl_stats(sigs):
+    def _slice(key):
+        ok = [s for s in sigs if s.get(key) is not None]
+        if not ok:
+            return {"n": 0, "win": None, "avg": None, "ci": None}
+        wins = sum(1 for s in ok if s[key] > 0)
+        return {"n": len(ok), "win": round(100.0 * wins / len(ok), 1),
+                "avg": round(sum(s[key] for s in ok) / len(ok), 2),
+                "ci": wilson_ci(wins, len(ok))}
+    return {"win14": _slice("net14"), "win30": _slice("net30")}
+
 
 def main():
-    out = {"generated": "2026-08-06", "window": 3, "note": "事件簇数=±3天去簇; 与展示 n(信号数)不同源, 单独展示防误读"}
+    data = json.load(io.open(REPLAY, encoding="utf-8"))
+    signals = data["signals"]
 
-    a = json.load(io.open("data/item_backtest_latest.json", encoding="utf-8"))["signals"]
-    for st, key in (("panic", "panic"), ("base", "base")):
-        dates = [s["date"] for s in a if s.get("signal_type") == st]
-        cl = signal_cluster_report(dates, window=3)
-        out[key] = {"signals": cl["signal_count"], "events": cl["event_count"],
-                    "max_cluster_share": round(cl["max_cluster_share"], 4), "source": "item_backtest_latest(88buy)"}
+    out = {"generated": "2026-08-06", "window": 3, "total_signals": len(signals),
+           "note": "K-2 引擎回放同源（item_backtest_full_2025.json）；事件簇数=±3天去簇；细族按 action_label 关键词，展示键按「恐慌/深值」匹配（与 config.ITEM_EXPECTANCY_STATS 同口径，改 config 以此文件为准）",
+           "source": REPLAY}
 
-    b = json.load(io.open("data/deepvalue_replay_tmp.json", encoding="utf-8"))["signals"]
-    dv = [s for s in b if abs(float(s.get("position_limit") or 0) - 0.10) < 0.001]
-    cl = signal_cluster_report([s["date"] for s in dv], window=3)
-    out["deep_value"] = {"signals": cl["signal_count"], "events": cl["event_count"],
-                         "max_cluster_share": round(cl["max_cluster_share"], 4), "source": "deepvalue_replay(301)"}
+    for key, kw in FAMILIES:
+        sigs = [s for s in signals if assign_family(s.get("action_label") or "") == key]
+        if not sigs:
+            continue
+        st = family_stats([s["date"] for s in sigs])
+        p14 = pnl_stats(sigs)
+        st["win14"] = p14["win14"]["win"]
+        st["avg14"] = p14["win14"]["avg"]
+        st["win30"] = p14["win30"]["win"]
+        st["avg30"] = p14["win30"]["avg"]
+        st["match"] = kw or "其余(基础分批)"
+        out[key] = st
 
-    p10 = json.load(io.open("data/c1_p10_replay.json", encoding="utf-8"))
-    out["p10"] = {"signals": p10["n"], "events": p10["distinct_dates"], "max_cluster_share": 0.0, "source": "c1_p10_replay(生产去重后交易日)"}
+    # 展示键（action_label 匹配，同 config.ITEM_EXPECTANCY_STATS 口径）
+    out["display_keys"] = {}
+    for key in ("panic", "deep_value", "accumulate"):
+        sigs = [s for s in signals if display_key(s.get("action_label") or "") == key]
+        st = family_stats([s["date"] for s in sigs])
+        p14 = pnl_stats(sigs)
+        st["n"] = len(sigs)
+        st["win14"] = p14["win14"]["win"]
+        st["avg14"] = p14["win14"]["avg"]
+        st["ci14_lo"], st["ci14_hi"] = p14["win14"]["ci"] or (None, None)
+        st["win30"] = p14["win30"]["win"]
+        st["avg30"] = p14["win30"]["avg"]
+        out["display_keys"][key] = st
 
-    d = json.load(io.open("data/topup_replay_p09.json", encoding="utf-8"))
-    recs = [r for r in d["records"]
-            if r.get("pct") is not None and r["pct"] <= 25
-            and r.get("th") is not None and r["th"] >= 40
-            and r.get("z") is not None and r["z"] <= -0.5
-            and r.get("mth") is not None and r["mth"] >= 45
-            and r.get("action") == "buy"]
-    cl = signal_cluster_report([r["date"] for r in recs], window=3)
-    out["topup_ok"] = {"signals": cl["signal_count"], "events": cl["event_count"],
-                       "max_cluster_share": round(cl["max_cluster_share"], 4),
-                       "source": "topup_replay_p09(近似复现, 口径2026-08-05)"}
-
-    with io.open("data/signal_event_counts.json", "w", encoding="utf-8") as f:
+    with io.open(OUT, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, indent=1)
-    for k in ("panic", "base", "deep_value", "p10", "topup_ok"):
-        v = out[k]
-        print("%-10s 信号=%d 事件=%d 单簇=%.0f%%" % (k, v["signals"], v["events"], v.get("max_cluster_share", 0) * 100))
+
+    print("=== 信号族样本深度（K-2 引擎回放 %d 信号）===" % len(signals))
+    for key, _ in FAMILIES:
+        if key in out:
+            v = out[key]
+            print("%-15s 信号=%d 事件=%d win14=%s avg14=%s win30=%s avg30=%s  (%s)" % (
+                key, v["signals"], v["events"], v["win14"], v["avg14"], v["win30"], v["avg30"], v["match"]))
+    print("--- 展示键（同 config.ITEM_EXPECTANCY_STATS）---")
+    for k, v in out["display_keys"].items():
+        print("%-12s n=%d 事件=%d win14=%s avg14=%s ci=(%s,%s) win30=%s avg30=%s" % (
+            k, v["n"], v["events"], v["win14"], v["avg14"], v["ci14_lo"], v["ci14_hi"], v["win30"], v["avg30"]))
 
 
 if __name__ == "__main__":

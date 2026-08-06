@@ -116,6 +116,23 @@ fetch("/api/data/progress")
     + '<div style="height:8px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden;margin-top:4px;">'
     + '<div style="height:100%;width:' + volPct + '%;background:linear-gradient(90deg,#3b82f6,#22c55e);"></div></div>'
     + '<span style="font-size:11px;">' + (v.avg_days_per_item || 0) + '/' + target + ' 天 (' + volPct + '%)' + '，预计还需 ' + (v.est_days_to_target || 0) + ' 天自然日达到 ' + target + ' 天覆盖 —— 引擎参数复验的等待主线</span></div>';
+  // ---- 信号族样本深度 (J-3, 2026-08-06): 信号数/独立事件数随采集增长 + J-2 重拟合门槛 ----
+  var fam = d.families;
+  if (fam && fam.display_keys) {
+    var dk = fam.display_keys;
+    function _dk(key, field) { return dk[key] ? (dk[key][field] != null ? dk[key][field] : "-") : "-"; }
+    var famRows = [
+      ["恐慌族(共振+退潮)", _dk("panic","n") + " 信号 · " + _dk("panic","events") + " 次独立事件 · 14d胜率 " + _dk("panic","win14") + "%"],
+      ["深值·大盘企稳", _dk("deep_value","n") + " 信号 · " + _dk("deep_value","events") + " 次独立事件 · 14d胜率 " + _dk("deep_value","win14") + "%"],
+      ["吸筹族(供给收缩等)", _dk("accumulate","n") + " 信号 · " + _dk("accumulate","events") + " 次独立事件 · 14d胜率 " + _dk("accumulate","win14") + "%"]
+    ];
+    html += '<div style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.08);padding-top:8px;">'
+      + '<div style="color:var(--text-muted);font-size:12px;margin-bottom:4px;">信号族样本深度（K-2 回放 ' + (fam.total_signals || 0) + ' 信号 · ' + _dpFmt(fam.generated) + ' 口径）</div>'
+      + '<table style="width:100%;font-size:12px;"><tbody>' + famRows.map(function(r) {
+        return '<tr><td style="width:130px;color:var(--text-muted);padding:2px 0;">' + r[0] + '</td><td style="padding:2px 0;">' + r[1] + '</td></tr>';
+      }).join("") + '</tbody></table>'
+      + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">重拟合门槛(J-2)：恐慌独立事件需 ≥3（当前 ' + _dk("panic","events") + '）+ 2~3 个中性回升段 —— 随每日采集增长</div></div>';
+  }
   document.getElementById("data-progress-body").innerHTML = html;
 });
 </script>

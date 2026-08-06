@@ -1033,9 +1033,25 @@ def t_data_progress():
         assert d['volume']['pct_items'] >= 0.0
         assert d['market_snapshot']['days'] >= 0 and d['market_snapshot']['latest'] is not None
         assert d['monitor_rank']['days'] >= 0 and d['monitor_rank']['n'] >= 0
+        # J-3 信号族样本深度: signal_event_counts.json 必须存在且与回放展示键同源
+        fam = d.get('families')
+        assert fam and fam.get('display_keys'), 'families 缺失（signal_event_counts.json 未生成）'
+        import json as _J
+        from pathlib import Path as _P
+        replay = _J.loads(_P(__file__).resolve().parent.parent.joinpath('data', 'item_backtest_full_2025.json').read_text(encoding='utf-8'))
+        from collections import Counter as _C
+        def _dk(lab):
+            lab = lab or ''
+            if '恐慌' in lab: return 'panic'
+            if '深值' in lab: return 'deep_value'
+            return 'accumulate'
+        cnt = _C(_dk(s.get('action_label', '')) for s in replay['signals'])
+        for k, n in cnt.items():
+            assert fam['display_keys'][k]['n'] == n, f"进度卡 {k} n={fam['display_keys'][k]['n']} 与回放 {n} 不一致"
+        assert fam['total_signals'] == len(replay['signals']), 'total_signals 与回放不一致'
     finally:
         conn.close()
-check('data_progress reports index/price/volume coverage', t_data_progress)
+check('data_progress reports index/price/volume coverage + J-3 families 同源', t_data_progress)
 
 def t_portfolio_dash():
     from pipeline import db, dashboards

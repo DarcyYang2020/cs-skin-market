@@ -7,6 +7,7 @@ from statistics import median
 from .config import PORTFOLIO_CAP_CONCURRENT
 
 _SCAN_CACHE = Path(__file__).resolve().parent.parent / "data" / "batch_scan_latest.json"
+_SIGNAL_EVENTS = Path(__file__).resolve().parent.parent / "data" / "signal_event_counts.json"
 VOLUME_TARGET_DAYS = 90  # 真实成交量目标覆盖天数（数据积累主线：价格 K 线已成熟，成交量是长板）
 _ADD_ACTIONS = ("\u53ef\u5206\u6279\u5efa\u4ed3", "\u53ef\u5206\u6279\u8865\u4ed3")  # 可分批建仓/可分批补仓
 
@@ -20,6 +21,17 @@ def _snapshot_days(conn, table, col):
     except Exception:
         return {"days": 0, "n": 0, "latest": None}
     return {"days": row[0] or 0, "n": row[1] or 0, "latest": row[2]}
+
+
+def _signal_families():
+    """信号族样本深度（J-3）：读 data/signal_event_counts.json（K-2 引擎回放同源，j1_event_counts.py 生成）。
+
+    返回 {display_keys, families, total_signals, generated, source}；文件缺失/损坏返回 None（进度卡隐藏该区块）。
+    """
+    try:
+        return json.loads(_SIGNAL_EVENTS.read_text(encoding="utf-8"))
+    except Exception:
+        return None
 
 
 def data_progress(conn):
@@ -65,6 +77,7 @@ def data_progress(conn):
         # 全市场快照 / 大户集中度 (2026-08-04 开始积累)
         "market_snapshot": _snapshot_days(conn, "market_snapshot", "good_id"),
         "monitor_rank": _snapshot_days(conn, "monitor_rank_snapshot", "item_id"),
+        "families": _signal_families(),
     }
 
 
