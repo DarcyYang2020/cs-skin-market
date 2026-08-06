@@ -4,7 +4,7 @@
 <div style="padding:16px 0;">
   <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
     <h2 style="margin:0;font-size:20px;">📊 信号复盘</h2>
-    <span style="font-size:12px;color:var(--text-muted);">回测基准88个 buy 信号的 14d/30d 表现（基准 item_backtest_latest.json，判断当前价格用数据库实时补充）</span>
+    <span style="font-size:12px;color:var(--text-muted);">新版引擎 503 个 buy 信号（K-2 回放 2025-01-01~2026-08-05，item_backtest_full_2025.json）的 14d/21d/30d 表现，最新价由数据库实时补充</span>
     <button class="btn btn-sm btn-outline" onclick="loadReplay()" style="margin-left:auto;">🔄 刷新</button>
   </div>
   <div id="replay-stats" style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;"></div>
@@ -26,6 +26,16 @@
 {% endblock %}
 {% block scripts %}
 <script>
+function famOf(lab) {
+  lab = lab || '';
+  if (lab.indexOf('恐慌共振') >= 0) return '恐慌共振';
+  if (lab.indexOf('恐慌退潮') >= 0) return '恐慌退潮';
+  if (lab.indexOf('深值') >= 0) return '深值企稳';
+  if (lab.indexOf('供给收缩') >= 0) return '供给收缩';
+  if (lab.indexOf('深度回调低吸') >= 0) return '深度回调低吸';
+  if (lab.indexOf('分批建仓') >= 0) return '基础';
+  return '其他';
+}
 function fmtPct(v, suffix) {
   if (v === null || v === undefined) return '<span class="muted">--</span>';
   var c = v > 0 ? 'var(--green)' : (v < 0 ? 'var(--red)' : 'var(--text-muted)');
@@ -39,9 +49,15 @@ function loadReplay() {
     var body = document.getElementById("replay-body");
     if (!d.found) { body.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--text-muted);">未找到回测基准数据</td></tr>'; return; }
     var sigs = d.signals || [];
+    if (d.meta) {
+      var metaEl = document.createElement('div');
+      metaEl.style.cssText = 'width:100%;font-size:12px;color:var(--text-muted);';
+      metaEl.textContent = '信号总数 ' + d.meta.count + ' ｜ 回放窗口 ' + (d.meta.range ? d.meta.range[0] + ' ~ ' + d.meta.range[1] : '--') + ' ｜ 生成 ' + (d.meta.generated || '--');
+      statsEl.appendChild(metaEl);
+    }
     var byType = {};
     sigs.forEach(function(s) {
-      var t = s.signal_type || 'base';
+      var t = famOf(s.action_label || '');
       if (!byType[t]) byType[t] = { n: 0, r14: [], r21: [], r30: [] };
       byType[t].n++;
       if (s.net14 !== null && s.net14 !== undefined) byType[t].r14.push(s.net14);
@@ -56,7 +72,7 @@ function loadReplay() {
       var a21 = g.r21.length ? Math.round(g.r21.reduce(function(a,b){return a+b;},0) / g.r21.length * 10) / 10 : null;
       var w30 = g.r30.length ? Math.round(g.r30.filter(function(x){return x>0;}).length / g.r30.length * 100) : null;
       var a30 = g.r30.length ? Math.round(g.r30.reduce(function(a,b){return a+b;},0) / g.r30.length * 10) / 10 : null;
-      var label = t === 'panic' ? '恐慌共振' : '低位低估';
+      var label = t;
       return '<div class="card" style="padding:10px 14px;min-width:170px;">'
         + '<div style="font-size:12px;color:var(--text-muted);">' + label + ' (n=' + g.n + ')</div>'
         + '<div style="font-size:15px;font-weight:700;margin-top:4px;">' + fmtPct(a14, '%') + ' <span style="font-size:11px;color:var(--text-muted);">14d胜率 ' + (w14 !== null ? w14 + '%' : '--') + '</span></div>'
@@ -67,7 +83,7 @@ function loadReplay() {
     statsEl.innerHTML = statsHtml || '<span style="color:var(--text-muted);font-size:13px;">无信号数据</span>';
 
     var rows = sigs.slice().sort(function(a, b) { return (a.date || '').localeCompare(b.date || ''); }).map(function(s) {
-      var t = s.signal_type === 'panic' ? '恐慌' : '低估';
+      var t = famOf(s.action_label || '');
       return '<tr>'
         + '<td>' + (s.date || '') + '</td>'
         + '<td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (s.name || '') + '</td>'

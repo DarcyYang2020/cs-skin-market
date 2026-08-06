@@ -827,3 +827,24 @@ un_data_health 恢复 7/7 通过。
   （avg +4.0）才是剔除的真实净收益来源，模拟剔除净收益被低估；deep_dip 豁免在供给扩张 35~120% 下仍放行
   （D 方案设计使然，n=13 单窗，待 J-2 数据门槛后复验）。
 - **验证**：test_smoke 59/59（网络桩离线跑；csQAQ API 当前 401「IP 绑定失效」，属数据源告警，另记）。
+
+
+## 数据对接修复：信号复盘 + 期望统计升级 K-2 口径（2026-08-06）
+
+- **背景**：统一大脑 K-2 落地后，展示层仍挂旧数据——信号复盘 /replay 读 item_backtest_latest.json（88 buy，
+  2025-11-02 基准）；单品报告期望统计条 ITEM_EXPECTANCY_STATS 的 panic n=21 / deep_value n=241 / accumulate n=16
+  均为 K-2 前切片。用户核查「数据是否和新版系统对接得上」时发现。
+- **修复**（纯展示/数据层，零引擎改动）：
+  - 信号复盘数据源 → item_backtest_full_2025.json（503 信号，K-2 引擎全窗口回放）；前端按 action_label
+    信号族分组展示（恐慌共振/恐慌退潮/深值企稳/供给收缩/深度回调低吸/基础），新增 meta 行（信号数/窗口/生成时间）；
+  - ITEM_EXPECTANCY_STATS 三展示键基于 503 信号重算（net 扣 2% 成本，events=±3 天去簇 J-1 口径）：
+    panic 92 信号/2 事件（win14 91.3% avg +33.4）、deep_value 211/33（win14 53.1% avg +5.6）、
+    accumulate 200/23（win14 58.5% avg +9.8）；旧切片值废弃；
+  - signal_event_counts.json 同步族级更新（source=item_backtest_full_2025 K-2 503buy）。
+- **死文件清理**：data/backup_price_history_20260802.json（0 引用一次性备份，git rm）；
+  data/topup_replay_tmp.json（9.9MB 研究临时产物，references/topup_replay.py 可再生成）。
+- **防回归**：test_smoke 新增「replay 数据源 + 期望统计对接新版引擎」check——校验回放信号数>400、fwd_series/net14
+  齐全、ITEM_EXPECTANCY_STATS 三键 n 与回放族计数一致（引擎再改动若忘刷新展示常量会直接挂测试）。
+- **验证**：test_smoke 60/60；/replay 页面 200；/api/signals/replay 返回 503 信号。
+- **学到的新思路**：展示层统计常量必须与回放产物同源，K-2 类引擎改动后展示数字失真无提示；
+  用测试把「展示 n = 回放族计数」固化为硬校验。

@@ -78,37 +78,34 @@ ITEM_EXIT_RULES = {
 # Shown next to price zones so investors see the mathematical expectancy of the
 # signal type instead of trading on gut feeling (project principle #1/#2).
 ITEM_EXPECTANCY_STATS = {
-    # 资金加权口径说明（2026-08-04）：期望按 position_limit 占仓加权（Σ(limit×ret)/Σlimit），
-    # 非信号等权。当前仓位结构：panic 全 0.3、deep_value 全 0.10 → 加权=等权；
-    # accumulate 混合 0.2/0.3，88 信号基准下加权与等权差异 <0.2pp。
-    # 回测脚本 run_item_backtest.py / run_portfolio_backtest.py 已升级为资金加权，此层展示常量下次回放时刷新。
-    # 恐慌共振 (sent>=75 + pct<10): 强信号层, 2026-08-02 回测 37信号中切片
+    # 口径（2026-08-06 K-2 引擎 503 信号重算，data/item_backtest_full_2025.json，net 已扣 2% 双边成本）：
+    # events = ±3 天去簇独立事件数（J-1 口径，backtest_methodology.signal_cluster_report window=3）。
+    # 展示键按单品报告 action_label 匹配：含「恐慌」→panic / 含「深值」→deep_value / 其余→accumulate。
+    # 恐慌族 = 恐慌共振(45) + 恐慌退潮(47) 全量（旧 n=21 为 2026-08-02 强信号层切片，已废弃）
     "panic": {
-        "label": "恐慌共振",
-        "n": 21,
-        "events": 1,  # J-1 独立事件数(±3天去簇, 2026-08-06审计: 42信号全部集中在5/22~5/26单次事件)
-        "win14": 95.0, "avg14": 61.4, "ci14_lo": 76.4, "ci14_hi": 99.1,
-        "win30": 83.3, "avg30": 74.6,
+        "label": "恐慌族",
+        "n": 92,
+        "events": 2,
+        "win14": 91.3, "avg14": 33.4, "ci14_lo": 83.8, "ci14_hi": 95.5,
+        "win30": 79.3, "avg30": 25.8,
     },
-    # 周期吸筹 (sent<75 或 pct>=10): 中等信号层
+    # 吸筹族 = 供给收缩吸筹(163) + 深度回调低吸(31) + 基础分批(6) 全量（旧 n=16 为短窗口切片，已废弃）
     "accumulate": {
-        "label": "周期吸筹",
-        "n": 16,
-        "win14": 81.2, "avg14": 15.1, "ci14_lo": 57.0, "ci14_hi": 93.4,
-        "win30": 68.8, "avg30": 27.6,
+        "label": "吸筹族",
+        "n": 200,
+        "events": 23,
+        "win14": 58.5, "avg14": 9.8, "ci14_lo": 51.6, "ci14_hi": 65.1,
+        "win30": 66.3, "avg30": 21.7,
     },
-    # 深值+大盘企稳 (2026-08-04 当前引擎回放 241 信号刷新): 轻仓位 0.10
-    #   一次性 hold14 +3.8% / hold30 +8.3%; 分批(首仓10%→跌10%加20%→跌15%加30%) 后 hold14 资金加权 +11.0%
+    # 深值+大盘企稳（K-2 供给扩张闸门后 211 信号，轻仓 0.10；旧 241 信号为 K-2 前回放）
     "deep_value": {
         "label": "深值企稳",
-        "n": 241,
-        "events": 13,  # J-1 独立事件数(±3天去簇, 2026-08-06审计, deepvalue_replay)
-        "win14": 48.1, "avg14": 3.8, "ci14_lo": 41.8, "ci14_hi": 54.4,
-        "win30": 46.1, "avg30": 8.3,
+        "n": 211,
+        "events": 33,
+        "win14": 53.1, "avg14": 5.6, "ci14_lo": 46.4, "ci14_hi": 59.7,
+        "win30": 59.7, "avg30": 16.7,
     },
 }
-
-
 # ============================================================
 #  补仓分层期望标签 (P1, 2026-08-04 全量日记录回放刷新)
 # ============================================================

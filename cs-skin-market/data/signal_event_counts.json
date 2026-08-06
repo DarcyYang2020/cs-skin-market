@@ -1,35 +1,68 @@
 {
  "generated": "2026-08-06",
  "window": 3,
- "note": "事件簇数=±3天去簇; 与展示 n(信号数)不同源, 单独展示防误读",
- "panic": {
-  "signals": 42,
-  "events": 1,
-  "max_cluster_share": 1.0,
-  "source": "item_backtest_latest(88buy)"
+ "note": "K-2 引擎 503 信号重算（item_backtest_full_2025.json，2025-01-01~2026-08-05）；事件簇数=±3天去簇；与展示 n(信号数)不同源，单独展示防误读",
+ "source": "item_backtest_full_2025(K-2 503buy)",
+ "panic_resonance": {
+  "signals": 45,
+  "events": 2,
+  "win14": 100.0,
+  "avg14": 49.7,
+  "win30": 77.8,
+  "avg30": 38.9
  },
- "base": {
-  "signals": 46,
-  "events": 10,
-  "max_cluster_share": 0.7391,
-  "source": "item_backtest_latest(88buy)"
+ "panic_easing": {
+  "signals": 47,
+  "events": 1,
+  "win14": 83.0,
+  "avg14": 17.8,
+  "win30": 80.9,
+  "avg30": 13.3
  },
  "deep_value": {
-  "signals": 241,
-  "events": 13,
-  "max_cluster_share": 0.2407,
-  "source": "deepvalue_replay(301)"
+  "signals": 211,
+  "events": 33,
+  "win14": 53.1,
+  "avg14": 5.6,
+  "win30": 59.7,
+  "avg30": 16.7
  },
- "p10": {
-  "signals": 169,
-  "events": 48,
-  "max_cluster_share": 0.0,
-  "source": "c1_p10_replay(生产去重后交易日)"
+ "supply_accum": {
+  "signals": 163,
+  "events": 16,
+  "win14": 59.5,
+  "avg14": 8.9,
+  "win30": 71.0,
+  "avg30": 24.3
  },
- "topup_ok": {
-  "signals": 127,
-  "events": 9,
-  "max_cluster_share": 0.4094,
-  "source": "topup_replay_p09(近似复现, 口径2026-08-05)"
+ "deep_dip": {
+  "signals": 31,
+  "events": 5,
+  "win14": 51.6,
+  "avg14": 13.2,
+  "win30": 38.7,
+  "avg30": 8.9
+ },
+ "base": {
+  "signals": 6,
+  "events": 6,
+  "win14": 66.7,
+  "avg14": 17.1,
+  "win30": 83.3,
+  "avg30": 16.4
+ },
+ "display_keys": {
+  "panic": {
+   "signals": 92,
+   "events": 2
+  },
+  "deep_value": {
+   "signals": 211,
+   "events": 33
+  },
+  "accumulate": {
+   "signals": 200,
+   "events": 23
+  }
  }
 }

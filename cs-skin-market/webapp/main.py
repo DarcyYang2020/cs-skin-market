@@ -2082,10 +2082,10 @@ async def page_replay(request: Request):
 
 @app.get("/api/signals/replay")
 async def api_signals_replay():
-    """\u8bfb\u56de\u6d4b\u57fa\u51c6 88 \u4fe1\u53f7 + DB \u5b9e\u65f6\u8865\u6700\u65b0\u4ef7\u683c\u8868\u73b0\uff08\u7eaf\u5c55\u793a\u5c42\uff09\u3002"""
+    """?????????? 503 ???item_backtest_full_2025.json?K-2 ?? 2026-08-06?+ DB ?????????????"""
     import json as _J
     from pathlib import Path as _P
-    p = _P(__file__).resolve().parent.parent / 'data' / 'item_backtest_latest.json'
+    p = _P(__file__).resolve().parent.parent / 'data' / 'item_backtest_full_2025.json'
     if not p.exists():
         return {"found": False}
     data = _J.loads(p.read_text(encoding='utf-8'))
@@ -2113,7 +2113,11 @@ async def api_signals_replay():
                 continue
     finally:
         conn.close()
-    return {"found": True, "signals": signals}
+    _dates = [s.get('date') for s in signals if s.get('date')]
+    return {"found": True, "signals": signals,
+            "meta": {"count": len(signals),
+                     "generated": data.get("generated"),
+                     "range": (min(_dates), max(_dates)) if _dates else None}}
 
 
 @app.get("/discover", response_class=HTMLResponse)

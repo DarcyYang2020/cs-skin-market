@@ -1485,6 +1485,32 @@ def t_b1_risk():
     assert '单票敞口警示' in a2['suggest'], a2['suggest']
 check('B1 熔断状态 + 单票敞口提示', t_b1_risk)
 
+print('[数据对接: 信号复盘 + 期望统计 (2026-08-06, K-2 引擎)]')
+def t_replay_source():
+    import json as _J
+    from pathlib import Path
+    from collections import Counter
+    base = Path(TEST_DIR).parent
+    p = base / 'data' / 'item_backtest_full_2025.json'
+    assert p.exists(), f'replay 数据源缺失: {p}'
+    d = _J.loads(p.read_text(encoding='utf-8'))
+    sigs = d.get('signals', [])
+    assert len(sigs) > 400, f'K-2 回放信号数异常: {len(sigs)}'
+    assert all(s.get('fwd_series') for s in sigs), 'fwd_series 缺失'
+    assert all(s.get('net14') is not None for s in sigs), 'net14 缺失'
+    from pipeline.config import ITEM_EXPECTANCY_STATS
+    def _fam(lab):
+        lab = lab or ''
+        if '恐慌' in lab: return 'panic'
+        if '深值' in lab: return 'deep_value'
+        return 'accumulate'
+    cnt = Counter(_fam(s.get('action_label', '')) for s in sigs)
+    for k, n in cnt.items():
+        assert ITEM_EXPECTANCY_STATS[k]['n'] == n, \
+            f"{k} 期望n={ITEM_EXPECTANCY_STATS[k]['n']} 与回放信号 {n} 不一致"
+check('replay 数据源 + 期望统计对接新版引擎', t_replay_source)
+
+
 print()
 print(f'=== Results: {passed} passed, {failed} failed ===')
 if failures:
