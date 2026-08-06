@@ -439,6 +439,31 @@ def bottom_signal_summary(bs):
     )
 
 
+def historical_event_impact(signal_date, horizon_days=30):
+    """判断 signal_date 起的 fwd 窗口与历史黑天鹅事件影响期是否重叠。
+
+    返回 [事件名, ...]；用于信号复盘/回测标注（外生冲击不算策略负贡献）。
+    仅标注不改信号：引擎实时事件风险走 event_risk_coefficient()。
+    """
+    from datetime import datetime, timedelta
+    from .config import EVENT_CALENDAR
+    try:
+        d = datetime.strptime(signal_date[:10], "%Y-%m-%d")
+    except (TypeError, ValueError):
+        return []
+    d_end = d + timedelta(days=horizon_days)
+    hits = []
+    for ev in EVENT_CALENDAR:
+        try:
+            e0 = datetime.strptime(ev["date"], "%Y-%m-%d")
+        except (TypeError, ValueError):
+            continue
+        e1 = e0 + timedelta(days=ev.get("impact_days", 30))
+        if d <= e1 and d_end >= e0:
+            hits.append(ev["name"])
+    return hits
+
+
 def event_risk_coefficient() -> float:
     """Return event risk discount (1.0 = no risk, 0.7 = major risk).
     Checks for known V社 events via settings table.

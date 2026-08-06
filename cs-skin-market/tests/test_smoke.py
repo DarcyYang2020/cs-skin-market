@@ -1510,6 +1510,15 @@ def t_replay_source():
             f"{k} 期望n={ITEM_EXPECTANCY_STATS[k]['n']} 与回放信号 {n} 不一致"
 check('replay 数据源 + 期望统计对接新版引擎', t_replay_source)
 
+def t_event_calendar():
+    from pipeline.market_macro import historical_event_impact
+    assert '五合一崩盘' in historical_event_impact('2025-10-16', horizon_days=30), '10-16 未命中五合一崩盘'
+    assert '黄盾' in historical_event_impact('2025-07-10', horizon_days=30), '07-10 未命中黄盾'
+    assert '纪念品炼金' in historical_event_impact('2025-05-28', horizon_days=30), '05-28 未命中纪念品炼金'
+    assert historical_event_impact('2026-01-01') == [], '无事件日期误命中'
+    assert historical_event_impact('bad-date') == [], '非法日期应返回空'
+check('事件日历: 黑天鹅 impact 窗口标注', t_event_calendar)
+
 
 print()
 print(f'=== Results: {passed} passed, {failed} failed ===')

@@ -15,7 +15,7 @@
           <tr>
             <th>日期</th><th>品名</th><th>类型</th>
             <th>入场价</th><th>14d</th><th>21d</th><th>30d</th>
-            <th>最新价</th><th>至今收益</th>
+            <th>最新价</th><th>至今收益</th><th>事件标注</th>
           </tr>
         </thead>
         <tbody id="replay-body"></tbody>
@@ -94,9 +94,10 @@ function loadReplay() {
         + '<td>' + fmtPct(s.net30, '%') + '</td>'
         + '<td>' + (s.latest_price ? '¥' + s.latest_price : '--') + '</td>'
         + '<td>' + fmtPct(s.latest_ret, '%') + '</td>'
+        + '<td>' + (s.event_note ? '<span style="color:var(--red);font-size:11px;">⚠️ ' + s.event_note + '</span>' : '<span class="muted">--</span>') + '</td>'
         + '</tr>';
     }).join('');
-    body.innerHTML = rows || '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-muted);">无信号</td></tr>';
+    body.innerHTML = rows || '<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--text-muted);">无信号</td></tr>';
   });
 }
 loadReplay();

@@ -2080,6 +2080,18 @@ async def page_replay(request: Request):
     return templates.TemplateResponse(request, "replay.html", {"active_page": "replay"})
 
 
+def _event_note(signal_date, fwd_series):
+    """信号 fwd30 窗口与黑天鹅事件影响期重叠 → 标注（外生冲击不算策略负贡献）。"""
+    from pipeline.market_macro import historical_event_impact
+    hits = historical_event_impact(signal_date, horizon_days=30)
+    if not hits:
+        return None
+    # 仅当 fwd30 实际可观察（信号后有足够行情）才标注
+    if len(fwd_series) < 30:
+        return None
+    return "受事件影响：" + "、".join(hits)
+
+
 @app.get("/api/signals/replay")
 async def api_signals_replay():
     """?????????? 503 ???item_backtest_full_2025.json?K-2 ?? 2026-08-06?+ DB ?????????????"""
@@ -2096,6 +2108,7 @@ async def api_signals_replay():
             s['latest_price'] = None
             s['latest_ret'] = None
             s['net21'] = None
+            s['event_note'] = _event_note(s.get('date'), s.get('fwd_series') or [])
             _fs = s.get('fwd_series') or []
             if len(_fs) > 20 and s.get('entry_price'):
                 s['net21'] = round((_fs[20] - s['entry_price']) / s['entry_price'] * 100 - 2.0, 1)
