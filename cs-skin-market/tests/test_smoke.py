@@ -327,7 +327,7 @@ def t_advice():
     a = _portfolio_advice(False, 0, 0, 80.0, mk(pct=35, z=-0.8, th=45))
     assert a['action'] == '持有观察', a['action']
     assert '距低估线30%还差5pp' in a['suggest'], a['suggest']
-    assert '距55还差10分' in a['suggest'], a['suggest']
+    assert '摩擦带(35-54)' in a['suggest'], a['suggest']
     # 非持仓 buy 信号: 建议给出分批建仓方案（方案C, 回测最优）
     a = _portfolio_advice(False, 0, 0, 80.0, mk(pct=15, z=-1.2, th=60, fusion='buy', price_zones={'entry': {'low': 60.0, 'high': 75.0}}))
     assert a['action'] == '可分批建仓', a['action']

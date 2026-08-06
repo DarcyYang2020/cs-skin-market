@@ -182,10 +182,12 @@ def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th
                     _gaps.append(f"pct={_pct:.0f}%(90日位置，越低越便宜)距低估线30%还差{_pct - 30:.0f}pp")
                 if _z > -1.5:
                     _gaps.append(f"z={_z:.2f}（参考需≤-1.5）")
-                if _th < 55:
-                    _gaps.append(f"单品TH={_th:.0f}距55还差{55 - _th:.0f}分")
+                if _th < 35:
+                    _gaps.append(f"单品TH={_th:.0f}已入恐慌区(<35)，黄金坑区") 
+                elif _th < 55:
+                    _gaps.append(f"单品TH={_th:.0f}处于摩擦带(35-54)，需止跌/企稳确认")
                 if _gaps:
-                    _suggest = "；".join(_gaps) + "（参考线：pct≤30% + TH≥55 + z≤-1.5，恐慌共振场景TH可更低）"
+                    _suggest = "；".join(_gaps) + "（参考线：pct≤30% + z≤-1.5；TH三区：恐慌<35黄金坑 / 35-54摩擦带 / ≥55趋势确认）"
                 else:
                     _suggest = f"已接近建仓参考线（pct={_pct:.0f}%、TH={_th:.0f}、z={_z:.2f}），等融合决策确认"
         return {"action": action, "reason": reason, "risk": risk, "fusion_action": fusion_action,

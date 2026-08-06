@@ -1056,6 +1056,8 @@ SIGNAL_FAMILIES = (
             F["pct"] is not None and F["pct"] <= 20
             and F["z"] is not None and F["z"] <= -0.5
             and F["th"] >= 35 and F["market_th"] >= 40
+            # I-6 阴跌中继闸门 (2026-08-06 回放验证): 大盘 chg30 在 [-3,3) 横盘段期望 18-53% ，剔除；[-15,-3) 深跌修复段 85-93%
+            and (F["mchg30"] is None or F["mchg30"] <= -3 or F["mchg30"] >= 3)
             and 40 <= F["sent"] <= 65 and F["drop21"] >= -5
             and not _dedup_hit(F["recent_buy_dates"], F["signal_date"])
         ),
