@@ -866,11 +866,19 @@ async def api_market_refresh(request: Request):
             conn.close()
         mi, last_update, chart_data = _dashboard_context()
         analysis_data = index_analysis.analyze_index_full(chart_data) if chart_data else None
+        # I-1 市场状态标注: 与首页 / 渲染口径一致（缺 regime_* 会导致 index_card 的「策略」徽章/提示消失）
+        from pipeline.batch_scan import market_regime
+        _ms_r = _market_snapshot()
+        _regime_label, _regime_cls, _regime_strategy = market_regime(
+            _ms_r.get("sentiment"), _ms_r.get("chg30"), _ms_r.get("th"))
         return templates.TemplateResponse(request, "partials/dashboard_refresh.html", {
             "index": mi,
             "last_update": last_update,
             "chart_data": chart_data,
             "analysis": analysis_data,
+            "regime_label": _regime_label,
+            "regime_class": _regime_cls,
+            "regime_strategy": _regime_strategy,
         })
     except Exception as e:
         return HTMLResponse(_ae(f"刷新失败: {str(e)[:200]}"))
@@ -1225,6 +1233,13 @@ async def api_watchlist_add(request: Request):
     quantity = int(form.get("quantity", 0))
     conn = db.get_conn()
     try:
+        # 防重复条目（2026-08-06 USP 空格变体教训）：忽略半角/全角空格匹配已有条目，命中则复用规范名
+        norm = name.replace(" ", "").replace("　", "")
+        row = conn.execute(
+            "SELECT id, name FROM items WHERE REPLACE(REPLACE(name,' ',''),?,'') = ? LIMIT 1",
+            ("　", norm)).fetchone()
+        if row and row["name"] != name:
+            name = row["name"]
         db.watchlist_add(conn, name, holding=holding, avg_cost=avg_cost, quantity=quantity)
         conn.commit()
         return HTMLResponse("OK")
