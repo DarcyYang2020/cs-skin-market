@@ -48,3 +48,6 @@ cs-skin-market/data/uu_headers.json
 
 # Batch scan progress persistence (Phase 4) - runtime state
 **/data/scan_progress_*.json
+
+# M1 monitor daily report (2026-08-08) - runtime state
+**/data/monitor_daily.md

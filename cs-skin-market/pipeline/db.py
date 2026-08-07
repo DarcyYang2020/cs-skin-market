@@ -383,6 +383,19 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         pass  # column already exists
     conn.execute("CREATE INDEX IF NOT EXISTS idx_signal_tracking_date ON signal_tracking(signal_date)")
 
+    # M1 监控模式 (2026-08-08): 每日自选品异动事件归档(纯提醒层, 只读引擎输出)
+    conn.execute("""CREATE TABLE IF NOT EXISTS monitor_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT NOT NULL,
+        item_id INTEGER,
+        item_name TEXT,
+        event_type TEXT NOT NULL,   -- near_buy/stop_loss/decision_flip/supply_shift/price_spike/market_state/exec_due/new_buy_signal
+        level TEXT NOT NULL,        -- info/warn/danger
+        detail TEXT NOT NULL,
+        dedup_key TEXT NOT NULL UNIQUE,   -- date|item_id|event_type (大盘状态事件 item_id 为空)
+        created_at TEXT DEFAULT (datetime('now','localtime')))""")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_monitor_events_date ON monitor_events(date)")
+
     conn.execute("""CREATE TABLE IF NOT EXISTS backtest_results (
 
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -500,6 +513,32 @@ def get_greedy_history(conn, start=None):
             "SELECT date, greedy_index AS value FROM macro_history WHERE greedy_index IS NOT NULL ORDER BY date"
         ).fetchall()
     return [(r["date"], float(r["value"])) for r in rows]
+
+
+def save_monitor_events(conn, date, events):
+    """M1 监控事件批量落库（dedup_key 冲突忽略，当日重跑不重复）。
+
+    events: list of dict(item_id, item_name, event_type, level, detail, dedup_key)
+    """
+    if not events:
+        return 0
+    _cur = conn.executemany(
+        "INSERT OR IGNORE INTO monitor_events (date, item_id, item_name, event_type, level, detail, dedup_key) "
+        "VALUES (?,?,?,?,?,?,?)",
+        [(date, e.get("item_id"), e.get("item_name"), e["event_type"], e["level"], e["detail"], e["dedup_key"])
+         for e in events],
+    )
+    return _cur.rowcount if hasattr(_cur, "rowcount") else len(events)
+
+
+def list_monitor_events(conn, days=7):
+    """近 N 天监控事件，日期倒序。"""
+    from datetime import datetime, timezone, timedelta
+    cutoff = (datetime.now(timezone(timedelta(hours=8))) - timedelta(days=days)).strftime("%Y-%m-%d")
+    return conn.execute(
+        "SELECT date, item_id, item_name, event_type, level, detail FROM monitor_events "
+        "WHERE date >= ? ORDER BY date DESC, id DESC", (cutoff,),
+    ).fetchall()
 
 
 def get_item_history(conn, item_id, limit=90):

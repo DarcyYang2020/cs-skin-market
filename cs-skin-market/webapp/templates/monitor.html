@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}CS-Market 监控{% endblock %}
+{% block content %}
+<div style="padding:16px 0;">
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
+    <h2 style="margin:0;font-size:20px;">🔔 监控</h2>
+    <span style="font-size:12px;color:var(--text-muted);">M1 每日自选品异动（近 {{ days }} 天）· 纯提醒层，只读引擎输出，不产生新信号</span>
+  </div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+    <span class="card" style="padding:8px 14px;font-size:13px;">🔴 危险 <b style="color:var(--red);">{{ counts.danger }}</b></span>
+    <span class="card" style="padding:8px 14px;font-size:13px;">🟡 提醒 <b style="color:var(--yellow);">{{ counts.warn }}</b></span>
+    <span class="card" style="padding:8px 14px;font-size:13px;">🔵 信息 <b style="color:var(--text-muted);">{{ counts.info }}</b></span>
+  </div>
+  {% set type_label = {'near_buy':'买点接近','stop_loss':'破位止损','decision_flip':'决策翻转','supply_shift':'供给突变','price_spike':'价格异动','market_state':'大盘状态','exec_due':'持仓到期','new_buy_signal':'新买信号'} %}
+  {% set level_color = {'danger':'var(--red)','warn':'var(--yellow)','info':'var(--text-secondary)'} %}
+  {% if not events %}
+  <div class="card" style="padding:30px;text-align:center;color:var(--text-muted);">近 {{ days }} 天暂无监控事件（每日采集收尾自动生成）</div>
+  {% else %}
+  {% for date, evs in by_date.items() %}
+  <div class="card" style="margin-bottom:12px;padding:0;">
+    <div style="padding:10px 16px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:8px;">
+      <span style="font-weight:700;">{{ date }}</span>
+      <span style="font-size:12px;color:var(--text-muted);">{{ evs|length }} 条</span>
+    </div>
+    <div style="padding:6px 16px;font-size:13px;">
+      {% for e in evs %}
+      <div style="display:flex;gap:8px;padding:6px 0;align-items:baseline;border-bottom:1px dashed rgba(255,255,255,0.06);">
+        <span style="color:{{ level_color.get(e.level, 'var(--text-muted)') }};font-weight:800;width:14px;">{% if e.level=='danger' %}🔴{% elif e.level=='warn' %}🟡{% else %}🔵{% endif %}</span>
+        <span style="min-width:64px;color:var(--text-muted);font-size:12px;">{{ type_label.get(e.event_type, e.event_type) }}</span>
+        <span style="font-weight:600;">{{ e.item_name or '大盘' }}</span>
+        <span style="color:var(--text-secondary);">{{ e.detail }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+  {% endif %}
+</div>
+{% endblock %}

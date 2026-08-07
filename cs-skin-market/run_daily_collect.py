@@ -241,6 +241,13 @@ def main():
         log(f"信号跟踪回填: 更新 {_sig['updated']} 条, 累计 {_s['n_total']} 信号 / 已回填14d {_s['n_filled14']} / 30d {_s['n_filled30']}")
     except Exception as e:
         log(f"信号跟踪回填异常（不中断采集）: {e}")
+    # M1 监控模式 (2026-08-08): 自选品异动事件生成 + 日报 (纯提醒层, 只读引擎输出, 不触碰冻结参数)
+    try:
+        from pipeline.monitor import run_daily_monitor
+        _mon = run_daily_monitor()
+        log(f"监控事件: 生成 {_mon['generated']} / 新增 {_mon['saved']} 条 (大盘 {_mon['bucket']}, 分析 {_mon['analyzed']} 品)")
+    except Exception as e:
+        log(f"监控事件生成异常（不中断采集）: {e}")
     # 每日备份 (Phase 4): SQLite online backup -> data/backup/, 保留最近 14 份
     try:
         from backup_db import backup as _daily_backup

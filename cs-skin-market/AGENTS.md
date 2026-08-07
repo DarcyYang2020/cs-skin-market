@@ -104,6 +104,7 @@ cd cs-skin-market && python run_server.py
 | 单品分析 | /search | 搜索 + 分析，结果持久化 |
 | 持仓管理 | /watchlist | 自选 + 持仓 + 批量扫描 + 信号中心 + 执行记录 + 组合仓位仪表 |
 | 发现高分品 | /discover | 扫描全武器类型崭新出厂品，筛选 Top 10 |
+| 监控 | /monitor | M1 每日自选品异动事件（买点接近/止损/决策翻转/供给突变/价格异动/大盘切换/持仓到期/新买信号） |
 
 **API 路由**:
 | 方法 | 路径 | 功能 |
@@ -339,6 +340,7 @@ cs-skin-market/
     supply.py            -- 供给端追踪（在售量唯一量源）
     buy_distance.py      -- 距买点 v3（企稳闸门/吸筹场景/TH 三区化）
     signal_tracking.py   -- 生产实盘信号跟踪（J-2 C 通道）
+    monitor.py           -- M1 监控模式（每日自选品异动事件生成 + 日报，纯提醒层）
     backtest_common.py   -- 回测公共模块（build_market_context 等）
     backtest_methodology.py -- A2 三件套（walk-forward/聚类/置换检验）
     batch_scan.py        -- 自选批量扫描（信号提取/按建议执行按钮）
@@ -374,6 +376,7 @@ cs-skin-market/
 | monitor_rank_snapshot | 大户集中度每周 Top50 | date, item_id, rank, num |
 | health_checks | 数据源健康检查 | date, status, checks_json |
 | signal_tracking | 生产 buy 信号跟踪（J-2 C 通道） | signal_date, entry_price, engine_version, fwd14/30, net14/30 |
+| monitor_events | M1 监控事件归档（近 7 天） | date, item_id, event_type, level, detail |
 | schema_version | schema 版本记录（Phase 4） | version, applied_at |
 
 ## 风控/信号职责分工（三层闸门，2026-08-06 定稿）

@@ -1358,3 +1358,24 @@ S2 回踩族在 C1（2026-08-05）已被证伪留研究池（A2 三件套未过�
 
 **验证**：两文件语法 PASS；`is_weekly_collect_day` 行为（2026-08-08 周五 False / env 强制 True）；离线 smoke 67/0/6；编码健康 0 硬问题。
 **学到的新思路**：① 采集审计要看「引擎/决策/展示」三级消费链，只被健康检查计数的数据可降频不可盲停；② 降频必须同步放宽健康检查 age 阈值，否则健康度恒 FAIL 变成噪声告警；③ 有明确研究价值但未接入的数据用「周度积累」保底，优于完全停采（保数据积累能力，成本降到 1/7）。
+## M1 监控模式落地：每日自选品异动事件 + 日报 + /monitor 页面（2026-08-08，纯提醒层）
+**背景**：用户确认 P1 监控模式先做 M1（每日批扫 + 异动事件 + 页面展示，不做推送）。设计目标：从「打开系统看报告」变为「每日自动盯盘」，全部只读引擎输出，不触碰冻结参数（符合 project-principles 展示层探索条款）。
+
+**事件规则（8 类，阈值人工确认、不回测拟合）**：
+- 买点接近：`proximity >= 60` 且决策非 buy（复用买点接近度，warn）
+- 破位止损：现价 ≤ 成本-25%（danger）
+- 决策翻转：watch/avoid→buy（danger）或 buy→watch/avoid/sell（warn），对比 snapshots 最近一天 action
+- 供给突变：在售量 7 日 ≤-20% 或 ≥+30%（warn）
+- 价格异动：单日 |涨跌| ≥ 8%（跌 danger / 涨 warn）
+- 大盘状态切换：六态跨日变化（warn）；当日状态记录（info，幂等）
+- 持仓到期：executions 14/30 日复盘到期且未结算（info）
+- 新 buy 信号：signal_tracking 当日新增（danger）
+
+**落地**：
+- `pipeline/monitor.py`（新增）：`_market_ctx_from_db`（大盘上下文纯 DB 计算，情绪用 macro_history 最新非空 greedy 映射，不拉网络）；`_analyze_item`（自选品只读跑 `run_item_analysis`，数据来自当日采集后的 DB 90 日 K 线，不落库不产生新信号）；8 类事件生成函数；`run_daily_monitor` 主入口 + `data/monitor_daily.md` 日报；`list_events` 供 Web。
+- `db.py`：新表 `monitor_events`（date/item_id/item_name/event_type/level/detail/dedup_key UNIQUE）+ `save_monitor_events`（INSERT OR IGNORE，返回实际插入数）+ `list_monitor_events`。
+- `run_daily_collect.py`：收尾（信号回填后、备份前）调用 `run_daily_monitor`，异常不中断采集。
+- Web：`GET /monitor`（近 7 天按日期分组 + 危险/提醒/信息统计）+ `GET /api/monitor/events`；`monitor.html` 新页面；导航加「🔔 监控」。
+
+**验证**：25 自选品首跑 2.2s，生成 16 事件（2 破位止损 / 12 买点接近 / 2 价格异动 / 大盘状态记录），重跑幂等（saved=0）；离线 smoke 69/0/6（新增 8 类事件生成 + 空库守卫 2 用例）；编码健康 0 硬问题。
+**学到的新思路**：① 提醒层规则不引入回测（阈值人工确认），避免给冻结期叠加过拟合面；② 监控分析走 DB 最新 K 线只读跑引擎（不落库），复用日采数据零额外采集成本；③ 事件表用 dedup_key（date|item_id|type）幂等，当日重跑不重复、跨日自动归档；④ 大盘上下文纯 DB 版（macro_history 贪婪映射情绪）与实时版同源口径，监控链路零网络依赖。

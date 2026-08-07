@@ -7,7 +7,7 @@
 ```
 cs-skin-market/
 ├── run_server.py              # Web 服务入口（uvicorn，唯一启动方式）
-├── run_daily_collect.py       # 每日自动采集总调度（大盘/宏观/K线全量每日 + 全市场快照/大户集中度每周一 + 数据健康 + J-2 刷新 + 信号回填 + DB 备份）
+├── run_daily_collect.py       # 每日自动采集总调度（大盘/宏观/K线全量每日 + 全市场快照/大户集中度每周一 + 数据健康 + J-2 刷新 + 信号回填 + 监控事件 + DB 备份）
 ├── run_data_health.py         # 数据源健康检查（全量可采集品动态基线，写 health_checks）
 ├── run_health_monitor.py      # 健康监控独立入口（run_monitor，退出码 0/2 供告警）
 ├── run_backtest.py            # 大盘回测（低层引擎逐日回放）
@@ -63,6 +63,7 @@ cs-skin-market/
 | `b`uy_distance.`py` | 距买点 v3（下跌寻底企稳闸门/供给吸筹场景/大盘TH三区化） |
 | `portfolio_risk.`py | B1 风险预算层（组合回撤熔断 + 单票敞口提示） |
 | `signal_tracking.`py | 生产实盘信号跟踪（J-2 C 通道：记录 buy 信号 → 14/30 交易日回填） |
+| `monitor.`py | M1 监控模式（每日自选品异动事件生成 + 日报，纯提醒层，只读引擎输出） |
 
 ### 回测/研究公共
 

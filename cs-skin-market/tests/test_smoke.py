@@ -1811,6 +1811,84 @@ check('Phase 3 refit_pipeline 结构契约 (simulate)', t_refit_pipeline)
 
 
 print()
+
+print('[M1 监控模式]')
+def t_monitor_events():
+    """8 类事件生成逻辑（合成数据，纯函数级，不落库）。"""
+    import sqlite3
+    from pipeline import monitor as _mon
+
+    class _FA:
+        pass
+
+    item = {"id": 1, "name": "测试品", "holding": 1, "avg_cost": 100.0}
+    a = _FA()
+    a.fusion_decision = {"action": "watch", "action_label": "观望·等待买点",
+                         "proximity": {"score": 72, "nearest": "供给收缩吸筹"}}
+    a.supply_analysis = {"supply_change_7d": -25.0}
+    res = {"analysis": a, "prices": [100.0, 70.0], "latest": 70.0}
+    evs = _mon._gen_item_events("2026-08-08", item, res, prev_action="")
+    types = {e["event_type"] for e in evs}
+    assert {"near_buy", "supply_shift", "price_spike", "stop_loss"} <= types, types
+    assert len(evs) == 4, evs
+
+    a2 = _FA()
+    a2.fusion_decision = {"action": "buy", "action_label": "🟢 分批建仓", "proximity": {"score": 90, "nearest": "x"}}
+    a2.supply_analysis = {}
+    res2 = {"analysis": a2, "prices": [100.0, 101.0], "latest": 101.0}
+    evs2 = _mon._gen_item_events("2026-08-08", item, res2, prev_action="avoid")
+    assert any(e["event_type"] == "decision_flip" and e["level"] == "danger" for e in evs2), evs2
+
+    m = sqlite3.connect(':memory:')
+    m.row_factory = sqlite3.Row
+    m.execute("""CREATE TABLE monitor_events (id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT,
+        item_id INTEGER, item_name TEXT, event_type TEXT, level TEXT, detail TEXT,
+        dedup_key TEXT UNIQUE, created_at TEXT)""")
+    evs3 = _mon._gen_market_events(m, "2026-08-08", "阴跌中继区")
+    assert any(e["event_type"] == "market_state" and e["level"] == "info" for e in evs3)
+    assert not any("切换" in e["detail"] for e in evs3), "无历史不应触发切换"
+    m.execute("INSERT INTO monitor_events (date, item_id, item_name, event_type, level, detail, dedup_key) "
+              "VALUES ('2026-08-07', NULL, NULL, 'market_state', 'info', '大盘状态：中性企稳', '2026-08-07||market_state')")
+    evs4 = _mon._gen_market_events(m, "2026-08-08", "阴跌中继区")
+    assert any("切换" in e["detail"] and e["level"] == "warn" for e in evs4), evs4
+
+    m.execute("CREATE TABLE executions (id INTEGER PRIMARY KEY AUTOINCREMENT, item_id INTEGER, name TEXT, "
+              "action TEXT, advice_date TEXT, advice_signal TEXT, exec_price REAL, qty INTEGER, "
+              "settle_14 REAL, settle_30 REAL, created_at TEXT, advice_price REAL)")
+    m.execute("INSERT INTO executions (item_id, name, action, advice_date, exec_price, qty) "
+              "VALUES (1, '测试品', 'buy', '2026-07-25', 100.0, 1)")
+    evs5 = _mon._gen_exec_events(m, "2026-08-08")
+    assert any(e["event_type"] == "exec_due" and e["level"] == "info" for e in evs5), evs5
+
+    m.execute("CREATE TABLE signal_tracking (id INTEGER PRIMARY KEY AUTOINCREMENT, item_id INTEGER, "
+              "item_name TEXT, signal_date TEXT, action TEXT, action_label TEXT, entry_price REAL, "
+              "position_limit REAL, source TEXT, fwd14 REAL, fwd30 REAL, net14 REAL, net30 REAL, "
+              "checked14_at TEXT, checked30_at TEXT, created_at TEXT, engine_version TEXT)")
+    m.execute("INSERT INTO signal_tracking (item_id, item_name, signal_date, action, action_label, entry_price) "
+              "VALUES (1, '测试品', '2026-08-08', 'buy', '🟢 分批建仓', 99.0)")
+    evs6 = _mon._gen_new_buy_events(m, "2026-08-08")
+    assert any(e["event_type"] == "new_buy_signal" and e["level"] == "danger" for e in evs6), evs6
+check('M1 监控事件 8 类生成逻辑', t_monitor_events)
+
+
+def t_monitor_run_guard():
+    """空库守卫：monitor_events 表存在 + 空市场数据返回默认大盘上下文（不抛异常）。"""
+    import sqlite3
+    from pipeline import monitor as _mon, db as _db
+    conn = _db.get_conn()
+    try:
+        r = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='monitor_events'").fetchone()
+        assert r, 'monitor_events 表缺失'
+    finally:
+        conn.close()
+    m = sqlite3.connect(':memory:')
+    m.row_factory = sqlite3.Row
+    _db._init_schema(m)
+    ctx = _mon._market_ctx_from_db(m)
+    assert ctx["bucket"] in ("中性企稳", "弱市观望", "贪婪禁入", "恐慌浅跌", "阴跌中继区", "V型底区"), ctx
+    assert ctx["th"] == 50.0 and ctx["chg30"] == 0.0
+check('M1 监控空库守卫 + 默认大盘上下文', t_monitor_run_guard)
+
 print(f'=== Results: {passed} passed, {failed} failed, {skipped} skipped ===')
 if failures:
     print()

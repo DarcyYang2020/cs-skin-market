@@ -7,6 +7,13 @@
 
 ## 版本历史
 
+- **v32（2026-08-08）**：M1 监控模式落地（用户确认方案后实施，纯提醒层，冻结纪律内）：
+  - 目标：从「打开系统看报告」变为「每日自动盯盘」——`run_daily_collect` 收尾自动生成自选品异动事件 + 日报，Web `/monitor` 页面展示近 7 天归档。
+  - 事件规则（8 类，阈值人工确认不回测拟合）：买点接近（proximity≥60 且非 buy）/ 破位止损（现价≤成本-25%）/ 决策翻转（watch|avoid↔buy）/ 供给突变（在售量 7 日 -20%/+30%）/ 价格异动（单日 |涨跌|≥8%）/ 大盘状态切换（六态跨日变化）/ 持仓到期（executions 14/30 日复盘到期）/ 新 buy 信号（signal_tracking 当日新增）。
+  - 落地：`pipeline/monitor.py`（大盘上下文纯 DB 计算不拉网络 + 自选品只读 run_item_analysis 不落库 + 事件生成 + `data/monitor_daily.md` 日报）；`db.py` 新表 `monitor_events`（dedup_key 幂等防重复）；`run_daily_collect.py` 收尾接入；`webapp/main.py` `/monitor` + `/api/monitor/events`；`monitor.html` 按日期分组卡片（危险/提醒/信息三级）。
+  - 实测：25 自选品分析 2.2s，首跑生成 16 事件（2 破位止损 + 12 买点接近 + 2 价格异动 + 大盘状态），重跑幂等（saved=0）。
+  - 验证：离线 smoke 69/0/6（新增 M1 事件生成 + 空库守卫 2 用例）；编码健康 0 硬问题。
+  - 学到的新思路：① 提醒层规则不引入回测（阈值人工确认），避免给冻结期叠加过拟合面；② 监控分析走 DB 最新 K 线只读跑引擎（不落库），复用日采数据零额外采集成本；③ 事件表用 dedup_key（date|item_id|type）幂等，当日重跑不重复、跨日自动归档。
 - **v31（2026-08-08）**：每日采集优化——全市场快照/大户集中度降为每周一（用户「检查每日采集内容，有无没必要采集的数据」）：
   - 审计结论：每日 10 环节中，**大户集中度**（monitor/rank 每品 Top50，~8-10 分钟/天 Playwright）与**全市场快照**（get_page_list 25 页，~1 分钟/天）引擎/决策/展示均不消费（whale 检测只用价格+供给；两表仅数据进度卡覆盖天数 + 健康检查计数）；贪婪历史（macro_history）写穿透已在实时调用时落库，每日显式兜底 1 个 HTTP 保留；K 线全量刷新（价格+在售量=引擎唯一数据源）保持每日无条件。
   - 落地：run_daily_collect.py 新增 `is_weekly_collect_day`（BJ 周一，`CS_WEEKLY_ALWAYS=1` / `--force-weekly` 可补采），快照+大户仅周一执行；run_data_health.py 两检查 age 阈值 4→8 天；collector_monitor/collector_snapshot 保留为手动工具；进度卡字段保留（test 契约不动）。
