@@ -1437,6 +1437,20 @@ def t_health_monitor():
             assert row and row[0] == "fail", row
         finally:
             conn.close()
+
+        # 部分覆盖例（Phase 1b 回归防护）：10 个可采集品仅 5 品有 K 线/在售量 → 必须 FAIL
+        part_db = os.path.join(tmp, 'part.db')
+        build(part_db, ok=True)
+        conn = sqlite3.connect(part_db)
+        try:
+            conn.execute('DELETE FROM price_history WHERE item_id > 5')
+            conn.commit()
+        finally:
+            conn.close()
+        r3 = run_monitor(db_path=part_db, check_date='2099-01-03')
+        assert r3['status'] == 'fail', r3
+        names = [c['name'] for c in r3['checks'] if c['level'] == 'FAIL']
+        assert '单品K线' in names and '在售量' in names, f'部分覆盖未检出: {names}'
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 check('health_monitor 检查→upsert→status 判定', t_health_monitor)
@@ -1656,6 +1670,20 @@ def t_signal_tracking():
     assert s['n_total'] == 1 and s['n_filled30'] == 1 and s['net30']['avg'] == 28.0, '统计口径漂移'
     m.close()
 check('生产实盘信号跟踪: 表/记录去重/回填口径', t_signal_tracking)
+
+def t_cost_sensitivity():
+    import json as _J
+    from pathlib import Path
+    p = Path(TEST_DIR).parent / 'data' / 'cost_sensitivity.json'
+    assert p.exists(), 'cost_sensitivity.json 缺失（运行 references/cost_sensitivity.py 生成）'
+    d = _J.loads(p.read_text(encoding='utf-8'))
+    be = d['breakeven_cost_pct']
+    assert be['14d'] > 10 and be['30d'] > 15, f'盈亏平衡成本异常: {be}'
+    r2 = next(r for r in d['rows'] if r['cost_pct'] == 2.0)
+    assert r2['14d_all']['win_pct'] == 71.1, f'2% 14d 胜率漂移: {r2["14d_all"]["win_pct"]}'
+    assert abs(r2['14d_all']['avg'] - 16.7) < 0.01, f'2% 14d 期望漂移: {r2["14d_all"]["avg"]}'
+check('成本敏感性: 盈亏平衡>10% 且 2% 基准行与回放一致', t_cost_sensitivity)
+
 
 def t_replay_snapshot():
     import json as _J, sys as _sys

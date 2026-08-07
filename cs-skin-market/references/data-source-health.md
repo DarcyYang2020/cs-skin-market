@@ -51,7 +51,7 @@ python run_health_monitor.py --json     # JSON 输出（供告警/日志系统�
 | 数据源 | 检查方法 | 关键验收点 |
 |---|---|---|
 | 大盘指数 | 直连 csQAQ API 或对比库内最新值 | 值>0，change_7d 与当日行情一致，mood 三态 |
-| 单品 K 线 | 库内 price_history 覆盖 | 每日 101 品（good_id>0），最新日期为当日/前一日 |
+| 单品 K 线 | 库内 price_history 覆盖 | 每日全量可采集品（good_id>0 且非存世量过低，约 103 品）≥90%，最新日期为当日/前一日 |
 | 在售量 | 库内 in_sale_count | 近7日每日 ≥90% 品有在售量（csQAQ chart 自带，无登录态依赖） |
 | 贪婪/卡价 | macro_history | greedy 60 点 / card 179 点 |
 | 全市场快照 | market_snapshot | 当日行数≈1468（磨损过滤后），无 StatTrak/纪念品残留 |
@@ -82,7 +82,7 @@ FROM price_history WHERE date >= date('now','-7 day') GROUP BY date ORDER BY dat
 ```
 
 验收：
-- good_id>0 的品（101 个）应每天有 K 线
+- good_id>0 且非存世量过低的品（当前 103 个）应每天有 K 线（2026-08-07 Phase 1b: 基线从自选品改为全量可采集品，修复 08-03 起非自选品停更漏检）
 - 2026-08-07 起每日全量刷新（价格+在售量，P3）；若大量品停在 2 天前，检查 `run_daily_collect.py` 的 `collect_kline_all` 是否被调用（回归防护测试 t_kline_daily）
 
 ### 3. 在售量覆盖（price_history.in_sale_count）

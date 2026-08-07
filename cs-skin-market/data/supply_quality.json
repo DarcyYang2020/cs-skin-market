@@ -1,0 +1,113 @@
+{
+ "meta": "在售量数据质量验证(Phase 1b): 只读诊断。结论: 数据本身无死值/量级正常; 但 2026-08-03 起日覆盖从~92品骤降至~25品(仅自选品), 健康检查盲区已修复。",
+ "generated": "2026-08-07",
+ "universe": {
+  "items_total": 104,
+  "collectable": 103,
+  "watchlist": 25
+ },
+ "freshness": {
+  "items_with_supply": 94,
+  "rows": 24955,
+  "le1d": 25,
+  "le3d": 27,
+  "le7d": 94,
+  "max_age_days": 5
+ },
+ "dead_value": {
+  "max_run_days": 5,
+  "p90_run_days": 3
+ },
+ "in_sale_count_stats": {
+  "min": 5,
+  "median": 419,
+  "max": 3150,
+  "mean": 555
+ },
+ "daily_items_last14d": [
+  {
+   "date": "2026-07-24",
+   "items": 92,
+   "rows": 92
+  },
+  {
+   "date": "2026-07-25",
+   "items": 92,
+   "rows": 92
+  },
+  {
+   "date": "2026-07-26",
+   "items": 92,
+   "rows": 92
+  },
+  {
+   "date": "2026-07-27",
+   "items": 92,
+   "rows": 92
+  },
+  {
+   "date": "2026-07-28",
+   "items": 92,
+   "rows": 92
+  },
+  {
+   "date": "2026-07-29",
+   "items": 92,
+   "rows": 92
+  },
+  {
+   "date": "2026-07-30",
+   "items": 92,
+   "rows": 92
+  },
+  {
+   "date": "2026-07-31",
+   "items": 91,
+   "rows": 91
+  },
+  {
+   "date": "2026-08-01",
+   "items": 91,
+   "rows": 91
+  },
+  {
+   "date": "2026-08-02",
+   "items": 90,
+   "rows": 90
+  },
+  {
+   "date": "2026-08-03",
+   "items": 28,
+   "rows": 28
+  },
+  {
+   "date": "2026-08-04",
+   "items": 24,
+   "rows": 24
+  },
+  {
+   "date": "2026-08-05",
+   "items": 24,
+   "rows": 24
+  },
+  {
+   "date": "2026-08-06",
+   "items": 23,
+   "rows": 23
+  },
+  {
+   "date": "2026-08-07",
+   "items": 23,
+   "rows": 23
+  }
+ ],
+ "regression_found": true,
+ "regression_dates": [
+  "2026-08-03",
+  "2026-08-04",
+  "2026-08-05",
+  "2026-08-06",
+  "2026-08-07"
+ ],
+ "recommendation": "每日 collect_kline_all(去量 P3)已覆盖全量可采集品; 健康检查基线已改为全量口径; 建议今夜采集后复查覆盖恢复。"
+}
