@@ -941,7 +941,6 @@ def t_data_progress():
         assert d['price']['items'] > 0 and d['price']['median_days'] >= 0
         assert 0.0 <= d['price']['pct_90d'] <= 100.0
         assert d['supply']['rows'] >= 0 and d['supply']['avg_days_per_item'] >= 0
-        assert d['supply']['est_days_to_target'] >= 0
         assert d['supply']['pct_items'] >= 0.0
         assert d['market_snapshot']['days'] >= 0 and d['market_snapshot']['latest'] is not None
         assert d['monitor_rank']['days'] >= 0 and d['monitor_rank']['n'] >= 0

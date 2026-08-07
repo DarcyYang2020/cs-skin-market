@@ -8,7 +8,6 @@ from .config import PORTFOLIO_CAP_CONCURRENT
 
 _SCAN_CACHE = Path(__file__).resolve().parent.parent / "data" / "batch_scan_latest.json"
 _SIGNAL_EVENTS = Path(__file__).resolve().parent.parent / "data" / "signal_event_counts.json"
-SUPPLY_TARGET_DAYS = 90  # 在售量目标覆盖天数（P3 2026-08-07 去量：全品每日刷新后按天积累）
 _ADD_ACTIONS = ("\u53ef\u5206\u6279\u5efa\u4ed3", "\u53ef\u5206\u6279\u8865\u4ed3")  # 可分批建仓/可分批补仓
 
 
@@ -72,7 +71,6 @@ def data_progress(conn):
             "avg_days_per_item": avg_sup,
             "latest": _scalar("SELECT MAX(date) FROM price_history "
                               "WHERE in_sale_count IS NOT NULL AND in_sale_count>0"),
-            "est_days_to_target": max(0, SUPPLY_TARGET_DAYS - int(avg_sup)),
         },
         # 全市场快照 / 大户集中度 (2026-08-04 开始积累)
         "market_snapshot": _snapshot_days(conn, "market_snapshot", "good_id"),
