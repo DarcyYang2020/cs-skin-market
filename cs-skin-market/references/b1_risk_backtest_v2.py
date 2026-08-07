@@ -68,6 +68,7 @@ def simulate(sigs, cap=None, dd_breaker=None, item_cap=None, disarm_at_peak=True
     rejected_breaker = 0
     rejected_item = 0
     breaker_days = 0
+    closed = []  # 每笔平仓盈亏（组合口径逐笔，2026-08-07 Phase 2a）
     curve = []
     max_pos = 0.0
     peak = 1.0
@@ -113,12 +114,14 @@ def simulate(sigs, cap=None, dd_breaker=None, item_cap=None, disarm_at_peak=True
             if a["idx"] >= HOLD:
                 fwd = a["s"]["fwd"]
                 px = fwd[min(HOLD - 1, len(fwd) - 1)]
-                realized += a["base"] * (px / a["s"]["entry"] - 1 - COST)
+                pnl = a["base"] * (px / a["s"]["entry"] - 1 - COST)
+                realized += pnl
+                closed.append(pnl)
                 total_invested -= a["base"]
         active = [a for a in active if a["idx"] < HOLD]
         eq = 1.0 + realized + unreal
         peak = max(peak, eq)
-        curve.append((day.isoformat(), pos_sum, eq, 1 if gate else 0))
+        curve.append((day.isoformat(), pos_sum, eq, 1 if gate else 0, len(active)))
         max_pos = max(max_pos, pos_sum)
         prev_eq = eq
         day += timedelta(days=1)
@@ -126,6 +129,7 @@ def simulate(sigs, cap=None, dd_breaker=None, item_cap=None, disarm_at_peak=True
         "curve": curve, "rejected_cap": rejected_cap,
         "rejected_breaker": rejected_breaker, "rejected_item": rejected_item,
         "max_pos": max_pos, "breaker_days": breaker_days,
+        "closed": closed, "n_trades": len(closed),
     }
 
 

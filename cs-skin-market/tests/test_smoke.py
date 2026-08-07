@@ -1626,6 +1626,11 @@ def t_j2_channel_status():
     assert ch['C']['thresholds']['30d_month'] == J2_THRESHOLDS['c30_month'], 'C 通道 30d 阈值与 config 不同源'
     assert ch['C']['thresholds']['14d_2m'] == J2_THRESHOLDS['c14_2m'], 'C 通道连续2月阈值与 config 不同源'
     assert d.get('engine_version') == ENGINE_VERSION, 'J-2 状态缺少引擎版本标识'
+    assert set(ch['C']) >= {'replay_alert', 'production_gate', 'production_triggered', 'trigger_state'}, 'C 通道缺少 Phase 2b 字段'
+    ra = ch['C']['replay_alert']
+    assert 'triggered' in ra and 'since' in ra, 'replay_alert 结构缺失'
+    assert ch['C']['production_gate']['min_filled14'] == 20, '实盘判定门槛漂移'
+    assert d['overall'].get('trigger_action'), 'overall 缺少 trigger_action'
     assert isinstance(ch['C']['monthly'], list) and ch['C']['monthly'], 'C 通道月度数据缺失'
     ev = _J.loads((base / 'data' / 'signal_event_counts.json').read_text(encoding='utf-8'))
     assert ch['A']['value'] == ev['display_keys']['panic']['events'], 'A 通道事件数与事件计数不同源'
@@ -1684,6 +1689,28 @@ def t_cost_sensitivity():
     assert abs(r2['14d_all']['avg'] - 16.7) < 0.01, f'2% 14d 期望漂移: {r2["14d_all"]["avg"]}'
 check('成本敏感性: 盈亏平衡>10% 且 2% 基准行与回放一致', t_cost_sensitivity)
 
+def t_portfolio_backtest():
+    import json as _J
+    from pathlib import Path
+    base = Path(TEST_DIR).parent
+    p = base / 'data' / 'portfolio_backtest.json'
+    b = base / 'data' / 'benchmark_compare.json'
+    assert p.exists(), 'portfolio_backtest.json 缺失（运行 references/portfolio_backtest.py 生成）'
+    d = _J.loads(p.read_text(encoding='utf-8'))
+    v = d['variants']
+    assert set(v) == {'cap0_8', 'cap0_8_cluster5', 'nocap_ref'}, f'组合变体缺失: {sorted(v)}'
+    c08 = v['cap0_8']
+    assert c08['n_trades'] > 0 and c08['portfolio_win_rate_pct'] is not None, 'cap0.8 无平仓记录'
+    assert c08['max_drawdown_pct'] > v['nocap_ref']['max_drawdown_pct'], 'cap 应降低回撤'
+    assert c08['sharpe'] is not None and c08['calmar'] is not None and c08['sortino'] is not None, '组合风险指标缺失'
+    assert c08['monthly_returns'], '月度收益缺失'
+    assert v['cap0_8_cluster5']['n_trades'] <= c08['n_trades'], '簇限次信号数应<=现行'
+    assert d['consistency_with_benchmark'].get('consistent') is True, '与 benchmark_compare 不一致'
+    bj = _J.loads(b.read_text(encoding='utf-8'))
+    assert abs(c08['total_return_pct'] - bj['windows']['full']['strategy']['total_return_pct']) < 0.5, '组合总收益与基准漂移'
+check('组合层回测: 变体/风险指标/胜率/一致性', t_portfolio_backtest)
+
+
 
 def t_replay_snapshot():
     import json as _J, sys as _sys
@@ -1733,8 +1760,8 @@ def t_progress_schema():
     assert set(j2['channels']) == {'A', 'B', 'C'}
     assert set(j2['channels']['A']) == {'label', 'value', 'threshold', 'progress_pct', 'status', 'note'}
     assert set(j2['channels']['B']) == {'label', 'value_days', 'threshold_days', 'progress_pct', 'target_date', 'status', 'note'}
-    assert set(j2['channels']['C']) == {'label', 'monthly', 'two_month_flags', 'thresholds', 'production', 'status', 'note'}
-    assert set(j2['overall']) == {'triggered', 'triggered_channels', 'note'}
+    assert set(j2['channels']['C']) == {'label', 'monthly', 'two_month_flags', 'thresholds', 'production', 'production_gate', 'production_triggered', 'replay_alert', 'status', 'trigger_state', 'note'}
+    assert set(j2['overall']) == {'triggered', 'triggered_channels', 'note', 'trigger_action'}
 check('数据积累进度接口结构契约 (字段快照)', t_progress_schema)
 
 

@@ -36,6 +36,7 @@ B_THRESHOLD_DAYS = J2_THRESHOLDS["b_days"]
 C14_MONTH = J2_THRESHOLDS["c14_month"]
 C30_MONTH = J2_THRESHOLDS["c30_month"]
 C14_2M = J2_THRESHOLDS["c14_2m"]
+PROD_MIN_FILLED14 = 20  # 实盘判定门槛: 回填满 20 条后实盘胜率纳入判定（Phase 2b）
 
 
 def _load(p):
@@ -182,14 +183,33 @@ def compute():
                     " 天（约 " + OOS_AFTER + "）即真 OOS 复验点",
         },
         "C": {
-            "label": "胜率监测（月度 14d/30d vs 阈值）",
+            "label": "胜率监测（回放告警 + 实盘判定分离，Phase 2b）",
             "monthly": c["monthly"],
             "two_month_flags": c["two_month_flags"],
             "thresholds": {"14d_month": C14_MONTH, "30d_month": C30_MONTH, "14d_2m": C14_2M},
+            "replay_alert": {
+                "triggered": bool(c["two_month_flags"] or any(r["flags"] for r in c["monthly"])),
+                "since": (c["two_month_flags"][0].split(" ")[0] if c["two_month_flags"] else
+                          next((r["month"] for r in c["monthly"] if r["flags"]), None)),
+                "note": "回放口径告警（信息级提示，非正式重拟合触发）",
+            },
             "production": production,
-            "status": "已触发" if (c["two_month_flags"] or any(r["flags"] for r in c["monthly"])) else "未触发",
+            "production_gate": {
+                "min_filled14": PROD_MIN_FILLED14,
+                "filled14": (production or {}).get("n_filled14", 0) if production else 0,
+                "ready": bool(production) and (production.get("n_filled14") or 0) >= PROD_MIN_FILLED14,
+            },
+            "production_triggered": bool(production) and (production.get("n_filled14") or 0) >= PROD_MIN_FILLED14
+                                     and production.get("net14") and production["net14"].get("win") is not None
+                                     and production["net14"]["win"] < C14_2M,
+            "status": "已触发" if (c["two_month_flags"] or any(r["flags"] for r in c["monthly"])
+                                   or (production and (production.get("n_filled14") or 0) >= PROD_MIN_FILLED14
+                                       and production.get("net14") and production["net14"].get("win") is not None
+                                       and production["net14"]["win"] < C14_2M)) else "未触发",
+            "trigger_state": "待启动重拟合流水线" if (c["two_month_flags"] or any(r["flags"] for r in c["monthly"])) else "监测中",
             "note": "回放口径：去量 v2 370 信号，月度 n>=10 判定，去簇(±3天) n>=10 判定，5 月恐慌单事件簇退出集中在 6 月须按事件簇纪律复核；"
-                    "生产实盘口径：signal_tracking 表（buy 信号 14/30 交易日后按真实价格回填，net 扣 2%），回填满 20 条后实盘胜率纳入判定",
+                    "生产实盘口径：signal_tracking 表（buy 信号 14/30 交易日后按真实价格回填，net 扣 2%），回填满 20 条后实盘胜率纳入判定；"
+                    "回放告警仅提示复核，正式重拟合触发以冻结条款 C 通道为准，触发后动作见 overall.trigger_action",
         },
     }
 
@@ -204,6 +224,9 @@ def compute():
             "triggered": bool(triggered),
             "triggered_channels": triggered,
             "note": "J-2 三通道任一满足即解锁重拟合：A 事件>=3 / B 新数据>=260 天 / C 胜率监测触发",
+            "trigger_action": "触发后动作（Phase 3 自动化）：1) 冻结当前参数版本(ENGINE_VERSION bump 前禁止发布新信号口径)；"
+                              "2) 以冻结后新增数据重跑新旧引擎对比；3) A2 三件套(walk-forward+聚类+置换检验)验证；"
+                              "4) 人工确认后发布新参数版本并复位监测",
         },
     }
 

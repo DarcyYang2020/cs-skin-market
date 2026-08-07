@@ -22,7 +22,7 @@
    "note": "自冻结起点 2026-08-07 起累计新数据；满 260 天（约 2027-04-25）即真 OOS 复验点"
   },
   "C": {
-   "label": "胜率监测（月度 14d/30d vs 阈值）",
+   "label": "胜率监测（回放告警 + 实盘判定分离，Phase 2b）",
    "monthly": [
     {
      "month": "2025-02",
@@ -198,6 +198,11 @@
     "30d_month": 55.0,
     "14d_2m": 70.0
    },
+   "replay_alert": {
+    "triggered": true,
+    "since": "2025-11+2025-12",
+    "note": "回放口径告警（信息级提示，非正式重拟合触发）"
+   },
    "production": {
     "n_total": 0,
     "n_filled14": 0,
@@ -215,8 +220,15 @@
     "earliest_open": null,
     "latest": null
    },
+   "production_gate": {
+    "min_filled14": 20,
+    "filled14": 0,
+    "ready": false
+   },
+   "production_triggered": false,
    "status": "已触发",
-   "note": "回放口径：去量 v2 370 信号，月度 n>=10 判定，去簇(±3天) n>=10 判定，5 月恐慌单事件簇退出集中在 6 月须按事件簇纪律复核；生产实盘口径：signal_tracking 表（buy 信号 14/30 交易日后按真实价格回填，net 扣 2%），回填满 20 条后实盘胜率纳入判定"
+   "trigger_state": "待启动重拟合流水线",
+   "note": "回放口径：去量 v2 370 信号，月度 n>=10 判定，去簇(±3天) n>=10 判定，5 月恐慌单事件簇退出集中在 6 月须按事件簇纪律复核；生产实盘口径：signal_tracking 表（buy 信号 14/30 交易日后按真实价格回填，net 扣 2%），回填满 20 条后实盘胜率纳入判定；回放告警仅提示复核，正式重拟合触发以冻结条款 C 通道为准，触发后动作见 overall.trigger_action"
   }
  },
  "overall": {
@@ -224,6 +236,7 @@
   "triggered_channels": [
    "C"
   ],
-  "note": "J-2 三通道任一满足即解锁重拟合：A 事件>=3 / B 新数据>=260 天 / C 胜率监测触发"
+  "note": "J-2 三通道任一满足即解锁重拟合：A 事件>=3 / B 新数据>=260 天 / C 胜率监测触发",
+  "trigger_action": "触发后动作（Phase 3 自动化）：1) 冻结当前参数版本(ENGINE_VERSION bump 前禁止发布新信号口径)；2) 以冻结后新增数据重跑新旧引擎对比；3) A2 三件套(walk-forward+聚类+置换检验)验证；4) 人工确认后发布新参数版本并复位监测"
  }
 }
