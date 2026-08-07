@@ -246,25 +246,31 @@ def _write_md(date, summary, events, slot="night"):
 
 
 def _build_push_text(summary, events, slot="night"):
-    """组装钉钉正文（纯函数）：danger 明细全列（截断 PUSH_DETAIL_MAX），warn/info 计数。"""
+    """组装钉钉正文（纯函数，纯文字自包含、无内网链接）：danger/warn 列明细（截断），info 按类型计数。"""
+    from collections import Counter
     danger = [e for e in events if e["level"] == "danger"]
     warn = [e for e in events if e["level"] == "warn"]
-    info_n = sum(1 for e in events if e["level"] == "info")
+    info = [e for e in events if e["level"] == "info"]
     lines = [f"大盘：{summary['bucket']} · 分析 {summary['analyzed']} 品 / 跳过 {summary['skipped']}"]
-    if danger:
+
+    def _dump(tag, evs, limit):
+        if not evs:
+            return
         lines.append("")
-        for e in danger[:PUSH_DETAIL_MAX]:
-            lines.append(f"🔴 [{_TYPE_LABEL.get(e['event_type'], e['event_type'])}] "
+        lines.append(f"{tag} {len(evs)} 条")
+        for e in evs[:limit]:
+            lines.append(f"- [{_TYPE_LABEL.get(e['event_type'], e['event_type'])}] "
                          f"{(e['item_name'] or '大盘')}：{e['detail']}")
-        if len(danger) > PUSH_DETAIL_MAX:
-            lines.append(f"… 另有 {len(danger) - PUSH_DETAIL_MAX} 条危险事件")
-    if warn:
-        kinds = sorted({_TYPE_LABEL.get(e['event_type'], e['event_type']) for e in warn})
+        if len(evs) > limit:
+            lines.append(f"… 另有 {len(evs) - limit} 条")
+
+    _dump("🔴 危险", danger, PUSH_DETAIL_MAX)
+    _dump("🟡 提醒", warn, PUSH_DETAIL_MAX)
+    if info:
+        _kinds = Counter(_TYPE_LABEL.get(e["event_type"], e["event_type"]) for e in info)
+        _parts = "、".join(f"{k} {n} 条" for k, n in sorted(_kinds.items()))
         lines.append("")
-        lines.append(f"🟡 提醒 {len(warn)} 条：" + "、".join(kinds))
-    if info_n:
-        lines.append("")
-        lines.append(f"🔵 信息 {info_n} 条（详见 http://127.0.0.1:8000/monitor）")
+        lines.append(f"🔵 信息 {len(info)} 条：" + _parts)
     title = f"CS 监控 {summary['date']} · {SLOT_LABEL.get(slot, slot)} · {summary['bucket']}"
     if danger:
         title += f" · 🚨{len(danger)}危险"

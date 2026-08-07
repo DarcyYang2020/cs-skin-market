@@ -1906,6 +1906,7 @@ def t_monitor_push():
     ]
     title, text = _mon._build_push_text(summary, events, "night")
     assert "🚨1危险" in title and "破位止损" in text and "买点接近" in text, (title, text)
+    assert "127.0.0.1" not in text and ":8000" not in text, "推送必须纯文字自包含，不得引用内网地址"
     os.environ["NOTIFY_WEBHOOK_URL"] = ""
     try:
         r = _mon.push_daily(summary, events, "night")
