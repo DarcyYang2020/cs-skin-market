@@ -9,7 +9,7 @@ if getattr(sys.stderr, "encoding", "").lower().replace("-", "") != "utf8":
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from fastapi import FastAPI, Request, Form, Query
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -183,6 +183,40 @@ def _dashboard_context():
         conn.close()
 
 
+def _signal_density():
+    """回放信号密度：最近30日信号数 vs 历史30日窗口分位（纯展示，读 item_backtest_full_2025.json）。"""
+    try:
+        _p = Path(__file__).resolve().parent.parent / "data" / "item_backtest_full_2025.json"
+        if not _p.exists():
+            return None
+        _d = json.loads(_p.read_text(encoding="utf-8"))
+        _sigs = _d.get("signals") or []
+        _dates = sorted(s.get("date", "") for s in _sigs if s.get("date"))
+        if len(_dates) < 90:
+            return None
+        from collections import Counter
+        _cnt = Counter(_dates)
+        _day = sorted(_cnt.items())
+        _win = []
+        for _i in range(len(_day) - 29):
+            _win.append(sum(c for _, c in _day[_i:_i + 30]))
+        if not _win:
+            return None
+        _last = _win[-1]
+        _pct = sum(1 for w in _win if w <= _last) / len(_win) * 100
+        _lvl = "低" if _pct <= 33 else ("中" if _pct <= 66 else ("高" if _pct <= 90 else "过热"))
+        return {
+            "total": len(_sigs),
+            "window": "%s ~ %s" % (_day[-30][0], _day[-1][0]),
+            "count": _last,
+            "pct": round(_pct, 0),
+            "level": _lvl,
+            "avg30": round(sum(_win) / len(_win), 1),
+        }
+    except Exception:
+        return None
+
+
 # ---- Dashboard page ----
 @app.get("/", response_class=HTMLResponse)
 async def page_dashboard(request: Request):
@@ -194,6 +228,32 @@ async def page_dashboard(request: Request):
     _ms_r = market_snapshot()
     _regime_label, _regime_cls, _regime_strategy = market_regime(
         _ms_r.get("sentiment"), _ms_r.get("chg30"), _ms_r.get("th"))
+    # ---- 引擎状态徽章（J-2 冻结监测，纯展示；读 j2_channel_status.json）----
+    _engine_status = None
+    _j2_path = Path(__file__).resolve().parent.parent / "data" / "j2_channel_status.json"
+    if _j2_path.exists():
+        try:
+            _j2 = json.loads(_j2_path.read_text(encoding="utf-8"))
+            _ch = _j2.get("channels") or {}
+            _c = _ch.get("C") or {}
+            _monthly = _c.get("monthly") or []
+            _flagged = [mm for mm in _monthly if mm.get("flags")]
+            _engine_status = {
+                "engine_version": _j2.get("engine_version", ""),
+                "frozen_at": _j2.get("frozen_at", ""),
+                "oos_revalidate_after": _j2.get("oos_revalidate_after", ""),
+                "a_value": (_ch.get("A") or {}).get("value"),
+                "a_threshold": (_ch.get("A") or {}).get("threshold"),
+                "a_status": (_ch.get("A") or {}).get("status"),
+                "b_days": (_ch.get("B") or {}).get("value_days"),
+                "b_threshold": (_ch.get("B") or {}).get("threshold_days"),
+                "b_target": (_ch.get("B") or {}).get("target_date"),
+                "c_flagged": len(_flagged),
+                "c_latest_month": (_flagged[-1].get("month") if _flagged else None),
+                "c_latest_flags": (_flagged[-1].get("flags") or []) if _flagged else [],
+            }
+        except Exception:
+            _engine_status = None
     response = templates.TemplateResponse(request, "dashboard.html", {
         "active_page": "dashboard",
         "index": mi,
@@ -203,6 +263,8 @@ async def page_dashboard(request: Request):
         "last_update": last_update,
         "chart_data": chart_data,
         "analysis": analysis_data,
+        "signal_density": _signal_density(),
+        "engine_status": _engine_status,
     })
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     return response
@@ -324,6 +386,18 @@ async def page_watchlist(request: Request):
             filtered = [i for i in filtered if not i.get("holding")]
         if wq:
             filtered = [i for i in filtered if wq in (i.get("name") or "").lower()]
+        # ---- 买点接近度（自选快照 proximity，供排序）----
+        for _it in filtered:
+            _prox = None
+            _wsum = None
+            if _it.get("latest_summary"):
+                try:
+                    _wsum = json.loads(_it["latest_summary"])
+                    _prox = _wsum.get("proximity")
+                except Exception:
+                    _wsum = None
+            _it["proximity"] = _prox if isinstance(_prox, dict) else None
+            _it["wl_summary"] = _wsum
         if ws == "name":
             filtered.sort(key=lambda i: (i.get("name") or "").lower())
         elif ws == "price_desc":
@@ -333,6 +407,8 @@ async def page_watchlist(request: Request):
         elif ws == "grade":
             _gorder = {"S": 0, "A": 1, "B": 2, "C": 3, "Z": 4}
             filtered.sort(key=lambda i: _gorder.get(i.get("latest_grade") or "Z", 4))
+        elif ws == "proximity":
+            filtered.sort(key=lambda i: (i.get("proximity") or {}).get("score", -1), reverse=True)
 
         # ---- per-item pnl + portfolio totals (holding items only) ----
         for item in all_items:
@@ -344,6 +420,23 @@ async def page_watchlist(request: Request):
         total_pnl = total_market - total_buy_cost
         total_pnl_pct = (total_pnl / total_buy_cost * 100) if total_buy_cost > 0 else 0
         position_ratio = (total_buy_cost / total_assets * 100) if total_assets > 0 else 0
+
+        # ---- 监控摘要（纯展示）：接近买点 Top + 破位止损 ----
+        _near = []
+        _broken = []
+        for _it in filtered:
+            _prox = _it.get("proximity")
+            _act = (_it.get("wl_summary") or {}).get("fusion_action")
+            if _prox and isinstance(_prox, dict) and _prox.get("score", 0) >= 60 and _act != "buy":
+                _near.append(_it)
+            if _it.get("holding") and _it.get("avg_cost", 0) > 0 and _it.get("latest_price"):
+                if _it["latest_price"] <= _it["avg_cost"] * 0.75:
+                    _broken.append(_it)
+        _near.sort(key=lambda x: (x.get("proximity") or {}).get("score", 0), reverse=True)
+        monitor = {
+            "near_buys": _near[:3],
+            "broken": _broken[:5],
+        }
 
         # ---- pagination on filtered list ----
         PAGE_SIZE = 10
@@ -367,11 +460,43 @@ async def page_watchlist(request: Request):
                 "ORDER BY date DESC", _spark_ids).fetchall():
                 _spark_map.setdefault(_sr["item_id"], []).append((_sr["date"], _sr["price_rmb"]))
 
+        # ---- 卖出参考位（90日区间 + -25% 止损建议，纯展示）----
+        _range_map = {}
+        if _spark_ids:
+            for _rr in conn.execute(
+                "SELECT item_id, MAX(price_rmb) AS hi, MIN(price_rmb) AS lo FROM price_history "
+                "WHERE item_id IN (" + _marks + ") AND price_rmb>0 GROUP BY item_id", _spark_ids).fetchall():
+                _range_map[_rr["item_id"]] = (_rr["hi"], _rr["lo"])
+
+        # ---- 建议来源信号（signal_tracking 最近一条 buy，纯展示）----
+        _sig_map = {}
+        if _spark_ids:
+            for _sr in conn.execute(
+                "SELECT item_id, signal_date, action_label, entry_price FROM signal_tracking "
+                "WHERE item_id IN (" + _marks + ") ORDER BY signal_date DESC", _spark_ids).fetchall():
+                _sig_map.setdefault(_sr["item_id"], []).append(dict(_sr))
+
         # Load trend health + parse latest_summary for each item
         import json as _json
         for item in items:
             _pts = _spark_map.get(item["id"], [])[:30][::-1] if item.get("holding") else []
             item["spark_svg"] = _spark_svg(_pts, item.get("avg_cost") or 0)
+            if item.get("holding") and item.get("avg_cost", 0) > 0:
+                _ac = item["avg_cost"]
+                _hi, _lo = _range_map.get(item["id"], (None, None))
+                item["sell_ref"] = {
+                    "stop_loss": round(_ac * 0.75, 2),
+                    "high90": _hi,
+                    "low90": _lo,
+                    "broken": bool(item.get("latest_price") and item["latest_price"] <= _ac * 0.75),
+                }
+            _sigs = _sig_map.get(item["id"])
+            item["latest_signal"] = None
+            if _sigs:
+                _ls = dict(_sigs[0])
+                if _ls.get("entry_price") and item.get("latest_price"):
+                    _ls["ret_vs_entry"] = (item["latest_price"] / _ls["entry_price"] - 1) * 100
+                item["latest_signal"] = _ls
             th_raw = db.get_setting(conn, f"th_{item['id']}", "")
             try:
                 item["trend_health"] = _json.loads(th_raw) if th_raw else None
@@ -397,12 +522,55 @@ async def page_watchlist(request: Request):
             "wl_filter": wf,
             "wl_q": wq,
             "wl_sort": ws,
+            "monitor": monitor,
             "all_items_json": json.dumps(
                 [{"id": i["id"], "name": i["name"], "holding": bool(i.get("holding"))} for i in all_items],
                 ensure_ascii=False),
         })
     finally:
         conn.close()
+
+# ---- 数据备份 (P2-3, 2026-08-07: SQLite 一键备份到 data/backups) ----
+@app.post("/api/backup/create")
+async def api_backup_create():
+    try:
+        import sqlite3 as _sq
+        _src_path = db.DB_PATH
+        _bdir = Path(str(_src_path)).parent / "backups"
+        _bdir.mkdir(exist_ok=True)
+        _name = "cs-market-backup-%s.db" % datetime.now(TZ_BJ).strftime("%Y%m%d-%H%M%S")
+        _src = _sq.connect(str(_src_path))
+        _dst = _sq.connect(str(_bdir / _name))
+        _src.backup(_dst)
+        _dst.close(); _src.close()
+        return {"ok": True, "file": _name, "size": (_bdir / _name).stat().st_size}
+    except Exception as _e:
+        return {"ok": False, "error": str(_e)}
+
+
+@app.get("/api/backup/list")
+async def api_backup_list():
+    try:
+        _bdir = Path(str(db.DB_PATH)).parent / "backups"
+        _bdir.mkdir(exist_ok=True)
+        _files = []
+        for _p in sorted(_bdir.glob("*.db"), key=lambda x: x.stat().st_mtime, reverse=True)[:10]:
+            _files.append({"name": _p.name, "size": _p.stat().st_size,
+                           "time": datetime.fromtimestamp(_p.stat().st_mtime, TZ_BJ).strftime("%Y-%m-%d %H:%M")})
+        return {"files": _files}
+    except Exception as _e:
+        return {"files": [], "error": str(_e)}
+
+
+@app.get("/api/backup/download")
+async def api_backup_download(file: str = Query("")):
+    _bdir = Path(str(db.DB_PATH)).parent / "backups"
+    _safe = Path(file).name
+    _p = _bdir / _safe
+    if not _safe or not _p.exists() or not _p.is_file():
+        return JSONResponse({"error": "备份文件不存在"}, status_code=404)
+    return FileResponse(str(_p), filename=_safe, media_type="application/octet-stream")
+
 
 # ---- Market refresh ----
 @app.post("/api/market/refresh")
@@ -627,10 +795,10 @@ async def api_watchlist_analyze(request: Request, item_id: int):
         finally:
             conn_w.close()
 
-        # 统一分析核心；apply_anchor=False / volumes_from_bars / allow_single_price 沿用
+        # 统一分析核心；apply_anchor=False / allow_single_price 沿用
         # watchlist 历史行为（与 search/analyze 的锚价口径差异为历史遗留，数据先行验证后统一）
         b = await analyze_fresh(item, good_id, exact_name, db_item_id=item_id,
-                                apply_anchor=False, volumes_from_bars=True, allow_single_price=True)
+                                apply_anchor=False, allow_single_price=True)
         ctx = build_analysis_ctx(b["analysis"], b["kline_stale_days"], b["kline_stale_date"])
         return templates.TemplateResponse(request, "partials/analysis.html", ctx)
 
@@ -898,8 +1066,6 @@ async def _scan_item(row, idx, ms, market_th_score, sentiment_score, total_asset
                     _web_log.warning(f"batch scan skip {exact_name}: {_sane_msg}")
                     return dict(name=exact_name, holding=holding, error="价格校验未通过，保留旧数据")
         prices = [k.close for k in daily_bars if k.close > 0] if daily_bars else [item.price_rmb]
-        # 去量 (2026-08-07): 不再抓取悠悠成交量
-        volumes = []
         supply_hist = [k.in_sale_count for k in daily_bars] if daily_bars else []
         conn_r = db.get_conn()
         try:
@@ -909,7 +1075,7 @@ async def _scan_item(row, idx, ms, market_th_score, sentiment_score, total_asset
         analysis = await asyncio.get_running_loop().run_in_executor(
             None,
             lambda: item_analysis.run_item_analysis(
-                name=exact_name, prices=prices, volumes=volumes or None,
+                name=exact_name, prices=prices,
                 supply_hist=supply_hist or None, order_book=item.order_book,
                 index_change_7d=getattr(idx, "change_7d", 0),
                 market_cycle=ms["cycle"],
@@ -1388,6 +1554,32 @@ async def api_batch_scan_progress(scan_id: str):
     return {"current": p["current"], "total": p["total"], "name": p.get("name", ""), "done": p["done"], "html": p.get("html", "")}
 
 
+# ---- 信号体检页 (P2-1, 2026-08-07: J-2 C 通道月度 + 实盘信号跟踪) ----
+@app.get("/checkup", response_class=HTMLResponse)
+async def page_checkup(request: Request):
+    _j2 = None
+    _j2_path = Path(__file__).resolve().parent.parent / "data" / "j2_channel_status.json"
+    if _j2_path.exists():
+        try:
+            _j2 = json.loads(_j2_path.read_text(encoding="utf-8"))
+        except Exception:
+            _j2 = None
+    _signals = []
+    _conn = db.get_conn()
+    try:
+        for _r in _conn.execute(
+            "SELECT item_name, signal_date, action_label, entry_price, position_limit, "
+            "fwd14, fwd30, net14, net30, engine_version FROM signal_tracking ORDER BY id DESC LIMIT 100").fetchall():
+            _signals.append(dict(_r))
+    finally:
+        _conn.close()
+    return templates.TemplateResponse(request, "checkup.html", {
+        "active_page": "checkup",
+        "j2": _j2,
+        "signals": _signals,
+    })
+
+
 @app.get("/replay", response_class=HTMLResponse)
 async def page_replay(request: Request):
     """\u4fe1\u53f7\u590d\u76d8\uff1a\u5386\u53f2 buy \u4fe1\u53f7\u7684 14d/30d \u8868\u73b0\u56de\u653e\u3002"""
@@ -1494,14 +1686,12 @@ async def _run_discover_task(task_id: str, items: list):
                 skipped += 1
                 continue
 
-            # 去量 (2026-08-07): 不再抓取悠悠成交量
-            volumes = []
             supply_hist = [k.in_sale_count for k in daily_bars] if daily_bars else []
 
             analysis = await asyncio.get_running_loop().run_in_executor(
                 None,
                 lambda: _ia.run_item_analysis(
-                    name=exact_name, prices=prices, volumes=volumes or None,
+                    name=exact_name, prices=prices,
                     supply_hist=supply_hist or None, order_book=item.order_book,
                     index_change_7d=0,
                     market_cycle=ms["cycle"],

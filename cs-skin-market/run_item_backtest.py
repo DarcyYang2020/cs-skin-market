@@ -75,7 +75,6 @@ def backtest_item(item_id, name, start, end, warmup, market_ctx, cost=0.02):
             res = ia.run_item_analysis(
                 name=name,
                 prices=prefix,
-                volumes=[0] * len(prefix),
                 supply_hist=in_sale[:i + 1],
                 market_history=None,
                 market_pct_90d=mc["pct"],

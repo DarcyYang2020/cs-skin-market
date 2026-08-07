@@ -115,7 +115,7 @@ def run(window="W1"):
             patch_sentiment(mkt["sentiment"])
             prefix = prices[:k+1]
             try:
-                res = ia.run_item_analysis(name=iname, prices=prefix, volumes=[0]*len(prefix),
+                res = ia.run_item_analysis(name=iname, prices=prefix,
                     supply_hist=in_sale[:k+1], market_history=None, market_pct_90d=mkt["pct"],
                     market_cycle=mkt["cycle"], market_zscore=mkt["z"], market_th_score=mkt["th"],
                     market_30d_change=mkt.get("chg30",0), market_drop21=mkt.get("drop21",0),

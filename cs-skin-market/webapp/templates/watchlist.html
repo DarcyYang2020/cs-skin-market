@@ -30,9 +30,27 @@
       <option value="price_desc" {% if wl_sort == 'price_desc' %}selected{% endif %}>价格 ↓</option>
       <option value="price_asc" {% if wl_sort == 'price_asc' %}selected{% endif %}>价格 ↑</option>
       <option value="grade" {% if wl_sort == 'grade' %}selected{% endif %}>评级</option>
+      <option value="proximity" {% if wl_sort == 'proximity' %}selected{% endif %}>接近买点</option>
     </select>
   </div>
 </div>
+
+{% if monitor and (monitor.near_buys or monitor.broken) %}
+<div class="card" style="margin-bottom:12px;border-color:rgba(245,158,11,0.35);">
+  <div class="card-header" style="padding:8px 14px;">
+    <span class="card-title">🔔 监控提醒</span>
+    <button class="btn btn-outline btn-sm" onclick="openScanModal()" style="margin-left:auto;">📊 刷新全部数据</button>
+  </div>
+  <div style="padding:8px 14px;font-size:12px;color:var(--text-secondary);display:flex;gap:16px;flex-wrap:wrap;">
+    {% for it in monitor.near_buys %}
+    <span>🎯 <b>{{ it.name }}</b> 接近买点 <b style="color:var(--green);">{{ it.proximity.score }}%</b>（{{ it.proximity.nearest }}）</span>
+    {% endfor %}
+    {% for it in monitor.broken %}
+    <span style="color:var(--red);font-weight:600;">⚠️ <b>{{ it.name }}</b> 已破止损位（现价 ¥{{ "%.2f"|format(it.latest_price) }} ≤ 成本-25% ¥{{ "%.2f"|format(it.avg_cost*0.75) }}）</span>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
 
 <!-- Holdings Summary Bar -->
 <div class="card" style="padding:14px 18px;margin-bottom:16px;">
@@ -105,6 +123,10 @@
             <span style="font-size:12px;">{{ item.quantity or 0 }} 件</span><br>
             <span style="font-size:11px;color:var(--text-muted);">均价 ¥{{ "%.2f"|format(item.avg_cost or 0) }}</span><br>
             <span style="font-size:11px;color:var(--text-muted);">累计买 ¥{{ "%.2f"|format(item.total_bought or 0) }}</span>
+            {% if item.sell_ref %}
+            <br><span style="font-size:11px;{% if item.sell_ref.broken %}color:var(--red);font-weight:700;{% else %}color:var(--text-muted);{% endif %}">止损 ¥{{ "%.2f"|format(item.sell_ref.stop_loss) }}{% if item.sell_ref.broken %} ⚠️已破位{% endif %}</span>
+            <br><span style="font-size:11px;color:var(--text-muted);">90日 ¥{{ "%.2f"|format(item.sell_ref.low90) if item.sell_ref.low90 else "--" }}~{{ "%.2f"|format(item.sell_ref.high90) if item.sell_ref.high90 else "--" }}</span>
+            {% endif %}
             {% else %}<span class="muted text-sm">--</span>{% endif %}
           </td>
           <td class="{% if item.pnl_pct is not none and item.pnl_pct > 5 %}green{% elif item.pnl_pct is not none and item.pnl_pct < -5 %}red{% endif %}">
@@ -118,6 +140,12 @@
               {{ s.get('cycle_phase','') or '' }}
               {% if s.get('valuation_tier') %}| {{ s.get('valuation_tier','') }}{% endif %}
               {% if s.get('fusion_action') %}| {{ s.get('fusion_action','') }}{% endif %}
+              {% set prox = s.get('proximity') %}
+              {% if s.get('fusion_action') == 'buy' %}<br><span style="font-weight:700;color:var(--green);">🟢 买点已触发</span>
+              {% elif prox %}<br><span style="font-weight:700;color:{% if prox.score >= 60 %}var(--green){% elif prox.score >= 35 %}var(--yellow){% else %}var(--text-muted){% endif %};">🎯 {{ prox.nearest }} {{ prox.score }}%</span>{% endif %}
+              {% if item.latest_signal %}
+              <br><span style="font-size:11px;color:var(--text-secondary);">📡 {{ item.latest_signal.signal_date }} · 入场 ¥{{ "%.2f"|format(item.latest_signal.entry_price) }}{% if item.latest_signal.ret_vs_entry is not none %} <span style="{% if item.latest_signal.ret_vs_entry >= 0 %}color:var(--green);{% else %}color:var(--red);{% endif %}">至今 {{ "%+.1f"|format(item.latest_signal.ret_vs_entry) }}%</span>{% endif %}</span>
+              {% endif %}
             </span>
             {% endif %}
           </span></td>

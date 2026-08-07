@@ -34,11 +34,30 @@
     <span style="font-size:12px;color:var(--text-muted);margin-left:8px;">市场状态</span>
     <span class="regime-badge {{ {'V型底区':'regime-vbottom','阴跌中继区':'regime-risky','恐慌浅跌':'regime-panic','中性企稳':'regime-ok','弱市观望':'regime-weak','贪婪禁入':'regime-greedy'}.get(fusion_decision.state_bucket, '') }}">{{ fusion_decision.state_bucket }}</span>
     {% endif %}
+    {% if fusion_decision.expectancy %}
+    <span style="font-size:12px;margin-left:8px;padding:2px 9px;border-radius:10px;background:rgba(16,185,129,0.10);color:{% if fusion_decision.expectancy.win14 >= 80 %}var(--green){% elif fusion_decision.expectancy.win14 >= 70 %}var(--yellow){% else %}var(--red){% endif %};" title="回测样本 n={{ fusion_decision.expectancy.n }} · 独立事件 {{ fusion_decision.expectancy.events }} · 14d 95% CI {{ fusion_decision.expectancy.ci14_lo }}~{{ fusion_decision.expectancy.ci14_hi }}%">📈 回测 14d {{ fusion_decision.expectancy.win14 }}% · 30d {{ "%+.1f"|format(fusion_decision.expectancy.avg30) }}%</span>
+    {% endif %}
   </div>
   {% if fusion_decision.action_detail %}
   <div style="padding:8px 14px;font-size:13px;line-height:1.5;color:var(--text-secondary);">
     {{ fusion_decision.action_detail }}
   </div>
+  {% endif %}
+  {% if fusion_decision.action != 'buy' and fusion_decision.proximity %}
+  <div style="padding:6px 14px 10px;font-size:12px;color:var(--text-secondary);border-top:1px dashed var(--border);margin-top:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+    <span>距买点最近信号：<b style="color:var(--text-primary);">{{ fusion_decision.proximity.nearest }}</b></span>
+    <span style="font-weight:800;color:{% if fusion_decision.proximity.score >= 60 %}var(--green){% elif fusion_decision.proximity.score >= 35 %}var(--yellow){% else %}var(--red){% endif %};">{{ fusion_decision.proximity.score }}%</span>
+    {% if fusion_decision.proximity.gaps %}<span style="color:var(--text-muted);">还差：{{ fusion_decision.proximity.gaps|join(" · ") }}</span>{% endif %}
+  </div>
+  {% endif %}
+  {% if fusion_decision.trace %}
+  <details style="padding:0 14px 10px;font-size:12px;color:var(--text-secondary);">
+    <summary style="cursor:pointer;font-weight:600;color:var(--text-muted);">🔍 为什么是这个结论</summary>
+    <div style="margin-top:6px;line-height:1.7;">
+      <div>估值区：{{ fusion_decision.trace.zone }}{% if fusion_decision.trace.bucket %} · 市场状态：{{ fusion_decision.trace.bucket }}{% endif %}</div>
+      {% if fusion_decision.trace.sources %}<div style="margin-top:2px;">关键路径/拦截：{{ fusion_decision.trace.sources|join(' → ') }}</div>{% else %}<div style="margin-top:2px;">无额外拦截，结论由基础矩阵直接给出</div>{% endif %}
+    </div>
+  </details>
   {% endif %}
 </div>
 {% endif %}
@@ -85,7 +104,8 @@
     <div style="font-size:11px;color:var(--text-secondary);margin-top:2px;line-height:1.6;">
       7日 <span style="{% if supply_analysis.supply_change_7d > 0 %}color:var(--red);{% elif supply_analysis.supply_change_7d < 0 %}color:var(--green);{% endif %}">{{ "%+.1f"|format(supply_analysis.supply_change_7d) }}%</span>
       · 30日 <span style="{% if supply_analysis.supply_change_30d > 0 %}color:var(--red);{% elif supply_analysis.supply_change_30d < 0 %}color:var(--green);{% endif %}">{{ "%+.1f"|format(supply_analysis.supply_change_30d) }}%</span><br>
-      <span style="{% if supply_analysis.supply_risk == 'hoarding' %}color:var(--green){% elif supply_analysis.supply_risk == 'dumping' %}color:var(--red){% else %}color:var(--text-muted){% endif %};font-weight:600;">{{ supply_analysis.supply_risk_label if supply_analysis.supply_risk_label else ('吸筹' if supply_analysis.supply_risk == 'hoarding' else ('派发' if supply_analysis.supply_risk == 'dumping' else '平稳')) }}</span>
+      <span style="{% if supply_analysis.supply_risk == 'hoarding' %}color:var(--green){% elif supply_analysis.supply_risk == 'trap' %}color:#fbbf24;{% elif supply_analysis.supply_risk == 'dumping' %}color:var(--red){% else %}color:var(--text-muted){% endif %};font-weight:600;">{{ supply_analysis.supply_risk_label if supply_analysis.supply_risk_label else ('吸筹' if supply_analysis.supply_risk == 'hoarding' else ('派发' if supply_analysis.supply_risk == 'dumping' else '平稳')) }}</span>
+      {% if supply_analysis.supply_risk_note %}<br><span style="color:#fbbf24;font-size:11px;">{{ supply_analysis.supply_risk_note }}</span>{% endif %}
     </div>
   </div>
   {% endif %}
@@ -124,6 +144,9 @@
       {% if buy_distance.anchor_note %}
       <div style="width:100%;margin-top:6px;padding:6px 10px;border-radius:6px;background:rgba(245,158,11,0.12);color:#fbbf24;font-size:12px;line-height:1.5;">{{ buy_distance.anchor_note }}</div>
       {% endif %}
+      {% if buy_distance.decision_note %}
+      <div style="width:100%;margin-top:6px;padding:6px 10px;border-radius:6px;background:rgba(245,158,11,0.12);color:#fbbf24;font-size:12px;line-height:1.5;">⚠️ {{ buy_distance.decision_note }}</div>
+      {% endif %}
     </div>
     <div style="margin-top:8px;height:10px;background:rgba(255,255,255,0.06);border-radius:5px;overflow:hidden;">
       <div style="height:100%;width:{{ buy_distance.bar_pct }}%;background:linear-gradient(90deg,#3b82f6,#22c55e);border-radius:5px;"></div>
@@ -140,7 +163,7 @@
       <span style="padding:3px 8px;border-radius:4px;background:rgba(100,116,139,0.15);color:#94a3b8;">90日最低 ¥{{ "%.2f"|format(buy_distance.low90_price) }}</span>
       {% if buy_distance.ma7 %}<span style="padding:3px 8px;border-radius:4px;background:rgba(100,116,139,0.15);color:#94a3b8;">MA7 ¥{{ "%.2f"|format(buy_distance.ma7) }}</span>{% endif %}
       {% if buy_distance.ma30 %}<span style="padding:3px 8px;border-radius:4px;background:rgba(100,116,139,0.15);color:#94a3b8;">MA30 ¥{{ "%.2f"|format(buy_distance.ma30) }}</span>{% endif %}
-      {% if buy_distance.supply_signal == "hoarding" %}<span style="padding:3px 8px;border-radius:4px;background:rgba(34,197,94,0.15);color:#4ade80;">📦 供给吸筹</span>{% endif %}
+      {% if buy_distance.supply_signal == "hoarding" %}{% if buy_distance.supply_trap %}<span style="padding:3px 8px;border-radius:4px;background:rgba(245,158,11,0.15);color:#fbbf24;">📦 供给收缩·高位（锁仓诱多嫌疑）</span>{% else %}<span style="padding:3px 8px;border-radius:4px;background:rgba(34,197,94,0.15);color:#4ade80;">📦 供给吸筹</span>{% endif %}{% endif %}
       {% if buy_distance.scenario == "bottom" %}{% if buy_distance.stabilizing %}<span style="padding:3px 8px;border-radius:4px;background:rgba(34,197,94,0.15);color:#4ade80;">✅ 已企稳（可下探）</span>{% else %}<span style="padding:3px 8px;border-radius:4px;background:rgba(245,158,11,0.15);color:#fbbf24;">⏳ 未企稳·不追跌</span>{% endif %}{% endif %}
       {% if buy_distance.th_zone == "panic" %}<span style="padding:3px 8px;border-radius:4px;background:rgba(239,68,68,0.15);color:#f87171;">🔥 恐慌区·黄金坑</span>{% elif buy_distance.th_zone == "friction" %}<span style="padding:3px 8px;border-radius:4px;background:rgba(245,158,11,0.15);color:#fbbf24;">⚠️ 摩擦带</span>{% endif %}
     </div>
@@ -171,4 +194,20 @@
 <div style="text-align:right;font-size:12px;color:var(--text-muted);">
   报告时间: {{ analysis_time if analysis_time else 'N/A' }}
 </div>
+
+{# ====== 术语速查 ====== #}
+<details style="margin-top:10px;font-size:12px;color:var(--text-secondary);">
+  <summary style="cursor:pointer;font-weight:600;">📖 术语速查</summary>
+  <div style="margin-top:6px;line-height:1.8;padding:8px 10px;background:rgba(100,116,139,0.08);border-radius:8px;">
+    <b>趋势健康 TH</b>：0-100 趋势强度与结构质量（≥55 强劲 / 35-54 中性 / &lt;35 走弱）。<br>
+    <b>90日分位</b>：当前价在近 90 日价格中的百分位，越低越接近历史低位（≤30 低估区 / ≥70 高估区）。<br>
+    <b>Z-score</b>：相对 90 日均价的偏离标准差数，≤-2 为深度超跌。<br>
+    <b>在售量/供给</b>：在售件数及 7/30 日变化；收缩=供给减少（低位=吸筹，高位=锁仓诱多嫌疑），扩张+价跌=派发/抛压。<br>
+    <b>状态桶</b>：大盘六态（V型底区/阴跌中继/恐慌浅跌/中性企稳/弱市观望/贪婪禁入），决定买卖环境。<br>
+    <b>信号族</b>：恐慌共振（极端恐慌+深跌反转，高置信）/ 深值企稳（低估+大盘企稳）/ 恐慌退潮（恐慌后止跌）/ 供给收缩吸筹（启动前吸筹）/ 超跌反弹（深跌跌速衰减）。<br>
+    <b>守卫/闸门</b>：buy 前的风险拦截（大盘走弱/存世量/半山腰/飞刀/求购弱/供给扩张等），命中即降级观望。<br>
+    <b>买点接近度</b>：距各 buy 信号族的达标度 0-100%（任一硬条件不达标即归零），"还差"为最近缺口。<br>
+    <b>参数冻结</b>：引擎参数 2026-08-07 起冻结约 260 天（至 2027-04-25），期间只观测不改参。
+  </div>
+</details>
 {% endif %}

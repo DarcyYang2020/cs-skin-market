@@ -39,7 +39,7 @@ def replay(limit=None):
             prefix = prices[:i + 1]
             try:
                 res = ia.run_item_analysis(
-                    name=iname, prices=prefix, volumes=[0] * len(prefix),
+                    name=iname, prices=prefix,
                     supply_hist=in_sale[:i + 1], market_history=None,
                     market_pct_90d=mc["pct"], market_cycle=mc["cycle"],
                     market_zscore=mc["z"], market_th_score=mc["th"],

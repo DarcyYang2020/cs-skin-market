@@ -9,24 +9,17 @@ Tables: items, price_history, market_index, snapshots, positions, backtest_resul
 """
 
 
-
 import sqlite3
 
 from datetime import datetime, timezone, timedelta
 
 
-
 from .config import DB_PATH, DATA_DIR
-
 
 
 TZ_BJ = timezone(timedelta(hours=8))
 
-SCHEMA_VERSION = 1  # Phase 4 schema 版本化：新增表/列时 bump，并在 MIGRATIONS 登记迁移
-MIGRATIONS = {}     # {版本号: 迁移函数(conn)}，_init_schema 按版本号增量执行
-
-
-
+SCHEMA_VERSION = 1  # Phase 4 schema 版本化：新增表/列时 bump（当前无存量迁移，直接建表）
 
 
 def _now() -> str:
@@ -34,15 +27,9 @@ def _now() -> str:
     return datetime.now(TZ_BJ).strftime("%Y-%m-%d %H:%M:%S")
 
 
-
-
-
 def _today() -> str:
 
     return datetime.now(TZ_BJ).strftime("%Y-%m-%d")
-
-
-
 
 
 # 2026-08-06 性能修复：get_conn 每次连接都跑 _init_schema（32 条 DDL），
@@ -70,9 +57,6 @@ def get_conn() -> sqlite3.Connection:
         _SCHEMA_INIT_PATHS.add(key)
 
     return conn
-
-
-
 
 
 def _init_schema(conn: sqlite3.Connection) -> None:
@@ -155,7 +139,6 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         pass  # ??????????????????????
 
 
-
     conn.execute("""CREATE TABLE IF NOT EXISTS market_index (
 
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -169,7 +152,6 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         mood TEXT,
 
         created_at TEXT DEFAULT (datetime('now','localtime')))""")
-
 
 
     conn.execute("""CREATE TABLE IF NOT EXISTS settings (
@@ -437,27 +419,15 @@ def _init_schema(conn: sqlite3.Connection) -> None:
 
     # 2026-08-07 修复: _init_schema 全部 DDL 统一提交（此前 236 行迁移块 commit 之后的建表依赖调用方 commit，只读路径会回滚）
     # ---- Phase 4: schema 版本化 ----
-    # schema_version 表记录当前 schema 版本；MIGRATIONS 按版本号增量迁移。
+    # schema_version 表记录当前 schema 版本；当前无存量迁移，版本落后时直接升到 SCHEMA_VERSION。
     # 既有 CREATE IF NOT EXISTS / ALTER try-except 保持幂等，不在此重构，避免破坏旧库。
     conn.execute("""CREATE TABLE IF NOT EXISTS schema_version (
         id INTEGER PRIMARY KEY CHECK (id = 1),
         version INTEGER NOT NULL,
         applied_at TEXT DEFAULT (datetime('now','localtime')))""")
-    _sv_row = conn.execute("SELECT version FROM schema_version WHERE id = 1").fetchone()
-    _sv_cur = _sv_row[0] if _sv_row else 0
-    _sv_final = _sv_cur
-    for _v in sorted(MIGRATIONS):
-        if _v > _sv_cur:
-            MIGRATIONS[_v](conn)
-            _sv_final = _v
-    if _sv_final < SCHEMA_VERSION:
-        _sv_final = SCHEMA_VERSION
     conn.execute("INSERT OR REPLACE INTO schema_version (id, version, applied_at) "
-                 "VALUES (1, ?, datetime('now','localtime'))", (_sv_final,))
+                 "VALUES (1, ?, datetime('now','localtime'))", (SCHEMA_VERSION,))
     conn.commit()
-
-
-
 
 
 def upsert_item(conn, name, steam_name="", weapon="", skin="", wear="",
@@ -490,12 +460,6 @@ def upsert_item(conn, name, steam_name="", weapon="", skin="", wear="",
     return cur.lastrowid
 
 
-
-
-
-
-
-
 def save_price_history_batch(conn, item_id, daily_bars):
     """Save 90-day K-line data (Bar objects) to price_history table.
     daily_bars: list of Bar objects with .date, .close, .volume, .in_sale_count, .survive
@@ -512,13 +476,6 @@ def save_price_history_batch(conn, item_id, daily_bars):
         )
 
 
-
-
-
-
-
-
-
 def save_macro_snapshots(conn, rows):
     """Bulk upsert daily macro snapshots.
 
@@ -529,7 +486,6 @@ def save_macro_snapshots(conn, rows):
         "INSERT OR REPLACE INTO macro_history (date, greedy_index, card_price) VALUES (?,?,?)",
         [tuple(r) for r in rows],
     )
-
 
 
 def get_greedy_history(conn, start=None):
@@ -546,44 +502,9 @@ def get_greedy_history(conn, start=None):
     return [(r["date"], float(r["value"])) for r in rows]
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 def get_item_history(conn, item_id, limit=90):
 
     return conn.execute("SELECT * FROM price_history WHERE item_id=? ORDER BY date DESC LIMIT ?", (item_id, limit)).fetchall()
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 def find_item(conn, name):
@@ -591,65 +512,7 @@ def find_item(conn, name):
     return conn.execute("SELECT * FROM items WHERE name=?", (name,)).fetchone()
 
 
-
-
-
 # ---- P2: Position CRUD ----
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-def save_backtest(conn, strategy, item_id, start_date, end_date, initial_capital,
-
-                  final_value, total_return_pct, annualized_return_pct,
-
-                  max_drawdown_pct, sharpe_ratio, win_rate_pct,
-
-                  total_trades, winning_trades, metrics_json=""):
-
-    cur = conn.execute("""INSERT INTO backtest_results (strategy,item_id,start_date,end_date,initial_capital,
-
-        final_value,total_return_pct,annualized_return_pct,max_drawdown_pct,sharpe_ratio,
-
-        win_rate_pct,total_trades,winning_trades,metrics_json)
-
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-
-        (strategy, item_id, start_date, end_date, initial_capital, final_value,
-
-         total_return_pct, annualized_return_pct, max_drawdown_pct, sharpe_ratio,
-
-         win_rate_pct, total_trades, winning_trades, metrics_json))
-
-    return cur.lastrowid
-
-
-
-
-
-
 
 
 def set_setting(conn, key, value):
@@ -661,7 +524,6 @@ def set_setting(conn, key, value):
         (key, value))
 
 
-
 def get_setting(conn, key, default=""):
 
     row = conn.execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()
@@ -669,13 +531,7 @@ def get_setting(conn, key, default=""):
     return row["value"] if row else default
 
 
-
-
-
 # ---- Watchlist CRUD ----
-
-
-
 
 
 def watchlist_list_with_snapshots(conn):
@@ -690,10 +546,6 @@ def watchlist_list_with_snapshots(conn):
     """).fetchall()
 
 
-
-
-
-
 def watchlist_add(conn, name, holding=0, avg_cost=0.0, quantity=0) -> int:
     # 保留已有 good_id/yyyp_id：upsert_item 默认 good_id=0 会覆盖清空，导致后续分析需重新搜索
     existing = conn.execute("SELECT id, good_id, yyyp_id FROM items WHERE name = ?", (name,)).fetchone()
@@ -703,7 +555,6 @@ def watchlist_add(conn, name, holding=0, avg_cost=0.0, quantity=0) -> int:
     if holding:
         conn.execute("UPDATE items SET holding=?, avg_cost=?, quantity=? WHERE id=?", (holding, avg_cost, quantity, item_id))
     return item_id
-
 
 
 def watchlist_update(conn, name, **kwargs):
@@ -727,14 +578,9 @@ def watchlist_update(conn, name, **kwargs):
                          (v, item["id"]))
 
 
-
 def watchlist_remove(conn, name):
 
     conn.execute("UPDATE items SET in_watchlist=0 WHERE name=?", (name,))
-
-
-
-
 
 
 def get_latest_snapshot_report(conn, item_id):
@@ -746,9 +592,6 @@ def get_latest_snapshot_report(conn, item_id):
         (item_id,)
 
     ).fetchone()
-
-
-
 
 
 # ---- Executions (P0-2, 2026-08-04) ----
@@ -829,7 +672,6 @@ def closing_price_on(conn, item_id, date_str):
     return row["price_rmb"] if row else None
 
 
-
 def save_market_snapshot(conn, date, rows):
     """全市场快照落库（2026-08-04，样本扩容数据积累）。
     rows: list of dict {good_id, name, exterior_localized_name, rarity_localized_name,
@@ -845,8 +687,6 @@ def save_market_snapshot(conn, date, rows):
           r.get("rarity_localized_name"), r.get("yyyp_sell_price"), r.get("yyyp_sell_num"))
          for r in rows if r.get("good_id")])
     conn.commit()
-
-
 
 
 def save_monitor_rank_snapshot(conn, date, item_id, good_id, rows):
@@ -900,7 +740,4 @@ def item_history_start(conn, item_id):
 
 
 # ---- Cleanup ----
-
-
-
 

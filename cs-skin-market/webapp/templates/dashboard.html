@@ -7,6 +7,38 @@
 {% include "partials/index_analysis.html" %}
 </div>
 
+<!-- 引擎状态 (J-2 冻结监测, 纯展示) -->
+{% if engine_status %}
+<div class="card" style="margin-top:12px;">
+  <div class="card-header">
+    <span class="card-title">⚙️ 引擎状态 · {{ engine_status.engine_version }}</span>
+    <span style="font-size:12px;color:var(--text-muted);margin-left:auto;">参数冻结 {{ engine_status.frozen_at }} → {{ engine_status.oos_revalidate_after }}</span>
+    <button class="btn btn-outline btn-sm" onclick="createBackup()" style="margin-left:8px;">💾 备份数据</button>
+    <span id="backup-msg" style="font-size:11px;color:var(--text-muted);"></span>
+  </div>
+  <div style="padding:10px 14px;font-size:12px;display:flex;gap:18px;flex-wrap:wrap;color:var(--text-secondary);">
+    <span>🔵 独立恐慌事件 <b style="color:var(--text-primary);">{{ engine_status.a_value }}/{{ engine_status.a_threshold }}</b>（{{ engine_status.a_status }}）</span>
+    <span>🟢 新数据积累 <b style="color:var(--text-primary);">{{ engine_status.b_days }}/{{ engine_status.b_threshold }}</b> 天（至 {{ engine_status.b_target }}）</span>
+    {% if engine_status.c_flagged %}
+    <span style="color:var(--yellow);">⚠️ C 通道告警：{{ engine_status.c_flagged }} 个月度胜率低于阈值{% if engine_status.c_latest_month %}（最近 {{ engine_status.c_latest_month }}）{% endif %}</span>
+    {% else %}
+    <span>✅ C 通道胜率监测：无告警</span>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{% if signal_density %}
+<div class="card" style="margin-top:12px;">
+  <div class="card-header"><span class="card-title">📡 信号密度（回放口径）</span></div>
+  <div style="padding:10px 14px;font-size:12px;color:var(--text-secondary);">
+    <span>最近30日 <b style="color:var(--text-primary);">{{ signal_density.count }}</b> 个 buy 信号（{{ signal_density.window }}）· 历史分位 {{ "%.0f"|format(signal_density.pct) }}% · 等级 <b style="color:{% if signal_density.level in ('高','过热') %}var(--yellow){% else %}var(--green){% endif %};">{{ signal_density.level }}</b></span>
+    <span style="margin-left:18px;">全期 {{ signal_density.total }} 信号 · 30日窗口均值 {{ "%.1f"|format(signal_density.avg30) }}</span>
+    <span style="margin-left:18px;color:var(--text-muted);">高/过热提示信号密集、同质化，避免重复加仓（组合 cap 0.8）</span>
+  </div>
+</div>
+{% endif %}
+
 <!-- 数据健康 (A1, 2026-08-05): run_health_monitor 自动检查结果, 每日采集收尾/手动触发写 health_checks -->
 <div class="card" id="health-card" style="display:none;margin-top:16px;">
   <div class="card-header">
@@ -38,6 +70,18 @@
 
 {% block scripts %}
 <script>
+
+// ---- 数据备份 (P2-3) ----
+function createBackup() {
+  fetch("/api/backup/create", {method: "POST"})
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var el = document.getElementById("backup-msg");
+      if (!el) return;
+      if (d.ok) { el.textContent = "✅ 备份成功：" + d.file + "（" + Math.round(d.size / 1024) + " KB）"; }
+      else { el.textContent = "❌ 备份失败：" + (d.error || ""); }
+    });
+}
 // ---- 数据健康 (A1, 2026-08-05): 实时检查 + 自动检查状态 + 明细（接口异常也显示，不静默隐藏） ----
 function _healthBadge(st, label) {
   var colors = {pass: "var(--green)", warn: "var(--yellow)", fail: "var(--red)"};

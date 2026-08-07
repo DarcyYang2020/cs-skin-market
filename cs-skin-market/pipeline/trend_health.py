@@ -86,6 +86,7 @@ class FusionDecision:
     liquidity_filtered: bool = False
     market_relative_strength: bool = False
     position_limit: float = 1.0
+    proximity: dict = None  # 纯展示层：买点接近度（不参与任何决策）
 
 
 # ============================================================
@@ -473,7 +474,7 @@ def _dim_anomaly(prices, mad_scale=1.0):
 #  Main
 # ============================================================
 
-def compute_trend_health(prices, volumes=None, supply=None,
+def compute_trend_health(prices, supply=None,
                          cycle_phase=None, whale_prob=None,
                          position_lock_score=0, liquidity_score=50,
                          item_meta=None, zscore_90d=None):
@@ -481,14 +482,11 @@ def compute_trend_health(prices, volumes=None, supply=None,
 
     Args:
         prices: daily close prices (oldest->newest)
-        volumes: optional daily volumes
         cycle_phase: 'accumulation'/'consolidation'/'markup'/'distribution'
         whale_prob: whale manipulation probability 0-100
         position_lock_score: WhaleDetection position_lock_score (0-20)
         liquidity_score: 0-100 liquidity score
     """
-    if volumes is None:
-        volumes = []
 
     th = TrendHealth()
     n = len(prices)
@@ -918,6 +916,7 @@ def fusion_decision_summary(fd):
         "deduction_sources": fd.deduction_sources,
         "liquidity_filtered": fd.liquidity_filtered,
         "position_limit": fd.position_limit,
+        "proximity": getattr(fd, "proximity", None),
     }
 
 # === Market Index Trend Health ===

@@ -61,7 +61,7 @@ def t_schema_version():
         assert 'schema_version' in tables, tables
         row = conn.execute("SELECT version FROM schema_version WHERE id = 1").fetchone()
         assert row is not None and row[0] == db.SCHEMA_VERSION, row
-        assert isinstance(db.MIGRATIONS, dict)
+        assert not hasattr(db, 'MIGRATIONS')
     finally:
         conn.close()
 check('schema_version 表记录当前版本', t_schema_version)
@@ -147,7 +147,7 @@ def t_knife():
                                percentile_90d=5.0, raw_th_score=55, corrected_th_score=55,
                                position_limit=None)
     ia.compute_fusion_decision = fake_fd
-    kw = dict(name='Test', volumes=[0] * 90, market_pct_90d=5.0,
+    kw = dict(name='Test', market_pct_90d=5.0,
               market_cycle='consolidation', market_zscore=-2.8, market_th_score=55,
               market_30d_change=-5.0, market_drop21=-25.0, recent_buy_dates=[], signal_date='2026-07-03')
     try:
@@ -188,7 +188,7 @@ def t_panic():
                                liquidity_filtered=False, percentile_90d=5.0, raw_th_score=40,
                                corrected_th_score=40, position_limit=None)
     ia.compute_fusion_decision = lambda *a, **k: fake_fd('watch')
-    kw = dict(name='Test', volumes=[0] * 90, market_pct_90d=5.0,
+    kw = dict(name='Test', market_pct_90d=5.0,
               market_cycle='consolidation', market_zscore=-2.0, market_th_score=50,
               market_30d_change=-10.0, market_drop21=-25.0, recent_buy_dates=[], signal_date='2026-05-25')
     kw7 = dict(kw, recent_buy_dates=['2026-05-20'])
@@ -246,7 +246,7 @@ def t_zones():
                                zone='undervalued', zone_label='low', liquidity_filtered=False,
                                percentile_90d=5.0, raw_th_score=40, corrected_th_score=40, position_limit=None)
     ia.compute_fusion_decision = fake_fd
-    kw = dict(name='Test', prices=[60.0] * 86 + [58.0, 57.0, 56.0, 58.0], volumes=[0] * 90, market_pct_90d=5.0,
+    kw = dict(name='Test', prices=[60.0] * 86 + [58.0, 57.0, 56.0, 58.0], market_pct_90d=5.0,
               market_cycle='consolidation', market_zscore=-2.0, market_th_score=50,
               market_30d_change=-10.0, market_drop21=-25.0, recent_buy_dates=[], signal_date='2026-05-25')
     try:
@@ -387,7 +387,7 @@ def t_p08_deep_value_tranche():
                                liquidity_filtered=False, percentile_90d=15.0,
                                raw_th_score=45, corrected_th_score=45, position_limit=0.0)
     ia.compute_fusion_decision = fake_fd
-    kw = dict(name='Test', volumes=[0] * 90, market_pct_90d=15.0,
+    kw = dict(name='Test', market_pct_90d=15.0,
               market_cycle='consolidation', market_zscore=-0.8, market_th_score=45,
               market_30d_change=-3.0, market_drop21=-3.0, recent_buy_dates=[], signal_date='2026-07-03')
     # 先跌后恢复: 单品TH真实计算>=35, 触发 P0-8 深值企稳
@@ -425,7 +425,7 @@ def t_p09_panic_easing_deep_bottom():
                                liquidity_filtered=False, percentile_90d=10.0,
                                raw_th_score=30, corrected_th_score=30, position_limit=0.0)
     ia.compute_fusion_decision = fake_fd
-    kw = dict(name='Test', volumes=[0] * 90, market_pct_90d=10.0,
+    kw = dict(name='Test', market_pct_90d=10.0,
               market_cycle='consolidation', market_zscore=-1.5, market_th_score=30,
               market_30d_change=-18.0, market_drop21=-18.0, recent_buy_dates=[], signal_date='2026-05-28')
     # 1) 深跌 + 恐慌退潮 + 止跌(55,54,55) -> P0-9 触发
@@ -476,7 +476,7 @@ def t_p1_supply_accumulation():
     ia.compute_fusion_decision = fake_fd
     supply = [100] * 23 + [60] * 7        # 30日均量90.7 -> 7日均量60 (0.66x < 0.85, 收缩)
     prices = [60.0] * 83 + [59.5, 60.2, 60.8, 60.0, 60.5, 60.3, 60.7]  # 7日|涨跌|<=3%
-    kw = dict(name='Test', volumes=[0] * 90, supply_hist=supply, market_pct_90d=50.0,
+    kw = dict(name='Test', supply_hist=supply, market_pct_90d=50.0,
               market_cycle='volatile', market_zscore=0.0, market_th_score=50,
               market_30d_change=-5.0, market_drop21=-3.0, recent_buy_dates=[], signal_date='2026-03-01')
     # 1) 供给收缩+价格平稳+门控放行 -> P1-0 buy(轻仓0.10)
@@ -839,7 +839,7 @@ def t_item_result_buy_distance():
                                percentile_90d=5.0, raw_th_score=55, corrected_th_score=55,
                                position_limit=None)
     ia.compute_fusion_decision = fake_fd
-    kw = dict(name='Test', volumes=[0] * 90, market_pct_90d=5.0,
+    kw = dict(name='Test', market_pct_90d=5.0,
               market_cycle='consolidation', market_zscore=-2.8, market_th_score=55,
               market_30d_change=-5.0, market_drop21=-25.0, recent_buy_dates=[], signal_date='2026-07-03')
     try:
@@ -1213,7 +1213,7 @@ def t_survive_filter():
     # 存世量过低（194<3000）不给 buy
     a = run_item_analysis(
         name="法玛斯 | 对比涂装 (崭新出厂)",
-        prices=prices, volumes=[10]*90, supply_hist=[5]*90,
+        prices=prices, supply_hist=[5]*90,
         index_change_7d=-1, market_history=[1000]*60, market_pct_90d=20,
         market_zscore=-1.0, market_cycle="bear", market_th_score=50,
         market_30d_change=-5, market_drop21=-20, survive_count=194,
@@ -1224,7 +1224,7 @@ def t_survive_filter():
     # 存世量足够（67256）不触发过滤
     b = run_item_analysis(
         name="FN57 | 神祗 (崭新出厂)",
-        prices=prices, volumes=[10]*90, supply_hist=[500]*90,
+        prices=prices, supply_hist=[500]*90,
         index_change_7d=-1, market_history=[1000]*60, market_pct_90d=20,
         market_zscore=-1.0, market_cycle="bear", market_th_score=50,
         market_30d_change=-5, market_drop21=-20, survive_count=67256,

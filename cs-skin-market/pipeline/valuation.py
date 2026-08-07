@@ -43,54 +43,6 @@ def calc_zscore(prices, current):
     return round((current - med) / (mad * 1.4826), 2)
 
 
-def get_valuation_summary(conn, item_id):
-    """Query price_history and compute valuation metrics."""
-    rows = conn.execute(
-        "SELECT price_rmb, date FROM price_history WHERE item_id=? ORDER BY date ASC",
-        (item_id,)
-    ).fetchall()
-
-    if not rows:
-        return ValuationResult(label="no_data")
-
-    prices = [float(r["price_rmb"]) for r in rows]
-    current = prices[-1]
-
-    # 30-day window
-    prices_30d = prices[-30:] if len(prices) >= 30 else prices
-    # 90-day window
-    prices_90d = prices[-90:] if len(prices) >= 90 else prices
-
-    pct_30 = calc_percentile(prices_30d, current)
-    pct_90 = calc_percentile(prices_90d, current)
-    z30 = calc_zscore(prices_30d, current)
-    z90 = calc_zscore(prices_90d, current)
-
-    # Label
-    if pct_30 <= 20:
-        label = "cheap"
-    elif pct_30 >= 80:
-        label = "expensive"
-    else:
-        label = "fair"
-
-    return ValuationResult(
-        current_price=current,
-        percentile_30d=pct_30,
-        percentile_90d=pct_90,
-        zscore_30d=z30,
-        zscore_90d=z90,
-        median_30d=round(statistics.median(prices_30d), 2) if prices_30d else 0,
-        median_90d=round(statistics.median(prices_90d), 2) if prices_90d else 0,
-        mean_30d=round(statistics.mean(prices_30d), 2) if prices_30d else 0,
-        high_30d=round(max(prices_30d), 2) if prices_30d else 0,
-        low_30d=round(min(prices_30d), 2) if prices_30d else 0,
-        data_points_30d=len(prices_30d),
-        data_points_90d=len(prices_90d),
-        label=label,
-    )
-
-
 def get_valuation_from_prices(prices):
     """Compute valuation from an in-memory price list (e.g. from K-line API).
     Uses 90-day K-line data from csqaq for accurate percentile/Z-score."""

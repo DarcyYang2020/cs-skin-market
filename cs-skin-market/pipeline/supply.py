@@ -139,20 +139,3 @@ def supply_summary(sa):
         "event_risk_factors": sa.event_risk_factors,
         "event_risk_discount": round(sa.event_risk_discount, 3),
     }
-
-# ============================================================
-#  Backward-compatible SupplySignals (for scorer.py / reporter.py)
-# ============================================================
-
-@dataclass
-class SupplySignals:
-    """Legacy supply signal data class for scorer/reporter compatibility."""
-    signal: str = "none"       # hoarding / dumping / none
-    trend: str = "stable"      # expanding / contracting / stable
-    is_hoarding: bool = False
-    is_dumping: bool = False
-    supply_change_7d: float = 0.0
-    supply_change_30d: float = 0.0
-    confidence: float = 0.0
-
-

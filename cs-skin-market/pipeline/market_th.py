@@ -87,7 +87,7 @@ def derive_market_cycle(values, i):
         return "distribution" if chg7 < 0 else "accumulation"
     return "sideways"
 
-def compute_market_trend_health(prices, volumes=None, cycle_phase="unknown",
+def compute_market_trend_health(prices, cycle_phase="unknown",
 
                                  event_risk_discount=1.0,
 
@@ -101,7 +101,7 @@ def compute_market_trend_health(prices, volumes=None, cycle_phase="unknown",
         if peak_21d > 0:
             drop_from_peak_pct = round((prices[-1] / peak_21d - 1) * 100, 1)
 
-    th = compute_trend_health(prices=prices, volumes=volumes, cycle_phase=cycle_phase,
+    th = compute_trend_health(prices=prices, cycle_phase=cycle_phase,
 
                                whale_prob=0.0, position_lock_score=0, liquidity_score=100)
 

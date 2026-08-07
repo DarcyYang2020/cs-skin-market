@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}CS-Market 信号体检{% endblock %}
+{% block content %}
+<div style="padding:16px 0;">
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
+    <h2 style="margin:0;font-size:20px;">🧪 信号体检</h2>
+    <span style="font-size:12px;color:var(--text-muted);">J-2 C 通道胜率监测：回放月度判定 + 实盘信号跟踪（data/j2_channel_status.json + signal_tracking 表）</span>
+  </div>
+
+  {% if j2 and j2.channels %}
+  {% set ch = j2.channels.C %}
+  <div class="card" style="margin-bottom:14px;padding:14px 16px;">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+      <span style="font-weight:700;">C 通道 · 胜率监测</span>
+      {% if ch.status == '已触发' %}
+        <span style="color:#f87171;font-weight:bold;">🔴 {{ ch.status }}</span>
+      {% else %}
+        <span style="color:#fbbf24;">🟡 {{ ch.status }}</span>
+      {% endif %}
+      <span style="font-size:12px;color:var(--text-muted);">{{ ch.trigger_state }}</span>
+      <span style="font-size:11px;color:var(--text-secondary);margin-left:auto;">引擎 {{ j2.engine_version }} · 冻结于 {{ j2.frozen_at }} · OOS 复验约 {{ j2.oos_revalidate_after }}</span>
+    </div>
+
+    {% if ch.replay_alert and ch.replay_alert.triggered %}
+    <div style="background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.35);border-radius:6px;padding:8px 12px;font-size:12px;color:#fca5a5;margin-bottom:10px;">
+      ⚠️ 回放告警：{{ ch.replay_alert.note }}{% if ch.replay_alert.since %}（自 {{ ch.replay_alert.since }} 起）{% endif %}
+    </div>
+    {% endif %}
+
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">实盘口径（signal_tracking：buy 信号 14/30 交易日后按真实价格回填，net 扣 2%）</div>
+    {% set prod = ch.production %}
+    {% if prod and prod.n_total %}
+    <div style="font-size:13px;margin-bottom:8px;">
+      {{ prod.n_total }} 条信号 · 已回填 14d {{ prod.n_filled14 }} / 30d {{ prod.n_filled30 }}
+      {% if prod.net14 and prod.net14.n %} · 实盘 14d 胜率 {{ prod.net14.win }}%（n={{ prod.net14.n }}）{% endif %}
+      {% if prod.net30 and prod.net30.n %} · 30d 胜率 {{ prod.net30.win }}%（n={{ prod.net30.n }}）{% endif %}
+    </div>
+    {% else %}
+    <div style="font-size:13px;margin-bottom:8px;">实盘信号积累中：signal_tracking 暂无已回填样本（0 条），未达判定门槛。</div>
+    {% endif %}
+    {% if ch.production_gate %}
+    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:10px;">
+      判定门槛：实盘 14d 回填需满 {{ ch.production_gate.min_filled14 }} 条，当前 {{ ch.production_gate.filled14 }} 条
+      {% if ch.production_gate.ready %}· ✅ 已就绪{% else %}· ⏳ 未就绪{% endif %}
+    </div>
+    {% endif %}
+
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">回放月度判定（月度 n&gt;=10 判定，flags 标注低于阈值月份）</div>
+    <div class="table-wrap" style="max-height:420px;overflow-y:auto;">
+      <table class="data-table" style="width:100%;font-size:12px;">
+        <thead>
+          <tr><th>月份</th><th>n</th><th>去簇 n</th><th>14d 胜率</th><th>去簇 14d</th><th>30d 胜率</th><th>去簇 30d</th><th>标注</th></tr>
+        </thead>
+        <tbody>
+        {% for r in ch.monthly or [] %}
+          <tr>
+            <td>{{ r.month }}</td>
+            <td>{{ r.n }}</td>
+            <td>{{ r.dedup_n }}</td>
+            <td>{% if r.win14 is not none %}{{ r.win14 }}%{% else %}<span class="muted">--</span>{% endif %}</td>
+            <td>{% if r.dedup_win14 is not none %}{{ r.dedup_win14 }}%{% else %}<span class="muted">--</span>{% endif %}</td>
+            <td>{% if r.win30 is not none %}{{ r.win30 }}%{% else %}<span class="muted">--</span>{% endif %}</td>
+            <td>{% if r.dedup_win30 is not none %}{{ r.dedup_win30 }}%{% else %}<span class="muted">--</span>{% endif %}</td>
+            <td>
+              {% for f in r.flags or [] %}<span style="color:#f87171;font-size:11px;">⚠️ {{ f }}</span>{% if not loop.last %}<br>{% endif %}{% endfor %}
+              {% if not (r.flags or []) %}<span class="muted">--</span>{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        {% if not (ch.monthly or []) %}
+          <tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text-muted);">暂无月度回放数据</td></tr>
+        {% endif %}
+        </tbody>
+      </table>
+    </div>
+    {% if ch.two_month_flags %}
+    <div style="margin-top:8px;font-size:12px;color:#f87171;">
+      {% for f in ch.two_month_flags %}⚠️ {{ f }}{% if not loop.last %}<br>{% endif %}{% endfor %}
+    </div>
+    {% endif %}
+    {% if ch.note %}
+    <div style="margin-top:10px;font-size:11px;color:var(--text-secondary);">{{ ch.note }}</div>
+    {% endif %}
+  </div>
+  {% else %}
+  <div class="card" style="padding:24px;text-align:center;color:var(--text-muted);">J-2 监测数据缺失（data/j2_channel_status.json 未生成）</div>
+  {% endif %}
+
+  <div class="card" style="padding:0;">
+    <div style="padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:10px;">
+      <span style="font-weight:700;">📡 实盘信号跟踪</span>
+      <span style="font-size:12px;color:var(--text-muted);">最近 100 条 buy 信号 · 14/30 交易日后回填真实收益</span>
+    </div>
+    <div class="table-wrap" style="max-height:60vh;overflow-y:auto;">
+      <table class="data-table" style="width:100%;font-size:12px;">
+        <thead>
+          <tr><th>日期</th><th>品名</th><th>信号类型</th><th>入场价</th><th>14d 收益</th><th>30d 收益</th><th>回填状态</th></tr>
+        </thead>
+        <tbody>
+        {% for s in signals %}
+          <tr>
+            <td>{{ s.signal_date }}</td>
+            <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ s.item_name }}">{{ s.item_name }}</td>
+            <td>{{ s.action_label }}</td>
+            <td>¥{{ '%.2f'|format(s.entry_price) }}</td>
+            <td>
+              {% if s.net14 is not none %}
+                {% if s.net14 > 0 %}<span style="color:var(--green);font-weight:600;">+{{ s.net14 }}%</span>
+                {% elif s.net14 < 0 %}<span style="color:var(--red);font-weight:600;">{{ s.net14 }}%</span>
+                {% else %}0%{% endif %}
+              {% else %}<span class="muted">待回填</span>{% endif %}
+            </td>
+            <td>
+              {% if s.net30 is not none %}
+                {% if s.net30 > 0 %}<span style="color:var(--green);font-weight:600;">+{{ s.net30 }}%</span>
+                {% elif s.net30 < 0 %}<span style="color:var(--red);font-weight:600;">{{ s.net30 }}%</span>
+                {% else %}0%{% endif %}
+              {% else %}<span class="muted">待回填</span>{% endif %}
+            </td>
+            <td>{% if s.net14 is not none or s.net30 is not none %}<span style="color:var(--green);">已回填</span>{% else %}<span style="color:var(--yellow);">待回填</span>{% endif %}</td>
+          </tr>
+        {% endfor %}
+        {% if not signals %}
+          <tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-muted);">实盘信号积累中：暂无 buy 信号记录。每次触发 buy 族信号会自动写入 signal_tracking，14/30 交易日后回填真实收益并在此展示。</td></tr>
+        {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

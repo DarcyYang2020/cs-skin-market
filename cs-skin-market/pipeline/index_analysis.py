@@ -984,27 +984,12 @@ def analyze_index_full(index_history: list) -> dict:
         )
         from .market_macro import event_risk_coefficient, compute_sentiment_score
 
-        # Compute daily volumes from K-line if available
-        # For market index K-line from csQAQ, we approximate volumes from price changes
-        volumes = None
-        try:
-            from .collector import fetch_index_kline
-            kline = fetch_index_kline()
-            if kline and len(kline) > 0:
-                if hasattr(kline[0], 'volume'):
-                    volumes = [k.volume for k in kline[-len(values):]]
-                elif isinstance(kline[0], (list, tuple)) and len(kline[0]) >= 6:
-                    volumes = [float(k[5]) for k in kline[-len(values):] if len(k) >= 6]
-        except Exception:
-            pass
-
         pct = result["position"]["percentile_90d"]
         z = result["position"]["zscore_90d"]
         cycle_phase = result.get("cycle", {}).get("phase", "unknown")
 
         mth = compute_market_trend_health(
             prices=values[-90:],
-            volumes=volumes[-90:] if volumes else None,
             cycle_phase=cycle_phase,
             event_risk_discount=event_risk_coefficient(),
             zscore_90d=z,

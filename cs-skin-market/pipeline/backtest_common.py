@@ -81,7 +81,7 @@ def build_market_context(start="2025-11-02", end=None):
         pos = result["position"]
         pct = pos.get("percentile_90d", 50)
         z = pos.get("zscore_90d", 0)
-        mth = compute_market_trend_health(window, volumes=None)
+        mth = compute_market_trend_health(window)
         th = mth.corrected_score if hasattr(mth, "corrected_score") else mth.score
         # Live-identical cycle label (fix: analyze_cycle_probability returns probs, no phase)
         phase = derive_market_cycle(values, i)

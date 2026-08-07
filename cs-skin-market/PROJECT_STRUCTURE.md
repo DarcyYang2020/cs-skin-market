@@ -37,7 +37,7 @@ cs-skin-market/
 | 文件 | 功能 |
 |---|---|
 | `config.`py | 全局配置中心：评分权重、阈值（含 PARAM_FREEZE 冻结条款 / J2_THRESHOLDS / ENGINE_VERSION 引擎版本号）、路径 |
-| `db.`py | SQLite 存储：全表 CRUD + schema 版本化（schema_version 表 + SCHEMA_VERSION + MIGRATIONS 增量迁移） |
+| `db.`py | SQLite 存储：全表 CRUD + schema 版本化（schema_version 表 + SCHEMA_VERSION） |
 
 ### 数据采集层
 

@@ -55,7 +55,7 @@ def generate_index_signals(start_date="2025-11-02", end_date=None, cluster_days=
         pct = pos.get("percentile_90d", 50)
         zscore = pos.get("zscore_90d", 0)
 
-        mth = compute_market_trend_health(vals_only, volumes=None)
+        mth = compute_market_trend_health(vals_only)
         if not hasattr(mth, "z_floor_applied"):
             mth.z_floor_applied = False
         micro_th = compute_micro_th(vals_only)

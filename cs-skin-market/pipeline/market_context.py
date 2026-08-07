@@ -1,7 +1,7 @@
 # Market Context Anchor -- solves the 30-day item data limitation.
 import statistics, math
 from dataclasses import dataclass
-from .index_analysis import _percentile  # reuse instead of redefining
+from .index_analysis import _momentum, _percentile  # reuse instead of redefining
 
 @dataclass
 class MarketContext:
@@ -37,10 +37,6 @@ def _pearson_r(xs, ys):
 def _returns(prices):
     return [math.log(prices[i]/prices[i-1]) for i in range(1,len(prices)) if prices[i-1]>0 and prices[i]>0]
 
-
-def _momentum(prices, days):
-    if len(prices)<=days or prices[-days-1]<=0: return 0.0
-    return round((prices[-1]/prices[-days-1]-1)*100,1)
 
 def build_market_context(item_prices, market_history, market_cycle="unknown", market_zscore=0.0):
     """Build market-anchored context for a single item.

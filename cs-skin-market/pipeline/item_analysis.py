@@ -183,12 +183,9 @@ class WhaleDetection:
 
 
 class AuxFactors:
-    """Auxiliary volume-price factors."""
+    """Auxiliary price factors."""
     mean_price_90d: float = 0.0
-    mean_volume_7d: float = 0.0
-    turnover_rate: float = 0.0           # 换手率 (daily vol / total supply %)
     ma_deviation: float = 0.0            # 均线乖离率 (price / ma30 - 1) * 100
-    vol_flow_slope: float = 0.0          # 资金流入流出斜率
 
 
 @dataclass
@@ -312,7 +309,7 @@ def _analyze_position(prices):
 #  Helper: Cycle Detection (4-phase)
 # ============================================================
 
-def _analyze_cycle(prices, volumes=None, sentiment_factor=0.0, supply=None):
+def _analyze_cycle(prices, sentiment_factor=0.0, supply=None):
     """Four-phase market cycle detection."""
     cyc = CycleAnalysis()
     n = len(prices)
@@ -448,7 +445,7 @@ def _analyze_cycle(prices, volumes=None, sentiment_factor=0.0, supply=None):
 #  Helper: Liquidity Score (0-100)
 # ============================================================
 
-def score_liquidity(prices, volumes, volume_total):
+def score_liquidity(prices, volume_total):
     """Score liquidity 0-100 based on supply depth and price stability (去量 2026-08-07)."""
     liq = LiquidityScore()
     liq.breakdown = {}
@@ -668,7 +665,7 @@ def compute_value_score(position, cycle, liquidity, probability):
 #  Helper: Whale Detection (4-factor weighted)
 # ============================================================
 
-def analyze_whale(prices, volumes, supply=None):
+def analyze_whale(prices, supply=None):
     """Whale/manipulation detection model."""
     wh = WhaleDetection()
     if not prices or len(prices) < 10:
@@ -1259,6 +1256,189 @@ def _deep_dip_transform(fd, F):
     return True
 
 
+# ============================================================
+#  买点接近度（纯展示层，2026-08-07）
+# ============================================================
+#  买点接近度（纯展示层，2026-08-07）
+# ============================================================
+# 决策条只给定性标签（筑底/回调/震荡…），看不出离 buy 族还差多远。
+# 本函数对每个 buy 信号族算「条件达标度 0~100%」（几何平均，任一硬条件
+# 不达标即归零），取最接近一族展示，并列出最近的缺口。
+# 只供报告展示，不参与任何决策；参数冻结不受影响。
+
+_FAM_PRIORITY = {"base": 0, "panic": 5, "deep": 4, "easing": 3, "supply": 2, "oversold": 1}
+
+
+def _prog_high(x, ok, zero):
+    """x >= ok → 1.0；x <= zero → 0.0；之间线性过渡。"""
+    if x is None:
+        return None
+    if x >= ok:
+        return 1.0
+    if x <= zero:
+        return 0.0
+    return (x - zero) / (ok - zero)
+
+
+def _prog_low(x, ok, zero):
+    """x <= ok → 1.0；x >= zero → 0.0；之间线性过渡。"""
+    if x is None:
+        return None
+    if x <= ok:
+        return 1.0
+    if x >= zero:
+        return 0.0
+    return (zero - x) / (zero - ok)
+
+
+def _prog_abs(x, ok, zero):
+    """|x| <= ok → 1.0；|x| >= zero → 0.0；之间线性过渡。"""
+    if x is None:
+        return None
+    a = abs(x)
+    if a <= ok:
+        return 1.0
+    if a >= zero:
+        return 0.0
+    return (zero - a) / (zero - ok)
+
+
+def _prog_range(x, lo_ok, hi_ok, lo_zero, hi_zero):
+    """x ∈ [lo_ok, hi_ok] → 1.0；向两侧线性衰减至 0。"""
+    if x is None:
+        return None
+    if lo_ok <= x <= hi_ok:
+        return 1.0
+    if x < lo_ok:
+        return 0.0 if x <= lo_zero else (x - lo_zero) / (lo_ok - lo_zero)
+    return 0.0 if x >= hi_zero else (hi_zero - x) / (hi_zero - hi_ok)
+
+
+def _prog_window(x, lo, hi, lo_zero, hi_zero):
+    """x ∈ [lo, hi] → 1.0（触发窗口）；向两侧线性衰减至 0。"""
+    if x is None:
+        return None
+    if lo <= x <= hi:
+        return 1.0
+    if x < lo:
+        return 0.0 if x <= lo_zero else (x - lo_zero) / (lo - lo_zero)
+    return 0.0 if x >= hi_zero else (hi_zero - x) / (hi_zero - hi)
+
+
+def compute_buy_proximity(F):
+    """距最近 buy 信号族的达标度(0~100) + 缺口提示。纯展示，不参与决策。
+
+    返回 {"score": int, "nearest": str, "gaps": [str, ...]}；
+    缺数据的条件按不达标计 0（不产生缺口提示）；数据不足半数的族不参与评估。
+    """
+    def _note(v, fmt, need):
+        return None if v is None else (fmt.format(v) + "→" + need)
+
+    def _fam(key, label, conds):
+        vals = [p for _, p, _n in conds if p is not None]
+        if len(vals) < (len(conds) + 1) // 2:
+            return None
+        prod = 1.0
+        for v in vals:
+            prod *= v
+        return {"key": key, "label": label, "score": prod ** (1.0 / len(vals)), "conds": conds}
+
+    pct, z = F.get("pct"), F.get("z")
+    th = F.get("th")
+    sent, mth = F.get("sent"), F.get("market_th")
+    mchg30, drop21 = F.get("mchg30"), F.get("drop21")
+    prices = F.get("prices") or []
+    current = F.get("current")
+    supply_hist = F.get("supply_hist") or []
+    s7, s30 = F.get("s7"), F.get("s30")
+    chg7, chg3d = F.get("chg7"), F.get("chg3d")
+    dedup = 1.0 if not _dedup_hit(F.get("recent_buy_dates"), F.get("signal_date")) else 0.0
+
+    # 基础族：低估区 buy（pct<=30 + TH>=70 + Z 闸门，与 compute_fusion_decision 一致）
+    _s = sent if sent is not None else 50
+    ts = min(100, max(0, (th if th is not None else 50) + (_s - 50) / 50 * 3))
+    z_gate = {"bear": 0, "consolidation": 0, "accumulation": 0.5, "markup": 1.0, "distribution": -0.5}.get(F.get("market_cycle"), 0)
+    base = _fam("base", "低估区建仓", [
+        ("低估分位", _prog_low(pct, 30, 45), _note(pct, "分位 {:.0f}%", "≤30%")),
+        ("趋势TH", _prog_high(ts, 70, 50), _note(ts, "TH {:.0f}", "≥70")),
+        ("Z闸门", _prog_low(z, z_gate, z_gate + 1.0), _note(z, "Z {:.2f}", "≤{:.1f}".format(z_gate))),
+    ])
+
+    # 恐慌共振
+    panic = _fam("panic", "恐慌共振", [
+        ("微型TH", _prog_high(F.get("micro_th"), 60, 45), _note(F.get("micro_th"), "microTH {:.0f}", "≥60")),
+        ("恐慌情绪", _prog_high(sent, 75, 55), _note(sent, "情绪 {:.0f}", "≥75")),
+        ("价格下限", _prog_high(current, 15, 10), None),
+        ("超跌Z窗口", _prog_window(z, -2.2, -1.5, -3.0, -0.5), _note(z, "Z {:.2f}", "需-2.2~-1.5")),
+        ("21日深跌", _prog_low(drop21, -18, -8), _note(drop21, "大盘21日 {:.1f}%", "≤-18%")),
+        ("90日分位", _prog_low(pct, 15, 30), _note(pct, "分位 {:.0f}%", "≤15%")),
+        ("7日去重", dedup, None),
+    ])
+
+    # 深值·大盘企稳
+    deep = _fam("deep", "深值企稳", [
+        ("深值分位", _prog_low(pct, 20, 35), _note(pct, "分位 {:.0f}%", "≤20%")),
+        ("深值Z", _prog_low(z, -0.5, 0.5), _note(z, "Z {:.2f}", "≤-0.5")),
+        ("单品TH", _prog_high(th, 35, 20), _note(th, "TH {:.0f}", "≥35")),
+        ("大盘TH", _prog_high(mth, 40, 30), _note(mth, "大盘TH {:.0f}", "≥40")),
+        ("大盘30日", 1.0 if mchg30 is None else _prog_low(mchg30, -3, 3),
+         None if mchg30 is None else _note(mchg30, "大盘30日 {:.1f}%", "≤-3%")),
+        ("情绪区间", _prog_range(sent, 40, 65, 25, 80), _note(sent, "情绪 {:.0f}", "40~65")),
+        ("21日企稳", _prog_high(drop21, -5, -15), _note(drop21, "大盘21日 {:.1f}%", "≥-5%")),
+        ("7日去重", dedup, None),
+    ])
+
+    # 恐慌退潮
+    easing = _fam("easing", "恐慌退潮", [
+        ("深值分位", _prog_low(pct, 20, 35), _note(pct, "分位 {:.0f}%", "≤20%")),
+        ("深值Z", _prog_low(z, -1, 0), _note(z, "Z {:.2f}", "≤-1")),
+        ("退潮情绪", _prog_range(sent, 55, 80, 35, 100), _note(sent, "情绪 {:.0f}", "55~80")),
+        ("大盘深跌", _prog_low(mchg30, -15, -5), _note(mchg30, "大盘30日 {:.1f}%", "≤-15%")),
+        ("止跌确认", 1.0 if F.get("stopped") else 0.0, None),
+        ("7日去重", dedup, None),
+    ])
+
+    # 供给收缩吸筹（高位剔除：pct>70 的供给收缩按庄家「锁仓诱多」口径，不作买点路径）
+    ratio = (s7 / s30) if (s7 and s30) else None
+    if pct is not None and pct > 70:
+        supply = None
+    else:
+        supply = _fam("supply", "供给收缩吸筹", [
+            ("数据长度", 1.0 if (len(supply_hist) >= 30 and len(prices) >= 8) else 0.0, None),
+            ("存世量", 1.0 if not (0 < F.get("survive", 0) < 3000) else 0.0, None),
+            ("30日供给", 1.0 if (s30 is not None and s30 > 0) else 0.0, None),
+            ("供给收缩", _prog_low(ratio, 0.85, 1.0),
+             None if ratio is None else "供给 s7/s30 {:.2f}→≤0.85".format(ratio)),
+            ("价格平稳", _prog_abs(chg7, 3, 6), _note(chg7, "7日价变 {:+.1f}%", "|≤3%|")),
+            ("大盘共振", 1.0 if not (sent is not None and sent < 40 and mth is not None and mth < 45) else 0.0, None),
+            ("7日去重", dedup, None),
+        ])
+
+    # 超跌反弹例外
+    low2 = min(prices[-2:]) if len(prices) >= 2 else None
+    low3 = min(prices[-3:]) if len(prices) >= 3 else None
+    no_new_low = 1.0 if (low2 is not None and low3 is not None and low2 > low3) else 0.0
+    oversold = _fam("oversold", "超跌反弹", [
+        ("超跌分位", _prog_low(pct, 15, 30), _note(pct, "分位 {:.0f}%", "≤15%")),
+        ("超跌Z", _prog_low(z, -2.0, -1.0), _note(z, "Z {:.2f}", "≤-2.0")),
+        ("不再创新低", no_new_low, None),
+        ("3日转涨", _prog_high(chg3d, 0, -3), _note(chg3d, "3日 {:+.1f}%", ">0")),
+    ])
+
+    fams = [f for f in (base, panic, deep, easing, supply, oversold) if f]
+    if not fams:
+        return {"score": 0, "nearest": "—", "gaps": []}
+    best = max(fams, key=lambda f: (f["score"], -_FAM_PRIORITY[f["key"]]))
+    if best["score"] <= 0:
+        return {"score": 0, "nearest": "—", "gaps": []}
+    gaps = []
+    for _desc, p, note in sorted(best["conds"], key=lambda c: (c[1] if c[1] is not None else 1.0)):
+        if p is not None and 0 < p < 1 and note:
+            gaps.append(note)
+        if len(gaps) >= 2:
+            break
+    return {"score": int(round(best["score"] * 100)), "nearest": best["label"], "gaps": gaps}
+
 def decide_fusion_signal(
     fd, *, position, cycle, th, value, prices, current, n, name,
     survive_count, sentiment_score, market_th_score, market_30d_change,
@@ -1341,12 +1521,14 @@ def decide_fusion_signal(
                     _apply_guards(fd, F, fam.guards)
                 break
 
+    # ---- 纯展示层：买点接近度（不参与决策，仅报告展示） ----
+    fd.proximity = compute_buy_proximity(F)
+
     return fd, bucket
 
 def run_item_analysis(
     name: str,
     prices: list,
-    volumes: list = None,
     supply_hist: list = None,
     order_book: dict = None,
     index_change_7d: float = 0,
@@ -1369,7 +1551,6 @@ def run_item_analysis(
     Args:
         name: item display name
         prices: daily close prices, oldest-first (90-day)
-        volumes: daily volumes (optional)
         supply_hist: supply count history (optional, for supply analysis)
         order_book: bid/ask spread info (optional)
         index_change_7d: market index 7-day change for context
@@ -1381,8 +1562,6 @@ def run_item_analysis(
     Returns:
         ItemAnalysisResult with all analysis modules populated
     """
-    if volumes is None:
-        volumes = []
     if supply_hist is None:
         supply_hist = []
 
@@ -1400,7 +1579,6 @@ def run_item_analysis(
 
     current = prices[-1]
     vol_total = supply_hist[-1] if supply_hist else 0
-    vol_day = max(1, sum(volumes[-7:]) // 7) if volumes and len(volumes) >= 7 else max(1, vol_total // 20)
 
     # ---- Data Quality ----
     dq = "good" if n >= 60 else ("medium" if n >= 20 else "low")
@@ -1409,29 +1587,18 @@ def run_item_analysis(
     aux = AuxFactors()
     window_90 = prices[-min(90, n):]
     aux.mean_price_90d = round(statistics.mean(window_90), 2)
-    aux.mean_volume_7d = round(statistics.mean(volumes[-7:]), 1) if volumes and len(volumes) >= 7 else vol_day
-    aux.turnover_rate = round(vol_day / vol_total * 100, 3) if vol_total > 0 else 0
     if n >= 30:
         ma30 = sum(prices[-30:]) / 30
         aux.ma_deviation = round((current / ma30 - 1) * 100, 2) if ma30 > 0 else 0
 
-    # Volume flow slope (simple linear regression on volumes)
-    if volumes and len(volumes) >= 10:
-        vs = volumes[-10:]
-        xs = list(range(10))
-        mx = 4.5
-        num = sum((x - mx) * v for x, v in zip(xs, vs))
-        den = sum((x - mx) ** 2 for x in xs)
-        aux.vol_flow_slope = round(num / den, 3) if den else 0
-
     # ---- Core Analyses ----
     position = _analyze_position(prices)
-    cycle = _analyze_cycle(prices, volumes, sentiment_factor=compute_sentiment_factor(), supply=supply_hist)
-    liquidity = score_liquidity(prices, volumes, vol_total)
+    cycle = _analyze_cycle(prices, sentiment_factor=compute_sentiment_factor(), supply=supply_hist)
+    liquidity = score_liquidity(prices, vol_total)
 
     # ---- Trend Health (with category params + cycle/whale/lock/liquidity corrections) ----
     th = compute_trend_health(
-        prices, volumes, supply=supply_hist,
+        prices, supply=supply_hist,
         cycle_phase=cycle.phase,
         whale_prob=None,
         position_lock_score=0,
@@ -1442,12 +1609,12 @@ def run_item_analysis(
     th_dict = trend_health_summary(th)
 
     # ---- Whale Detection ----
-    whale = analyze_whale(prices, volumes, supply=supply_hist)
+    whale = analyze_whale(prices, supply=supply_hist)
 
     # Re-run trend health with whale info for better detection
     if whale.probability > 0:
         th2 = compute_trend_health(
-            prices, volumes, supply=supply_hist,
+            prices, supply=supply_hist,
             cycle_phase=cycle.phase,
             whale_prob=whale.probability,
             position_lock_score=whale.position_lock_score,
@@ -1754,7 +1921,7 @@ def run_item_analysis(
         price_rmb=current,
         conflicts=conflicts,
         decision_certainty=decision_certainty,
-        volume_day=vol_day,
+        volume_day=0,
         volume_total=vol_total,
         position=position,
         aux=aux,
