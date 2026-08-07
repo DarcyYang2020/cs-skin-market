@@ -1251,3 +1251,28 @@ py_compile OK；test_smoke 61/64（3 失败 = csQAQ 401 环境 IP 绑定，非�
 - 输出新字段：stabilizing/企稳状态、th_zone（panic/friction/confirm）、supply_signal（hoarding/dumping/none）；前端距买点卡新增徽章（吸筹/企稳/黄金坑、摩擦带）
 **验证**：新增 test “buy_distance v3”通过；test_smoke 62 passed / 3 failed = csQAQ 401 环境 IP 绑定（非回归；基线 61→62 为新增用例）；实测大盘 TH30 恐慌区 gap 0.8%（仅前 9.2%）、item30 吸筹 gap 3.8%、连跌品改标“下跌中继·等企稳”不追跌。
 **背景旧行为（对比）**：改前所有品均“下跌寻底”参考价向下 13%~26%（如 ITEM3 target 1163/gap 25.8% → 改后 1514.74/gap 3.4% 等企稳）。
+
+## I-9/I-7 复验 + J-2 三通道修订 + I-8 强牛边界显式化（2026-08-07，第二轮复验收口）
+**背景**：用户提出「恐慌独立事件本来就很少，且不可控，看能不能计划落地；其他能落地的都先做了」。本轮把第二批剩余可复验项一次性收口：I-9 cap 复验、I-7 S3 分桶复验、J-2 重拟合门槛修订、I-8 强牛边界显式化。
+
+**I-9 cap 复验**（`references/cap_family_backtest.py` → `data/cap_family_backtest.json`）：
+- 复用 b1_risk_backtest_v2 的 HOLD/COST/simulate 同口径跑 370 信号；`position_limit` 分类必须按 `action_label` 判定（`signal_type` 不准）。
+- 结果：no cap +1118.94%/-44.68%（max_position 18.2）→ **cap0.8 +193.30%/-9.39% 保持成立（现行不动）**；cap1.0 +223.06%/-11.49%。
+- 族级细化候选：`cap0.8 + accumulate族0.5` +200.04%/-9.18%（vs cap0.8 收益 +6.7pp、回撤基本持平，accumulate 196 信号占比最高）；`cap0.8 + panic族0.3/0.4` 收益 -12~-16pp 回撤不变（panic 92 信号中 90 个集中 2026-05 单事件簇，族级收缩无收益贡献）。
+- 结论：cap0.8 保持不动；族级细化（accumulate 0.5）记候选，待 J-2 B/C 通道后再验证。
+
+**I-7 S3 分桶复验**（`references/s3_bucket_replay.py` → `data/s3_bucket_replay.json`）：
+- 吸筹族 166 信号按恐慌桶（sent>=60 或 market_th<45）/非恐慌桶 + 强牛段（sent<40+TH>=60）对比，事件簇 gap>=7 天去重。
+- 恐慌桶 45 信号 win30 82.2%/avg30 +21.6 vs 非恐慌桶 121 信号 win30 67.8%/avg30 +25.12——恐慌桶 30d 胜率 +14.4pp 显著更高 → 支撑恐慌桶保持 S3 优先级不降级。
+- 强牛段 16 信号 avg30 +52.39/win30 75% → 支撑 I-8 强牛边界显式化。
+
+**J-2 重拟合门槛修订（三通道）**：
+- 实测 2025-2026 恐慌独立事件仅 2 个（2025-10-24 五合一 1 个；2026-05-22~31 恐慌深跌 91 个信号），原「≥3~5 个独立恐慌事件 + 2~3 个中性回升段」门槛依赖不可控事件、无可执行进度。
+- 改三通道任一满足：A. 独立恐慌事件≥3（自然积累，不阻塞）；B. 新数据累计≥260 天（约 2027-04-25，与参数冻结 OOS 复验点一致）；C. 胜率监测触发（buy 连续 2 月 14d<70% 或月度 14d<80%/30d<55%）。
+- 事件不足时：参数保持冻结，允许研究池 + 展示层探索（I-7 分桶复验等）；事件级验证用「市场事件 + 跨年度 walk-forward」替代统计功效门槛；事件簇纪律保持（生产按 ±3~7 天簇限次，单事件簇不调参）。
+- 已写入 `references/project-principles.md`「重拟合触发条件（J-2 修订）」。
+
+**I-8 强牛边界显式化**：引擎零改动；路由规则（bull/TH≥60 放行 S3、S2 仅开回调桶、sideways 禁入）由牛市段研究（S3 强牛段 TH≥60/bull +38~43）+ I-7 强牛段证据（avg30 +52.39）共同支撑；路由层接线待 J-2 B/C 通道数据到位。
+
+**学到的新思路**：① 复验结论应落成「保持 / 细化候选 / 降级」三类可执行状态，避免结论悬空；② 依赖不可控事件的验收门槛必须给可执行替代通道（时间通道 + 监测通道），否则迭代永远在等；③ 族级分类必须按 action_label 判定（signal_type 不准）。
+**验证**：test_smoke 62 passed / 3 failed = csQAQ 401 环境 IP 绑定（非回归）；新产物 `data/cap_family_backtest.json` + `data/s3_bucket_replay.json`，脚本入库 `references/`。

@@ -1,0 +1,76 @@
+{
+ "generated": "2026-08-07T15:59",
+ "note": "I-9 cap 复验：去量 v2 370 信号，整体 cap vs 族级 cap。口径同 b1_risk_backtest_v2（hold14/费2%/拒绝优先级 panic>accumulate>deep_value）。",
+ "families": {
+  "accumulate": 196,
+  "panic": 92,
+  "deep_value": 56,
+  "oversold": 26
+ },
+ "results": {
+  "no cap": {
+   "total_return_pct": 1118.94,
+   "max_drawdown_pct": -44.68,
+   "max_position": 18.2,
+   "rejected_cap": 0,
+   "rejected_family": 0,
+   "days": 530
+  },
+  "cap0.6": {
+   "total_return_pct": 164.49,
+   "max_drawdown_pct": -8.31,
+   "max_position": 0.6,
+   "rejected_cap": 297,
+   "rejected_family": 0,
+   "days": 530
+  },
+  "cap0.8": {
+   "total_return_pct": 193.3,
+   "max_drawdown_pct": -9.39,
+   "max_position": 0.8,
+   "rejected_cap": 279,
+   "rejected_family": 0,
+   "days": 530
+  },
+  "cap1.0": {
+   "total_return_pct": 223.06,
+   "max_drawdown_pct": -11.49,
+   "max_position": 1.0,
+   "rejected_cap": 265,
+   "rejected_family": 0,
+   "days": 530
+  },
+  "cap0.8 + panic族0.3": {
+   "total_return_pct": 181.39,
+   "max_drawdown_pct": -7.74,
+   "max_position": 0.8,
+   "rejected_cap": 191,
+   "rejected_family": 90,
+   "days": 530
+  },
+  "cap0.8 + panic族0.4": {
+   "total_return_pct": 184.32,
+   "max_drawdown_pct": -7.74,
+   "max_position": 0.8,
+   "rejected_cap": 191,
+   "rejected_family": 89,
+   "days": 530
+  },
+  "cap0.8 + accumulate族0.5": {
+   "total_return_pct": 200.04,
+   "max_drawdown_pct": -9.18,
+   "max_position": 0.8,
+   "rejected_cap": 133,
+   "rejected_family": 153,
+   "days": 530
+  },
+  "cap0.8 + 族均0.3": {
+   "total_return_pct": 165.9,
+   "max_drawdown_pct": -7.56,
+   "max_position": 0.6,
+   "rejected_cap": 0,
+   "rejected_family": 316,
+   "days": 530
+  }
+ }
+}
