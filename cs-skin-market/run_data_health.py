@@ -74,15 +74,17 @@ def run_checks(db_path=None):
     else:
         rows.append(("大盘指数", "FAIL", "market_index 无数据或查询失败"))
 
-    # 2. 单品 K 线（2026-08-07 Phase 1b: 基线从自选品改为全量可采集品，曾漏检非自选品停更）
-    expect = _q(c, "SELECT COUNT(*) FROM items WHERE good_id>0 AND (notes IS NULL OR notes NOT LIKE '%存世量过低%')")[0][0]
+    # 2. 单品 K 线（2026-08-07 Phase 1b: 基线从自选品改为"历史有在售量的品"，曾漏检非自选品停更）
+    #    基线=历史曾有在售量的品（动态，贴纸/角色/无sell_price图表的品不计）；阈值85%：
+    #    低于此即提示当日抓取不完整（如 2026-08-03 回归 92→23，本检查应 FAIL 告警）
+    expect = _q(c, "SELECT COUNT(DISTINCT item_id) FROM price_history WHERE in_sale_count IS NOT NULL AND in_sale_count>0")[0][0]
     kline = _q(c, "SELECT date, COUNT(DISTINCT item_id) n FROM price_history WHERE date>=date('now','-7 day') GROUP BY date ORDER BY date DESC LIMIT 1")
     if kline and kline[0][0] != "__ERR__":
         d, n = kline[0]
         age = _days_since(d)
         bad = []
-        if n < expect * 0.9:
-            bad.append(f"覆盖{n}<预期{expect}*0.9")
+        if n < expect * 0.85:
+            bad.append(f"覆盖{n}<预期{expect}*0.85")
         if age > 1:
             bad.append(f"latest={d} 距今{age}天")
         rows.append(("单品K线", "FAIL" if bad else "PASS",
@@ -96,8 +98,8 @@ def run_checks(db_path=None):
         d, n = sup[0]
         age = _days_since(d)
         bad = []
-        if n < expect * 0.9:
-            bad.append(f"有在售量{n}<预期{expect}*0.9")
+        if n < expect * 0.85:
+            bad.append(f"有在售量{n}<预期{expect}*0.85")
         if age > 1:
             bad.append(f"latest={d} 距今{age}天")
         rows.append(("在售量", "FAIL" if bad else "PASS",

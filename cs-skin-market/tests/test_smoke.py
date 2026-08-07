@@ -1438,12 +1438,12 @@ def t_health_monitor():
         finally:
             conn.close()
 
-        # 部分覆盖例（Phase 1b 回归防护）：10 个可采集品仅 5 品有 K 线/在售量 → 必须 FAIL
+        # 部分覆盖例（Phase 1b 回归防护）：基线=历史曾有在售量品(10)，今日仅 5 品有数据 → 必须 FAIL
         part_db = os.path.join(tmp, 'part.db')
         build(part_db, ok=True)
         conn = sqlite3.connect(part_db)
         try:
-            conn.execute('DELETE FROM price_history WHERE item_id > 5')
+            conn.execute("DELETE FROM price_history WHERE item_id > 5 AND date = ?", (date.today().isoformat(),))
             conn.commit()
         finally:
             conn.close()
