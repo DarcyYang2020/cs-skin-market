@@ -128,7 +128,7 @@ def run_checks(db_path=None):
             bad.append(f"行数{n}<1400")
         if n > 3500:
             bad.append(f"行数{n}>3500（疑似未过滤，基线1468）")
-        if age > 4:
+        if age > 8:  # 全市场快照/大户集中度改每周采集(2026-08-08), 阈值放宽到 8 天
             bad.append(f"latest={d} 距今{age}天")
         st = _cnt(c, "SELECT COUNT(*) FROM market_snapshot WHERE name LIKE '%StatTrak%' OR name LIKE '%纪念品%'")
         if st:
@@ -148,7 +148,7 @@ def run_checks(db_path=None):
             bad.append(f"覆盖{items}品<90")
         if rn < 4000:
             bad.append(f"行数{rn}<4000")
-        if age > 4:
+        if age > 8:  # 全市场快照/大户集中度改每周采集(2026-08-08), 阈值放宽到 8 天
             bad.append(f"latest={d} 距今{age}天")
         rows.append(("大户集中度", "FAIL" if bad else "PASS",
                      f"{d} {items}品/{rn}行" + (f" | 异常: {'; '.join(bad)}" if bad else "")))

@@ -7,7 +7,7 @@
 ```
 cs-skin-market/
 ├── run_server.py              # Web 服务入口（uvicorn，唯一启动方式）
-├── run_daily_collect.py       # 每日自动采集总调度（大盘/宏观/全市场快照/大户集中度/K线全量刷新 + 数据健康 + J-2 刷新 + 信号回填 + DB 备份）
+├── run_daily_collect.py       # 每日自动采集总调度（大盘/宏观/K线全量每日 + 全市场快照/大户集中度每周一 + 数据健康 + J-2 刷新 + 信号回填 + DB 备份）
 ├── run_data_health.py         # 数据源健康检查（全量可采集品动态基线，写 health_checks）
 ├── run_health_monitor.py      # 健康监控独立入口（run_monitor，退出码 0/2 供告警）
 ├── run_backtest.py            # 大盘回测（低层引擎逐日回放）
@@ -45,8 +45,8 @@ cs-skin-market/
 |---|---|
 | `collector.`py | csQAQ HTTP：大盘指数/品类排名/搜索/hash→good_id（requests） |
 | `collector_csqaq.`py | csQAQ Playwright：单品搜索/详情/90日K线/深历史（响应拦截 `chart/`info API，StatTrak/纪念品过滤） |
-| `collector_snapshot.`py | 全市场快照：get_page_list 翻页拉全市场价格+在售数，存 market_snapshot |
-| `collector_monitor.`py | 大户集中度快照：`monitor/`rank 每日 Top50，存 monitor_rank_snapshot |
+| `collector_snapshot.`py | 全市场快照：get_page_list 翻页拉全市场价格+在售数，存 market_snapshot（每周一） |
+| `collector_monitor.`py | 大户集中度快照：`monitor/`rank 每周 Top50，存 monitor_rank_snapshot |
 
 ### 分析引擎
 

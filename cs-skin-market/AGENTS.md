@@ -54,7 +54,7 @@
 - 快照采集 `_keep_wear`：枪皮/刀仅崭新出厂、手套仅略磨+久经、无磨损品类（印花/箱/胶囊）保留 → 5000→1468 品。
 - 单品分析：崭新出厂存世量 <3000 → 存世量过低·不建仓（`survive_too_low`），仅普通版枪皮生效。
 - 存世量口径：`info/good` 的 `statistic_list` 按 good_id 匹配磨损档的 `statistic`，**不是** `buff_sell_num`（在售挂单数）；快照接口 `get_page_list` 无存世量字段，快照层无法按存世量过滤。
-- 每日采集 SQL 排除 `notes LIKE '%存世量过低%'` 的品（成交量/K线/大户三处）。
+- 每日采集 SQL 排除 `notes LIKE '%存世量过低%'` 的品（K线/大户等）；大户集中度 2026-08-08 起降为每周一采集（引擎不消费，仅进度卡/健康检查计数）。
 - 数据源健康检查见 `references/data-source-health.md`（每周跑一次，防脏数据/错误数据使用）。
 
 
@@ -308,7 +308,7 @@ cs-skin-market/
   AGENTS.md              -- 本文件
   SKILL.md               -- Codex Skill 元数据
   run_server.py          -- Web 服务启动脚本（uvicorn）
-  run_daily_collect.py   -- 每日自动采集总调度（大盘/宏观/快照/大户/K线全量 + 健康 + J-2 刷新 + 信号回填 + DB 备份）
+  run_daily_collect.py   -- 每日自动采集总调度（大盘/宏观/K线全量每日 + 全市场快照/大户每周一 + 健康 + J-2 刷新 + 信号回填 + DB 备份）
   run_data_health.py     -- 数据源健康检查（全量可采集品动态基线）
   run_health_monitor.py  -- 健康监控入口（run_monitor，退出码 0/2）
   backup_db.py           -- 每日 SQLite 备份（保留 14 份）
@@ -325,8 +325,8 @@ cs-skin-market/
     config.py            -- 配置（TOKEN/BASE_URL/权重/PARAM_FREEZE/J2_THRESHOLDS/ENGINE_VERSION）
     collector.py         -- csQAQ HTTP 采集（大盘指数/品类/搜索）
     collector_csqaq.py   -- csQAQ Playwright 采集（单品搜索/详情/K线/fetch_history_deep 深历史）
-    collector_snapshot.py -- 全市场快照采集（get_page_list 翻页，存 market_snapshot）
-    collector_monitor.py -- 大户集中度快照采集（monitor/rank 每日 Top50，存 monitor_rank_snapshot）
+    collector_snapshot.py -- 全市场快照采集（get_page_list 翻页，存 market_snapshot，每周一）
+    collector_monitor.py -- 大户集中度快照采集（monitor/rank 每周 Top50，存 monitor_rank_snapshot）
     db.py                -- SQLite 存储（schema 版本化 + 全表 CRUD）
     item_analysis.py     -- 单品分析主流程（信号族注册制 + 12 闸门融合决策）
     trend_health.py      -- 趋势健康度 + 融合决策
@@ -370,8 +370,8 @@ cs-skin-market/
 | macro_history | 每日宏观快照（贪婪指数/点卡价） | date, greedy_index, card_price |
 | backtest_results | 回测结果 | strategy, sharpe_ratio, max_drawdown_pct |
 | executions | 执行记录+复盘（P0-2） | item_id, name, action, advice_date, exec_price, qty, settle_14/30, pnl_14/30 |
-| market_snapshot | 全市场每日快照（价格+在售数） | date, good_id, yyyp_sell_price, yyyp_sell_num |
-| monitor_rank_snapshot | 大户集中度每日 Top50 | date, item_id, rank, num |
+| market_snapshot | 全市场周度快照（价格+在售数） | date, good_id, yyyp_sell_price, yyyp_sell_num |
+| monitor_rank_snapshot | 大户集中度每周 Top50 | date, item_id, rank, num |
 | health_checks | 数据源健康检查 | date, status, checks_json |
 | signal_tracking | 生产 buy 信号跟踪（J-2 C 通道） | signal_date, entry_price, engine_version, fwd14/30, net14/30 |
 | schema_version | schema 版本记录（Phase 4） | version, applied_at |

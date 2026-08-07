@@ -4,8 +4,9 @@
 - 大盘指数：csQAQ 当日指数落库（复用 collector）
 - 贪婪历史：market_macro 写穿透（~60 天全量 upsert）
 - 每日全量刷新 90 日 K 线（P3 2026-08-07 去量：全品价格 + 在售量 in_sale_count 日更，补齐非自选品停更缺口）
+- 全市场快照/大户集中度：每周一采集（2026-08-08 优化：引擎/决策不消费，仅进度卡+健康检查计数；周度保留数据积累，省 ~9 分钟/天 Playwright 负载）
 
-用法: python run_daily_collect.py
+用法: python run_daily_collect.py [--force-weekly]
 """
 import sys, io, os, asyncio, json
 from datetime import datetime, timezone, timedelta
@@ -41,6 +42,17 @@ def collect_bind_ip() -> bool:
     except Exception as e:
         log(f"csQAQ IP 绑定异常: {e}")
         return False
+
+
+def is_weekly_collect_day() -> bool:
+    """周度任务判断：全市场快照/大户集中度每周一采集（2026-08-08 优化）。
+
+    引擎/决策不消费这两份数据（仅数据进度卡与健康检查计数），每日采集收益低；
+    改每周一执行保留数据积累能力。手动补采：环境变量 CS_WEEKLY_ALWAYS=1 或 --force-weekly。
+    """
+    if os.environ.get("CS_WEEKLY_ALWAYS") == "1":
+        return True
+    return datetime.now(TZ_BJ).isoweekday() == 1
 
 
 def collect_market_index() -> bool:
@@ -172,21 +184,27 @@ def main():
     import argparse
     ap = argparse.ArgumentParser(description="每日自动采集")
     ap.add_argument("--kline", action="store_true", help="兼容保留：每日已自动全量刷新 K 线")
+    ap.add_argument("--force-weekly", action="store_true", help="强制本周执行周度任务（全市场快照+大户集中度）")
     args = ap.parse_args()
     log("=== 每日采集开始 ===")
     collect_bind_ip()
     collect_market_index()
     collect_macro()
     # 浏览器任务合并到同一个 event loop（Playwright 实例绑定 loop，多次 asyncio.run 会导致后续任务拿到已失效浏览器）
+    _weekly = args.force_weekly or is_weekly_collect_day()
     async def _playwright_tasks():
-        try:
-            await collect_market_snapshot(max_pages=25)
-        except Exception as e:
-            log(f"全市场快照任务异常: {e}")
-        try:
-            await collect_monitor_rank(top_n=50)
-        except Exception as e:
-            log(f"大户集中度快照任务异常: {e}")
+        # 全市场快照/大户集中度降为每周（2026-08-08 优化）：引擎/决策不消费这两份数据，
+        # 仅数据进度卡与健康检查计数；周度采集保留数据积累能力，省 ~9 分钟/天 Playwright 负载。
+        # K 线全量刷新（价格+在售量，引擎唯一数据源）仍每日无条件执行。
+        if _weekly:
+            try:
+                await collect_market_snapshot(max_pages=25)
+            except Exception as e:
+                log(f"全市场快照任务异常: {e}")
+            try:
+                await collect_monitor_rank(top_n=50)
+            except Exception as e:
+                log(f"大户集中度快照任务异常: {e}")
         # P3 (2026-08-07 去量)：每日全量刷新 90 日 K 线（全品价格+在售量日更，补齐非自选品停更缺口）
         try:
             await collect_kline_all()
