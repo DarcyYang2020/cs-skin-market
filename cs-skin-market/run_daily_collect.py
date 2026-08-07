@@ -207,6 +207,14 @@ def main():
         log(f"数据健康: status={res['status']} FAIL={res['fail_count']}（已写入 health_checks）")
     except Exception as e:
         log(f"数据健康检查异常（不中断采集）: {e}")
+    # J-2 三通道监测刷新 (2026-08-07): 重跑 j2_channel_monitor.py 更新 data/j2_channel_status.json（B 通道天数每日变化）
+    try:
+        import subprocess, sys as _sys
+        _r = subprocess.run([_sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "references", "j2_channel_monitor.py")],
+                            capture_output=True, text=True, timeout=60)
+        log(f"J-2 三通道监测刷新: exit={_r.returncode} {(_r.stdout or '').strip()}")
+    except Exception as e:
+        log(f"J-2 三通道监测刷新异常（不中断采集）: {e}")
     # 生产实盘信号跟踪回填 (2026-08-07 C 通道实盘化): 14/30 交易日后按真实价格回填 buy 信号收益
     try:
         from pipeline.signal_tracking import run_backfill_once
