@@ -12,13 +12,14 @@
 
 三个函数均为纯函数，无引擎依赖，输入输出为 Python dict/list，可在回测脚本、报告与测试中直接复用。
 
-### references/methodology_report.py
+### references/refit_pipeline.py（Phase 3 重拟合流水线）
 
-回测报告：加载 buy 信号明细，运行上述三个检验，生成 data/methodology_report.json 并打印摘要。
+重拟合流水线：加载 buy 信号明细（默认读 signal_tracking 冻结后新增信号，--simulate 用回放演练），运行上述三个检验，生成 data/refit_pipeline_report.json（含 gate.passed 达标判定与动作建议）并打印摘要。
 
 ```bash
 cd cs-skin-market
-python references/methodology_report.py [--signals-file data/item_backtest_full_2025.json]
+python references/refit_pipeline.py --simulate      # 演练（370 信号回放）
+python references/refit_pipeline.py                    # 冻结后新增信号（生产）
 ```
 
 ## 当前 buy 信号结论摘要（2026-08-05 生成）
@@ -30,11 +31,11 @@ python references/methodology_report.py [--signals-file data/item_backtest_full_
 - 置换检验（sign-flip, n_perm=1000）：fwd14 p=0.0010、fwd30 p=0.0040、net14 p=0.0010、net30 p=0.0170，均 < 0.05，观察胜率显著优于随机符号；但 p 值不修正事件聚类，应配合聚类报告一起看。
 - 结论：信号级胜率经置换检验显著，但事件集中度高（前两簇 86.4%）；14d 样本外胜率 56.5% 仍正值且收益正向，30d 样本外 34.8% 已与随机无异，建议后续以 14d 为主口径、对 30d 保持警惕；任何新信号类型上线前应先跑本报告检查其事件集中度。
 
-完整明细（历史口径）原见 data/methodology_report.json（已随旧基准删除）；重跑 `python references/methodology_report.py` 可从 item_backtest_full_2025.json（370 信号）再生。
+完整明细（历史口径）原见 data/methodology_report.json（已随旧基准与 methodology_report.py 一并删除，2026-08-07 清理）；当前结论以 `python references/refit_pipeline.py --simulate` 生成的 data/refit_pipeline_report.json 为准（2026-08-07 演练：train 69.4% / test 75.5% / p=0.001 / 达标）。
 
 ## 注意
 
 - 严格只读：不改任何信号引擎/回测口径；
 - 胜率口径为 net（fwd - 2% 双边成本），报告同时列出 fwd 毛收益供对照；
 - walk-forward 的 test 段为末尾单一行情簇（06-19~06-21），代表“不同市场环境”下的小样本外推，不可视为平均样本外能力；
-- 信号新增后重跑：python references/methodology_report.py 重生报告。
+- 信号新增后重跑：python references/refit_pipeline.py 重生报告。

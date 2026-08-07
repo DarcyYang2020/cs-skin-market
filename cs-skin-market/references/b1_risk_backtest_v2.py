@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 """B1 风险预算层回测验证 v2：用去量引擎 v2（370 信号）复验 cap/熔断/单票敞口。
 
-输入: data/item_backtest_full_2025.devol_v2.json（2026-08-07 去量 v2 回放）
-口径: 与 references/b1_risk_backtest.py 一致——仓位=position_limit、hold14、手续费2%、
+输入: data/item_backtest_full_2025.json（2026-08-07 去量 v2 回放）
+口径: 仓位=position_limit、hold14、手续费2%、
       拒绝模式优先级 panic(3) > accumulate/base(2) > deep_value(1)（按 action_label 归类）。
 旧版 B1（data/b1_risk_validation.json）基于旧引擎 301 信号（深值241/基础20/恐慌40）；
 新引擎组合结构剧变（深值241→56、恐慌40→92、吸筹→222），需复验 cap0.8/熔断10% 是否仍成立。
@@ -35,7 +35,7 @@ def classify(label):
 
 
 def load_signals(start=None):
-    d = json.load(_io.open("data/item_backtest_full_2025.devol_v2.json", encoding="utf-8"))
+    d = json.load(_io.open("data/item_backtest_full_2025.json", encoding="utf-8"))
     out = []
     for s in d["signals"]:
         fwd = s.get("fwd_series") or []
@@ -183,7 +183,7 @@ def main():
 
     out = {
         "generated": __import__("datetime").datetime.now().isoformat(timespec="minutes"),
-        "note": "B1 v2: 去量引擎 v2 (devol_v2, 370信号) 组合回测复验。口径同 b1_risk_backtest.py: "
+        "note": "B1 v2: 去量引擎 v2 (370信号) 组合回测复验。口径: "
                 "hold14/手续费2%/拒绝优先级 panic>accumulate>deep_value; 熔断前一日权益判定, 收复峰值解除。"
                 "旧版 b1_risk_validation.json 基于旧引擎 301 信号(深值241/基础20/恐慌40)。",
         "start_filter": args.start,

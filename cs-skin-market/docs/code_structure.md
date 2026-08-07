@@ -4,7 +4,7 @@
 
 ## 项目概述
 CS饰品投资分析系统，提供大盘分析、单品分析、持仓管理三大功能模块。
-基于 FastAPI + Playwright(csqaq) + 悠悠有品HTTP + SQLite 技术栈，运行在 http://127.0.0.1:8000/。
+基于 FastAPI + Playwright(csqaq) + SQLite 技术栈，运行在 http://127.0.0.1:8000/。定价锚：csQAQ DOM 悠悠有品价；量源 = csQAQ chart 在售量（2026-08-07 去量，悠悠成交量采集器与 uu_headers 已删除）。
 
 ---
 
@@ -91,13 +91,16 @@ CS饰品投资分析系统，提供大盘分析、单品分析、持仓管理三
 ### config.py — 配置与评分权重
 - 代理设置、评分权重表、止盈止损参数、TH阈值常量
 
-### scorer.py — 六维度评分模型（旧版，单品分析不再使用）
-### regime.py — 市场状态识别（旧版）
-### portfolio.py — 持仓管理（旧版）
-### reporter.py — Markdown报告（旧版）
-### backtest.py — 策略回测（旧版）
-### watchlist.py — 自选管理（旧版）
-### cli.py — 命令行入口（旧版）
+### buy_distance.py — 距买点 v3（2026-08-07）
+- 下跌寻底企稳闸门（3日转涨+未创新低）/ 供给吸筹场景 / 大盘 TH 三区化
+- 输出 stabilizing / th_zone / supply_signal，前端徽章展示（纯展示层，不动信号引擎）
+### signal_tracking.py — 生产实盘信号跟踪（J-2 C 通道，2026-08-07）
+- record_buy_signal 去重记录 / backfill 按信号日后第 14/30 交易日回填真实价格（net 扣 2% 双边成本）
+### portfolio_risk.py — B1 风险预算层（2026-08-05）
+- 组合回撤熔断（10%，破位转质量监测器）+ 单票敞口提示（30%，只提示不拒绝）
+### backtest_common.py / backtest_methodology.py — 回测公共 + A2 三件套
+- build_market_context / patch_sentiment / approx_sentiment；walk_forward_split / signal_cluster_report / permutation_baseline
+### factor_monitor.py — 因子衰减监控
 
 ---
 
@@ -112,6 +115,10 @@ CS饰品投资分析系统，提供大盘分析、单品分析、持仓管理三
 - 信号中心/历史：GET /api/watchlist/scan-history[٭{scan_id}]（归档列表与详情）
 - 执行记录：GET/POST /api/watchlist/executions、DELETE /api/watchlist/executions/{eid}（GET 时自动结算到期记录）
 - 仪表盘：GET /api/data/progress、GET /api/portfolio/dashboard
+
+### analysis_service.py — 公共分析服务层（2026-08-07）
+- analyze_fresh 统一分析核心（单品/搜索/自选三路径复用）+ build_analysis_ctx
+- 助手：anchor_override / kline_db_fallback / kline_price_sane / market_snapshot / save_analysis_result
 
 ### 模板 (templates/)
 - base.html — 布局骨架+导航栏
@@ -138,7 +145,22 @@ CS饰品投资分析系统，提供大盘分析、单品分析、持仓管理三
 - 启动 uvicorn 服务，绑定 127.0.0.1:8000
 - 自动检测 Python 路径和项目目录
 
-### start.bat — Windows 一键启动脚本
+### run_daily_collect.py — 每日自动采集总调度
+- 大盘/宏观/全市场快照/大户集中度/K线全量刷新（每日无条件）+ 数据健康检查 + J-2 三通道刷新 + 信号跟踪回填 + DB 每日备份
+- 计划任务 CS_Daily_Collect 每日 21:30
+
+### run_data_health.py / run_health_monitor.py — 数据源健康检查
+- run_data_health.py：全量可采集品动态基线 + 85% 阈值，写 health_checks 表
+- run_health_monitor.py：run_monitor() 独立入口，退出码 0/2 供告警调度
+
+### backup_db.py — 每日 SQLite 在线备份
+- sqlite3 backup API → data/backup/market_YYYYMMDD_HHMMSS.db，保留 14 份
+
+### notify_alert.py — 健康告警推送
+- 健康检查 FAIL 时推钉钉（.env 配 NOTIFY_WEBHOOK_URL，未配置静默）
+
+### start_webapp.bat — Windows 一键启动脚本
+- 原 start.bat 冗余已删除（2026-08-07 清理），仅保留带标题横幅的 start_webapp.bat（同样调用 run_server.py）
 
 ---
 
@@ -165,14 +187,11 @@ CS饰品投资分析系统，提供大盘分析、单品分析、持仓管理三
   → collector_csqaq.py (csqaq搜索+K线+详情)
     collector.py (大盘指数)
   → item_analysis.py / index_analysis.py (分析编排)
-    ├─ scorer.py (评分)
-    ├─ valuation.py (估值)
-    ├─ trends.py (趋势)
-    ├─ supply.py (供给)
-    ├─ trend_health.py (趋势健康度)
-    └─ market_context.py / market_macro.py (大盘)
+    ├─ valuation.py (估值) / supply.py (供给·在售量)
+    ├─ trend_health.py (趋势健康度) / buy_distance.py (距买点)
+    └─ market_context.py / market_macro.py / market_th.py (大盘)
   → db.py (存储快照+价格)
-    reporter.py / partials/*.html (报告渲染)
+    webapp/templates/partials/*.html (报告渲染)
   → 用户查看分析报告
 `
 
@@ -188,3 +207,9 @@ CS饰品投资分析系统，提供大盘分析、单品分析、持仓管理三
 | settings | 键值对设置（总资产、缓存等） |
 | backtest_results | 回测结果 |
 | executions | 执行记录+复盘（P0-2） |
+| macro_history | 每日宏观快照（贪婪指数/点卡价） |
+| market_snapshot | 全市场每日快照（价格+在售数） |
+| monitor_rank_snapshot | 大户集中度每日 Top50 |
+| health_checks | 数据源健康检查结果 |
+| signal_tracking | 生产 buy 信号跟踪（J-2 C 通道） |
+| schema_version | schema 版本记录（Phase 4） |

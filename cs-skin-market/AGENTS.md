@@ -303,42 +303,59 @@ python run_item_backtest.py --items "AWP | 冥界之河 (崭新出厂);AK-47 | �
 
 ## 文件结构
 
-`
+
 cs-skin-market/
   AGENTS.md              -- 本文件
   SKILL.md               -- Codex Skill 元数据
-  run_server.py          -- Web 服务启动脚本
-  run_backtest.py        -- 大盘回测脚本（python run_backtest.py [--start 2025-11-02]）
-  run_item_backtest.py   -- 单品回测脚本（--all/--items/--warmup/--stratify）
+  run_server.py          -- Web 服务启动脚本（uvicorn）
+  run_daily_collect.py   -- 每日自动采集总调度（大盘/宏观/快照/大户/K线全量 + 健康 + J-2 刷新 + 信号回填 + DB 备份）
+  run_data_health.py     -- 数据源健康检查（全量可采集品动态基线）
+  run_health_monitor.py  -- 健康监控入口（run_monitor，退出码 0/2）
+  backup_db.py           -- 每日 SQLite 备份（保留 14 份）
+  notify_alert.py        -- 健康告警推送（钉钉）
+  run_backtest.py        -- 大盘回测（python run_backtest.py [--start 2025-11-02]）
+  run_item_backtest.py   -- 单品回测（--all/--items/--warmup/--stratify）
+  run_item_exit_backtest.py -- 出场规则回测
+  run_item_9grid_backtest.py -- 情绪×估值 9 宫格回测
+  run_portfolio_backtest.py -- 组合级执行回测（P0-1/P0-2）
   run_backfill_history.py -- 单品历史深度回填（simple/chartAll，2025-01-01 起，仅补缺失日期）
   data/market.db         -- SQLite 数据库
-  data/discover_latest.json -- 发现高分品缓存
+  data/item_backtest_full_2025.json -- 标准回放基准（去量 v2，370 信号）
   pipeline/
-    config.py            -- 配置（TOKEN/BASE_URL/权重/参数）
+    config.py            -- 配置（TOKEN/BASE_URL/权重/PARAM_FREEZE/J2_THRESHOLDS/ENGINE_VERSION）
     collector.py         -- csQAQ HTTP 采集（大盘指数/品类/搜索）
     collector_csqaq.py   -- csQAQ Playwright 采集（单品搜索/详情/K线/fetch_history_deep 深历史）
-    collector_snapshot.py -- 全市场快照采集（get_page_list 翻页，悠悠锚价+在售数，存 market_snapshot）
-    collector_monitor.py -- 大户集中度快照采集（monitor/rank 每日 Top50 大户持有量，存 monitor_rank_snapshot）
-    db.py                -- SQLite 存储（items/price_history/snapshots/positions/settings/market_snapshot/executions）
-    item_analysis.py     -- 单品分析主流程（协调10大模块）
+    collector_snapshot.py -- 全市场快照采集（get_page_list 翻页，存 market_snapshot）
+    collector_monitor.py -- 大户集中度快照采集（monitor/rank 每日 Top50，存 monitor_rank_snapshot）
+    db.py                -- SQLite 存储（schema 版本化 + 全表 CRUD）
+    item_analysis.py     -- 单品分析主流程（信号族注册制 + 12 闸门融合决策）
     trend_health.py      -- 趋势健康度 + 融合决策
-    valuation.py         -- 估值宫格（百分位 + Z-score + 3×4宫格）
+    valuation.py         -- 估值分位（百分位 + Z-score + 标签）
     index_analysis.py    -- 大盘指数分析引擎
     market_macro.py      -- 市场宏观（涨跌比/贪婪/在线/活跃卡/抄底信号）
     market_th.py         -- 大盘趋势健康度 + 大盘融合决策
-    portfolio_risk.py    -- B1 风险预算层（组合回撤熔断 + 单票敞口提示，纯展示层）
-    market_context.py    -- 大盘上下文构建（供单品分析参考）
-    supply.py            -- 供给端追踪
+    market_context.py    -- 大盘上下文构建 + state_bucket 状态桶
+    portfolio_risk.py    -- B1 风险预算层（组合回撤熔断 + 单票敞口提示）
+    supply.py            -- 供给端追踪（在售量唯一量源）
+    buy_distance.py      -- 距买点 v3（企稳闸门/吸筹场景/TH 三区化）
+    signal_tracking.py   -- 生产实盘信号跟踪（J-2 C 通道）
+    backtest_common.py   -- 回测公共模块（build_market_context 等）
+    backtest_methodology.py -- A2 三件套（walk-forward/聚类/置换检验）
     batch_scan.py        -- 自选批量扫描（信号提取/按建议执行按钮）
-    dashboards.py        -- 仪表盘数据（数据积累进度/组合仓位，纯展示层）
-    backtest_common.py   -- 回测公共模块（approx_sentiment/patch_sentiment/build_market_context）
+    dashboards.py        -- 仪表盘数据（数据积累进度/J-2 三通道/组合仓位）
+    factor_monitor.py    -- 因子衰减监控
   webapp/
-    main.py              -- FastAPI 应用
+    main.py              -- FastAPI 应用（含批量扫描进度落盘持久化）
+    analysis_service.py  -- 公共分析服务层（analyze_fresh 统一核心 + 锚价/兜底助手）
     templates/           -- Jinja2 模板
     static/css/style.css -- 样式
     static/js/app.js     -- 公共 JS（Modal/导航）
-  references/            -- 文档 + 研究脚本（analysis-engine.md / sync_expectancy_config.py / benchmark_compare.py 等）
-`
+  references/            -- 文档 + 研究脚本（j2_channel_monitor.py / refit_pipeline.py / portfolio_backtest.py 等）
+  tests/
+    test_smoke.py        -- 冒烟测试（约 70 用例，支持 CS_MODEL_SKIP_NET）
+    check_encoding.py    -- 编码健康检查
+    snapshots/replay_v2.json -- 回放口径快照
+
 
 ## 数据库表
 
@@ -346,13 +363,18 @@ cs-skin-market/
 |---|---|---|
 | items | 自选/持仓物品 | name, steam_name, good_id, rarity, source, in_watchlist, holding |
 | market_index | 大盘指数历史 | date, value, change_7d, mood |
-| price_history | 单品价格历史 | item_id, date, price_rmb, volume_day |
+| price_history | 单品价格历史 | item_id, date, price_rmb, in_sale_count（在售量，唯一量源） |
 | snapshots | 分析报告存档 | item_id, date, grade, total_score, report_html, report_md, action |
 | positions | 持仓记录 | item_id, buy_price, quantity, closed, close_price |
 | settings | 配置键值对 | key, value |
-| macro_history | 每日宏观快照（贪婪指数/点卡价，P1-1） | date, greedy_index, card_price |
+| macro_history | 每日宏观快照（贪婪指数/点卡价） | date, greedy_index, card_price |
 | backtest_results | 回测结果 | strategy, sharpe_ratio, max_drawdown_pct |
 | executions | 执行记录+复盘（P0-2） | item_id, name, action, advice_date, exec_price, qty, settle_14/30, pnl_14/30 |
+| market_snapshot | 全市场每日快照（价格+在售数） | date, good_id, yyyp_sell_price, yyyp_sell_num |
+| monitor_rank_snapshot | 大户集中度每日 Top50 | date, item_id, rank, num |
+| health_checks | 数据源健康检查 | date, status, checks_json |
+| signal_tracking | 生产 buy 信号跟踪（J-2 C 通道） | signal_date, entry_price, engine_version, fwd14/30, net14/30 |
+| schema_version | schema 版本记录（Phase 4） | version, applied_at |
 
 ## 风控/信号职责分工（三层闸门，2026-08-06 定稿）
 

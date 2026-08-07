@@ -74,7 +74,7 @@ csQAQ chart API 提供 price + in_sale_count（在售量），为引擎唯一量
 当标准融合决策无法触发 buy 时，额外检查超跌反弹：
 - pct<=15% + Z<=-2.0 + 跌速衰减(no_new_low2 + chg3d>0%) → 超跌反弹·分批建仓
 - 回测: 早期预研 2025-11~2026-07 buy 16次 / 14d 88% / +9.65%（见 `references/engine-unified.md`）
-- 数据见 `cs-skin-market/data/item_backtest_full_2025.json`（2026-08-07 去量 v2 引擎 370 信号回放）；对比文件 `baseline450`（96品池原引擎）/ `devol_v1`（去量 v1）/ `devol_v2`（去量 v2+I-13）保留在 data/ 下
+- 数据见 `cs-skin-market/data/item_backtest_full_2025.json`（2026-08-07 去量 v2 引擎 370 信号回放）；对比文件 `baseline450`（96品池原引擎）/ `devol_v1`（去量 v1）保留在 data/ 下（devol_v2 与 item_backtest_full_2025.json 内容一致，已删除）
 
 ### 参数拟合建议
 

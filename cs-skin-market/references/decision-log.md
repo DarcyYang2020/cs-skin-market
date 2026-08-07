@@ -1310,3 +1310,19 @@ S2 回踩族在 C1（2026-08-05）已被证伪留研究池（A2 三件套未过�
 
 **验证**：内存 DB 逻辑自测（重复信号去重/非 buy 不记录/fwd14=+14% fwd30=+30% net 扣 2% 后 +12%/+28%）+ t_signal_tracking 用例硬校验；test_smoke 64 passed / 3 failed = csQAQ 401 环境 IP 绑定（非回归）。
 **学到的新思路**：① 「回放近似 → 实盘验证」的关键是信号当日记录 + 到期自动回填的持续闭环，不是一次性回测；② 只读监控脚本直连 DB 会暴露建表 DDL 未提交的隐患，schema 初始化必须自带 commit；③ 回填口径必须与回放同源（entry=信号日 close、fwd=第 N 个交易日、net 扣 2%），否则实盘与回放不可比。
+## 工程清理：删除冗余文件 + 文档同步（2026-08-07，纯维护，不动策略引擎）
+**背景**：用户「先不用了，先做下工程清理：删除没必要的文件，文档更新和维护」。本轮不做策略迭代。
+
+**删除（5 个文件）**：
+- `data/steamdt_home.png`（误落工作区根目录的调试截图，无任何引用）；
+- `references/b1_risk_backtest.py` + `references/methodology_report.py`（旧引擎产物，分别被 `b1_risk_backtest_v2.py` / `refit_pipeline.py` 取代）；
+- `data/item_backtest_full_2025.devol_v2.json`（与 `data/item_backtest_full_2025.json` md5 完全相同，冗余副本）；
+- `start.bat`（与 `start_webapp.bat` 重复）。
+
+**引用修复**：`b1_risk_backtest_v2.py` 输入改指 `data/item_backtest_full_2025.json`（370 信号，与 devol_v2 内容一致），注释移除对已删 `b1_risk_backtest.py` 的引用；根 `AGENTS.md` 对比文件清单去掉 devol_v2。进程中用 `rg` 全仓扫活跃引用（代码 + 文档），历史记录（decision-log/roadmap/plan-supply-price-v1）中的「已删除」描述保留不改写历史。
+
+**文档同步**：`PROJECT_STRUCTURE.md` 全面对齐去量 v2 + Phase 0-4；子 `AGENTS.md` 文件树/数据库表清单；`docs/code_structure.md` 技术栈/数据流/表清单/新增模块；`references/backtest-methodology.md` 改指 `refit_pipeline.py`。
+
+**学到的新思路**：① 删文件前先 `rg` 全仓扫活跃引用，避免留死链接；② 历史记录是沉淀不是代码，「已删除」描述不改写；③ 内容一致（md5 相同）的冗余数据直接删，脚本输入改指主文件即可。
+
+**验证**：编码健康检查 PASS；test_smoke 离线 67/0/6（CS_MODEL_SKIP_NET）无回归。
