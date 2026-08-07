@@ -1324,3 +1324,22 @@ S2 回踩族在 C1（2026-08-05）已被证伪留研究池（A2 三件套未过�
 **学到的新思路**：① 删文件前先 `rg` 全仓扫活跃引用，避免留死链接；② 历史记录是沉淀不是代码，「已删除」描述不改写；③ 内容一致（md5 相同）的冗余数据直接删，脚本输入改指主文件即可。
 
 **验证**：编码健康检查 PASS；test_smoke 离线 67/0/6（CS_MODEL_SKIP_NET）无回归。
+
+## PM 方案展示层落地：可执行性/口径透明/语义一致（2026-08-07，P0-P2 展示层，引擎零改动）
+**背景**：用户连续反馈 5 个可用性问题——① 决策栏只有定性标签（回调中/筑底/震荡），看不出谁更接近买点；② 决策阈值是否都回测得到；③ 信号复盘的供给收缩等类型在单品报告找不到对应展示；④ 非 buy 态下「供给吸筹·回踩即买」无执行意义；⑤ 单品报告「高位泡沫+供给背离」与买点「供给吸筹」观感矛盾。PM 视角梳理为「决策可执行性 / 口径透明 / 语义一致」三组，全部属展示层，可在参数冻结期落地（决策逻辑零改动）。
+
+**落地**：
+- 买点接近度：`item_analysis.compute_buy_proximity`（2026-08-07 新增，纯展示不参与决策）——对 base/恐慌共振/深值企稳/恐慌退潮/供给收缩吸筹/超跌反弹 6 族逐条件线性打分（_prog_high/_prog_low/_prog_abs/_prog_range/_prog_window），几何平均取最接近一族；缺数据条件按不达标计 0、数据不足半数的族不参与；`fusion_decision.proximity` 字段 + 报告「距买点最近信号」条（还差缺口列表）+ 自选页 proximity 排序/徽章。
+- 决策条回测徽章：`analysis_service._expectancy_badge` 按 ITEM_EXPECTANCY_STATS 族口径（含「恐慌」→panic /「深值」→deep_value / 其余→accumulate）显示 14d 胜率/30d 期望/样本数，tooltip 含 95% CI 与独立事件数——把「阈值是回测得到的」落到每个决策条上。
+- 供给语义统一：`analysis_service._supply_display`——供给风险在价格分位 >70% 时从 hoarding（吸筹）降级为 trap（锁仓诱多嫌疑）+ 风险提示（禁止追涨/持仓减仓）；买点卡供给徽章同步降级；非 buy 态 `buy_distance.decision_note`（当前决策为 X，需决策转 buy 族后才可执行）。
+- 决策溯源：`build_analysis_ctx` 组装 trace（zone/bucket/sources，_SOURCE_LABELS 拦截源中文映射），报告折叠面板「为什么是这个结论」。
+- 卖出位置卡：watchlist 持仓项 sell_ref（止损=成本-25%、90 日高低区间、破位标注）+ spark 迷你走势成本线。
+- 引擎健康徽章：dashboard 读 j2_channel_status.json 展示 A/B/C 三通道进度 + C 实盘口径 + 回放告警（`main._engine_status`）。
+- 信号密度卡：`main._signal_density`——回放 370 信号最近 30 日窗口 vs 历史 30 日窗口分位（低/中/高/过热），当前 155 信号 / 66 分位 /「高」，提示信号密集同质、警惕追高。
+- 持仓监控摘要条：watchlist monitor = 接近买点 Top3（proximity≥60 且非 buy）+ 破位止损 Top5（现价≤成本-25%）。
+- 持仓关联最近 buy 信号：signal_tracking 最近一条 action_label + 入场价 + 相对入场收益。
+- 数据备份：POST /api/backup/create + GET /api/backup/list + /api/backup/download（SQLite online backup → data/backups/，*.db 已被 .gitignore 覆盖）。
+- 信号体检页 /checkup（checkup.html）：J-2 C 通道月度胜率表（flags 红标）+ 连续 2 月告警 + 实盘信号跟踪表（空态「积累中」提示）。
+
+**验证**：离线 smoke 67/0/6；三页面（/、/watchlist、/checkup）+ analysis.html 全字段分支 Jinja 渲染 PASS；备份 API 实测 create/list/download 正常（测试产物已清理）；编码健康 0 硬问题（修复本轮引入的 1 处注释乱码，其余 ? 串为历史遗留）；CRLF/LF 行尾按文件原样保持（dashboard.html 混入 LF 已归一回 CRLF）。
+**学到的新思路**：① 定性标签→可操作距离：用户需要的不是「筑底/回调」分类，而是「距 buy 族还差多少」的量化；② 同一供给信号在不同价格位置语义相反（低位收缩=吸筹、高位收缩=诱多），展示层必须按分位分桶；③ 决策条挂回测徽章后，「阈值是否回测得到」从口头解释变成界面自证；④ 展示层统计与回放产物同源是硬约束（期望徽章直接读 ITEM_EXPECTANCY_STATS，test_smoke 已防漂移）。
