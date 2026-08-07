@@ -7,6 +7,18 @@
 
 ## 版本历史
 
+- **v29（2026-08-07）**：Phase 3 重拟合流水线 + Phase 4 工程化落地——用户「继续 Phase 3 和 Phase 4」：
+  - **Phase 3（REFIT-1）**：新增 
+eferences/refit_pipeline.py → data/refit_pipeline_report.json（A2 三件套：walk-forward 70/30 切分 + 信号聚类 + 符号置换 p 值），
+    默认读 signal_tracking 冻结后新增信号（signal_date >= frozen_at）、--simulate 用 370 信号演练（train 69.4% / test 75.5% / p=0.001 / 达标，证明流水线可用）；
+    J-2 overall.trigger_action 挂载「重拟合流水线已挂载」说明，触发后动作链闭环（J-2 触发 → 跑 refit_pipeline → 人工确认 → bump ENGINE_VERSION 复位）。
+  - **Phase 4（工程化，零数据依赖可并行）**：每日备份（run_daily_collect 收尾调 backup_db → data/backup/ 保留 14 份）；批量扫描进度落盘
+    （data/scan_progress_{id}.json，重启后仍可查询，写点全接 _persist / 读点磁盘兜底 / 过期同步删盘）；schema 版本化（schema_version 表 +
+    SCHEMA_VERSION=1 + MIGRATIONS 版本驱动增量迁移脚手架，既有幂等 DDL 不动）；CI 离线流水线（.github/workflows/test.yml：ubuntu+py3.11+
+    fastapi/uvicorn/multipart/jinja2，CS_MODEL_SKIP_NET 跳过 6 个网络测试，修 t_kline_daily 硬编码路径，3 个数据依赖用例加空库守卫）。
+  - 验证：本地全量 70/3（csQAQ 网络测试环境 IP 绑定，非回归）、离线 CI 模拟 67/0/6、编码健康 PASS。
+  - 学到的新思路：① 重拟合触发后动作链要在监测器里写明「已挂载的流水线」，J-2 触发才有明确下一步；② 工程化（备份/持久化/schema 版本化/CI）是不依赖数据的硬迭代，
+    可与数据积累（A/B 通道）并行推进；③ 空库 CI 暴露的数据依赖用例用「空数据守卫」而非删断言，本地有数据时断言仍生效。
 - **v28（2026-08-07）**：生产实盘信号跟踪落地（J-2 C 通道实盘化）——用户「对系统有价值就做」；把 C 通道从「370 信号回放近似」升级为「真实信号→真实结果」闭环：
   新增 signal_tracking 表 + `pipeline/signal_tracking.py`（record_buy_signal 去重 / backfill_signal_tracking 按 price_history 信号日后第 14/30 交易日回填、
   net 扣 2% 双边成本与回放同口径 / tracking_summary）；记录点覆盖统一分析核心 analyze_fresh（单品/搜索/自选）与批量扫描 _scan_item；
@@ -111,7 +123,7 @@
 
 - **第一批（2026-08-06 开工，零数据依赖）**：I-3 存量审计 → I-1 大盘状态标注 → I-2 + I-4 文档固化 → J-1 胜率事件上下文（完成，低成本展示项）。
 - **第一批剩余**：无（第一批全部完成）。
-- **第二批（2026-08-07 复验收口）**：I-7 S3 分桶复验、I-8 强牛边界显式化（引擎零改动）、I-9 cap 复验、J-2 三通道修订 + 监测落地 + C 通道生产实盘信号跟踪 全部完成；I-6 其余族复验保留（deep_value 闸门已落地 2026-08-06）；剩余 K-1（期望排序重估，依赖 J-2 B/C 通道）与 I-12（开箱量低优先级观察项）继续观察，不阻塞。
+- **第二批（2026-08-07 复验收口）**：I-7 S3 分桶复验、I-8 强牛边界显式化（引擎零改动）、I-9 cap 复验、J-2 三通道修订 + 监测落地 + C 通道生产实盘信号跟踪 全部完成；I-6 其余族复验保留（deep_value 闸门已落地 2026-08-06）；剩余 K-1（期望排序重估，依赖 J-2 B/C 通道）与 I-12（开箱量低优先级观察项）继续观察，不阻塞。 **Phase 3/4（重拟合流水线 + 工程化）已于 2026-08-07 完成（见 v29），第二批闭环。**
 
 ## 状态追踪
 
@@ -131,5 +143,7 @@
 - I-7 S3 分桶复验：**完成（2026-08-07）**——吸筹族 166 信号按恐慌/非恐慌桶对比：恐慌桶 45 信号 win30 82.2%/avg30 +21.6 vs 非恐慌桶 121 信号 win30 67.8%/avg30 +25.12；恐慌桶 30d 胜率 +14.4pp 显著更高，支撑恐慌桶保持 S3 优先级不降级。详见 data/s3_bucket_replay.json。
 - I-9 并发 cap 复验：**完成（2026-08-07）**——370 信号同款组合模拟：no cap +1118.94%/-44.68% → cap0.8 +193.30%/-9.39% 保持成立；族级细化候选 `cap0.8 + accumulate族0.5` +200.04%/-9.18%（收益 +6.7pp、回撤基本持平），panic 族 0.3/0.4 降收益不降回撤；族级分类须按 action_label 判定。详见 data/cap_family_backtest.json。
 - J-2 重拟合触发条件：**完成（2026-08-07，三通道监测 + C 生产实盘信号跟踪已落地）**——恐慌独立事件实测仅 2 个（2025-10-24 五合一 1 个 + 2026-05-22~31 恐慌深跌 91 个），原「≥3~5 独立恐慌事件」门槛不可控；改 A 事件≥3 自然积累 / B 新数据≥260 天（约 2027-04-25）/ C 胜率监测触发三通道任一满足；监测 `references/j2_channel_monitor.py` → `data/j2_channel_status.json`（A 2/3、B 0/260、C 月度 14d/30d 胜率 原始+去簇双口径 n>=10 判定 + production 实盘统计）接入数据积累进度卡；C 通道实盘化：signal_tracking 表记录生产 buy 信号，14/30 交易日后按真实价格回填（pipeline/signal_tracking.py，每日采集自动回填）；事件不足时参数冻结，允许研究池 + 展示层探索，事件级验证用「市场事件 + 跨年度 walk-forward」替代统计功效门槛；事件簇纪律保持（±3~7 天簇限次）。已写入 project-principles。
+- Phase 3/4（REFIT-1 重拟合流水线 + 工程化）：**完成（2026-08-07）**——refit_pipeline.py 挂载 A2 三件套（walk-forward/聚类/置换 p 值），
+  simulate 演练 train 69.4%/test 75.5%/p=0.001/达标；每日备份/扫描进度落盘/schema 版本化/CI 离线全落地；J-2 trigger_action 动作链闭环。
 - 其余（K-1）：待做（第二批剩余，依赖 J-2 B/C 通道：≥260 天新数据或胜率监测触发）。
 - I-12 开箱量因子观察项：**待做（低优先级）**——预研结论暂缓（2026-08-06），详见 decision-log「P2 开箱量因子预研」。
