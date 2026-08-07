@@ -34,15 +34,6 @@
   </div>
   <div id="data-progress-body" style="padding:12px 14px;font-size:13px;color:var(--text-secondary);"></div>
 </div>
-
-<!-- 引擎回测对比 (2026-08-07): 新旧引擎演进 + 基准对照 + 关键节点 -->
-<div class="card" id="engine-compare-card" style="display:none;margin-top:16px;">
-  <div class="card-header">
-    <span class="card-title">🧪 引擎回测对比</span>
-    <button class="btn btn-outline btn-sm" onclick="loadEngineCompare()" style="margin-left:auto;">🔄 刷新</button>
-  </div>
-  <div id="engine-compare-body" style="padding:12px 14px;font-size:13px;"></div>
-</div>
 {% endblock %}
 
 {% block scripts %}
@@ -99,70 +90,6 @@ function loadHealth() {
   });
 }
 loadHealth();
-
-// ---- 引擎回测对比 (2026-08-07): 新旧引擎演进 + 基准对照 + 关键节点 ----
-function loadEngineCompare() {
-  var card = document.getElementById("engine-compare-card");
-  if (!card) return;
-  fetch("/api/engine/compare")
-  .then(function(r) { return r.json(); })
-  .then(function(d) {
-    card.style.display = "block";
-    var body = document.getElementById("engine-compare-body");
-    if (!d.ok) { body.innerHTML = '<div style="color:var(--red);">' + (d.error || "接口异常") + '</div>'; return; }
-    var html = '<div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">引擎演进（96 品池 · 2025-01-01~2026-08-05 · warmup30 · 成本2%）</div>';
-    html += '<table style="width:100%;font-size:12px;"><thead><tr>' + ["版本","信号","14d胜率","14d均收益","加权14d","30d胜率","30d均收益"].map(function(h){ return '<th style="text-align:left;padding:2px 6px;color:var(--text-muted);">' + h + '</th>'; }).join("") + '</tr></thead><tbody>';
-    (d.evolution || []).forEach(function(e) {
-      var cur = e.key === "devol_v2";
-      html += '<tr style="' + (cur ? 'background:rgba(34,197,94,0.08);' : '') + '">'
-        + '<td style="padding:2px 6px;">' + e.label + '<div style="font-size:10px;color:var(--text-muted);">' + e.signals + '信号 · ' + (e.range || "") + '</div></td>'
-        + '<td style="padding:2px 6px;' + (cur ? 'color:#4ade80;font-weight:700;' : '') + '">' + (e.win14_pct != null ? e.win14_pct + '%' : "--") + '</td>'
-        + '<td style="padding:2px 6px;">' + (e.avg14 != null ? e.avg14 : "--") + '</td>'
-        + '<td style="padding:2px 6px;">' + (e.wavg14 != null ? e.wavg14 : "--") + '</td>'
-        + '<td style="padding:2px 6px;">' + (e.win30_pct != null ? e.win30_pct + '%' : "--") + '</td>'
-        + '<td style="padding:2px 6px;">' + (e.avg30 != null ? e.avg30 : "--") + '</td></tr>';
-    });
-    html += '</tbody></table>';
-    var l88 = d.legacy_88 || {};
-    if (l88.signals) {
-      html += '<div style="margin-top:6px;font-size:11px;color:var(--text-muted);">旧引擎官方 88 基准（已删除归档）：' + l88.signals + ' 信号 · 14d ' + l88.win14_pct + '% · 30d ' + l88.win30_pct + '% · ' + (l88.range || "") + ' —— ' + (l88.note || "") + '</div>';
-    }
-    var b = (d.benchmark && d.benchmark.windows && d.benchmark.windows.active) || {};
-    if (b.strategy) {
-      html += '<div style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.06);padding-top:8px;"><div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">v2 策略 vs 基准（活跃窗口 ' + (b.range ? b.range.join(" ~ ") : "") + '）</div>';
-      html += '<table style="width:100%;font-size:12px;"><tbody>';
-      [["v2 策略", b.strategy], ["池内等权买入持有", b.pool_buy_hold], ["大盘指数", b.market_index]].forEach(function(r) {
-        var st = r[1] || {};
-        html += '<tr><td style="padding:2px 6px;width:120px;color:var(--text-muted);">' + r[0] + '</td>'
-          + '<td style="padding:2px 6px;">累计 ' + st.total_return_pct + '%</td>'
-          + '<td style="padding:2px 6px;">最大回撤 ' + st.max_drawdown_pct + '%</td>'
-          + '<td style="padding:2px 6px;">年化 ' + (st.annualized_pct == null ? "--" : st.annualized_pct + "%") + '</td></tr>';
-      });
-      html += '</tbody></table>';
-      html += '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">' + (d.benchmark.note || "") + '</div></div>';
-    }
-    if (d.families && d.families.length) {
-      html += '<div style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.06);padding-top:8px;"><div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">信号族分布（当前引擎）</div>';
-      html += '<div style="display:flex;gap:8px;flex-wrap:wrap;">' + d.families.map(function(f) {
-        return '<span style="padding:3px 8px;border-radius:4px;background:rgba(100,116,139,0.15);color:#94a3b8;">' + f.label + ' ' + f.n + '</span>';
-      }).join("") + '</div></div>';
-    }
-    var nodes = (d.nodes || []).concat(d.milestones || []).sort(function(a, b) { return a.date < b.date ? -1 : 1; });
-    if (nodes.length) {
-      html += '<div style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.06);padding-top:8px;"><div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">关键节点</div>';
-      nodes.forEach(function(n) {
-        html += '<div style="display:flex;gap:8px;margin-bottom:4px;font-size:12px;"><span style="color:#fbbf24;white-space:nowrap;">' + n.date + '</span><span><b>' + n.title + '</b> — ' + n.detail + '</span></div>';
-      });
-      html += '</div>';
-    }
-    body.innerHTML = html;
-  })
-  .catch(function(e) {
-    card.style.display = "block";
-    document.getElementById("engine-compare-body").innerHTML = '<div style="color:var(--red);">引擎对比接口暂不可用：' + e + '</div>';
-  });
-}
-loadEngineCompare();
 
 // ---- 信号中心 (2026-08-05): 复用 watchlist 扫描信号数据源 ----
 fetch("/api/watchlist/scan-history")
