@@ -705,6 +705,29 @@ def t_buy_distance_anchor():
     assert bd2['current_price'] == 111.0 and bd2.get('anchor_price') is None, bd2
 check('buy_distance anchor_price is display-only (chart-consistent)', t_buy_distance_anchor)
 
+def t_buy_distance_v3():
+    # 距买点 v3（2026-08-07 去量理念）：下跌中继不追跌 / 供给吸筹就近 / 恐慌黄金坑
+    from pipeline.buy_distance import compute_buy_distance, compute_market_buy_distance
+    # 连跌创新低（下跌中继）→ 等企稳不追跌：target 为 MA/ATR 支撑而非一路下探
+    prices = [200 - i for i in range(90)]
+    class _P:
+        percentile_90d = 25
+        zscore_90d = -1.0
+    bd = compute_buy_distance(prices, _P(), th_score=26)
+    assert bd and bd["scenario"] == "bottom" and bd["stabilizing"] is False, bd
+    assert "下跌中继" in bd["scenario_label"], bd["scenario_label"]
+    assert 0 < bd["target_price"] < bd["current_price"], bd
+    # 供给吸筹（supply_risk=hoarding）→ 买点就近 MA 支撑
+    bd2 = compute_buy_distance(prices, _P(), th_score=26,
+                               supply={"supply_risk": "hoarding", "supply_trend": "contracting"})
+    assert bd2 and bd2["scenario"] == "accumulate" and bd2["supply_signal"] == "hoarding", bd2
+    assert bd2["target_price"] < bd2["current_price"], bd2
+    # 大盘恐慌黄金坑（TH<35）：参考位提升，不一路下探到 90 日低
+    mbd = compute_market_buy_distance(list(range(11, 101)), pct=10.0, z=-1.0, th_score=30.0, regime="bear", action="watch")
+    assert mbd and mbd["scenario"] == "panic" and mbd["th_zone"] == "panic", mbd
+    assert mbd["target_price"] >= mbd["low90_price"], mbd
+check('buy_distance v3: 下跌中继不追跌/供给吸筹就近/恐慌黄金坑', t_buy_distance_v3)
+
 print('[Data Sane: K线脏价校验]')
 def t_kline_price_sane():
     from types import SimpleNamespace

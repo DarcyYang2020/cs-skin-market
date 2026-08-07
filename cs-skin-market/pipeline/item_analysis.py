@@ -1744,6 +1744,7 @@ def run_item_analysis(
             cycle_phase=cycle.phase if hasattr(cycle, 'phase') else 'unknown',
             action=fd.action,
             anchor_price=price_anchor,
+            supply=supply_dict,
         ) or {}
     except Exception:
         buy_distance = {}

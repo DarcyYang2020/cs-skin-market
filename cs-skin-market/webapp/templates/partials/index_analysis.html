@@ -53,6 +53,8 @@
       <span style="padding:3px 8px;border-radius:4px;background:rgba(100,116,139,0.15);color:#94a3b8;">90日最低 ¥{{ "%.0f"|format(analysis.buy_distance.low90_price) }}</span>
       {% if analysis.buy_distance.ma7 %}<span style="padding:3px 8px;border-radius:4px;background:rgba(100,116,139,0.15);color:#94a3b8;">MA7 ¥{{ "%.0f"|format(analysis.buy_distance.ma7) }}</span>{% endif %}
       {% if analysis.buy_distance.ma30 %}<span style="padding:3px 8px;border-radius:4px;background:rgba(100,116,139,0.15);color:#94a3b8;">MA30 ¥{{ "%.0f"|format(analysis.buy_distance.ma30) }}</span>{% endif %}
+      {% if analysis.buy_distance.scenario == "bottom" %}{% if analysis.buy_distance.stabilizing %}<span style="padding:3px 8px;border-radius:4px;background:rgba(34,197,94,0.15);color:#4ade80;">✅ 已企稳（可下探）</span>{% else %}<span style="padding:3px 8px;border-radius:4px;background:rgba(245,158,11,0.15);color:#fbbf24;">⏳ 未企稳·不追跌</span>{% endif %}{% endif %}
+      {% if analysis.buy_distance.th_zone == "panic" %}<span style="padding:3px 8px;border-radius:4px;background:rgba(239,68,68,0.15);color:#f87171;">🔥 恐慌区·黄金坑</span>{% elif analysis.buy_distance.th_zone == "friction" %}<span style="padding:3px 8px;border-radius:4px;background:rgba(245,158,11,0.15);color:#fbbf24;">⚠️ 摩擦带</span>{% endif %}
     </div>
     <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;font-size:12px;">
       <span style="padding:3px 8px;border-radius:4px;background:{% if analysis.buy_distance.pct_gap <= 0 %}rgba(34,197,94,0.15);color:#4ade80{% else %}rgba(245,158,11,0.15);color:#fbbf24{% endif %};">{% if analysis.buy_distance.pct_gap <= 0 %}低估 ✓{% else %}低估 还差 {{ "%.1f"|format(analysis.buy_distance.pct_gap) }}个百分点{% endif %}</span>

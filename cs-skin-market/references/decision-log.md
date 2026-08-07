@@ -1240,3 +1240,14 @@ py_compile OK；test_smoke 61/64（3 失败 = csQAQ 401 环境 IP 绑定，非�
 **保留**：`references/scripts-archive/` 5 个研究脚本（run_item_backtest_deepvalue / _analysis_*，输入已删，作为历史归档不运行）；`item_exit_backtest_latest.json` / `portfolio_backtest_latest.json` 等非基准引用产物。
 **验证**：活代码 rg `item_backtest_latest` 归零（仅历史归档与日志提及）；py_compile 通过；test_smoke 61 passed / 3 failed = csQAQ 401 环境 IP 绑定（非回归）。
 **学到的新思路**：「官方基准」类旧产物删除前必须把引用链走全——读方脚本、写方入口、生成型 JSON 产物三处都要迁移/清理，否则写入口不改会让基准文件名复活，生成产物会残留死链。
+
+
+## 距买点 v3 优化：去量理念适配（企稳闸门 + 供给吸筹 + TH 三区，2026-08-07）
+**背景**：用户反馈距买点模块还是“纯熊市买点”：参考位全部向下（pct30→z-1.5→90日低），越跌越买，与 v2 去量引擎“企稳/吸筹才介入、下跌中继不追跌”理念冲突。
+**场景重构（纯展示层，不触碰信号引擎）**：
+- 单品新增“供给吸筹·回踩即买”（accumulate）：supply_risk=hoarding/供给收缩时买点就近 = MA 支撑，不再等更深（实测 item30 吸筹中 target gap 3.8%）
+- 下跌寻底加企稳闸门：企稳（3日转涨+未创新低，与超跌买入例外同口径）才允许下探 pct30→z-1.5→90日低；未企稳 = “下跌中继·等企稳”，target 改为 MA/ATR 支撑（不追跌）
+- 大盘 TH 三区化：TH<35 恐慌黄金坑→买点=企稳参考位（z0/MA，不再一路下探到 90 日低）；35-54 摩擦带→深值寻底（企稳才下探）；>=55 趋势确认→强势回踩 MA 支撑
+- 输出新字段：stabilizing/企稳状态、th_zone（panic/friction/confirm）、supply_signal（hoarding/dumping/none）；前端距买点卡新增徽章（吸筹/企稳/黄金坑、摩擦带）
+**验证**：新增 test “buy_distance v3”通过；test_smoke 62 passed / 3 failed = csQAQ 401 环境 IP 绑定（非回归；基线 61→62 为新增用例）；实测大盘 TH30 恐慌区 gap 0.8%（仅前 9.2%）、item30 吸筹 gap 3.8%、连跌品改标“下跌中继·等企稳”不追跌。
+**背景旧行为（对比）**：改前所有品均“下跌寻底”参考价向下 13%~26%（如 ITEM3 target 1163/gap 25.8% → 改后 1514.74/gap 3.4% 等企稳）。
