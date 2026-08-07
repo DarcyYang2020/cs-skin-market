@@ -1283,6 +1283,92 @@ async def api_health_status():
             "fail_list": fail_list, "fail_count": len(fail_list)}
 
 
+
+
+@app.get("/api/engine/compare")
+async def api_engine_compare():
+    """新旧引擎回测对比 + 关键节点（2026-08-07）：引擎演进链（基线450→去量v1→去量v2）+ v2 基准对照 + 关键节点。"""
+    DATA = BASE_DIR.parent / "data"
+
+    def _load_agg(fn):
+        try:
+            d = json.load(io.open(DATA / fn, encoding="utf-8"))
+        except Exception:
+            return None
+        a = d.get("aggregate", {}) or {}
+        sig = d.get("signals") or []
+        return {
+            "signals": len(sig),
+            "win14_pct": a.get("win14_pct"), "avg14": a.get("avg14"), "wavg14": a.get("wavg14"),
+            "win30_pct": a.get("win30_pct"), "avg30": a.get("avg30"), "wavg30": a.get("wavg30"),
+            "range": (sig[0].get("date") + " ~ " + sig[-1].get("date")) if sig else None,
+        }
+
+    evolution = []
+    for fn, key, label, note in [
+        ("item_backtest_full_2025.baseline450.json", "baseline", "去量前基线（旧引擎）",
+         "旧引擎（成交量时代）同池回放基线，成交量因子占位"),
+        ("item_backtest_full_2025.devol_v1.json", "devol_v1", "去量 v1",
+         "成交量因子移除，去量本身中性（期望持平）"),
+        ("item_backtest_full_2025.json", "devol_v2", "去量 v2（当前）",
+         "v1 + I-13 深值大盘上涨禁买 + 供给扩张闸门等，370 信号"),
+    ]:
+        agg = _load_agg(fn)
+        if agg:
+            evolution.append({"key": key, "label": label, "note": note, **agg})
+
+    families, monthly, nodes = [], [], []
+    try:
+        d = json.load(io.open(DATA / "item_backtest_full_2025.json", encoding="utf-8"))
+        sig = d.get("signals") or []
+        from collections import Counter
+        _tl = Counter(s.get("type_label") or s.get("signal_type") or "?" for s in sig)
+        _mo = Counter(s["date"][:7] for s in sig if s.get("date"))
+        families = [{"label": k, "n": v} for k, v in _tl.most_common()]
+        monthly = [{"month": k, "n": v} for k, v in sorted(_mo.items())]
+        if sig:
+            _w = min(sig, key=lambda s: s.get("mkt_drop21") or 0)
+            nodes.append({"date": _w.get("date", ""), "title": "极端回调段（五合一崩盘）",
+                          "detail": "大盘 21 日跌 {:.0f}%（{} mkt_drop21 {:.0f}%），深值/恐慌信号应对".format(
+                              _w.get("mkt_drop21") or 0, _w.get("name", ""), _w.get("mkt_drop21") or 0)})
+            if monthly:
+                _peak = max(monthly, key=lambda m: m["n"])
+                nodes.append({"date": _peak["month"], "title": "信号高峰",
+                              "detail": "{} 月 {} 信号（吸筹族为主）".format(_peak["month"], _peak["n"])})
+            _t = max(sig, key=lambda s: s.get("net14") or 0)
+            nodes.append({"date": _t.get("date", ""), "title": "单信号最大 14d 收益",
+                          "detail": "{} net14 +{:.0f}%".format(_t.get("name", ""), _t.get("net14") or 0)})
+            _p = [s for s in sig if s.get("signal_type") == "panic" and s.get("date", "").startswith("2026-05")]
+            if _p:
+                _win = sum(1 for s in _p if (s.get("net14") or 0) > 0)
+                nodes.append({"date": "2026-05", "title": "恐慌黄金坑簇",
+                              "detail": "5 月恐慌共振 {} 信号，14d 胜率 {:.0f}%（5/22-5/27 黄金坑）".format(
+                                  len(_p), 100.0 * _win / len(_p))})
+    except Exception:
+        pass
+
+    milestones = [
+        {"date": "2026-08-07", "title": "去量 v2 落地",
+         "detail": "370 信号 win14 71.1%（+5.6pp vs 基线 450），avg14 16.70（+2.85）"},
+        {"date": "2026-08-07", "title": "旧引擎 88 基准终审删除",
+         "detail": "旧引擎官方 88 基准（2025-11-15~2026-06-21）已删，引用迁移至 370 信号新基准"},
+        {"date": "2026-08-07", "title": "距买点 v3",
+         "detail": "企稳闸门 + 供给吸筹 + TH 三区，告别纯熊市抄底"},
+    ]
+
+    bench = {}
+    try:
+        bench = json.load(io.open(DATA / "benchmark_compare.json", encoding="utf-8"))
+    except Exception:
+        pass
+    return {"ok": True, "generated": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "evolution": evolution,
+            "legacy_88": {"signals": 88, "win14_pct": 79.5, "win30_pct": 61.4,
+                          "range": "2025-11-15 ~ 2026-06-21",
+                          "note": "旧引擎官方 88 基准（已删除归档）——过滤后 buy 子集口径，非全量回放，胜率不可直接与全量 370 对比"},
+            "families": families, "monthly": monthly, "nodes": nodes, "milestones": milestones,
+            "benchmark": bench}
+
 @app.get("/api/portfolio/dashboard")
 async def api_portfolio_dashboard():
     """组合仓位仪表: 持仓分布 + 并发建议仓位占用。"""

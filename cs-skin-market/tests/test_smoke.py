@@ -987,6 +987,21 @@ def t_data_progress():
         conn.close()
 check('data_progress reports index/price/supply coverage + J-3 families 同源', t_data_progress)
 
+def t_engine_compare():
+    # 引擎回测对比 API（2026-08-07）：演进链 3 组 + 旧 88 基准 + 关键节点
+    import asyncio
+    from webapp.main import api_engine_compare
+    d = asyncio.run(api_engine_compare())
+    assert d["ok"] and len(d["evolution"]) == 3, d
+    keys = [e["key"] for e in d["evolution"]]
+    assert keys == ["baseline", "devol_v1", "devol_v2"], keys
+    v2 = d["evolution"][2]
+    assert v2["signals"] == 370 and v2["win14_pct"] > d["evolution"][0]["win14_pct"], v2
+    assert d["legacy_88"]["signals"] == 88 and d["legacy_88"]["win14_pct"] > 0, d["legacy_88"]
+    assert len(d["families"]) >= 3 and len(d["nodes"]) >= 3 and len(d["milestones"]) >= 3, d
+    assert d["benchmark"].get("windows", {}).get("active", {}).get("strategy", {}).get("total_return_pct") is not None
+check('engine compare API: 演进链/88基准/关键节点', t_engine_compare)
+
 def t_portfolio_dash():
     from pipeline import db, dashboards
     conn = db.get_conn()
