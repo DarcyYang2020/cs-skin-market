@@ -52,7 +52,7 @@ python run_health_monitor.py --json     # JSON 输出（供告警/日志系统�
 |---|---|---|
 | 大盘指数 | 直连 csQAQ API 或对比库内最新值 | 值>0，change_7d 与当日行情一致，mood 三态 |
 | 单品 K 线 | 库内 price_history 覆盖 | 每日 101 品（good_id>0），最新日期为当日/前一日 |
-| 悠悠成交量 | 库内 volume_day | 95/96 品有量，无登录失效熔断（84101） |
+| 在售量 | 库内 in_sale_count | 近7日每日 ≥90% 品有在售量（csQAQ chart 自带，无登录态依赖） |
 | 贪婪/卡价 | macro_history | greedy 60 点 / card 179 点 |
 | 全市场快照 | market_snapshot | 当日行数≈1468（磨损过滤后），无 StatTrak/纪念品残留 |
 | 大户集中度 | monitor_rank_snapshot | 100 品 4960 行，抽查与已知大户一致 |
@@ -83,17 +83,19 @@ FROM price_history WHERE date >= date('now','-7 day') GROUP BY date ORDER BY dat
 
 验收：
 - good_id>0 的品（101 个）应每天有 K 线
-- 周日全量刷新 + 批量扫描会补全；若大量品停在 2 天前，检查 `run_daily_collect.py` 的 `is_sunday` 逻辑（回归防护测试 t_is_sunday_order）
+- 2026-08-07 起每日全量刷新（价格+在售量，P3）；若大量品停在 2 天前，检查 `run_daily_collect.py` 的 `collect_kline_all` 是否被调用（回归防护测试 t_kline_daily）
 
-### 3. 悠悠成交量（price_history.volume_day）
+### 3. 在售量覆盖（price_history.in_sale_count）
 
 ```sql
-SELECT COUNT(*) FROM price_history WHERE volume_day IS NOT NULL AND volume_day > 0;
+SELECT date, COUNT(*) n FROM price_history
+WHERE in_sale_count>0 AND in_sale_count IS NOT NULL
+  AND date>=date('now','-7 day') GROUP BY date ORDER BY date DESC LIMIT 1;
 ```
 
 验收：
-- 正常应 >800 行（近 7 日 × 96 品）
-- 若骤降为 0，检查 `data/uu_headers.json` 登录态（约 10 天过期，code=84101 会熔断）
+- 最新日期为当日/前一日，n ≥ 90% 品数（约 101 品）
+- 若骤降为 0，说明每日 K 线/在售量刷新未跑（2026-08-07 起每日全量刷新，不再依赖悠悠登录态）
 
 ### 4. 贪婪/卡价（macro_history）
 
@@ -246,7 +248,7 @@ EOF
 | 快照出现非预期磨损（如破损枪皮）| 检查 `_keep_wear` 是否被改动 |
 | 单品报告出现存世量过低却仍 buy | 检查 `survive_count` 是否传入（5 处调用点）|
 | 大盘 mood 乱码 | 检查 `collector.fetch_market_index` 编码 |
-| 成交量骤降 | 更新 `data/uu_headers.json` 登录态 |
+| 在售量骤降/为 0 | 检查每日 K 线全量刷新是否运行（`run_daily_collect.py` `collect_kline_all`，2026-08-07 起每日执行）|
 | 大户快照 0/100 | 浏览器 loop 问题（回归防护：单 loop 跑全部品）|
 
 ---
@@ -275,3 +277,4 @@ EOF
 | 2026-08-04 | 存世量口径错误（误用挂单数）| 改从 statistic_list 解析，<3000 不建仓 
 | 2026-08-04 | items 重复 good_id=863（FN57 神祇 id=7 / 神祗 id=30）| 删除脏行 id=7（名称误匹配脏价），持仓以 id=30 为准 |
 | 2026-08-05 | BUFF cookie 验证历史成交量 | bill_order 上限 20 条/无分页、price_history 无成交量字段 → 不可用；历史成交量仍靠悠悠有品逐日积累 |
+| 2026-08-07 | 去量落地：成交量检查 → 在售量检查；K 线每周日刷新 → 每日全量刷新（P3）| run_data_health.py / run_daily_collect.py / 进度卡同步（t_kline_daily 回归） |

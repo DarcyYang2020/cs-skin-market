@@ -1038,3 +1038,205 @@ un_data_health 恢复 7/7 通过。
 
 **验证**：`test_smoke` 新增 `t_action_level_sort` 回归用例（层级顺序 + 观望组内下跌严重度），更新旧排序断言（止损层浮亏大在前）；65/65 通过，编码检查 PASS。
 **学到的新思路**：① 展示层文案必须与引擎闸门条件严格对应，环境提示容易写成"全局状态"而忽略条件触发型设计；② 排序键 = 业务层级主键 + 组内度量次键，比单一"距离度量"更能表达决策优先级；③ 排序测试要覆盖"未识别动作"兜底路径（level=9 走通用 gap，避免误入观望分支按浮亏排）。
+
+
+## 废除成交量 · 以在售量 + 价格重构（2026-08-07，战略决策）
+**背景**：用户判断「看量并不会增加成功率，反而会延误买卖信号」，要求彻底放弃成交量数据，以在售量和价格等关键因素重新写方案。
+
+**仓库内证据**：
+1. 引擎基线即无量：`run_item_backtest.py` 以 volumes=[0] 占位回放 458 信号（win14 64.2%/avg14 13.55），engine-unified.md 标注真实成交量「<90 天未激活」。
+2. 模拟量激活实验（2026-08-06，sim_vol_replay.py）：458→474 信号，win14 64.2→63.3%、avg14 13.55→13.17、win30 67.3→66.2%、avg30 21.8→21.11，期望持平略降；新增 29 个 th=35 边缘 deep_value 信号 win30 39.3% → 量只激活链路不带来信息。
+3. 延误成本：引擎冻结期「等真实成交量积累」卡住退出参数定稿与量能确认 v2；采集依赖约 10 天过期的悠悠登录态（token 失效当日熔断）；积累链路本身不可达（UPDATE 不 INSERT，非自选品价格行停更后量写不进去，实测 8/3 起每天仅 25 品有量）。
+
+**决策**：
+1. 彻底放弃悠悠成交量：collector_youpin / uu_headers / 每日 collect_volume / 进度卡量区块 / 健康检查量项全部移除依赖；历史 volume_day 数据归档不删。
+2. 引擎去量：流动性量 40% → 价差 50% + 在售深度 50%；趋势量价 16% 删除并入动量/趋势；动量 vol_spike 3x 触发删除；周期量能改为在售量萎缩判断；AGENTS.md 权重表成交量 15% 移出（承接给大盘/在售供给）。
+3. 以在售量 + 价格为双核心：供给侧 in_sale_count（csQAQ chart 自带、94 品 × 约 1 年、无需登录态）保留 supply.py 并新增「在售量×价格」组合宫格；需求侧沿用估值分位/趋势健康/大盘上下文；风险侧保留存世量 guard/盘口/稀缺度。
+4. 解冻引擎：退出参数定稿不再等成交量；量能确认 v2 关闭。
+
+**不做什么**：不删除历史 volume_day；不新建任何依赖登录态的数据因子；不把在售量当成交量用（挂牌量可被挂单操纵，需叠加价格确认）。
+
+**验证**：P2 回放 458 基线期望零差异 + 真实量消融对照 + test_smoke（删除 youpin 用例、新增在售量覆盖断言）。
+
+**学到的新思路**：① 数据因子立项前必须做「激活消融」验证增量信息，不能先建采集再等数据；② 依赖登录态的采集因子默认不立项；③ 引擎冻结期必须带退出条件，长杆项会无限拖延；④ 「可交易池」在售量变化率比单平台成交笔数更稳定、更抗对倒，是量的合格替代信息位。
+
+## 去量引擎 v2：I-13 深值大盘上涨禁买（2026-08-07，引擎）
+**背景**：v1 去量回测（452 信号）与基线（450）期望持平——去量本身中性，需找真正的高期望改进点。
+
+**分析**（pct×供给×mchg30 宫格 + 族级拆分）：
+1. deep_value 大盘 chg30∈[3,10) 上涨段 68 信号 win14 40%/avg+0.8（2025 44%/2026 43% 独立稳定；横跨10个月40品；基线450 与 devol_v1 同款）→ 「大盘上涨、单品掉队」= 死钱，与族名「大盘企稳」矛盾。
+2. deep_dip 同闸门候选为负优化：mchg30>=3 剔除 9 信号 avg14 +4.5（含 M4A4弹雨+28/MOUZ+29 右尾赢家），净损 +40.6 期望，否决。
+3. 2026-06-19~21 深调低吸簇（pct10-14 × 供给扩张>20%）10 信号 20% 胜率为单一事件簇，未为其单独立闸门（防过拟合）。
+
+**改动**：`SIGNAL_FAMILIES.deep_value` 触发条件改为 `mchg30<=-3 or None`（I-13；原 roadmap 已有 I-7=S3 分桶复验，编号顺延），保留 I-6 阴跌中继（[-3,3) 剔除）不变。
+
+**验证**（96品池回放，2025-01-01~2026-08-05，warmup30，cost2%）：
+- 370 信号：win14 65.5→71.1%、avg14 13.85→16.70、wavg14 18.23→20.76、win30 68.3→72.1%、avg30 22.15→26.54、wavg30 23.02→26.04
+- deep_value 族 56 信号 75%胜率/+14.9（原 149 信号 56%/+7.0）；移除 88 信号（87 deep_value + 1 base）win14 40.9%/avg+1.25，跨13个月（2025-01~2026-07）
+- 前后半段一致性：前 63%/+11.0、后 79%/+22.3（基线 60%/70%）
+- test_smoke 62/65（3 失败 = csQAQ suggest/info 网络限流 429，与引擎无关）
+
+**同步**：config.ITEM_EXPECTANCY_STATS（deep_value 154→56/9事件，accumulate 212→222/23事件，panic 92 不变）、signal_event_counts.json（j1_event_counts 重跑）、AGENTS.md（根+子）、engine-unified、roadmap v18、test_smoke 信号数下限 400→(250,600)。
+
+**学到的新思路**：① 环境变量（大盘方向）是深值族的第一条件，估值深度其次；② 删除近盈亏平衡的磨损信号直接提升期望与资金效率；③ 单一事件簇不作规则（防过拟合），跨年 × 跨引擎双稳定的规律才上闸门。
+
+
+## P0/P3/P4 数据层落地：去量工程化 + 每日全量刷新 + 解冻（2026-08-07，落地批次）
+**背景**：战略决策（废除成交量）与引擎 v2 回放完成后，数据层仍残留悠悠采集调用与「每周日 K 线」陈旧逻辑，需工程化落地收口。
+
+**改动**：
+1. **P0 数据层去量**：webapp/main.py 删除 `_cached_youpin_volume`/`_volume_sane_filter`/`_save_youpin_volume`/`_apply_volume_map`/`_fetch_volume_cached` 5 个函数及 5 处调用点、移除 collector_youpin import；分析/批量扫描伪造模拟量 `volume_day=max(1,volume_total//20)` → 统一置 0（不伪造）；`volumes=[]`、aux 换手率/7日均量置 0。进度卡 `data_progress` volume 区块 → **supply 区块**（items_with_supply/est_days_to_target，SQL 查 in_sale_count）；dashboard.html「真实成交量」进度条 →「在售量覆盖」。run_data_health.py 成交量检查 → 在售量检查（近 7 日 in_sale_count>0 ≥ 90% 品）。
+2. **P3 在售量增强**：run_daily_collect.py 删除 `collect_volume()`（悠悠 7 日逐笔）及调用；K 线全量刷新从「周日自动触发」改为**每日无条件执行**（`--kline` 兼容保留），SQL `good_id>0 AND notes NOT LIKE '%存世量过低%'` 无自选过滤 → 全品价格+在售量日更，直接补齐「非自选品价格行停更」这一成交量积累不可达的根因。
+3. **P4 解冻**：item_analysis.py:1721「参数定稿等成交量90天积累后」→「2026-08-07 去量解冻：参数定稿」；trend_leg_research.md 量能确认 v2 两处标注关闭。
+
+**验证**：test_smoke 删除 4 个 youpin 用例（aggregation/auth_error/no_auth/volume_map_fill）；`t_is_sunday_order` → `t_kline_daily`（断言 is_sunday 不存在 + 每日刷新 + P3 注释）；data_progress 断言 d['volume'] → d['supply']；最终 58/61（3 失败 = csQAQ 401 环境 IP 绑定，非回归）；残留 rg 检查 collector_youpin/_fetch_volume_cached 归零；全部涉及文件 py_compile + 编码检查通过。
+
+**学到的新思路**：① 数据层「停用」要落到 import/函数/测试三级编译级移除，防止只注释不删除的半死代码；② 采集刷新周期按「数据消费者缺口」定（非自选品价格行停更→每日全量），而不是按成本习惯定（每周日）；③ 临时补丁脚本落地后立即清理，避免仓库长期携带 _patch_* 文件。
+
+
+## B1 风险预算层 v2 复验：熔断 10% 失效、cap0.8 强化（2026-08-07，风险参数）
+**背景**：去量引擎 v2（370 信号）落地后，旧 B1 验证基于旧引擎 301 信号（深值 241/基础 20/恐慌 40），组合结构剧变（深值 241→56、恐慌 40→92、吸筹 208→222），cap0.8 / 熔断 10% 必须重验。
+
+**方法**：复用 b1_risk_backtest.py 同款 simulate（hold14 / 手续费 2% / 拒绝优先级 panic>accumulate>deep_value，按 action_label 归类），输入 `data/item_backtest_full_2025.devol_v2.json` 370 信号；全量 + 2025-11-02 子集双口径。脚本 `references/b1_risk_backtest_v2.py`，结果 `data/b1_risk_validation_v2.json`。
+
+**结果**（全量 370 信号 / 子集 315 信号）：
+| 规则 | 全量 total / maxDD | 子集 total / maxDD |
+|---|---|---|
+| cap0.8（现行） | **+193.30% / -9.39%** | **+97.88% / -14.40%** |
+| cap0.8+熔断10% | +193.30%（0 触发） | +94.95%（3.5% 生效，微负） |
+| cap0.8+熔断8% | +190.37% / -9.39% | +70.05% / -8.55% |
+| cap0.8+熔断5% | +11.64%（73% 生效） | +5.48%（85% 生效，破坏） |
+| cap0.8+单票10% | +139.72% / -9.01% | +82.09% / -11.61% |
+| cap0.6 | +164.49% / -8.31% | +78.17% / -12.53% |
+
+**结论**：
+1. **cap0.8 维持并强化**：新引擎 +193.30%/-9.39%（旧 +54.6%/-15.3%），信号质量提升直接传导至组合层；cap0.6 与 cap0.8 的权衡仍劣于 cap0.8。
+2. **熔断 10% 失效**：全量 0 触发（组合自身 maxDD -9.39% < 10%）；子集触发 3.5% 但收益微负、回撤不变 → 从「操作建议」降级为「监控」。
+3. **熔断 10% 新语义 = 信号质量劣化监测器**：v2 组合回测 maxDD 仅 -9.39%，实盘若跌破 10% 意味着实盘信号质量偏离回测，触发检查而非暂停买入。
+4. **dd5% 破坏性禁用；dd8% 是唯一压回撤档位但付 ~28pp 收益，权衡不佳仅监控。**
+5. **单票 10% 硬上限二次证伪**（收益 -28%~-16%）→ 维持只提示，30% 阈值不变。
+
+**改动**：config.py 注释更新（B1 段 + cap 段）；engine-unified.md B1 表述补充 v2 结论；b1_risk_backtest.py 标注输入已删、指向 v2 脚本。代码行为不变（B1 本为纯展示层，不拒绝信号）。
+
+**学到的新思路**：① 风险预算参数是「信号结构」的函数——深值 241 垃圾信号多时熔断有保护价值，信号质量提升后熔断自然失效，**引擎升级后风险参数必须同步重验**；② 失效的风控规则可转化为「质量监测器」（阈值不变、语义反转），比直接删除更有运营价值；③ 复验必须用同款 simulate 代码只换输入，保证口径可比。
+
+
+## 分析路径重构：抽公共分析服务层（2026-08-07，工程）
+**背景**：`api_items_search` / `api_items_analyze` / `api_watchlist_analyze` 三条路径约 90% 重复（fetch → kline 兜底 → 锚价校正 → 大盘上下文 → 引擎 → 落库 → 快照 → 报告），去量等跨层改动需三处同步，v19 落地时已暴露维护成本。
+
+**改动**：
+1. 新增 `webapp/analysis_service.py`（约 500 行）：迁移 7 个助手（`kline_db_fallback`/`kline_price_sane`/`anchor_override`/`market_snapshot`/`recent_buy_dates`/`save_item_snapshot`/`save_analysis_result`）+ 统一核心 `analyze_fresh()` + 共享 ctx `build_analysis_ctx()`。
+2. `webapp/main.py` 2439 → 1816 行（-623）：删除 7 个助手；三条路由各 ~155 行 → ~30 行；`_scan_item`/`_run_discover_task`/`_settle_discover_items`/`_dashboard_context`/`api_market_refresh` 改为调用服务层助手。
+3. **行为保持**：watchlist 路径沿用历史差异（不做 anchor_override、volumes 透传 bar.volume、允许单点锚价分析）——通过 `apply_anchor=False` / `volumes_from_bars` / `allow_single_price` 参数显式钉住；search/analyze 保持传空。
+4. 顺手修复：search 路径重复调用 `_save_analysis_result` 两次（INSERT OR REPLACE 幂等但冗余）→ 统一一次。
+5. `tests/test_smoke.py` 2 处导入迁移（`webapp.main` → `webapp.analysis_service`）。
+
+**验证**：py_compile 全过；`webapp.main` / `analysis_service` 导入 OK（32 路由）；test_smoke 58/61（3 失败 = csQAQ 401 环境 IP 绑定，与重构前一致）；编码 0 hard。
+
+**已知遗留（数据先行验证后统一）**：watchlist 与 search/analyze 的锚价口径差异（watchlist 不应用 `anchor_override`）——本次为行为保持保留该差异，待按项目原则数据验证后统一。
+
+**学到的新思路**：① 重构优先「行为保持」：跨路径历史差异用显式参数钉成可审计开关，比顺手改行为更安全；② 全局字符串重命名会误伤测试函数名（`t_kline_price_sane` → `tkline_price_sane`），改名必须加 def/调用上下文校验。
+## 期望统计单一事实源 + 基准对照 + 参数冻结（2026-08-07，研究/工程收口）
+**背景**：去量引擎 v2（I-13）定稿后，回放产物（item_backtest_full_2025.json）与 config.ITEM_EXPECTANCY_STATS
+仍手工双写，进度卡 J-3 与 config 存在漂移风险；策略缺少「大盘指数 / 池内被动持有」参照系；I-13 参数无冻结纪律。
+
+**③ 单一事实源**：新增 `references/sync_expectancy_config.py`——以回放产物为唯一事实源，按展示键
+（panic/deep_value/accumulate）重算 n/events/win14/avg14/ci14/win30/avg30 并同步写入
+`config.ITEM_EXPECTANCY_STATS`（自动生成注释含族构成与 n30 口径）与 `data/signal_event_counts.json`；
+j1_event_counts.py 口径文字更新（K-2 458 → 去量 v2 370）；`t_expectancy_sync` 全字段硬校验。
+
+**④ 基准对照**（`references/benchmark_compare.py` → `data/benchmark_compare.json`）：
+| 腿（full 窗口 2025-01-01~2026-08-05） | total | maxDD |
+|---|---|---|
+| 策略 cap0.8（370 信号，529 天） | +193.30% | -9.39% |
+| 策略无风控对照（仅参考） | +1118.94% | -44.68% |
+| 池内 95 品等权买入持有 | +509.75% | -54.12% |
+| 大盘指数 | -4.02% | -58.21% |
+
+结论：策略相对大盘大幅超额；但绝对收益低于池内等权持有——**引擎的边际价值在风险控制**
+（maxDD 9.4% vs 54~58%），非裸多收益。池内 +510% 由 2025 低价品暴涨主导（median +220%）；
+大盘指数为高价品权重，单看指数会系统性低估市场机会。
+
+**⑤ 参数冻结**：`config.PARAM_FREEZE` 冻结去量 v2 全参数 + cap0.8 + 单票 30% + 期望统计口径；
+~260 天新数据（约 2027-04-25）后真 OOS 复验；复验触发 = 260 天 / buy 连续 2 月 14d 胜率 <70% /
+月度检查 14d>=80%、30d>=55% 不动；`t_param_freeze` 测试防条款被删。
+
+**验证**：test_smoke 61/64（3 失败 = csQAQ 401 环境 IP 绑定，非回归）；同步脚本幂等（数值与手写版完全一致）；
+临时补丁脚本全部清理。
+
+**学到的新思路**：① 基准必须给「满仓被动 + 大盘指数」双参照系，避免把跑赢指数误判为策略成功；
+② 跨文件双写统计必须脚本化同步 + 测试硬校验，人肉同步必然漂移；③ 参数定稿要落成代码级冻结条款
+（测试可验证），不能只写在文档里。
+## 旧引擎（成交量时代）残留审计与清理（2026-08-07，收尾）
+**背景**：v17~v22 去量落地后复查「旧引擎相关是否移除干净」，发现活代码路径 1 个去量残留 bug +
+活文档多处过时描述 + 临时日志残留。
+
+**发现与修复**：
+1. **活代码 bug（已修）**：`webapp/analysis_service.py` kline_db_fallback 把 price_history.volume_total
+   （历史总成交量）当 in_sale_count 传入引擎——DB 兜底路径的供给数据（吸筹/派发/流动性/供给收缩检测）
+   被历史成交量污染；改为读 in_sale_count 列（去量唯一量源）。
+2. **过时注释（已修）**：portfolio_risk.py docstring 旧 B1 依据（301 信号）→ v2 复验依据（370 信号）；
+   dashboards.py J-3 docstring「K-2 引擎」→ 去量 v2 + sync 脚本；trend_health.py docstring
+   「Volume-Price」→「Supply-Price」。
+3. **活文档（已修）**：SKILL.md / docs/code_structure.md / PROJECT_STRUCTURE.md / 子 AGENTS.md 的
+   采集路径、流动性维度、进度卡口径、常见坑（成交量→在售量）全部同步去量口径。
+4. **临时日志（已清）**：data/_baseline_run.log / _baseline450.log / _devol_run.log
+   （回放运行日志，正式产物 JSON 保留）。
+
+**核实为「刻意保留」而非残留**：
+- `pipeline/collector_youpin.py` + `data/uu_headers.json`：项目决策保留归档（仅 scripts-archive 引用），
+  根 AGENTS.md 明确「保留但停用」。uu_headers.json 为敏感登录凭据——建议后续删除，待用户确认。
+- 旧回放/研究数据（item_backtest_latest.json / b1_risk_validation.json / sim_vol_replay_supply.json /
+  legacy_audit.json / unified_brain_*.json / trend_leg_*.json / th_*.json）与 references 旧研究脚本
+  （unified_brain_* / legacy_audit / sim_vol_replay / trend_leg_* / b1_risk_backtest）：历史证据/对比基线，
+  decision-log 有记录，保留。
+- 引擎内部 volumes 参数保留但不再消费（_analyze_cycle / score_liquidity / analyze_whale 已改用价格/在售量），
+  item_analysis 结果层 volume_day/换手率/7日均量置 0。
+
+**验证**：test_smoke 61/64（3 失败 = csQAQ 401 环境 IP 绑定，非回归）；check_encoding PASS。
+
+**学到的新思路**：① 去量落地要复查「数据读取点」（SELECT * 兜底路径）而不只是采集/写入点——
+analysis_service 的 in_sale_count 错误属于读取侧残留；② 活文档（SKILL/结构文档/AGENTS）与代码同步
+同样要纳入残留审计，rg 关键词扫描是低成本手段。
+## 旧引擎（成交量时代）终审删除（2026-08-07，收尾）
+**背景**：v23 审计确认 collector_youpin / uu_headers 等项目决策保留物已无任何活引用；用户终审「直接删除」，
+本次把旧引擎成交量时代的凭据、采集器、旧产物与旧研究一次性清除。
+
+**删除清单（18 项）**：
+- 凭据/采集器：`data/uu_headers.json`、`pipeline/collector_youpin.py`
+- 旧 B1 结果：`data/b1_risk_validation.json`（v2 已替代，b1_risk_backtest.py 输入早已删除）
+- 旧审计：`references/legacy_audit.py` + `data/legacy_audit.json`
+- 成交量模拟研究（去量证据链）：`references/sim_vol_replay.py` + `data/sim_vol_replay_supply.json` + `sim_vol_supply.*.log`（结论已固化在 decision-log/plan-supply-price-v1）
+- 旧统一大脑阶段1/2 研究：`references/unified_brain_expectancy.py` / `unified_brain_stage2.py` + `data/unified_brain_*.json`（阶段3 已落地 SIGNAL_FAMILIES）
+- scripts-archive 悠悠工具（依赖已删采集器）：`backfill_youpin_price.py` / `collect_sample_items.py` / `fix_kline_5.py` / `_probe_youpin_coverage.py` / `_probe_youpin_days.py`
+
+**文档同步**：根/子 AGENTS.md（采集器描述→已删除、文件结构去行）、SKILL.md、docs/code_structure.md、
+PROJECT_STRUCTURE.md、plan-supply-price-v1.md §采集器行（保留归档→终审删除）、notify_alert.py 示例文案
+（volume FAIL: check uu_headers → 通用文案）。
+
+**刻意保留（仍被引用/有研究价值）**：
+- `data/item_backtest_latest.json`（旧引擎官方 88 基准）：仍被活脚本 `run_item_exit_backtest.py` 与
+  6 个研究脚本（methodology_report/tranche_fit/trend_leg_validation 等）引用，删除需先迁移数据源（会改变
+  研究口径），留待单独一轮。
+- `data/trend_leg_*.json` / `th_*.json` / `k2_guard_prestudy.json` / `c1_p10_replay.json` /
+  `item_9grid_backtest_latest.json` / `item_exit_backtest_latest.json` / `portfolio_backtest_latest.json` /
+  `methodology_report.json`：非成交量核心的研究产物，保留。
+- `references/b1_risk_backtest.py`（已标注输入删除、指向 v2）、`tranche_fit*.py` / `trend_leg_*.py` /
+  `methodology_report.py` / `c1_p10_replay.py` / `topup_replay.py` / `th_*.py`：研究脚本历史。
+
+**验证**：删除后活代码 rg 复查 collector_youpin/uu_headers/sim_vol/unified_brain/legacy_audit 归零；
+py_compile OK；test_smoke 61/64（3 失败 = csQAQ 401 环境 IP 绑定，非回归）；check_encoding PASS。
+
+**学到的新思路**：删除「看似无用的旧引擎文件」前必须先按引用图走一遍——item_backtest_latest.json 这类
+「官方基准」虽属旧引擎，但被活脚本引用时删除会破坏研究可复现性；凭据类文件（uu_headers.json）即使
+项目决策保留，也应终审时优先删除（安全面）。
+## 旧引擎官方 88 基准终审删除（2026-08-07，收尾）
+**背景**：用户指出旧引擎官方 88 基准早已过时，无需再被引用。v24 曾刻意保留 `data/item_backtest_latest.json`（旧引擎 88 信号基准，2025-11-15~2026-06-21 口径，仍被 7 个脚本引用），本轮按引用图完成迁移后删除。
+**删除清单**：
+- `data/item_backtest_latest.json`（旧引擎官方 88 基准）
+- `data/item_9grid_backtest_latest.json` / `data/methodology_report.json`（基于旧基准生成的陈旧产物，源数据已删；9grid 与 methodology_report 脚本均已迁移，可从 `item_backtest_full_2025.json` 再生）
+- `run_item_backtest.py` 中 `item_backtest_latest.json` 写入块（保留 `data/backtest_snapshots/item_backtest_YYYYMMDD.json` 日期快照与 `data/item_backtest_full_2025.json` 标准回放）
+**迁移**（8 个引用点 → `data/item_backtest_full_2025.json`，去量 v2 370 信号）：`run_item_exit_backtest.py`、`run_item_9grid_backtest.py`（--signals 默认值）、`references/methodology_report.py`、`references/tranche_fit.py`、`references/tranche_fit_deepvalue.py`、`references/trend_leg_validation.py`、`references/run_item_backtest_full.py`、`references/backtest-methodology.md`（口径段落标历史归档）。
+**保留**：`references/scripts-archive/` 5 个研究脚本（run_item_backtest_deepvalue / _analysis_*，输入已删，作为历史归档不运行）；`item_exit_backtest_latest.json` / `portfolio_backtest_latest.json` 等非基准引用产物。
+**验证**：活代码 rg `item_backtest_latest` 归零（仅历史归档与日志提及）；py_compile 通过；test_smoke 61 passed / 3 failed = csQAQ 401 环境 IP 绑定（非回归）。
+**学到的新思路**：「官方基准」类旧产物删除前必须把引用链走全——读方脚本、写方入口、生成型 JSON 产物三处都要迁移/清理，否则写入口不改会让基准文件名复活，生成产物会残留死链。

@@ -32,9 +32,8 @@ CS饰品投资分析系统，提供大盘分析、单品分析、持仓管理三
 - fetch_kline_90d(good_id) -> 单独获取 90日 K 线
 - 数据源：悠悠有品（platform=2），自动过滤 StatTrak/纪念品
 
-### collector_youpin.py — 悠悠有品成交量采集（HTTP，登录态 headers）
-- fetch_youpin_volume(template_id, days=7) -> 近7日真实逐笔成交按日聚合（30/90/180 为采样曲线，不能当成交量）
-- 认证文件 data/uu_headers.json（浏览器登录态，约10天过期，不入库）
+### collector_youpin.py — 悠悠有品成交量采集【2026-08-07 已删除】
+- 引擎去量（v2）后，采集器与 data/uu_headers.json 登录凭据一并删除；历史 volume_day 数据保留归档。
 
 ### item_analysis.py — 单品分析引擎（主入口+各模块汇总）
 - run_item_analysis() 完整分析管线（10大模块）
@@ -43,7 +42,7 @@ CS饰品投资分析系统，提供大盘分析、单品分析、持仓管理三
 
 ### index_analysis.py — 大盘分析引擎
 - analyze_index_full() 完整指数分析管线
-- 模块：大盘百分位/Z-score、均线系统、成交量分析、市场情绪、综合指数、抄底就绪度、市场周期判定、融合决策、操作计划
+- 模块：大盘百分位/Z-score、均线系统、市场情绪、综合指数、抄底就绪度、市场周期判定、融合决策、操作计划
 
 ### trend_health.py — 趋势健康度引擎（单品+大盘共用）
 - compute_trend_health() -> 6维度趋势评分（持续性/均线结构/陡度/量价/关键位/异常）
@@ -85,7 +84,7 @@ CS饰品投资分析系统，提供大盘分析、单品分析、持仓管理三
 - fetch_history_deep(good_id, min_date="2025-01-01")：simple/chartAll(plat=2) 多窗口向前翻页补 2025-01-01 起缺失价格
 - db.backfill_price_missing 仅补缺失日期，不覆盖已有 volume_day/in_sale_count
 ### dashboards.py — 仪表盘数据（P0-3/P0-4）
-- data_progress() -> 数据积累进度：大盘指数/K线覆盖度/真实成交量覆盖（含 90 天目标剩余自然日）
+- data_progress() -> 数据积累进度：大盘指数/K线覆盖度/在售量覆盖（含 90 天目标剩余自然日）
 - portfolio_dashboard() -> 组合仓位：持仓分布/仓位比例/集中度 + 并发建议仓位占用（读 batch_scan_latest.json）
 - 纯展示层，不触碰信号引擎
 
@@ -164,7 +163,6 @@ CS饰品投资分析系统，提供大盘分析、单品分析、持仓管理三
 `
 用户操作 → webapp/main.py (FastAPI端点)
   → collector_csqaq.py (csqaq搜索+K线+详情)
-    collector_youpin.py (悠悠有品成交量)
     collector.py (大盘指数)
   → item_analysis.py / index_analysis.py (分析编排)
     ├─ scorer.py (评分)

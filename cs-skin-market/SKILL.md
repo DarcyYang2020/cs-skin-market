@@ -23,10 +23,10 @@ description: "CS 饰品市场投资策略全流程辅助。覆盖行情趋势分
 - csQAQ Playwright: 导航 goods/{id} → 拦截 info/chart API (90日日线)
 - csQAQ Playwright: 拦截 info/good?id= API → 详情 (steam_name, 价格)
 - csQAQ Playwright: **求购价图表**（出售价下拉→求购价）→ buy_price 90日序列 → order_book 价差/趋势
-- 悠悠有品 HTTP: POST price/trend/data（登录态 headers）→ 逐笔成交按日聚合 → 真实成交量
+- ~~悠悠有品 HTTP 真实成交量~~（2026-08-07 删除：采集器与登录凭据已移除，量源=csQAQ 在售量）
 
-### 成交量合并
-csQAQ chart API 提供 price + in_sale_count (不含真实成交量)。成交量由悠悠有品趋势接口采集（data/uu_headers.json 登录态），按日期 (YYYY-MM-DD) 聚合回填到 K线数据。
+### 量源（2026-08-07 去量后）
+csQAQ chart API 提供 price + in_sale_count（在售量），为引擎唯一量源。历史 volume_day/悠悠回填数据保留归档，评分/决策不再读取。
 
 ## 工作流程
 
@@ -52,10 +52,10 @@ csQAQ chart API 提供 price + in_sale_count (不含真实成交量)。成交量
 |---|---|---|
 | 估值定位 | 90日百分位 + Z-score | 低估/合理/高估/泡沫 |
 | 周期判定 | 四阶段识别 | 吸筹/拉升/出货/洗盘 |
-| 流动性 | 三维 0-100 | 成交量/价差/在售深度 |
+| 流动性 | 二维 0-100 | 在售深度/价格稳定（2026-08-07 去量重写） |
 | 涨跌概率 | 均值回归预测 | 3/7/14日 涨/平/跌 |
-| 庄盘识别 | 四因子检测 | 价格异常/供给控盘/量价/波动 |
-| 趋势健康度 | 六维 0-100 | 短期/长期/均线/波动/量价/回撤 |
+| 庄盘识别 | 四因子检测 | 价格异常/供给控盘/波动/相关性 |
+| 趋势健康度 | 五维 0-100 | 持续/陡度/均线/供给×价格/缺口（量价→供给×价格） |
 | 融合决策 | 百分位+TH+周期 | 操作指令 |
 | 求购承接 (v4.6) | 断层+价差趋势 0-100 | spread_pct / bid7d_chg / bid30d_chg / spread_avg |
 
@@ -74,7 +74,7 @@ csQAQ chart API 提供 price + in_sale_count (不含真实成交量)。成交量
 ## 常见问题
 
 - **模板编辑**: 不要用 PowerShell 编辑含中文的 HTML 模板，使用 Python \uXXXX 转义序列生成
-- **成交量正确性**: bar.date 必须为 YYYY-MM-DD 格式才能与悠悠逐日成交量匹配
+- **在售量覆盖**: bar.date 必须为 YYYY-MM-DD 才能与在售量（in_sale_count）按日匹配（悠悠成交量 2026-08-07 停用）
 - **StatTrak 误匹配**: 检查 _verify_item_name 和 search_good_id 过滤逻辑
 - **分析耗时**: 单次约 30-50 秒，正常范围
 

@@ -347,7 +347,7 @@ spread_pct / highest_buy / bid_7d_chg / bid_30d_chg / spread_avg / bid_count / d
 | 文件 | 说明 |
 |---|---|
 | run_item_backtest.py | 单品离线回放, warmup=30: 67信号→33→37独立(2026-08-02 供给扩张过滤), 14d胜率88.9%/30d 76.5% |
-| data/item_backtest_latest.json | 单品回测最新明细（信号+分层字段+supply） |
+| data/item_backtest_full_2025.json | 标准回放明细（去量 v2，370 信号：信号+分层字段+supply） |
 
 ### 补仓建议阈值（2026-07-31, 数据验证）
 

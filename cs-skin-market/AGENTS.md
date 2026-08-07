@@ -17,6 +17,19 @@
 
 配套：每次回测自动生成快照 `data/item_backtest_YYYYMMDD.json`（保留 365 天），用于因子衰减监控与回归对比。
 
+### 参数冻结 + 基准对照 + 期望统计单一事实源（2026-08-07 定稿）
+
+- **参数冻结**：`config.PARAM_FREEZE` 冻结去量引擎 v2（I-13）全参数、组合层 cap0.8、单票敞口提示 30%、
+  `ITEM_EXPECTANCY_STATS` 展示口径；~260 天新数据（约 2027-04-25）后真 OOS 复验；复验触发 = 260 天 /
+  buy 连续 2 月 14d 胜率 <70% / 月度检查 14d>=80%、30d>=55% 则不动。冻结期内禁止以回放数据为依据调参。
+- **期望统计单一事实源**：`data/item_backtest_full_2025.json`（回放产物）→
+  `python references/sync_expectancy_config.py` 自动同步 `config.ITEM_EXPECTANCY_STATS` +
+  `data/signal_event_counts.json`；`t_expectancy_sync` 全字段硬校验防漂移（改回放不重跑同步即测试失败）。
+- **基准对照**：`python references/benchmark_compare.py` → `data/benchmark_compare.json`
+  （策略 cap0.8 vs 池内等权买入持有 vs 大盘指数，full/active 双窗口）。2026-08-07 结论：策略 +193.30%/-9.39%
+  大幅跑赢大盘 -4.02%，但低于池内等权 +509.75%/-54.12% —— 引擎边际价值在风险控制（maxDD 9.4% vs 54~58%）。
+
+
 ## 数据来源与采集
 
 | 数据 | 来源 | 方式 | 说明 |
@@ -26,7 +39,7 @@
 
 **定价锚**: 悠悠有品 (platform=2) > Buff > C5GAME，Steam 价格不采用。
 
-**K线数据**: csQAQ chart API 提供 90日日线 OHLCV（price + in_sale_count），成交量由悠悠有品趋势接口采集后按日期聚合回填。
+**K线数据**: csQAQ chart API 提供 90日日线 OHLCV（price + in_sale_count 在售量）。2026-08-07 起引擎去量：真实成交量（悠悠有品）不再采集/消费（采集器与 uu_headers 凭据已删除），在售量为唯一量源。
 
 **浏览器复用**: _get_browser() 全局单例，5 分钟超时重建。
 
@@ -52,11 +65,11 @@ run_item_analysis(name, prices, volumes, supply_hist, order_book, index_change_7
 |---|---|---|
 | 估值定位 | _analyze_position | 90日百分位 + Z-score + 标签（低估/合理/高估/泡沫） |
 | 周期判定 | _analyze_cycle | 四阶段：吸筹/拉升/出货/洗盘，含持仓时间计数 |
-| 流动性评估 | score_liquidity | 三维 0-100：成交量(40%) + 价差(30%) + 在售深度(30%) |
+| 流动性评估 | score_liquidity | 二维 0-100：在售深度(50%) + 价格稳定(50%)（2026-08-07 去量重写，原成交量维度移除） |
 | 涨跌概率 | analyze_probability | 均值回归 + 波动率分类 + 3/7/14日预测 |
 | 投资价值 | compute_value_score | 1-10 分 + S/A/B/C 评级 |
 | 庄盘识别 | analyze_whale | 四因子：价格异常 + 供给控盘 + 量价关系 + 波动率 |
-| 趋势健康度 | compute_trend_health (trend_health.py) | 五维 0-100：持续性/陡度/均线结构/量价配合/异常缺口 |
+| 趋势健康度 | compute_trend_health (trend_health.py) | 五维 0-100：持续性/陡度/均线结构/供给×价格配合/异常缺口（2026-08-07 去量） |
 | 融合决策 | compute_fusion_decision (trend_health.py) | 百分位 + TH + 周期 → 操作指令 |
 | 估值宫格 | compute_valuation_grid (valuation.py) | 3×4 宫格（价格分位 × 趋势方向）+ 仓位建议 |
 | 信号冲突 | detect_signal_conflicts | 跨模块矛盾检测（周期 vs 融合、估值 vs 趋势等） |
@@ -110,7 +123,7 @@ cd cs-skin-market && python run_server.py
 | GET  | /api/watchlist/executions | 执行记录列表（自动结算到期记录） |
 | POST | /api/watchlist/executions | 新增执行记录（按建议执行/手动录入） |
 | DELETE | /api/watchlist/executions/{eid} | 删除执行记录 |
-| GET  | /api/data/progress | 数据积累进度（大盘/K线/成交量覆盖） |
+| GET  | /api/data/progress | 数据积累进度（大盘/K线/在售量覆盖） |
 | GET  | /api/portfolio/dashboard | 组合仓位仪表（持仓分布+并发仓位占用） |
 | POST | /api/discover/scan-all | 扫描全武器类型，异步分析 |
 | GET  | /api/items/discover-progress/{task_id} | 发现高分品进度轮询 |
@@ -190,12 +203,12 @@ webapp/templates/
 
 ### 样本扩展与恐慌共振过滤 (P0-7, 2026-08-02, 181天数据验证)
 
-- **窗口扩展**: `backfill_youpin_price.py` 用悠悠 day=180 回填历史价（重叠期校准系数 k=median(csqaq/youpin)，仅补缺失日期），单品历史 104天→181天（2026-02-03 起）；仅价格回填，不可作成交量（day=180 为采样曲线）
+- **窗口扩展（历史）**: `backfill_youpin_price.py` 曾用悠悠 day=180 回填历史价（重叠期校准系数 k=median(csqaq/youpin)），单品历史 104天→181天（2026-02-03）；该归档脚本与悠悠采集器已于 2026-08-07 删除（数据已积累至 500+ 天，无需再回填）
 - **过拟合实证**: 窗口扩展后 49 信号 14d 66.7%/30d 48.8%（原37信号88.9%/76.5% 是窗口偏差——warmup=30 恰好过滤掉 4-23/5-11 半山腰次）
 - **P0-7 恐慌共振过滤**: 共振升级需满足 ①非印花/贴纸 ②价格≥15 ③ z≥-2.2（深超卖冷门品反而继续阴跌） ④ 大盘 21日跌幅≤-18%（区分 4-23 半山腰 -13% vs 5-22 黄金坑 -19.6%）
 - **P0-7b 周期吸筹过滤**: 吸筹 buy 也需大盘 21日跌幅≤-18%（新样本4信号30d均-20%，全非深跌场景）
 - **效果（49→14 信号）**: 14d 100%/avg+57.1，30d 85.7%/avg+50.5（全部为 5/22-5/26 黄金坑，提示未来再次触发需等下一次恐慌深跌）
-- 大盘 drop21 参数已全链路传递（backtest_common / run_item_backtest / webapp._market_snapshot / item_analysis）
+- 大盘 drop21 参数已全链路传递（backtest_common / run_item_backtest / webapp.analysis_service.market_snapshot / item_analysis）
 
 ### 因子衰减监控 (factor_monitor.py, 2026-08-01)
 
@@ -242,7 +255,7 @@ python run_item_backtest.py --items "AWP | 冥界之河 (崭新出厂);AK-47 | �
 - 缺失成交量/在售/盘口历史 → 回测用中性默认值，信号带 data_quality 标注
 - warmup=30 结果（2026-05-21~07-31, P0 过滤后 33 信号）: 14d胜率94%/均+45.5%, 30d胜率82%/均+53.7%（旧版 67 信号含重复: 14d 61%/30d 77%）
 - 分层结论（支撑补仓阈值）: pct≤25&th≥40 → 14d胜率75%; pct 25~40(半山腰) → 14d胜率28%; 市场贪婪(sent≤30) → 30d胜率0%
-- 输出: 控制台明细 + data/item_backtest_latest.json
+- 输出: 控制台明细 + data/backtest_snapshots/item_backtest_YYYYMMDD.json（标准回放基准 = data/item_backtest_full_2025.json，旧 88 基准已删）
 
 ### 持仓补仓建议 (batch_scan._portfolio_advice, 2026-07-31)
 
@@ -266,11 +279,11 @@ python run_item_backtest.py --items "AWP | 冥界之河 (崭新出厂);AK-47 | �
 
 ## 产品层迭代 (2026-08-04)
 
-引擎冻结期（等真实成交量积累）的产品/展示层增强，不改任何信号引擎：
+2026-08-04 引擎冻结期（当时等真实成交量积累）的产品/展示层增强批次，不改任何信号引擎（2026-08-07 去量后已解冻）：
 
 - **P0-1 信号中心 + 历史归档**：批量扫描提取信号（可分批补仓 > 建议止损 > 已到买点），存 data/scan_history/scan_*.json（保留 30 份）；watchlist 页信号中心卡 + 历史下拉
 - **P0-2 执行记录 + 自动复盘**：executions 表；批量扫描「按建议执行」/手动录入；14/30 天到期按最近收盘价自动结算（净收益扣 2% 双边成本，与回测口径一致）
-- **P0-3 数据积累进度**：大盘/K线/真实成交量覆盖度 + 90 天目标进度条（当前成交量约 8 天/品）
+- **P0-3 数据积累进度**：大盘/K线覆盖度 + 90 天目标进度条（2026-08-07 改为在售量覆盖，见 dashboards.data_progress）
 - **P0-4 组合仓位仪表**：持仓市值/仓位比例/集中度 + 并发建议仓位占用（Σ建仓补仓 vs 0.8 上限）
 - **体验优化**：批量扫描按钮信号角标、执行记录手动录入、待结算预计日期、平均净收益汇总、物品名自动补全、扫描后自动刷新信号中心
 
@@ -305,7 +318,6 @@ cs-skin-market/
     collector_csqaq.py   -- csQAQ Playwright 采集（单品搜索/详情/K线/fetch_history_deep 深历史）
     collector_snapshot.py -- 全市场快照采集（get_page_list 翻页，悠悠锚价+在售数，存 market_snapshot）
     collector_monitor.py -- 大户集中度快照采集（monitor/rank 每日 Top50 大户持有量，存 monitor_rank_snapshot）
-    collector_youpin.py -- 悠悠有品成交量采集（HTTP，登录态）
     db.py                -- SQLite 存储（items/price_history/snapshots/positions/settings/market_snapshot/executions）
     item_analysis.py     -- 单品分析主流程（协调10大模块）
     trend_health.py      -- 趋势健康度 + 融合决策
@@ -324,7 +336,7 @@ cs-skin-market/
     templates/           -- Jinja2 模板
     static/css/style.css -- 样式
     static/js/app.js     -- 公共 JS（Modal/导航）
-  references/            -- 文档（analysis-engine.md 等）
+  references/            -- 文档 + 研究脚本（analysis-engine.md / sync_expectancy_config.py / benchmark_compare.py 等）
 `
 
 ## 数据库表
@@ -358,9 +370,9 @@ cs-skin-market/
 ## 常见问题
 
 - **模板中文乱码**: 模板文件必须保存为 UTF-8 编码，不要用 PowerShell 编辑含中文的模板。使用 Python \uXXXX 转义序列生成。
-- **成交量为0**: 检查 bar.date 是否正确设置（必须是 YYYY-MM-DD 格式），悠悠逐日成交量依赖日期匹配。
+- **在售量缺失**: 检查 bar.date 是否正确设置（必须是 YYYY-MM-DD 格式）；在售量（in_sale_count）为当前唯一量源（悠悠成交量采集器 2026-08-07 已删除）。
 - **分析结果不匹配**: 检查 StatTrak/纪念品过滤是否生效，_verify_item_name 是否正确。
-- **分析耗时长**: 单次分析约 30-60 秒（csQAQ 浏览器采集为主，悠悠成交量 0.1s），正常现象。
+- **分析耗时长**: 单次分析约 30-60 秒（csQAQ 浏览器采集为主），正常现象。
 - **庄盘识别偏低**: 算法侧重价格异常和供给控盘，存世量权重较低（大存世量也可能是庄盘）。
 
 <!-- PROJECT-MEMORY -->
