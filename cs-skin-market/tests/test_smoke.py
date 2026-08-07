@@ -1921,6 +1921,33 @@ def t_monitor_push():
         conn.close()
 check('M2 监控推送组装 + 无 webhook 跳过', t_monitor_push)
 
+def t_notify_send_errcode():
+    """M2 hardening: send() must check dingtalk errcode, 310000 raises not fake-success."""
+    from unittest import mock
+    from notify_alert import send
+
+    class FakeResp:
+        def __init__(self, body, status=200):
+            self.status = status
+            self._body = body.encode("utf-8")
+        def read(self):
+            return self._body
+        def __enter__(self):
+            return self
+        def __exit__(self, *a):
+            return False
+
+    with mock.patch("urllib.request.urlopen", return_value=FakeResp('{"errcode":310000,"errmsg":"keywords not match"}')):
+        try:
+            send("t", "x", "http://fake")
+        except RuntimeError as exc:
+            assert "310000" in str(exc), str(exc)
+        else:
+            raise AssertionError("errcode!=0 must raise, not fake-success")
+    with mock.patch("urllib.request.urlopen", return_value=FakeResp('{"errcode":0,"errmsg":"ok"}')):
+        assert send("t", "x", "http://fake") == 200
+check('M2 send() dingtalk errcode guard', t_notify_send_errcode)
+
 print(f'=== Results: {passed} passed, {failed} failed, {skipped} skipped ===')
 if failures:
     print()

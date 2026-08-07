@@ -7,6 +7,15 @@
 
 ## 版本历史
 
+- **v34（2026-08-08）**：M2 钉钉推送配置验证 + send() errcode 加固（用户提供 webhook 后收尾）：
+  - 背景：用户配置好钉钉机器人并给出 webhook（安全设置自定义关键词「监控」）；写入 .env 后试推返回 310000 关键词不匹配，
+    排查发现：① 关键词本身没错，是 PowerShell 管道喂 Python 时中文变 ? 导致实际推送乱码；② 原 send() 只看 HTTP 200 不校验钉钉业务 errcode，存在假成功。
+  - 落地：根 .env 写入 NOTIFY_WEBHOOK_URL（.gitignore 已忽略）；`notify_alert.send()` 解析响应 JSON，errcode != 0 抛 RuntimeError
+    （310000 等业务失败不再被当作成功，notify_alert._push / monitor.push_daily 的 except 自动转失败原因）；tests 新增 t_notify_send_errcode（mock urlopen 双分支）。
+  - 验证：base64 无编码损失方式手动推送 errcode:0；run_daily_monitor 真库跑通（25 品分析 / 15 事件幂等 saved=0 / pushed:true，钉钉实际收到日报）；
+    离线 smoke 71/0/6（新增 1 用例）；编码健康 PASS。
+  - 学到的新思路：① 钉钉 HTTP 200 不等于成功，推送必须校验业务 errcode，否则告警静默丢失；② Windows PowerShell 管道喂 Python 会破坏中文，
+    凡涉及中文的推送验证/写文件要走 base64 或 UTF-8 文件通道；③ 推送链路验证要端到端（webhook → errcode → 群内收到），只验证 HTTP 状态是假验证。
 - **v33（2026-08-08）**：M2 监控钉钉推送（用户确认 M1 后实施，纯提醒层）：
   - 复用 notify_alert.py（.env NOTIFY_WEBHOOK_URL）；run_daily_monitor 收尾自动推送：标题含日期+大盘状态+🚨危险数/🟡提醒数，正文 danger 明细全列（截断 10 条）+ warn/info 计数 + /monitor 链接。
   - 幂等：settings 记 `monitor_push_{date}=1`，同一天重跑不重复推送；未配置 webhook / 推送失败均不中断采集（summary.pushed 返回原因）。

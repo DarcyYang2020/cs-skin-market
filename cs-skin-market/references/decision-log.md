@@ -1389,3 +1389,18 @@ S2 回踩族在 C1（2026-08-05）已被证伪留研究池（A2 三件套未过�
 
 **验证**：离线 smoke 70/0/6（新增 M2 正文组装断言 + 无 webhook 跳过且不写幂等 key）；真库跑通（saved=0 幂等、pushed=no_webhook）。
 **学到的新思路**：① 推送幂等用 settings 日期 key，重跑采集不重复打扰；② 提醒类推送复用健康告警通道（notify_alert），不另起基础设施；③ 未配置 webhook 时静默跳过并返回原因，采集主流程零耦合。
+## M2 钉钉推送配置验证 + send() errcode 加固（2026-08-08，纯提醒层）
+**背景**：用户给出钉钉机器人 webhook（安全设置自定义关键词「监控」）。写入 .env 后首推 HTTP 200 但钉钉实际返回 310000 关键词不匹配，
+引发排查：用户关键词设置正确，根因是 PowerShell 管道喂 Python 时中文被转成 ?，推送内容实际是乱码；同时暴露 send() 只检查 HTTP 状态、
+不校验钉钉业务 errcode 的假成功隐患（310000 这类业务失败也会被记为成功）。
+
+**落地**：
+- 根 `.env` 写入 `NOTIFY_WEBHOOK_URL`（完整 token 见 .env，.gitignore 已忽略不入库）。
+- `notify_alert.send()`：读取响应 JSON，解析失败或 `errcode != 0` 抛 RuntimeError（含 errcode/errmsg），不再只认 HTTP 200；
+  `_push` 与 `monitor.push_daily` 现有 except 自动将失败转为 exit 2 / `{pushed: False, reason: push_failed}`。
+- `tests/test_smoke.py` 新增 `t_notify_send_errcode`：mock urlopen 双分支（errcode=310000 抛错 / errcode=0 返回 200）。
+
+**验证**：base64 通道手动推送 `errcode:0`；`run_daily_monitor` 真库跑通（25 品 / 15 事件幂等 saved=0 / pushed:true，钉钉群实际收到监控日报）；
+离线 smoke 71/0/6；编码健康 PASS。
+**学到的新思路**：① 推送类外部依赖必须校验业务成功码，HTTP 200 只是传输层成功；② Windows 下 PowerShell→Python 管道会破坏中文，
+凡涉及中文的推送/写文件验证都要走 base64 或文件通道，避免「假失败/假成功」干扰排查；③ 端到端验证（webhook → errcode → 群内可见）才算推送闭环。

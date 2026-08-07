@@ -33,7 +33,15 @@ def send(title, text, url, timeout=10):
     }, ensure_ascii=False).encode("utf-8")
     req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return resp.status
+        status = resp.status
+        body = resp.read().decode("utf-8", errors="replace")
+    try:
+        data = json.loads(body)
+    except Exception as exc:
+        raise RuntimeError(f"non-JSON dingtalk response (HTTP {status}): {body[:200]}") from exc
+    if data.get("errcode"):
+        raise RuntimeError(f"dingtalk errcode={data.get('errcode')}: {data.get('errmsg')}")
+    return status
 
 
 def monitor_mode():
