@@ -1265,9 +1265,20 @@ async def api_health_status():
         ).fetchone()
     finally:
         conn.close()
-    return {"found": True, "date": datetime.now().strftime("%Y-%m-%d"), "status": "fail" if fail_list else "pass",
+    data_date = None
+    try:
+        conn_d = db.get_conn()
+        try:
+            _r = conn_d.execute("SELECT MAX(date) FROM market_index").fetchone()
+            data_date = _r[0] if _r else None
+        finally:
+            conn_d.close()
+    except Exception:
+        pass
+    return {"found": True, "date": datetime.now().strftime("%Y-%m-%d"), "data_date": data_date,
+            "status": "fail" if fail_list else "pass",
             "checked_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "last_auto": {"date": row["date"], "created_at": row["created_at"]} if row else None,
+            "last_auto": {"date": row["date"], "created_at": row["created_at"], "status": row["status"]} if row else None,
             "checks": [{"name": n, "level": lv, "detail": dt} for n, lv, dt in checks],
             "fail_list": fail_list, "fail_count": len(fail_list)}
 

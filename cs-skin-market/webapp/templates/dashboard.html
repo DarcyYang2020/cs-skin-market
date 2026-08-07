@@ -12,6 +12,7 @@
   <div class="card-header">
     <span class="card-title">🩺 数据健康</span>
     <span id="health-time" style="font-size:12px;color:var(--text-muted);"></span>
+    <button class="btn btn-outline btn-sm" onclick="loadHealth()" style="margin-left:auto;">🔄 刷新</button>
   </div>
   <div id="health-body" style="padding:10px 14px;font-size:13px;"></div>
 </div>
@@ -37,37 +38,58 @@
 
 {% block scripts %}
 <script>
-// ---- 数据健康 (A1, 2026-08-05): 最新健康检查状态 + FAIL 项摘要 ----
-fetch("/api/health/status")
-.then(function(r) { return r.json(); })
-.then(function(d) {
-  var card = document.getElementById("health-card");
-  if (!card || !d.found) return;
-  card.style.display = "block";
-  var labels = {pass: "实时检查 · 正常", warn: "实时检查 · 警告", fail: "实时检查 · 异常"};
+// ---- 数据健康 (A1, 2026-08-05): 实时检查 + 自动检查状态 + 明细（接口异常也显示，不静默隐藏） ----
+function _healthBadge(st, label) {
   var colors = {pass: "var(--green)", warn: "var(--yellow)", fail: "var(--red)"};
-  var st = d.status || "pass";
   var color = colors[st] || "var(--text-muted)";
-  var autoTxt = (d.last_auto && d.last_auto.created_at) ? "自动 " + d.last_auto.created_at : "无自动检查记录";
-  document.getElementById("health-time").textContent = "实时 " + (d.checked_at || "--") + " · " + autoTxt;
+  return '<span class="badge" style="background:rgba(255,255,255,0.08);color:' + color + ';font-weight:700;">' + label + '</span>';
+}
+function renderHealth(d) {
+  var st = d.status || "pass";
+  var la = d.last_auto;
+  var autoHtml = la && la.created_at
+    ? _healthBadge(la.status, (la.status === "pass" ? "自动通过" : "自动异常") + " " + la.created_at)
+    : '<span style="font-size:11px;color:var(--text-muted);">无自动检查记录</span>';
   var html = '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">'
-    + '<span class="badge" style="background:rgba(255,255,255,0.08);color:' + color + ';font-weight:700;">' + (labels[st] || st) + '</span>'
-    + '<span style="font-size:11px;color:var(--text-muted);">数据日期 ' + (d.date || "--") + '</span>'
+    + _healthBadge(st, st === "pass" ? "实时检查 · 正常" : "实时检查 · 异常")
+    + '<span style="font-size:11px;color:var(--text-muted);">数据日期 ' + (d.data_date || "--") + '</span>'
+    + autoHtml
     + '</div>';
-  if (d.fail_count > 0) {
-    html += '<div style="margin-top:8px;color:var(--red);">FAIL 项：' + (d.fail_list || []).join("、") + ' —— 建议运行 <code>python run_health_monitor.py</code> 核查。</div>';
-  } else {
-    html += '<div style="margin-top:8px;color:var(--text-secondary);">各数据源检查通过，无 FAIL 项。</div>';
-  }
+  var checks = d.checks || [];
+  html += '<div style="margin-top:8px;border-top:1px solid rgba(255,255,255,0.06);padding-top:8px;">'
+    + '<div style="font-size:12px;color:var(--text-muted);margin-bottom:2px;">检查明细（' + checks.length + ' 项）</div>'
+    + '<table style="width:100%;font-size:12px;"><tbody>';
+  checks.forEach(function(x) {
+    var ok = x.level === "PASS";
+    html += '<tr><td style="width:120px;padding:2px 0;white-space:nowrap;color:' + (ok ? "var(--text-secondary)" : "var(--red)") + ';">'
+      + (ok ? "✅ " : "❌ ") + x.name + '</td>'
+      + '<td style="padding:2px 0;color:var(--text-muted);">' + x.detail + '</td></tr>';
+  });
+  html += '</tbody></table></div>';
   document.getElementById("health-body").innerHTML = html;
-})
-.catch(function(e) {
+}
+function loadHealth() {
   var card = document.getElementById("health-card");
   if (!card) return;
-  card.style.display = "block";
-  document.getElementById("health-time").textContent = "";
-  document.getElementById("health-body").innerHTML = '<div style="color:var(--red);">健康检查接口暂不可用：' + e + '</div>';
-});
+  fetch("/api/health/status")
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    card.style.display = "block";
+    if (!d.found) {
+      document.getElementById("health-time").textContent = "";
+      document.getElementById("health-body").innerHTML = '<div style="color:var(--red);">健康检查不可用：' + (d.error || "未知错误") + '</div>';
+      return;
+    }
+    document.getElementById("health-time").textContent = "实时 " + (d.checked_at || "--");
+    renderHealth(d);
+  })
+  .catch(function(e) {
+    card.style.display = "block";
+    document.getElementById("health-time").textContent = "";
+    document.getElementById("health-body").innerHTML = '<div style="color:var(--red);">健康检查接口暂不可用：' + e + '</div>';
+  });
+}
+loadHealth();
 
 // ---- 信号中心 (2026-08-05): 复用 watchlist 扫描信号数据源 ----
 fetch("/api/watchlist/scan-history")
@@ -120,10 +142,12 @@ fetch("/api/data/progress")
   var html = '<table style="width:100%;font-size:13px;"><tbody>' + rows.map(function(r) {
     return '<tr><td style="width:130px;color:var(--text-muted);padding:4px 0;">' + r[0] + '</td><td style="padding:4px 0;">' + r[1] + '</td></tr>';
   }).join("") + '</tbody></table>';
-  html += '<div style="margin-top:10px;">在售量覆盖目标 ' + target + ' 天/品:'
-    + '<div style="height:8px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden;margin-top:4px;">'
+  html += '<div style="margin-top:10px;"><span style="font-size:12px;color:var(--text-muted);">在售量覆盖目标 ' + target + ' 天/品</span>'
+    + '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-secondary);margin:2px 0;">'
+    + '<span>均 ' + (v.avg_days_per_item || 0) + ' 天/品</span><span>' + volPct + '%</span></div>'
+    + '<div style="height:8px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden;">'
     + '<div style="height:100%;width:' + volPct + '%;background:linear-gradient(90deg,#3b82f6,#22c55e);"></div></div>'
-    + '<span style="font-size:11px;">' + (v.avg_days_per_item || 0) + '/' + target + ' 天 (' + volPct + '%)' + '，预计还需 ' + (v.est_days_to_target || 0) + ' 天达到 ' + target + ' 天覆盖 —— 供给数据积累主线（在售量驱动引擎，覆盖到位解锁完整供给回测）</span></div>';
+    + '<div style="font-size:11px;color:var(--text-secondary);margin-top:4px;">预计还需 ' + (v.est_days_to_target || 0) + ' 天达到 ' + target + ' 天 —— 供给数据积累主线（在售量驱动引擎，覆盖到位解锁完整供给回测）；带在售量 ' + (v.items_with_supply || 0) + ' 品 · 90 日覆盖 ' + (p.pct_90d || 0) + '%</div></div>';
   // ---- 信号族样本深度 (J-3, 2026-08-06): 信号数/独立事件数随采集增长 + J-2 重拟合门槛 ----
   var fam = d.families;
   if (fam && fam.display_keys) {
