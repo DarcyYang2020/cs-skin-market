@@ -17,7 +17,7 @@ cs-skin-market/
 ├── run_portfolio_backtest.py  # 组合级执行回测（P0-1 资金曲线 / P0-2 出场网格）
 ├── run_backfill_history.py    # 单品历史深度回填（2025-01-01 起，仅补缺失日期）
 ├── backup_db.py               # SQLite online backup（每日，保留 14 份）
-├── notify_alert.py            # 健康告警推送（钉钉 webhook，.env 配置）
+├── notify_alert.py            # 告警/监控推送（钉钉 webhook，.env NOTIFY_WEBHOOK_URL 配置）
 ├── install_tasks.ps1          # Windows 计划任务安装（每日采集/备份/告警）
 ├── install_hooks.ps1          # pre-commit hook 安装（提交前自动跑冒烟测试）
 ├── start_webapp.bat           # Windows 一键启动
@@ -63,7 +63,7 @@ cs-skin-market/
 | `b`uy_distance.`py` | 距买点 v3（下跌寻底企稳闸门/供给吸筹场景/大盘TH三区化） |
 | `portfolio_risk.`py | B1 风险预算层（组合回撤熔断 + 单票敞口提示） |
 | `signal_tracking.`py | 生产实盘信号跟踪（J-2 C 通道：记录 buy 信号 → 14/30 交易日回填） |
-| `monitor.`py | M1 监控模式（每日自选品异动事件生成 + 日报，纯提醒层，只读引擎输出） |
+| `monitor.`py | M1/M2 监控模式（每日自选品异动事件生成 + 日报 + 钉钉推送，纯提醒层，只读引擎输出） |
 
 ### 回测/研究公共
 

@@ -1889,6 +1889,38 @@ def t_monitor_run_guard():
     assert ctx["th"] == 50.0 and ctx["chg30"] == 0.0
 check('M1 监控空库守卫 + 默认大盘上下文', t_monitor_run_guard)
 
+
+
+def t_monitor_push():
+    """M2 推送：正文组装（danger 明细 + warn/info 计数）+ 无 webhook 跳过（不写幂等 key）。"""
+    import os
+    from pipeline import monitor as _mon
+    summary = {"date": "2099-01-01", "bucket": "阴跌中继区", "analyzed": 25, "skipped": 0}
+    events = [
+        {"item_id": 1, "item_name": "AWP | 火卫一", "event_type": "stop_loss", "level": "danger",
+         "detail": "现价 ¥70.28 ≤ 成本-25% ¥72.75，建议止损"},
+        {"item_id": 2, "item_name": "AK-47 | 抽象派", "event_type": "near_buy", "level": "warn",
+         "detail": "买点接近度 80%"},
+        {"item_id": None, "item_name": None, "event_type": "market_state", "level": "info",
+         "detail": "大盘状态：阴跌中继区"},
+    ]
+    title, text = _mon._build_push_text(summary, events)
+    assert "🚨1危险" in title and "破位止损" in text and "买点接近" in text, (title, text)
+    os.environ["NOTIFY_WEBHOOK_URL"] = ""
+    try:
+        r = _mon.push_daily(summary, events)
+        assert r == {"pushed": False, "reason": "no_webhook"}, r
+    finally:
+        os.environ.pop("NOTIFY_WEBHOOK_URL", None)
+    from pipeline import db as _db
+    conn = _db.get_conn()
+    try:
+        k = conn.execute("SELECT value FROM settings WHERE key='monitor_push_2099-01-01'").fetchone()
+        assert k is None, "无 webhook 不应写幂等 key"
+    finally:
+        conn.close()
+check('M2 监控推送组装 + 无 webhook 跳过', t_monitor_push)
+
 print(f'=== Results: {passed} passed, {failed} failed, {skipped} skipped ===')
 if failures:
     print()

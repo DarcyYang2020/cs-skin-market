@@ -22,6 +22,10 @@ NEAR_BUY_MIN = 60      # 买点接近度 >= 60 且非 buy
 STOP_LOSS_PCT = 0.75   # 现价 <= 成本 * 0.75
 SUPPLY_SHIFT_7D = (-20, 30)  # 在售量 7 日变化超出区间
 PRICE_SPIKE_PCT = 8.0  # 单日 |涨跌| >= 8%
+PUSH_DETAIL_MAX = 10   # 钉钉正文 danger 明细上限（其余计数）
+_TYPE_LABEL = {"near_buy": "买点接近", "stop_loss": "破位止损", "decision_flip": "决策翻转",
+               "supply_shift": "供给突变", "price_spike": "价格异动", "market_state": "大盘状态",
+               "exec_due": "持仓到期", "new_buy_signal": "新买信号"}
 
 
 def _today() -> str:
@@ -238,6 +242,66 @@ def _write_md(date, summary, events):
         pass
 
 
+def _build_push_text(summary, events):
+    """组装钉钉正文（纯函数）：danger 明细全列（截断 PUSH_DETAIL_MAX），warn/info 计数。"""
+    danger = [e for e in events if e["level"] == "danger"]
+    warn = [e for e in events if e["level"] == "warn"]
+    info_n = sum(1 for e in events if e["level"] == "info")
+    lines = [f"大盘：{summary['bucket']} · 分析 {summary['analyzed']} 品 / 跳过 {summary['skipped']}"]
+    if danger:
+        lines.append("")
+        for e in danger[:PUSH_DETAIL_MAX]:
+            lines.append(f"🔴 [{_TYPE_LABEL.get(e['event_type'], e['event_type'])}] "
+                         f"{(e['item_name'] or '大盘')}：{e['detail']}")
+        if len(danger) > PUSH_DETAIL_MAX:
+            lines.append(f"… 另有 {len(danger) - PUSH_DETAIL_MAX} 条危险事件")
+    if warn:
+        kinds = sorted({_TYPE_LABEL.get(e['event_type'], e['event_type']) for e in warn})
+        lines.append("")
+        lines.append(f"🟡 提醒 {len(warn)} 条：" + "、".join(kinds))
+    if info_n:
+        lines.append("")
+        lines.append(f"🔵 信息 {info_n} 条（详见 http://127.0.0.1:8000/monitor）")
+    title = f"CS 监控 {summary['date']} · {summary['bucket']}"
+    if danger:
+        title += f" · 🚨{len(danger)}危险"
+    elif warn:
+        title += f" · 🟡{len(warn)}提醒"
+    return title, "\n".join(lines)
+
+
+def push_daily(summary, events):
+    """M2 钉钉推送（2026-08-08）：每日一次摘要 + danger 明细；按日期幂等（settings 记已推送）。
+
+    复用 notify_alert.py（.env NOTIFY_WEBHOOK_URL）；未配置 / 推送失败均不中断，返回原因。
+    """
+    key = f"monitor_push_{summary['date']}"
+    conn = db.get_conn()
+    try:
+        if db.get_setting(conn, key, "") == "1":
+            return {"pushed": False, "reason": "already_pushed"}
+    finally:
+        conn.close()
+    try:
+        from notify_alert import load_webhook_url, send
+    except Exception as e:
+        return {"pushed": False, "reason": f"import_error: {e}"}
+    url = load_webhook_url()
+    if not url:
+        return {"pushed": False, "reason": "no_webhook"}
+    title, text = _build_push_text(summary, events)
+    try:
+        send(title, text, url)
+    except Exception as e:
+        return {"pushed": False, "reason": f"push_failed: {e}"}
+    conn = db.get_conn()
+    try:
+        db.set_setting(conn, key, "1")
+    finally:
+        conn.close()
+    return {"pushed": True}
+
+
 def run_daily_monitor(date=None):
     """M1 监控主入口：大盘上下文 + 自选品只读分析 + 8 类事件生成 + 落库 + 日报。
 
@@ -269,6 +333,10 @@ def run_daily_monitor(date=None):
     summary = {"date": date, "bucket": ms["bucket"], "analyzed": analyzed,
                "skipped": skipped, "generated": len(events), "saved": saved}
     _write_md(date, summary, events)
+    try:
+        summary["pushed"] = push_daily(summary, events)
+    except Exception as _e:
+        summary["pushed"] = {"pushed": False, "reason": f"error: {_e}"}
     return summary
 
 

@@ -313,7 +313,7 @@ cs-skin-market/
   run_data_health.py     -- 数据源健康检查（全量可采集品动态基线）
   run_health_monitor.py  -- 健康监控入口（run_monitor，退出码 0/2）
   backup_db.py           -- 每日 SQLite 备份（保留 14 份）
-  notify_alert.py        -- 健康告警推送（钉钉）
+  notify_alert.py        -- 告警/监控推送（钉钉，.env NOTIFY_WEBHOOK_URL；M2 监控日报复用）
   run_backtest.py        -- 大盘回测（python run_backtest.py [--start 2025-11-02]）
   run_item_backtest.py   -- 单品回测（--all/--items/--warmup/--stratify）
   run_item_exit_backtest.py -- 出场规则回测
@@ -340,7 +340,7 @@ cs-skin-market/
     supply.py            -- 供给端追踪（在售量唯一量源）
     buy_distance.py      -- 距买点 v3（企稳闸门/吸筹场景/TH 三区化）
     signal_tracking.py   -- 生产实盘信号跟踪（J-2 C 通道）
-    monitor.py           -- M1 监控模式（每日自选品异动事件生成 + 日报，纯提醒层）
+    monitor.py           -- M1/M2 监控模式（每日自选品异动事件生成 + 日报 + 钉钉推送，纯提醒层）
     backtest_common.py   -- 回测公共模块（build_market_context 等）
     backtest_methodology.py -- A2 三件套（walk-forward/聚类/置换检验）
     batch_scan.py        -- 自选批量扫描（信号提取/按建议执行按钮）

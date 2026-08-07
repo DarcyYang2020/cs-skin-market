@@ -1379,3 +1379,13 @@ S2 回踩族在 C1（2026-08-05）已被证伪留研究池（A2 三件套未过�
 
 **验证**：25 自选品首跑 2.2s，生成 16 事件（2 破位止损 / 12 买点接近 / 2 价格异动 / 大盘状态记录），重跑幂等（saved=0）；离线 smoke 69/0/6（新增 8 类事件生成 + 空库守卫 2 用例）；编码健康 0 硬问题。
 **学到的新思路**：① 提醒层规则不引入回测（阈值人工确认），避免给冻结期叠加过拟合面；② 监控分析走 DB 最新 K 线只读跑引擎（不落库），复用日采数据零额外采集成本；③ 事件表用 dedup_key（date|item_id|type）幂等，当日重跑不重复、跨日自动归档；④ 大盘上下文纯 DB 版（macro_history 贪婪映射情绪）与实时版同源口径，监控链路零网络依赖。
+## M2 监控钉钉推送（2026-08-08，纯提醒层）
+**背景**：用户确认 M1 后继续 M2——把每日监控事件推送到钉钉（复用现有健康告警通道 notify_alert.py，.env 配置 NOTIFY_WEBHOOK_URL）。
+
+**落地**（`pipeline/monitor.py`）：
+- `_build_push_text(summary, events)`：标题 = `CS 监控 {date} · {大盘状态} · 🚨N危险/🟡N提醒`；正文 = 大盘摘要 + danger 明细全列（`PUSH_DETAIL_MAX=10` 截断，超出计数）+ warn 类型计数 + info 计数 + /monitor 链接。
+- `push_daily(summary, events)`：幂等推送——settings 记 `monitor_push_{date}=1`，同日重跑不重复；`load_webhook_url()` 未配置 → 返回 `{pushed: False, reason: "no_webhook"}` 不写 key；推送失败返回原因不抛异常。
+- `run_daily_monitor` 收尾调用，`summary["pushed"]` 返回结果（供 run_daily_collect 日志排查）。
+
+**验证**：离线 smoke 70/0/6（新增 M2 正文组装断言 + 无 webhook 跳过且不写幂等 key）；真库跑通（saved=0 幂等、pushed=no_webhook）。
+**学到的新思路**：① 推送幂等用 settings 日期 key，重跑采集不重复打扰；② 提醒类推送复用健康告警通道（notify_alert），不另起基础设施；③ 未配置 webhook 时静默跳过并返回原因，采集主流程零耦合。

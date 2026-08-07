@@ -7,6 +7,11 @@
 
 ## 版本历史
 
+- **v33（2026-08-08）**：M2 监控钉钉推送（用户确认 M1 后实施，纯提醒层）：
+  - 复用 notify_alert.py（.env NOTIFY_WEBHOOK_URL）；run_daily_monitor 收尾自动推送：标题含日期+大盘状态+🚨危险数/🟡提醒数，正文 danger 明细全列（截断 10 条）+ warn/info 计数 + /monitor 链接。
+  - 幂等：settings 记 `monitor_push_{date}=1`，同一天重跑不重复推送；未配置 webhook / 推送失败均不中断采集（summary.pushed 返回原因）。
+  - 验证：离线 smoke 70/0/6（新增 M2 正文组装 + 无 webhook 跳过用例）；真库跑通（saved=0 幂等、pushed=no_webhook）。
+  - 学到的新思路：① 推送幂等用 settings 日期 key，重跑采集不重复打扰；② 提醒类推送复用健康告警通道（notify_alert），不另起基础设施；③ 未配置 webhook 时静默跳过并返回原因，采集主流程零耦合。
 - **v32（2026-08-08）**：M1 监控模式落地（用户确认方案后实施，纯提醒层，冻结纪律内）：
   - 目标：从「打开系统看报告」变为「每日自动盯盘」——`run_daily_collect` 收尾自动生成自选品异动事件 + 日报，Web `/monitor` 页面展示近 7 天归档。
   - 事件规则（8 类，阈值人工确认不回测拟合）：买点接近（proximity≥60 且非 buy）/ 破位止损（现价≤成本-25%）/ 决策翻转（watch|avoid↔buy）/ 供给突变（在售量 7 日 -20%/+30%）/ 价格异动（单日 |涨跌|≥8%）/ 大盘状态切换（六态跨日变化）/ 持仓到期（executions 14/30 日复盘到期）/ 新 buy 信号（signal_tracking 当日新增）。
