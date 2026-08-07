@@ -16,7 +16,12 @@ from fastapi.templating import Jinja2Templates
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import logging
 from pipeline import db, collector, index_analysis, item_analysis
-from pipeline import collector_csqaq, collector_youpin
+from pipeline import collector_csqaq
+from webapp.analysis_service import (
+    AnalysisAbort, analyze_fresh, build_analysis_ctx,
+    anchor_override, kline_db_fallback, kline_price_sane,
+    market_snapshot, recent_buy_dates, save_analysis_result, save_item_snapshot,
+)
 
 _web_log = logging.getLogger("webapp")
 
@@ -61,41 +66,6 @@ def _today_str() -> str:
     return datetime.now(TZ_BJ).strftime("%Y-%m-%d")
 
 
-def _db_kline_fallback(good_id, name):
-    """csQAQ 图表采集失败时，用数据库缓存的90日K线兜底。Returns (bars, stale_days, last_date) or (None, None, "")."""
-    import types as _types
-    conn = db.get_conn()
-    try:
-        row = db.find_item(conn, name) if name else None
-        if row is None and good_id:
-            row = conn.execute("SELECT id FROM items WHERE good_id=?", (good_id,)).fetchone()
-        if row is None:
-            return None, None, ""
-        rows = db.get_item_history(conn, row["id"], limit=90)
-        if not rows:
-            return None, None, ""
-        rows = sorted(rows, key=lambda r: r["date"])
-        last_date = rows[-1]["date"]
-        stale = (datetime.now(TZ_BJ).date() - datetime.strptime(last_date, "%Y-%m-%d").date()).days
-        if stale > 14 or len(rows) < 14:
-            return None, None, ""
-        bars = []
-        for r in rows:
-            price = float(r["price_rmb"] or 0)
-            bars.append(_types.SimpleNamespace(
-                ts=0, date=r["date"], close=price, high=price, low=price,
-                volume=float(r["volume_day"] or 0),
-                in_sale_count=int(r["volume_total"] or 0),
-                tx_amount=0, tx_count=0, survive=0,
-            ))
-        return bars, stale, last_date
-    except Exception as _e:
-        _web_log.warning(f"db kline fallback failed: {_e}")
-        return None, None, ""
-    finally:
-        conn.close()
-
-
 async def _resolve_good_id(query):
     """定位 good_id：DB 已知（分析过的品秒回）→ Playwright 搜索兜底。Returns (good_id, page_title)."""
     try:
@@ -109,412 +79,6 @@ async def _resolve_good_id(query):
     except Exception:
         pass
     return await collector_csqaq.search_good_id(query)
-
-
-def _cached_youpin_volume(good_id):
-    """悠悠成交量缓存（settings 表）。Returns (vol, vol_map, fresh)。
-
-    fresh 表示是否为当天抓取；即使过期也返回最近一次历史 map，供软过期回退。
-    """
-    if not good_id:
-        return 0, {}, False
-    conn = db.get_conn()
-    try:
-        raw = db.get_setting(conn, f"uu_vol_{good_id}")
-        if not raw:
-            return 0, {}, False
-        data = json.loads(raw)
-        vol = float(data.get("vol") or 0)
-        vol_map = data.get("map") or {}
-        fresh = data.get("date") == _today_str()
-        return vol, vol_map, fresh
-    except Exception:
-        pass
-    finally:
-        conn.close()
-    return 0, {}, False
-
-
-# 成交量合理性校验参数（2026-08-05 数据门禁）：单日量为近5日中位数 20 倍以上且绝对量>=30 件，
-# 判为接口抖动/聚合错误的异常峰值（如某日成交 5000+ 而前后日均 <100），剔除不落库。
-_VOL_SPIKE_RATIO = 20.0
-_VOL_SPIKE_MIN = 30
-
-
-def _volume_sane_filter(vol_map):
-    """\u6210\u4ea4\u91cf\u5408\u7406\u6027\u8fc7\u6ee4\uff1a\u5254\u9664\u7591\u4f3c\u5f02\u5e38\u5cf0\u503c\u65e5\uff08\u7eaf\u6570\u636e\u5c42\u9632\u5047\u91cf\uff0c\u4e0d\u89e6\u78b0\u4fe1\u53f7\u5f15\u64ce\uff09\u3002
-    Returns (ok_map, bad_map)\uff1abad_map \u4e3a\u88ab\u5254\u9664\u7684\u5f02\u5e38\u65e5\uff0c\u7528\u4e8e\u65e5\u5fd7\u8bb0\u5f55\u3002
-    """
-    if not vol_map:
-        return {}, {}
-    items = sorted(vol_map.items())
-    ok, bad = {}, {}
-    for i, (d, v) in enumerate(items):
-        try:
-            v = float(v)
-        except (TypeError, ValueError):
-            continue
-        if v <= 0:
-            ok[d] = int(v)
-            continue
-        prev = [float(items[j][1]) for j in range(max(0, i - 5), i)]
-        prev = [x for x in prev if x > 0]
-        if prev:
-            med = sorted(prev)[len(prev) // 2]
-            if v > med * _VOL_SPIKE_RATIO and v >= _VOL_SPIKE_MIN:
-                bad[d] = int(v)
-                continue
-        ok[d] = int(v)
-    return ok, bad
-
-
-def _save_youpin_volume(good_id, vol, vol_map):
-    """滚动累积：新 7 天真实量并入历史 map，不丢旧日期（攒够 20+ 天量能项才激活）。"""
-    if not good_id:
-        return
-    vol_map, _bad = _volume_sane_filter(vol_map or {})
-    if _bad:
-        _web_log.warning(f"youpin volume spike filtered {good_id}: {_bad}")
-    conn = db.get_conn()
-    try:
-        merged = dict(vol_map or {})
-        old_raw = db.get_setting(conn, f"uu_vol_{good_id}")
-        if old_raw:
-            try:
-                old_map = (json.loads(old_raw).get("map") or {})
-                for _d, _v in old_map.items():
-                    merged.setdefault(_d, _v)
-            except Exception:
-                pass
-        db.set_setting(conn, f"uu_vol_{good_id}", json.dumps({"date": _today_str(), "vol": vol, "map": merged}))
-        conn.commit()
-    except Exception as _e:
-        _web_log.warning(f"youpin cache save failed: {_e}")
-    finally:
-        conn.close()
-
-
-def _apply_volume_map(daily_bars, vol_map):
-    """用悠悠逐日成交量回填 daily_bars（按 bar.date 匹配）。
-
-    未覆盖日期清 0：避免旧采样假量混入长窗口量能判断（真实量天数以非 0 计）。
-    """
-    if not daily_bars or not vol_map:
-        return
-    for bar in daily_bars:
-        v = vol_map.get(getattr(bar, "date", ""))
-        bar.volume = int(v) if v and v > 0 else 0
-
-
-def _kline_price_sane(daily_bars, item_id, anchor_price=None):
-    """K线价格合理性校验，防 csQAQ 偶发串品/脏价覆盖历史。
-
-    规则：新采集最新价 vs DB 该品最近历史价 偏差>25%，且新序列内存在单日跳变>30%，
-    判为疑似脏数据（如 2026-08-01 水灵 595 vs 真实 424）。
-    规则2（2026-08-04 增强）：anchor_price（悠悠锚）存在时，最新 close vs 锚价偏差>20%
-    判脏——拦截「整条序列整体口径偏移」型脏价（如死寂空间 chart 883 vs 悠悠 614，
-    序列内无大跳变但整体偏离，规则1漏检）。
-    Returns (ok: bool, msg: str)；ok=False 时调用方统一以悠悠锚价为准校正最新价（anchor>0），
-    无锚价可用时才跳过落库（保留 DB 旧数据）。
-    """
-    if not daily_bars or len(daily_bars) < 3:
-        return True, ""
-    closes = [b.close for b in daily_bars if getattr(b, "close", 0) and b.close > 0]
-    if len(closes) < 3:
-        return True, ""
-    new_last = closes[-1]
-    # 锚定校验：chart 最新价 vs 悠悠锚价（价格锚定同口径，偏差>20% 视为整体口径偏移脏价；不依赖 DB 历史）
-    if anchor_price and anchor_price > 0 and new_last > 0:
-        dev_anchor = abs(new_last / anchor_price - 1)
-        if dev_anchor > 0.20:
-            return False, "最新价¥%.2f vs 悠悠锚¥%.2f 偏差%.0f%%" % (new_last, anchor_price, dev_anchor * 100)
-    max_jump = 0.0
-    for i in range(1, len(closes)):
-        if closes[i - 1] > 0:
-            max_jump = max(max_jump, abs(closes[i] / closes[i - 1] - 1))
-    db_last = 0
-    last_date = getattr(daily_bars[-1], "date", "") or "9999-99-99"
-    try:
-        conn = db.get_conn()
-        try:
-            row = conn.execute(
-                "SELECT price_rmb FROM price_history WHERE item_id=? AND date < ? ORDER BY date DESC LIMIT 1",
-                (item_id, last_date),
-            ).fetchone()
-            if row:
-                db_last = row["price_rmb"] or 0
-        finally:
-            conn.close()
-    except Exception:
-        return True, ""
-    if db_last <= 0 or new_last <= 0:
-        return True, ""
-    dev = abs(new_last / db_last - 1)
-    if dev > 0.25 and max_jump > 0.30:
-        return False, "最新价¥%.2f vs DB ¥%.2f 偏差%.0f%%，序列内跳变%.0f%%" % (new_last, db_last, dev * 100, max_jump * 100)
-    return True, ""
-
-
-def _anchor_override(daily_bars, anchor_price, label=""):
-    """新规则（2026-08-04）：chart 最新价与悠悠锚价偏差>20% 时，统一以悠悠锚价为准。
-
-    以「近7日历史水平（去掉最新 bar 后的中位数）」为参考判定口径：
-    - 历史水平与锚价偏差>20% → 整条序列按 (锚价/参考水平) 缩放到悠悠锚口径（整体口径偏移型脏价）；
-    - 仅最新价偏差>20%（历史正常） → 仅把最新 bar 校正为锚价（尾部跳变）；
-    最新 bar 未含当日时追加一根当日锚价 bar。校正后继续分析/落库（顺带修复被污染的 DB 历史）。
-    anchor_price<=0 时不校正，原样返回。
-    """
-    if not daily_bars or not anchor_price or anchor_price <= 0:
-        return daily_bars
-    closes = [b.close for b in daily_bars if getattr(b, "close", 0) and b.close > 0]
-    if len(closes) < 3:
-        return daily_bars
-    last_close = closes[-1]
-    hist = sorted(closes[-8:-1])  # 近7日历史（去掉最新 bar）
-    ref = hist[len(hist) // 2]
-    dev_last = abs(last_close / anchor_price - 1)
-    dev_ref = abs(ref / anchor_price - 1)
-    if dev_last <= 0.20 and dev_ref <= 0.20:
-        return daily_bars
-    if dev_ref > 0.20:
-        factor = anchor_price / ref
-        mode = "序列整体缩放"
-        out = []
-        for b in daily_bars:
-            nb = copy.copy(b)
-            if getattr(nb, "close", 0) or 0:
-                nb.close = round(nb.close * factor, 2)
-            if getattr(nb, "high", 0) or 0:
-                nb.high = round(nb.high * factor, 2)
-            if getattr(nb, "low", 0) or 0:
-                nb.low = round(nb.low * factor, 2)
-            out.append(nb)
-    else:
-        factor = anchor_price / last_close
-        mode = "仅最新价校正"
-        out = list(daily_bars)
-    out[-1].close = anchor_price
-    _web_log.warning(f"anchor override {label}: 最新价¥{last_close:.2f} 近7日水平¥{ref:.2f} vs 悠悠锚¥{anchor_price:.2f}（偏差{dev_ref * 100:.0f}%），{mode}统一以悠悠锚价为准")
-    today = _today_str()
-    if (getattr(out[-1], "date", "") or "") < today:
-        nb = copy.copy(out[-1])
-        nb.date = today
-        nb.close = anchor_price
-        nb.high = max((getattr(nb, "high", 0) or 0), anchor_price)
-        nb.low = min((getattr(nb, "low", 0) or 0) or anchor_price, anchor_price)
-        nb.volume = 0
-        nb.tx_count = 0
-        out.append(nb)
-    return out
-
-
-async def _fetch_volume_cached(good_id, item):
-    """单品成交量：当日缓存 → 悠悠有品逐日成交量(近7天真实成交) → info/good turnover_number 兜底。
-
-    Returns:
-        (today_vol, {date: vol})；today_vol 用于当日成交量，vol_map 用于回填全部 K 线 bar。
-    """
-    vol, vol_map, fresh = _cached_youpin_volume(good_id)
-    if fresh:
-        # 当天已有缓存：直接复用（当日 0 成交时用 turnover_number 兜底当日量）
-        if vol > 0:
-            return vol, vol_map
-        turnover = getattr(item, "turnover_number", 0) or 0
-        return (turnover if turnover > 0 else 0), vol_map
-    # 非当天：先保留历史缓存，再尝试抓取最新悠悠数据
-    cached_map = vol_map
-    template_id = getattr(item, "yyyp_id", "") or ""
-    if template_id:
-        try:
-            vol_map = await collector_youpin.fetch_youpin_volume(template_id)
-        except Exception as _e:
-            _web_log.warning(f"youpin volume failed: {_e}")
-            vol_map = {}
-        if vol_map:
-            vol = float(vol_map.get(_today_str(), 0) or 0)
-            _save_youpin_volume(good_id, vol, vol_map)
-            return vol, vol_map
-        # 抓取失败（token 过期/网络）：软过期回退——历史 map 照常回填，当日量 turnover 兜底
-        if cached_map:
-            turnover = getattr(item, "turnover_number", 0) or 0
-            return (turnover if turnover > 0 else 0), cached_map
-        _web_log.warning(f"youpin volume 无缓存且抓取失败: {template_id}")
-    turnover = getattr(item, "turnover_number", 0) or 0
-    if turnover > 0:
-        return turnover, {}
-    return 0, {}
-
-
-def _market_snapshot():
-    """Market context from stored index history (pct/z/cycle/th/chg7/chg30/sentiment)."""
-    conn = db.get_conn()
-    market_history = []
-    market_pct = 50
-    market_z = 0.0
-    market_cycle = "unknown"
-    market_th = 50
-    market_7d_change = 0.0
-    market_30d_change = 0.0
-    market_21d_change = 0.0
-    try:
-        rows = conn.execute(
-            "SELECT date, value FROM market_index ORDER BY date ASC"
-        ).fetchall()
-        market_history = [(r["date"], float(r["value"])) for r in rows] if rows else []
-        values = [v for _, v in market_history if v > 0]
-        if len(values) >= 30:
-            current_m = values[-1]
-            from pipeline.index_analysis import analyze_index
-            _ires = analyze_index(market_history[-90:])
-            _ipos = _ires.get("position", {}) if isinstance(_ires, dict) else {}
-            market_pct = _ipos.get("percentile_90d", 50)
-            market_z = _ipos.get("zscore_90d", 0)
-            m7 = values[-7] if len(values) >= 7 else values[0]
-            m30 = values[-30] if len(values) >= 30 else values[0]
-            market_7d_change = round((current_m - m7) / m7 * 100, 1) if m7 > 0 else 0
-            market_30d_change = round((current_m - m30) / m30 * 100, 1) if m30 > 0 else 0
-            m21 = values[-21] if len(values) >= 21 else values[0]
-            market_21d_change = round((current_m - m21) / m21 * 100, 1) if m21 > 0 else 0
-            from pipeline.market_th import derive_market_cycle, compute_market_trend_health
-            market_cycle = derive_market_cycle(values, len(values) - 1)
-            try:
-                _window = values[-90:]
-                _mth = compute_market_trend_health(_window, volumes=None)
-                market_th = _mth.corrected_score if hasattr(_mth, "corrected_score") else _mth.score
-            except Exception:
-                market_th = max(0, min(100, 50 + market_30d_change * 3))
-    finally:
-        conn.close()
-    try:
-        from pipeline.market_macro import compute_sentiment_score
-        sentiment = float(compute_sentiment_score() or 50)
-    except Exception:
-        sentiment = 50.0
-    return {
-        "history": market_history,
-        "pct": market_pct, "z": market_z, "cycle": market_cycle,
-        "th": market_th, "chg7": market_7d_change, "chg30": market_30d_change,
-        "drop21": market_21d_change,
-        "sentiment": sentiment,
-    }
-
-
-def _recent_buy_dates(conn, item_id, days=7):
-    """Snapshot buy-signal dates within the last N days (for 7-day signal clustering)."""
-    cutoff = (datetime.now(TZ_BJ) - timedelta(days=days)).strftime("%Y-%m-%d")
-    rows = conn.execute(
-        "SELECT date FROM snapshots WHERE item_id=? AND action IN ('buy','oversold_buy') AND date >= ? ORDER BY date DESC",
-        (item_id, cutoff),
-    ).fetchall()
-    return [r["date"][:10] for r in rows]
-
-
-def _save_item_snapshot(conn, item_id, analysis, price_rmb, today=None):
-    """Render + upsert today report into snapshots; records fusion action for 7-day buy dedup."""
-    if today is None:
-        today = _now_str()
-    report_html = templates.get_template("partials/analysis.html").render({
-        "name": analysis.name,
-        "price_rmb": analysis.price_rmb,
-        "volume_day": analysis.volume_day,
-        "volume_total": analysis.volume_total,
-        "position": analysis.position,
-        "aux": analysis.aux,
-        "cycle": analysis.cycle,
-        "liquidity": analysis.liquidity,
-        "probability": analysis.probability,
-        "value": analysis.value,
-        "whale": analysis.whale,
-        "data_quality": analysis.data_quality,
-        "trend_health": analysis.trend_health,
-        "fusion_decision": analysis.fusion_decision,
-        "error": None,
-        "oob_price": "",
-        "oob_grade": "",
-        "price_zones": analysis.price_zones,
-        "buy_distance": analysis.buy_distance,
-        "analysis_time": _now_str(),
-    })
-    score = analysis.value.score
-    grade = analysis.value.grade
-    action = ""
-    if isinstance(getattr(analysis, "fusion_decision", None), dict):
-        action = analysis.fusion_decision.get("action", "")
-    summary_json = json.dumps({
-        "valuation_tier": getattr(analysis.position, "valuation_tier", "") if hasattr(analysis, "position") else "",
-        "percentile_90d": getattr(analysis.position, "percentile_90d", 50) if hasattr(analysis, "position") else 50,
-        "cycle_phase": getattr(analysis.cycle, "phase", "") if hasattr(analysis, "cycle") else "",
-        "fusion_action": action,
-        "score": score, "grade": grade,
-    }, ensure_ascii=False)
-    existing = conn.execute(
-        "SELECT id FROM snapshots WHERE item_id=? AND date=?", (item_id, today)
-    ).fetchone()
-    if existing:
-        conn.execute(
-            "UPDATE snapshots SET report_html=?, total_score=?, grade=?, price_rmb=?, score_scarcity=?, score_volume=?, score_market=?, score_liquidity=?, recommendation=?, action=? WHERE id=?",
-            (report_html, score, grade, price_rmb,
-             analysis.value.scarcity if hasattr(analysis.value, "scarcity") else 0,
-             analysis.value.volume if hasattr(analysis.value, "volume") else 0,
-             analysis.value.market_sentiment if hasattr(analysis.value, "market_sentiment") else 0,
-             analysis.value.liquidity if hasattr(analysis.value, "liquidity") else 0,
-             summary_json, action, existing["id"]),
-        )
-    else:
-        conn.execute(
-            "INSERT INTO snapshots (item_id, date, report_html, total_score, grade, price_rmb, score_scarcity, score_volume, score_market, score_liquidity, recommendation, action) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-            (item_id, today, report_html, score, grade, price_rmb,
-             analysis.value.scarcity if hasattr(analysis.value, "scarcity") else 0,
-             analysis.value.volume if hasattr(analysis.value, "volume") else 0,
-             analysis.value.market_sentiment if hasattr(analysis.value, "market_sentiment") else 0,
-             analysis.value.liquidity if hasattr(analysis.value, "liquidity") else 0,
-             summary_json, action),
-        )
-    conn.commit()
-
-
-def _save_analysis_result(analysis, kline_stale_days=None, kline_stale_date="", oob_price="", oob_grade=""):
-    """渲染简洁报告并 upsert 到 analysis_results（单品分析/批量扫描共用，按 name 覆盖老数据）。"""
-    try:
-        grade = analysis.value.grade
-        th = analysis.trend_health or {}
-        trend_dir = th.get("trend_direction", "")
-        trend_score = th.get("score", 0)
-        report_html = templates.get_template("partials/analysis.html").render({
-            "name": analysis.name,
-            "price_rmb": analysis.price_rmb,
-            "volume_day": analysis.volume_day,
-            "volume_total": analysis.volume_total,
-            "position": analysis.position,
-            "aux": analysis.aux,
-            "cycle": analysis.cycle,
-            "liquidity": analysis.liquidity,
-            "probability": analysis.probability,
-            "value": analysis.value,
-            "whale": analysis.whale,
-            "data_quality": analysis.data_quality,
-            "trend_health": analysis.trend_health,
-            "fusion_decision": analysis.fusion_decision,
-            "error": None,
-            "oob_price": oob_price,
-            "oob_grade": oob_grade,
-            "kline_stale_days": kline_stale_days,
-            "kline_stale_date": kline_stale_date,
-            "price_zones": analysis.price_zones,
-            "buy_distance": analysis.buy_distance,
-            "analysis_time": _now_str(),
-        })
-        conn_save = db.get_conn()
-        try:
-            conn_save.execute("""
-                INSERT OR REPLACE INTO analysis_results (name, price_rmb, grade, trend_dir, trend_score, report_html, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, datetime('now','localtime'))
-            """, (analysis.name, analysis.price_rmb, grade, trend_dir, trend_score, report_html))
-            conn_save.commit()
-        finally:
-            conn_save.close()
-    except Exception as _e:
-        _web_log.warning(f"Failed to save analysis result: {_e}")
 
 
 def _verify_item_name(query: str, item_name: str) -> bool:
@@ -627,7 +191,7 @@ async def page_dashboard(request: Request):
     analysis_data = index_analysis.analyze_index_full(chart_data) if chart_data else None
     # I-1 市场状态标注(2026-08-06): 接线 index_card 的 regime 占位, 纯展示层
     from pipeline.batch_scan import market_regime
-    _ms_r = _market_snapshot()
+    _ms_r = market_snapshot()
     _regime_label, _regime_cls, _regime_strategy = market_regime(
         _ms_r.get("sentiment"), _ms_r.get("chg30"), _ms_r.get("th"))
     response = templates.TemplateResponse(request, "dashboard.html", {
@@ -868,7 +432,7 @@ async def api_market_refresh(request: Request):
         analysis_data = index_analysis.analyze_index_full(chart_data) if chart_data else None
         # I-1 市场状态标注: 与首页 / 渲染口径一致（缺 regime_* 会导致 index_card 的「策略」徽章/提示消失）
         from pipeline.batch_scan import market_regime
-        _ms_r = _market_snapshot()
+        _ms_r = market_snapshot()
         _regime_label, _regime_cls, _regime_strategy = market_regime(
             _ms_r.get("sentiment"), _ms_r.get("chg30"), _ms_r.get("th"))
         return templates.TemplateResponse(request, "partials/dashboard_refresh.html", {
@@ -906,147 +470,18 @@ async def api_items_search(request: Request, query: str = Form(...)):
         if not _verify_item_name(query, exact_name):
             return HTMLResponse('<div class="card"><div class="empty-state" style="text-align:center;padding:40px;color:var(--text-muted);">搜索结果与查询不匹配，请尝试更精确的关键词</div></div>')
 
-        # Step 3: Run full analysis (same as /api/items/analyze)
-        idx = await asyncio.to_thread(collector.fetch_market_index)
-        if idx is None or idx.value == 0:
-            idx = collector.MarketIndex(value=0, change_7d=0, mood="neutral")
-
-        
-        price_rmb = item.price_rmb
-        volume_total = item.volume_total  # max in_sale from num_data (supply, not volume)
-        if volume_total == 0 and hasattr(item, 'in_sale_count') and item.in_sale_count:
-            volume_total = item.in_sale_count
-
-        daily_bars = item.kline_90d if hasattr(item, "kline_90d") and item.kline_90d else []
-        # Fetch real daily volume from youpin (csqaq K-line has no volume data)
-        vol_today, vol_map = await _fetch_volume_cached(good_id, item)
-        _apply_volume_map(daily_bars, vol_map)
-
-        volume_day = vol_today if vol_today > 0 else max(1, volume_total // 20)
-        if vol_today > 0 and daily_bars and len(daily_bars) > 0:
-            daily_bars[-1].volume = vol_today
-
-        price_history = [k.close for k in daily_bars if k.close > 0] if daily_bars else []
-        kline_stale_days = None
-        kline_stale_date = ""
-        if not price_history:
-            _db_bars, _stale, _stale_date = _db_kline_fallback(good_id, exact_name)
-            if _db_bars:
-                daily_bars = _db_bars
-                price_history = [k.close for k in daily_bars if k.close > 0]
-                kline_stale_days, kline_stale_date = _stale, _stale_date
-                _web_log.warning(f"search kline DB fallback for {exact_name} stale={_stale}d")
-            else:
-                return HTMLResponse(_ae("K线数据获取失败，请稍后重试（csQAQ 图表采集偶发为空，已自动重试仍失败）"))
-        # 新规则（2026-08-04）：chart 最新价 vs 悠悠锚价偏差>20% 时，统一以悠悠锚价为准（分析与落库口径一致）
-        daily_bars = _anchor_override(daily_bars, price_rmb, label=exact_name)
-        price_history = [k.close for k in daily_bars if k.close > 0] if daily_bars else []
-
-        volume_history = [k.volume for k in daily_bars] if daily_bars else []
-        supply_history = [k.in_sale_count for k in daily_bars] if daily_bars else []
-
-        # Build market context
-        ms = _market_snapshot()
-        market_history = ms["history"]
-
-        # Upsert item first: needed for recent buy dates + snapshot report
-        conn_p = db.get_conn()
-        try:
-            pid = db.upsert_item(conn_p, name=exact_name, good_id=good_id, yyyp_id=item.yyyp_id, in_watchlist=1)
-            conn_p.commit()
-        finally:
-            conn_p.close()
-        conn_r = db.get_conn()
-        try:
-            recent_buys = _recent_buy_dates(conn_r, pid)
-        finally:
-            conn_r.close()
-
-        analysis = item_analysis.run_item_analysis(
-            name=exact_name,
-            prices=price_history,
-            volumes=volume_history if volume_history else None,
-            supply_hist=supply_history if supply_history else None,
-            order_book=item.order_book,
-            index_change_7d=idx.change_7d,
-            market_history=market_history,
-            market_pct_90d=ms["pct"],
-            market_zscore=ms["z"],
-            market_cycle=ms["cycle"],
-            market_th_score=ms["th"],
-            market_30d_change=ms["chg30"],
-                market_drop21=ms.get("drop21", 0),
-            recent_buy_dates=recent_buys,
-            signal_date=_today_str(),
-            price_anchor=price_rmb,
-
-            survive_count=getattr(item, "survive_count", 0),
-            )
-        # 报告价格锚定悠悠有品 DOM 价（chart fallback 价只补 K 线不参与定价）
-        if price_rmb and price_rmb > 0:
-            analysis.price_rmb = price_rmb
-        analysis.volume_day = volume_day
-        analysis.volume_total = volume_total
-        if hasattr(analysis, 'aux') and analysis.aux:
-            analysis.aux.turnover_rate = round(volume_day / volume_total * 100, 3) if volume_total > 0 else 0
-            analysis.aux.mean_volume_7d = volume_day
-    
-
-        # 脏价校验：chart 最新 close vs 悠悠锚偏差>20% 时不落库（保留 DB 旧数据，防整体口径偏移脏价）
-        _sane, _sane_msg = _kline_price_sane(daily_bars, pid, anchor_price=price_rmb)
-        if not _sane:
-            _web_log.warning(f"search kline skip {exact_name}: {_sane_msg}")
-            daily_bars = None
-        # Persist 90-day kline data (pid already upserted above)
-        conn_p = db.get_conn()
-        try:
-            if daily_bars:
-                db.save_price_history_batch(conn_p, pid, daily_bars)
-            conn_p.commit()
-        except Exception as _pe:
-            _web_log.warning("kline persist failed: " + str(_pe))
-        finally:
-            conn_p.close()
-        # Record snapshot so reports + 7-day buy dedup stay in sync
-        conn_s = db.get_conn()
-        try:
-            _save_item_snapshot(conn_s, pid, analysis, price_rmb)
-        finally:
-            conn_s.close()
-        # Save to analysis_results (同步至单品报告)
-        _save_analysis_result(analysis, kline_stale_days, kline_stale_date)
-
-        # Save to analysis_results table
-        _save_analysis_result(analysis, kline_stale_days, kline_stale_date)
-
-        ctx = {
-            "name": analysis.name,
-            "price_rmb": analysis.price_rmb,
-            "volume_day": analysis.volume_day,
-            "volume_total": analysis.volume_total,
-            "position": analysis.position,
-            "aux": analysis.aux,
-            "cycle": analysis.cycle,
-            "liquidity": analysis.liquidity,
-            "probability": analysis.probability,
-            "value": analysis.value,
-            "whale": analysis.whale,
-            "data_quality": analysis.data_quality,
-            "trend_health": analysis.trend_health,
-            "fusion_decision": analysis.fusion_decision,
-            "error": None,"oob_price":"","oob_grade":"",
-            "kline_stale_days": kline_stale_days,
-            "kline_stale_date": kline_stale_date,
-            "price_zones": analysis.price_zones,
-            "buy_distance": analysis.buy_distance,
-            "analysis_time": __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M"),
-        }
+        # Step 3: 统一分析核心（2026-08-07 重构，原 ~90 行内联逻辑迁至 analysis_service.analyze_fresh）
+        b = await analyze_fresh(item, good_id, exact_name, hard_error_no_kline=True)
+        ctx = build_analysis_ctx(b["analysis"], b["kline_stale_days"], b["kline_stale_date"])
         return templates.TemplateResponse(request, "partials/analysis.html", ctx)
 
+    except AnalysisAbort as _ab:
+        return HTMLResponse(_ae(_ab.msg))
     except Exception as e:
         import traceback
-        _web_log.error(f"Search error: {e}\    n{traceback.format_exc()}")
+        _web_log.error(f"Search error: {e}\n{traceback.format_exc()}")
         return HTMLResponse(_ae(f"分析失败: {str(e)[:300]}"))
+
 
 # ---- Item analyze ----
 @app.get("/api/items/analyze")
@@ -1058,17 +493,11 @@ async def api_items_analyze(
     discontinued_years: float = Query(default=0),
 ):
     """Run comprehensive single-item analysis using item_analysis engine."""
-
     try:
-        idx = await asyncio.to_thread(collector.fetch_market_index)
-        if idx is None or idx.value == 0:
-            idx = collector.MarketIndex(value=0, change_7d=0, mood="neutral")
-
         good_id, page_title = await _resolve_good_id(name)
         if good_id == 0:
             return HTMLResponse(_ae("未找到物品: " + name))
 
-        
         item = await collector_csqaq.fetch_item_detail(good_id)
         if item is None:
             return HTMLResponse(_ae(f"获取详情失败: good_id={good_id}"))
@@ -1088,140 +517,20 @@ async def api_items_analyze(
                             exact_name = exact_name2
                             _web_log.info(f"Switched to good_id={gid2}, name={exact_name}")
 
-        price_rmb = item.price_rmb
-        volume_total = item.volume_total
-        if volume_total == 0 and hasattr(item, 'in_sale_count') and item.in_sale_count:
-            volume_total = item.in_sale_count
-
-        daily_bars = item.kline_90d if hasattr(item, "kline_90d") and item.kline_90d else []
-        # Fetch real daily volume from youpin (csqaq K-line has no volume data)
-        vol_today, vol_map = await _fetch_volume_cached(good_id, item)
-        _apply_volume_map(daily_bars, vol_map)
-
-        volume_day = vol_today if vol_today > 0 else max(1, volume_total // 20)
-        if vol_today > 0 and daily_bars and len(daily_bars) > 0:
-            daily_bars[-1].volume = vol_today
-
-        price_history = [k.close for k in daily_bars if k.close > 0] if daily_bars else []
-        kline_stale_days = None
-        kline_stale_date = ""
-        if not price_history:
-            _db_bars, _stale, _stale_date = _db_kline_fallback(good_id, exact_name)
-            if _db_bars:
-                daily_bars = _db_bars
-                price_history = [k.close for k in daily_bars if k.close > 0]
-                kline_stale_days, kline_stale_date = _stale, _stale_date
-                _web_log.warning(f"analyze kline DB fallback for {exact_name} stale={_stale}d")
-        # 新规则（2026-08-04）：chart 最新价 vs 悠悠锚价偏差>20% 时，统一以悠悠锚价为准（分析与落库口径一致）
-        daily_bars = _anchor_override(daily_bars, price_rmb, label=exact_name)
-        price_history = [k.close for k in daily_bars if k.close > 0] if daily_bars else []
-
-        volume_history = [k.volume for k in daily_bars] if daily_bars else []
-        supply_history = [k.in_sale_count for k in daily_bars] if daily_bars else []
-
-        # Build market context
-        ms = _market_snapshot()
-        market_history = ms["history"]
-
-        # Upsert item first: needed for recent buy dates + snapshot report
-        conn_p = db.get_conn()
-        try:
-            pid = db.upsert_item(conn_p, name=exact_name, good_id=good_id, yyyp_id=item.yyyp_id, in_watchlist=1)
-            conn_p.commit()
-        finally:
-            conn_p.close()
-        conn_r = db.get_conn()
-        try:
-            recent_buys = _recent_buy_dates(conn_r, pid)
-        finally:
-            conn_r.close()
-
-        analysis = item_analysis.run_item_analysis(
-            name=exact_name,
-            prices=price_history,
-            volumes=volume_history if volume_history else None,
-            supply_hist=supply_history if supply_history else None,
-            order_book=item.order_book,
-            index_change_7d=idx.change_7d,
-            market_history=market_history,
-            market_pct_90d=ms["pct"],
-            market_zscore=ms["z"],
-            market_cycle=ms["cycle"],
-            market_th_score=ms["th"],
-            market_30d_change=ms["chg30"],
-                market_drop21=ms.get("drop21", 0),
-            recent_buy_dates=recent_buys,
-            signal_date=_today_str(),
-            price_anchor=price_rmb,
-
-            survive_count=getattr(item, "survive_count", 0),
-            )
-        # 报告价格锚定悠悠有品 DOM 价（chart fallback 价只补 K 线不参与定价）
-        if price_rmb and price_rmb > 0:
-            analysis.price_rmb = price_rmb
-        analysis.volume_day = volume_day
-        analysis.volume_total = volume_total
-        if hasattr(analysis, 'aux') and analysis.aux:
-            analysis.aux.turnover_rate = round(volume_day / volume_total * 100, 3) if volume_total > 0 else 0
-            analysis.aux.mean_volume_7d = volume_day
-
-        # 脏价校验：chart 最新 close vs 悠悠锚偏差>20% 时不落库（保留 DB 旧数据，防整体口径偏移脏价）
-        _sane, _sane_msg = _kline_price_sane(daily_bars, pid, anchor_price=price_rmb)
-        if not _sane:
-            _web_log.warning(f"analyze kline skip {exact_name}: {_sane_msg}")
-            daily_bars = None
-        # Persist 90-day kline data (pid already upserted above)
-        conn_p = db.get_conn()
-        try:
-            if daily_bars:
-                db.save_price_history_batch(conn_p, pid, daily_bars)
-            conn_p.commit()
-        except Exception as _pe:
-            _web_log.warning("kline persist failed: " + str(_pe))
-        finally:
-            conn_p.close()
-        # Record snapshot so reports + 7-day buy dedup stay in sync
-        conn_s = db.get_conn()
-        try:
-            _save_item_snapshot(conn_s, pid, analysis, price_rmb)
-        finally:
-            conn_s.close()
-
-
-        ctx = {
-            "name": analysis.name,
-            "price_rmb": analysis.price_rmb,
-            "volume_day": analysis.volume_day,
-            "volume_total": analysis.volume_total,
-            "position": analysis.position,
-            "aux": analysis.aux,
-            "cycle": analysis.cycle,
-            "liquidity": analysis.liquidity,
-            "probability": analysis.probability,
-            "value": analysis.value,
-            "whale": analysis.whale,
-            "data_quality": analysis.data_quality,
-            "trend_health": analysis.trend_health,
-            "fusion_decision": analysis.fusion_decision,
-            "error": None,"oob_price":"","oob_grade":"",
-            "kline_stale_days": kline_stale_days,
-            "kline_stale_date": kline_stale_date,
-            "price_zones": analysis.price_zones,
-            "buy_distance": analysis.buy_distance,
-            "analysis_time": __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M"),
-        }
+        # 统一分析核心（2026-08-07 重构，原 ~90 行内联逻辑迁至 analysis_service.analyze_fresh）
+        b = await analyze_fresh(item, good_id, exact_name)
+        ctx = build_analysis_ctx(b["analysis"], b["kline_stale_days"], b["kline_stale_date"])
         return templates.TemplateResponse(request, "partials/analysis.html", ctx)
 
+    except AnalysisAbort as _ab:
+        return HTMLResponse(_ae(_ab.msg))
     except Exception as e:
         try:
             with open("analysis_error.log", "a", encoding="utf-8") as f:
-                f.write(f"\    n=== ERROR ===\n{traceback.format_exc()}\n=== END ===\n")
+                f.write(f"\n=== ERROR ===\n{traceback.format_exc()}\n=== END ===\n")
         except Exception:
             pass
         return HTMLResponse(_ae(f"分析失败: {str(e)[:300]}"))
-
-
-# ---- Watchlist add ----
 @app.post("/api/watchlist/add")
 async def api_watchlist_add(request: Request):
     form = await request.form()
@@ -1299,10 +608,6 @@ async def api_watchlist_analyze(request: Request, item_id: int):
         conn.close()
 
     try:
-        idx = await asyncio.to_thread(collector.fetch_market_index)
-        if idx is None or idx.value == 0:
-            idx = collector.MarketIndex(value=0, change_7d=0, mood="neutral")
-
         good_id, page_title = await _resolve_good_id(name)
         if good_id == 0:
             return HTMLResponse(_ae(f"未找到: {name}"))
@@ -1321,122 +626,16 @@ async def api_watchlist_analyze(request: Request, item_id: int):
             _web_log.warning(f"watchlist good_id writeback failed: {_we}")
         finally:
             conn_w.close()
-        price_rmb = item.price_rmb
-        volume_total = item.volume_total
-        if volume_total == 0 and hasattr(item, 'in_sale_count') and item.in_sale_count:
-            volume_total = item.in_sale_count
 
-        daily_bars = item.kline_90d if hasattr(item, "kline_90d") and item.kline_90d else []
-        kline_stale_days = None
-        kline_stale_date = ""
-        if not daily_bars:
-            _db_bars, _stale, _stale_date = _db_kline_fallback(good_id, exact_name)
-            if _db_bars:
-                daily_bars = _db_bars
-                kline_stale_days, kline_stale_date = _stale, _stale_date
-                _web_log.warning(f"watchlist kline DB fallback for {exact_name} stale={_stale}d")
-        supply_hist = [k.in_sale_count for k in daily_bars] if daily_bars else []
-        prices = [k.close for k in daily_bars if k.close > 0] if daily_bars else []
-        # Fetch real daily volume from youpin (csqaq K-line has no volume data)
-        vol_today, vol_map = await _fetch_volume_cached(good_id, item)
-        _apply_volume_map(daily_bars, vol_map)
-        volume_day = vol_today if vol_today > 0 else max(1, volume_total // 20)
-        if vol_today > 0 and daily_bars and len(daily_bars) > 0:
-            daily_bars[-1].volume = vol_today
-        volumes = [k.volume for k in daily_bars] if daily_bars else []
-
-        # Build market context from stored index history
-        ms = _market_snapshot()
-        market_history = ms["history"]
-        conn_r = db.get_conn()
-        try:
-            recent_buys = _recent_buy_dates(conn_r, item_id)
-        finally:
-            conn_r.close()
-
-        analysis = item_analysis.run_item_analysis(
-            name=exact_name,
-            prices=prices if prices else [price_rmb],
-            volumes=volumes if volumes else None,
-            supply_hist=supply_hist if supply_hist else None,
-            order_book=item.order_book,
-            index_change_7d=idx.change_7d,
-            market_history=market_history,
-            market_pct_90d=ms["pct"],
-            market_zscore=ms["z"],
-            market_cycle=ms["cycle"],
-            market_th_score=ms["th"],
-            market_30d_change=ms["chg30"],
-                market_drop21=ms.get("drop21", 0),
-            recent_buy_dates=recent_buys,
-            signal_date=_today_str(),
-            price_anchor=price_rmb,
-
-            survive_count=getattr(item, "survive_count", 0),
-            )
-        # 报告价格锚定悠悠有品 DOM 价（chart fallback 价只补 K 线不参与定价）
-        if price_rmb and price_rmb > 0:
-            analysis.price_rmb = price_rmb
-        analysis.volume_day = volume_day
-        analysis.volume_total = volume_total
-        if hasattr(analysis, 'aux') and analysis.aux:
-            analysis.aux.turnover_rate = round(volume_day / volume_total * 100, 3) if volume_total > 0 else 0
-            analysis.aux.mean_volume_7d = volume_day
-
-        # 脏价校验：chart 最新 close vs 悠悠锚偏差>20% 时不落库（保留 DB 旧数据，防整体口径偏移脏价）
-        _sane, _sane_msg = _kline_price_sane(daily_bars, item_id, anchor_price=price_rmb)
-        if not _sane:
-            _web_log.warning(f"watchlist kline skip {exact_name}: {_sane_msg}")
-            daily_bars = None
-        # Persist 90-day kline data
-        if daily_bars:
-            try:
-                conn_p = db.get_conn()
-                db.save_price_history_batch(conn_p, item_id, daily_bars)
-                conn_p.commit()
-                conn_p.close()
-            except Exception as _pe:
-                _web_log.warning("kline persist failed: " + str(_pe))
-
-
-        # Save report to snapshots for "report" button
-        conn_save = db.get_conn()
-        try:
-            _save_item_snapshot(conn_save, item_id, analysis, price_rmb)
-        except Exception as _se:
-            import traceback as _tb
-            with open("snapshot_error.log", "a", encoding="utf-8") as _ef:
-                _ef.write(f"\n=== SNAPSHOT ERROR {str(item_id)} ===\n{_tb.format_exc()}\n=== END ===\n")
-            _web_log.warning(f"Failed to save snapshot: {_se}")
-        finally:
-            conn_save.close()
-        # Save to analysis_results (同步至单品报告)
-        _save_analysis_result(analysis, kline_stale_days, kline_stale_date)
-
-
-        ctx = {
-            "name": analysis.name,
-            "price_rmb": analysis.price_rmb,
-            "volume_day": analysis.volume_day,
-            "volume_total": analysis.volume_total,
-            "position": analysis.position,
-            "aux": analysis.aux,
-            "cycle": analysis.cycle,
-            "liquidity": analysis.liquidity,
-            "probability": analysis.probability,
-            "value": analysis.value,
-            "whale": analysis.whale,
-            "data_quality": analysis.data_quality,
-            "trend_health": analysis.trend_health,
-            "fusion_decision": analysis.fusion_decision,
-            "error": None,"oob_price":"","oob_grade":"",
-            "kline_stale_days": kline_stale_days,
-            "kline_stale_date": kline_stale_date,
-            "price_zones": analysis.price_zones,
-            "buy_distance": analysis.buy_distance,
-        }
+        # 统一分析核心；apply_anchor=False / volumes_from_bars / allow_single_price 沿用
+        # watchlist 历史行为（与 search/analyze 的锚价口径差异为历史遗留，数据先行验证后统一）
+        b = await analyze_fresh(item, good_id, exact_name, db_item_id=item_id,
+                                apply_anchor=False, volumes_from_bars=True, allow_single_price=True)
+        ctx = build_analysis_ctx(b["analysis"], b["kline_stale_days"], b["kline_stale_date"])
         return templates.TemplateResponse(request, "partials/analysis.html", ctx)
 
+    except AnalysisAbort as _ab:
+        return HTMLResponse(_ae(_ab.msg))
     except Exception as e:
         try:
             with open("analysis_error.log", "a", encoding="utf-8") as f:
@@ -1444,9 +643,6 @@ async def api_watchlist_analyze(request: Request, item_id: int):
         except Exception:
             pass
         return HTMLResponse(_ae(f"分析失败: {str(e)[:300]}"))
-
-
-# ---- Watchlist report ----
 @app.get("/api/watchlist/{item_id}/report")
 async def api_watchlist_report(request: Request, item_id: int):
     conn = db.get_conn()
@@ -1597,13 +793,6 @@ async def api_watchlist_set_assets(request: Request, amount: float = Form(...)):
         conn.close()
 
 
-
-
-
-
-
-
-
 # ---- Batch Scan Selected ----
 
 # ---- Batch Scan Progress ----
@@ -1639,43 +828,41 @@ async def _scan_item(row, idx, ms, market_th_score, sentiment_score, total_asset
         exact_name = item.name or name
         daily_bars = item.kline_90d if hasattr(item, "kline_90d") and item.kline_90d else []
         if not daily_bars:
-            _db_bars, _stale, _stale_date = _db_kline_fallback(good_id, exact_name)
+            _db_bars, _stale, _stale_date = kline_db_fallback(good_id, exact_name)
             if _db_bars:
                 daily_bars = _db_bars
         # 价格合理性校验：csQAQ 偶发串品/脏价，脏数据不落库。
         # 新规则（2026-08-04）：出现偏差时统一以悠悠锚价为准——新鲜 chart 判脏先试 DB 缓存 K 线，
         # DB 仍判脏且悠悠锚价可用时，把最新价校正为锚价继续分析（不再跳过/保留旧数据）。
         _anchor_px = getattr(item, "price_rmb", 0) or 0
-        _sane, _sane_msg = _kline_price_sane(daily_bars, item_id, anchor_price=_anchor_px)
+        _sane, _sane_msg = kline_price_sane(daily_bars, item_id, anchor_price=_anchor_px)
         if not _sane:
-            _db_bars, _db_stale, _db_stale_date = _db_kline_fallback(good_id, exact_name)
+            _db_bars, _db_stale, _db_stale_date = kline_db_fallback(good_id, exact_name)
             if _db_bars:
-                _base_sane, _base_msg = _kline_price_sane(_db_bars, item_id, anchor_price=_anchor_px)
+                _base_sane, _base_msg = kline_price_sane(_db_bars, item_id, anchor_price=_anchor_px)
                 if _base_sane:
                     _web_log.warning(f"batch scan DB kline fallback {exact_name}: {_sane_msg}")
                     daily_bars = _db_bars
                 elif _anchor_px and _anchor_px > 0:
-                    daily_bars = _anchor_override(_db_bars, _anchor_px, label=exact_name)
+                    daily_bars = anchor_override(_db_bars, _anchor_px, label=exact_name)
                     _web_log.warning(f"batch scan anchor override {exact_name}: {_base_msg} -> 统一以悠悠锚¥{_anchor_px:.2f}为准")
                 else:
                     _web_log.warning(f"batch scan skip {exact_name}: {_base_msg}")
                     return dict(name=exact_name, holding=holding, error="价格校验未通过，保留旧数据")
             else:
                 if _anchor_px and _anchor_px > 0:
-                    daily_bars = _anchor_override(daily_bars, _anchor_px, label=exact_name)
+                    daily_bars = anchor_override(daily_bars, _anchor_px, label=exact_name)
                     _web_log.warning(f"batch scan anchor override {exact_name}: {_sane_msg} -> 统一以悠悠锚¥{_anchor_px:.2f}为准")
                 else:
                     _web_log.warning(f"batch scan skip {exact_name}: {_sane_msg}")
                     return dict(name=exact_name, holding=holding, error="价格校验未通过，保留旧数据")
         prices = [k.close for k in daily_bars if k.close > 0] if daily_bars else [item.price_rmb]
-        vol_today, vol_map = await _fetch_volume_cached(good_id, item)
-        _apply_volume_map(daily_bars, vol_map)
-        volumes = [k.volume for k in daily_bars] if daily_bars else []
+        # 去量 (2026-08-07): 不再抓取悠悠成交量
+        volumes = []
         supply_hist = [k.in_sale_count for k in daily_bars] if daily_bars else []
-        volume_day = vol_today if vol_today > 0 else max(1, (item.volume_total or 0) // 20)
         conn_r = db.get_conn()
         try:
-            recent_buys = _recent_buy_dates(conn_r, item_id)
+            recent_buys = recent_buy_dates(conn_r, item_id)
         finally:
             conn_r.close()
         analysis = await asyncio.get_running_loop().run_in_executor(
@@ -1697,8 +884,6 @@ async def _scan_item(row, idx, ms, market_th_score, sentiment_score, total_asset
         # 报告价格锚定悠悠有品 DOM 价（chart fallback 价只补 K 线不参与定价）
         if getattr(item, "price_rmb", 0) and item.price_rmb > 0:
             analysis.price_rmb = item.price_rmb
-        analysis.volume_day = volume_day
-        analysis.volume_total = item.volume_total or 0
         pa = _portfolio_advice(holding, avg_cost, qty, item.price_rmb, analysis, market_th=market_th_score, sentiment_score=sentiment_score, market_30d_change=ms["chg30"], total_assets=total_assets)
         _fd_lim = (getattr(analysis, "fusion_decision", {}) or {}).get("position_limit", 0) or 0
         result = dict(
@@ -1712,7 +897,7 @@ async def _scan_item(row, idx, ms, market_th_score, sentiment_score, total_asset
             error=None,
         )
         # Save to analysis_results (同步至单品报告)
-        _save_analysis_result(analysis)
+        save_analysis_result(analysis)
         # Persist
         conn_p = db.get_conn()
         try:
@@ -1724,7 +909,7 @@ async def _scan_item(row, idx, ms, market_th_score, sentiment_score, total_asset
         # Snapshot + summary
         conn_s = db.get_conn()
         try:
-            _save_item_snapshot(conn_s, item_id, analysis, item.price_rmb)
+            save_item_snapshot(conn_s, item_id, analysis, item.price_rmb)
             db.set_setting(conn_s, f"th_{pid}", _json.dumps(analysis.trend_health, ensure_ascii=False) if analysis.trend_health else "")
             conn_s.commit()
         except Exception as _se:
@@ -1754,7 +939,7 @@ async def _run_batch_scan_task(scan_id: str, rows: list):
         if idx is None or idx.value == 0:
             idx = type("obj", (object,), {"value": 0, "change_7d": 0})()
         # Compute market TH + sentiment once for resonance-aware portfolio advice
-        ms = _market_snapshot()
+        ms = market_snapshot()
         market_th_score = ms["th"]
         sentiment_score = ms["sentiment"]
         # B1 风险预算层(2026-08-05): 组合回撤熔断状态 + 总资产(单票敞口提示)
@@ -2051,7 +1236,7 @@ async def api_delete_execution(eid: int):
 # ---- 仪表盘 (P0-3 数据积累 / P0-4 组合仓位, 2026-08-04): 纯展示层 ----
 @app.get("/api/data/progress")
 async def api_data_progress():
-    """数据积累进度: 大盘/价格K线/真实成交量覆盖度。"""
+    """数据积累进度: 大盘/价格K线/在售量覆盖度（2026-08-07 去量）。"""
     from pipeline import dashboards
     conn = db.get_conn()
     try:
@@ -2125,7 +1310,6 @@ async def api_batch_scan_progress(scan_id: str):
     if not p:
         return {"error": "not found"}
     return {"current": p["current"], "total": p["total"], "name": p.get("name", ""), "done": p["done"], "html": p.get("html", "")}
-
 
 
 @app.get("/replay", response_class=HTMLResponse)
@@ -2202,7 +1386,7 @@ async def _run_discover_task(task_id: str, items: list):
     """Background: search each item via shared browser, analyze, sort by composite score."""
     from pipeline import collector_csqaq, item_analysis as _ia
     # Get market TH for context-aware filtering
-    ms = _market_snapshot()
+    ms = market_snapshot()
     market_th = ms["th"]
     _discover_progress[task_id]["market_th"] = market_th
     results = []
@@ -2219,7 +1403,7 @@ async def _run_discover_task(task_id: str, items: list):
             exact_name = item.name or name
             daily_bars = item.kline_90d if hasattr(item, "kline_90d") and item.kline_90d else []
             if not daily_bars:
-                _db_bars, _stale, _stale_date = _db_kline_fallback(good_id, exact_name)
+                _db_bars, _stale, _stale_date = kline_db_fallback(good_id, exact_name)
                 if _db_bars:
                     daily_bars = _db_bars
             prices = [k.close for k in daily_bars if k.close > 0] if daily_bars else [price_rmb]
@@ -2234,9 +1418,8 @@ async def _run_discover_task(task_id: str, items: list):
                 skipped += 1
                 continue
 
-            vol_today, vol_map = await _fetch_volume_cached(good_id, item)
-            _apply_volume_map(daily_bars, vol_map)
-            volumes = [k.volume for k in daily_bars] if daily_bars else []
+            # 去量 (2026-08-07): 不再抓取悠悠成交量
+            volumes = []
             supply_hist = [k.in_sale_count for k in daily_bars] if daily_bars else []
 
             analysis = await asyncio.get_running_loop().run_in_executor(
@@ -2305,7 +1488,7 @@ async def _run_discover_task(task_id: str, items: list):
             if _an is None:
                 continue
             try:
-                _save_analysis_result(_an)
+                save_analysis_result(_an)
             except Exception as _se1:
                 _web_log.warning(f"discover save analysis_result failed: {_se1}")
             try:
@@ -2317,7 +1500,7 @@ async def _run_discover_task(task_id: str, items: list):
                     _conn_d.close()
                 _conn_s = db.get_conn()
                 try:
-                    _save_item_snapshot(_conn_s, _pid_d, _an, _an.price_rmb or 0)
+                    save_item_snapshot(_conn_s, _pid_d, _an, _an.price_rmb or 0)
                 finally:
                     _conn_s.close()
             except Exception as _se2:

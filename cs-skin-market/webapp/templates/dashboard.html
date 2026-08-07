@@ -106,24 +106,24 @@ fetch("/api/data/progress")
   var card = document.getElementById("data-progress-card");
   if (!card || !d.ok) return;
   card.style.display = "block";
-  var idx = d.index || {}, p = d.price || {}, v = d.volume || {};
+  var idx = d.index || {}, p = d.price || {}, v = d.supply || {};
   var ms = d.market_snapshot || {}, mr = d.monitor_rank || {};
   var target = 90;
   var volPct = Math.min(100, Math.round(100 * (v.avg_days_per_item || 0) / target));
   var rows = [
     ["大盘指数", (idx.rows || 0) + " 条 · " + _dpFmt(idx.start) + " ~ " + _dpFmt(idx.end)],
     ["价格K线", (p.items || 0) + " 个物品 · " + (p.rows || 0) + " 条 · 中位 " + (p.median_days || 0) + " 天 · 90日覆盖 " + (p.pct_90d || 0) + "%"],
-    ["真实成交量", (v.items_with_volume || 0) + " 个物品 · " + (v.rows || 0) + " 条 · 均 " + (v.avg_days_per_item || 0) + " 天/品 · 最近 " + _dpFmt(v.latest)],
+    ["在售量覆盖", (v.items_with_supply || 0) + " 个物品 · " + (v.rows || 0) + " 条 · 均 " + (v.avg_days_per_item || 0) + " 天/品 · 最近 " + _dpFmt(v.latest)],
     ["全市场快照", (ms.days || 0) + " 天 " + "·" + " " + (ms.n || 0) + " 品 " + "·" + " 最近 " + _dpFmt(ms.latest)],
     ["大户集中度", (mr.days || 0) + " 天 " + "·" + " " + (mr.n || 0) + " 品 " + "·" + " 最近 " + _dpFmt(mr.latest)]
   ];
   var html = '<table style="width:100%;font-size:13px;"><tbody>' + rows.map(function(r) {
     return '<tr><td style="width:130px;color:var(--text-muted);padding:4px 0;">' + r[0] + '</td><td style="padding:4px 0;">' + r[1] + '</td></tr>';
   }).join("") + '</tbody></table>';
-  html += '<div style="margin-top:10px;">真实成交量目标 ' + target + ' 天/品:'
+  html += '<div style="margin-top:10px;">在售量覆盖目标 ' + target + ' 天/品:'
     + '<div style="height:8px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden;margin-top:4px;">'
     + '<div style="height:100%;width:' + volPct + '%;background:linear-gradient(90deg,#3b82f6,#22c55e);"></div></div>'
-    + '<span style="font-size:11px;">' + (v.avg_days_per_item || 0) + '/' + target + ' 天 (' + volPct + '%)' + '，预计还需 ' + (v.est_days_to_target || 0) + ' 天自然日达到 ' + target + ' 天覆盖 —— 引擎参数复验的等待主线</span></div>';
+    + '<span style="font-size:11px;">' + (v.avg_days_per_item || 0) + '/' + target + ' 天 (' + volPct + '%)' + '，预计还需 ' + (v.est_days_to_target || 0) + ' 天达到 ' + target + ' 天覆盖 —— 供给数据积累主线（在售量驱动引擎，覆盖到位解锁完整供给回测）</span></div>';
   // ---- 信号族样本深度 (J-3, 2026-08-06): 信号数/独立事件数随采集增长 + J-2 重拟合门槛 ----
   var fam = d.families;
   if (fam && fam.display_keys) {

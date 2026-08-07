@@ -55,7 +55,11 @@
     <div style="font-size:20px;font-weight:700;color:{% if position and position.percentile_90d <= 30 %}var(--green){% elif position and position.percentile_90d >= 70 %}var(--red){% else %}var(--yellow){% endif %};">
       {{ "%.1f"|format(position.percentile_90d) if position else '-' }}%
     </div>
-    <div style="font-size:11px;color:var(--text-muted);">百分位</div>
+    <div style="font-size:11px;color:var(--text-muted);">百分位
+      {% if position and position.valuation_tier %}
+      <br><span style="font-weight:600;{% if position.valuation_tier == 'undervalued' %}color:var(--green);{% elif position.valuation_tier in ('overvalued','bubble') %}color:var(--red);{% else %}color:var(--yellow);{% endif %}">{{ {'undervalued':'低估','fair':'合理','overvalued':'高估','bubble':'泡沫'}.get(position.valuation_tier, position.valuation_tier) }}</span>
+      {% endif %}
+    </div>
   </div>
   <div class="card" style="padding:10px;text-align:center;">
     <div style="font-size:20px;font-weight:700;color:{% if position and position.zscore_90d <= -1.5 %}var(--green){% elif position and position.zscore_90d >= 2 %}var(--red){% else %}var(--text-primary){% endif %};">
@@ -71,7 +75,38 @@
   </div>
 </div>
 
-﻿{# ====== 距买点（场景自适应 + 差距量化） ====== #}
+﻿{# ====== 供给 · 流动性 · 庄家（去量 v2 引擎核心） ====== #}
+{% if supply_analysis or liquidity or whale %}
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;">
+  {% if supply_analysis %}
+  <div class="card" style="padding:10px 12px;">
+    <div style="font-size:11px;color:var(--text-muted);">在售量 · 供给</div>
+    <div style="font-size:17px;font-weight:700;margin-top:2px;color:var(--text-primary);">{{ "{:,}".format(supply_analysis.current_supply) }} 件</div>
+    <div style="font-size:11px;color:var(--text-secondary);margin-top:2px;line-height:1.6;">
+      7日 <span style="{% if supply_analysis.supply_change_7d > 0 %}color:var(--red);{% elif supply_analysis.supply_change_7d < 0 %}color:var(--green);{% endif %}">{{ "%+.1f"|format(supply_analysis.supply_change_7d) }}%</span>
+      · 30日 <span style="{% if supply_analysis.supply_change_30d > 0 %}color:var(--red);{% elif supply_analysis.supply_change_30d < 0 %}color:var(--green);{% endif %}">{{ "%+.1f"|format(supply_analysis.supply_change_30d) }}%</span><br>
+      <span style="{% if supply_analysis.supply_risk == 'hoarding' %}color:var(--green){% elif supply_analysis.supply_risk == 'dumping' %}color:var(--red){% else %}color:var(--text-muted){% endif %};font-weight:600;">{{ supply_analysis.supply_risk_label if supply_analysis.supply_risk_label else ('吸筹' if supply_analysis.supply_risk == 'hoarding' else ('派发' if supply_analysis.supply_risk == 'dumping' else '平稳')) }}</span>
+    </div>
+  </div>
+  {% endif %}
+  {% if liquidity %}
+  <div class="card" style="padding:10px 12px;text-align:center;">
+    <div style="font-size:11px;color:var(--text-muted);">流动性 · 在售深度</div>
+    <div style="font-size:17px;font-weight:700;margin-top:2px;color:var(--text-primary);">{{ liquidity.score }}</div>
+    <div style="font-size:11px;color:var(--text-secondary);margin-top:2px;">{{ liquidity.level_label }}</div>
+  </div>
+  {% endif %}
+  {% if whale and whale.probability > 12 %}
+  <div class="card" style="padding:10px 12px;{% if whale.probability > 30 %}border-color:rgba(239,68,68,0.5);{% endif %}">
+    <div style="font-size:11px;color:var(--text-muted);">庄家检测 · {{ "%.0f"|format(whale.probability) }}%</div>
+    <div style="font-size:13px;font-weight:700;margin-top:2px;{% if whale.probability > 30 %}color:var(--red);{% endif %}">{{ whale.level_label }}</div>
+    <div style="font-size:11px;color:var(--text-secondary);margin-top:2px;line-height:1.5;">{{ whale.trading_rule }}</div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+{# ====== 距买点（场景自适应 + 差距量化） ====== #}
 {% if buy_distance %}
 <div class="card" style="margin-bottom:12px;border-color:rgba(59,130,246,0.35);">
   <div class="card-header" style="padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -122,6 +157,13 @@
   </div>
 </div>
 {% endif %}
+{# ====== 数据质量 ====== #}
+{% if data_quality %}
+<div style="margin-top:8px;display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);">
+  <span>数据质量: <b>{{ {'good':'高','medium':'中','low':'低'}.get(data_quality, data_quality) }}</b>（K 线 {{ {'good':'≥60 日','medium':'20~59 日','low':'<20 日'}.get(data_quality, '—') }}，在售量覆盖以图表为准）</span>
+</div>
+{% endif %}
+
 {# ====== 报告时间 ====== #}
 <div style="text-align:right;font-size:12px;color:var(--text-muted);">
   报告时间: {{ analysis_time if analysis_time else 'N/A' }}
