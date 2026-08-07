@@ -4,7 +4,7 @@
 检验（signal_cluster_report / walk_forward_split / permutation_baseline），
 输出 data/methodology_report.json 并在控制台打印摘要。
 口径说明（重要）:
-- 信号明细来自 data/item_backtest_latest.json（run_item_backtest.py --all
+- 信号明细来自 data/item_backtest_full_2025.json（去量 v2 标准回放，references/run_item_backtest_full.py --all
   产物：start=2025-11-02, warmup=60, cost=2%），即最新快照
   item_backtest_20260803.json 的同一份 88 条 buy 信号（2025-11-15 ~ 2026-06-21），
   已含 fwd14/fwd30/net14/net30，无需重放全量引擎；
@@ -13,7 +13,7 @@
 - 现有回测胜率口径为 net（fwd - 2% 双边成本）：win14 79.5% / win30 61.4%，
   本报告同时给出 fwd 毛收益与 net 净收益两套结果以便对照。
 用法:
-    python references/methodology_report.py [--signals-file data/item_backtest_latest.json]
+    python references/methodology_report.py [--signals-file data/item_backtest_full_2025.json]
 """
 import argparse
 import json
@@ -99,7 +99,7 @@ def main():
     args = ap.parse_args()
     default_file = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        "data", "item_backtest_latest.json",
+        "data", "item_backtest_full_2025.json",
     )
     path = args.signals_file or default_file
     data, sigs = load_buy_signals(path)
@@ -124,7 +124,7 @@ def main():
         "口径": {
             "signals_file": os.path.basename(path),
             "source": "run_item_backtest.py --all (start=2025-11-02, warmup=60, cost=2%)",
-            "note": "buy 信号级明细已存在于 item_backtest_latest.json，直接基于其分析，未重放全量引擎；最后一条 buy 信号 2026-06-21，之后市场反弹未再触发。",
+            "note": "信号明细来自 item_backtest_full_2025.json（去量 v2 370 信号回放），直接基于其分析，未重放全量引擎。",
             "win_rate_note": "现有回测胜率口径为 net（fwd - 2% 双边成本）：win14 79.5% / win30 61.4%。",
         },
         "signal_cluster": cluster,

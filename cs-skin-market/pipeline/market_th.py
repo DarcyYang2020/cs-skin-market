@@ -27,7 +27,7 @@ class MarketTrendHealth:
 
     structure_score: int = 50
 
-    volume_score: int = 50
+    supply_score: int = 50
 
     anomaly_score: int = 50
 
@@ -37,7 +37,7 @@ class MarketTrendHealth:
 
     steepness_signal: str = ""
 
-    volume_signal: str = ""
+    supply_signal: str = ""
 
     has_anomaly: bool = False
 
@@ -60,7 +60,7 @@ class MarketTrendHealth:
 
 
 def derive_market_cycle(values, i):
-    """Classify market cycle label at index i (same rules as webapp._market_snapshot).
+    """Classify market cycle label at index i (same rules as webapp.analysis_service.market_snapshot).
 
     Single source of truth so backtest (build_market_context) and live analysis
     produce identical market_cycle values. values: full ascending close prices.
@@ -169,12 +169,12 @@ def compute_market_trend_health(prices, volumes=None, cycle_phase="unknown",
 
         steepness_score=th.steepness_score, structure_score=th.structure_score,
 
-        volume_score=th.volume_score, anomaly_score=th.anomaly_score,
+        supply_score=th.supply_score, anomaly_score=th.anomaly_score,
 
 
         ma_cross_type=th.ma_cross_type, steepness_signal=th.steepness_signal,
 
-        volume_signal=th.volume_signal, has_anomaly=th.has_anomaly,
+        supply_signal=th.supply_signal, has_anomaly=th.has_anomaly,
 
         anomaly_count=th.anomaly_count, anomaly_type=th.anomaly_type,
 
@@ -204,7 +204,7 @@ def market_th_summary(mth):
 
                 structure_score=mth.structure_score,
 
-                volume_score=mth.volume_score,
+                supply_score=mth.supply_score,
 
                 anomaly_score=mth.anomaly_score,
 
@@ -215,7 +215,7 @@ def market_th_summary(mth):
 
                 steepness_signal=mth.steepness_signal,
 
-                volume_signal=mth.volume_signal,
+                supply_signal=mth.supply_signal,
 
                 drop_from_peak_pct=mth.drop_from_peak_pct,
                 pct_30d_ago=mth.pct_30d_ago,

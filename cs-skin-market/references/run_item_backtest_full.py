@@ -2,7 +2,7 @@
 """统一大脑研究 · 阶段1a：全窗口引擎回放（2025-01-01 起，池A=98老品）。
 
 只读回放当前真实引擎（run_item_backtest.backtest_item），输出到
-data/item_backtest_full_2025.json——不覆盖官方 88 基准（item_backtest_latest.json）。
+data/item_backtest_full_2025.json——当前标准回放（旧官方 88 基准 item_backtest_latest.json 已于 2026-08-07 删除）。
 
 池 A：price_history 首日 <= 2025-01-10 的品（2025-01-01 起有完整数据，98 品）。
 warmup=30（与 item-sample-plan 单品回测口径一致），start=2025-01-01，end=2026-08-05。

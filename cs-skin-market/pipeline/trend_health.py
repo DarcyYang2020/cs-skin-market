@@ -5,7 +5,7 @@ Dimensions & Weights:
   1. Trend Persistence  (22%): MA7 streak + deviation expansion
   2. Trend Steepness    (22%): 7-day regression slope + 2nd-derivative
   3. MA Structure       (22%): MA7 / MA30 / MA90 triple alignment + key levels
-  4. Volume-Price       (16%): vol-price coordination + 5d/20d vol trend
+  4. Supply-Price      (16%): supply-price coordination + in_sale trend (2026-08-07 去量)
   5. Extreme Gap Risk   (18%): MAD-based anomaly (pos -5 / neg -13 penalty)
 
 Correction layers:
@@ -42,7 +42,7 @@ class TrendHealth:
     persistence_score: int = 50
     steepness_score: int = 50
     structure_score: int = 50
-    volume_score: int = 50
+    supply_score: int = 50
     anomaly_score: int = 50
 
     # Detailed metrics
@@ -51,7 +51,7 @@ class TrendHealth:
     ma_structure: str = "中性无序"      # bullish / bearish / recovering / weakening / neutral
     ma_cross_type: str = "无交叉"        # golden_cross / death_cross / none
     steepness_signal: str = "匀速稳定"   # accelerating / exhaustion / panicking / bottoming / reversing_up / reversing_down / stable
-    volume_signal: str = "中性无序"     # confirming / diverging / distributing / neutral
+    supply_signal: str = "中性无序"     # 供给×价格协调（替代原量价维度，2026-08-07 去量）
     has_anomaly: bool = False
     anomaly_count: int = 0
     anomaly_type: str = "无交叉"         # bubble / panic / mixed / none
@@ -358,83 +358,72 @@ def _dim_structure(prices):
 
 
 # ============================================================
-#  Dim 4: Volume-Price Coordination (18%)
+#  Dim 4: Supply-Price Coordination (16%)  (去量 2026-08-07)
 # ============================================================
 
-def _dim_volume(prices, volumes):
+def _dim_supply_price(prices, supply):
+    """Supply-price coordination (替代原量价维度，2026-08-07 去量).
+    - Price up + supply down (contracting, 吸筹): high
+    - Price up + supply up (expanding, 派发/对倒嫌疑): penalty
+    - Price down + supply up (panic/dumping): penalty
+    - Price down + supply down (illiquid, 无人接盘): medium-low
+    - Sideways + stable supply: medium
+    - Extended: 5d/20d supply trend
     """
-    - Price up + vol up (confirming): high
-    - Price up + vol down (fake / pooling): penalty
-    - Price down + vol up (panic): penalty
-    - Sideways + stable vol: medium
-    - Extended: 5d/20d vol ratio + consecutive volume trend
-    """
-    real_days = sum(1 for v in volumes if v and v > 0) if volumes else 0
-    # 真实成交量 < 20 天：长窗口量价项置中性，避免采样假量干扰
-    if not volumes or len(volumes) < 10 or real_days < 20 or len(prices) < 10:
-        return 50, "量能中性"
+    real_days = sum(1 for s in supply if s and s > 0) if supply else 0
+    # 在售量 < 20 天：长窗口供给项置中性，避免采样干扰
+    if not supply or len(supply) < 10 or real_days < 20 or len(prices) < 10:
+        return 50, "中性无序"
+    n = min(len(prices), len(supply))
+    prices = prices[-n:]
+    supply = supply[-n:]
 
-    n = min(len(prices), len(volumes))
+    recent_p = statistics.mean(prices[-5:]) if n >= 5 else prices[-1]
+    earlier_p = statistics.mean(prices[-10:-5]) if n >= 10 else recent_p
+    p_chg = (recent_p / earlier_p - 1.0) * 100 if earlier_p > 0 else 0
 
-    recent_vol  = statistics.mean(volumes[-5:])  if n >= 5  else 0
-    earlier_vol = statistics.mean(volumes[-10:-5]) if n >= 10 else (recent_vol or 1)
-    if earlier_vol <= 0:
-        earlier_vol = recent_vol or 1
-    vol_chg = (recent_vol / earlier_vol - 1.0) * 100
+    recent_s = statistics.mean(supply[-5:])
+    earlier_s = statistics.mean(supply[-10:-5]) if n >= 10 else recent_s
+    s_chg = (recent_s / earlier_s - 1.0) * 100 if earlier_s > 0 else 0
+    s_20d = statistics.mean(supply[-20:]) if len(supply) >= 20 else recent_s
+    s_5_vs_20 = (recent_s / s_20d - 1.0) * 100 if s_20d > 0 else 0
 
-    # 5d vs 20d volume trend
-    vol_20d = statistics.mean(volumes[-20:]) if len(volumes) >= 20 else (recent_vol or 1)
-    vol_5d_vs_20d = (recent_vol / vol_20d - 1.0) * 100 if vol_20d > 0 else 0
-
-    # Consecutive volume expansion days (last 5)
-    vol_expand = sum(1 for i in range(max(1, n - 5), n) if volumes[i] > volumes[i-1])
-
-    recent_p  = statistics.mean(prices[-5:])  if n >= 5  else prices[-1]
-    earlier_p = statistics.mean(prices[-10:-5]) if n >= 10 else prices[0]
-    if earlier_p <= 0:
-        earlier_p = recent_p or 1
-    p_chg = (recent_p / earlier_p - 1.0) * 100
-
-    # Base score from vol-price correlation
-    if p_chg > 2.0:
-        if   vol_chg > 15:   score = 100
-        elif vol_chg > 5:    score = 75
-        elif vol_chg > -5:   score = 60
-        elif vol_chg > -15:  score = 30
-        else:                score = 10
-    elif p_chg < -2.0:
-        if   vol_chg > 15:   score = 10
-        elif vol_chg > 5:    score = 30
-        elif vol_chg > -5:   score = 50
-        elif vol_chg > -15:  score = 65
-        else:                score = 80
+    score = 50
+    if p_chg > 3:
+        if s_chg < -8:
+            score = 85
+        elif s_chg > 8:
+            score = 25
+        else:
+            score = 65
+    elif p_chg < -3:
+        if s_chg > 8:
+            score = 20
+        elif s_chg < -8:
+            score = 35
+        else:
+            score = 45
     else:
-        if   abs(vol_chg) > 15: score = 40
-        else:                   score = 55
-
-    # Adjust by 5d/20d volume trend: expanding vs longer avg = healthy
-    if vol_5d_vs_20d > 10:
-        score = min(100, score + 10)
-    elif vol_5d_vs_20d < -10:
-        score = max(0, score - 10)
-
-    # Adjust by consecutive expansion
-    if vol_expand >= 4 and p_chg > 0:
-        score = min(100, score + 5)
-
+        if abs(s_chg) < 5:
+            score = 55
+        elif s_chg > 8:
+            score = 40
+        else:
+            score = 60
+    # 5d vs 20d supply trend: expanding = penalty, contracting = healthy
+    if s_5_vs_20 > 10:
+        score -= 8
+    elif s_5_vs_20 < -10:
+        score += 6
+    score = int(max(0, min(100, score)))
     if score >= 70:
-        signal = "量价配合"
+        signal = "供给配合"
     elif score >= 45:
-        signal = "量能中性"
+        signal = "中性无序"
     else:
-        signal = "量价背离"
+        signal = "供给背离"
+    return score, signal
 
-    return max(0, min(100, score)), signal
-
-
-# ============================================================
-#  Dim 5: Extreme Gap Risk (13%)  --- MAD-based
-# ============================================================
 
 def _dim_anomaly(prices, mad_scale=1.0):
     """
@@ -484,7 +473,7 @@ def _dim_anomaly(prices, mad_scale=1.0):
 #  Main
 # ============================================================
 
-def compute_trend_health(prices, volumes=None,
+def compute_trend_health(prices, volumes=None, supply=None,
                          cycle_phase=None, whale_prob=None,
                          position_lock_score=0, liquidity_score=50,
                          item_meta=None, zscore_90d=None):
@@ -510,7 +499,7 @@ def compute_trend_health(prices, volumes=None,
     th.persistence_score, th.consecutive_above_ma, th.consecutive_below_ma, _ = _dim_persistence(prices)
     th.steepness_score,   th.steepness_signal   = _dim_steepness(prices)
     th.structure_score,   th.ma_structure, th.ma_cross_type = _dim_structure(prices)
-    th.volume_score,      th.volume_signal      = _dim_volume(prices, volumes)
+    th.supply_score,      th.supply_signal      = _dim_supply_price(prices, supply)
     # Extract category-specific params
     mad_scale = 1.0
     if item_meta:
@@ -533,7 +522,7 @@ def compute_trend_health(prices, volumes=None,
         th.persistence_score * 0.22 +
         th.steepness_score   * 0.22 +
         th.structure_score   * 0.22 +
-        th.volume_score      * 0.16 +
+        th.supply_score      * 0.16 +
         th.anomaly_score     * 0.18
     )
     th.raw_score = int(round(raw))
@@ -551,8 +540,8 @@ def compute_trend_health(prices, volumes=None,
     elif th.steepness_signal in ("恐慌下跌","上涨衰竭","拐头向下"): dn_v += 1
     elif th.steepness_signal == "触底企稳": up_v += 0.5
 
-    if   th.volume_signal == "量价配合" and th.steepness_signal in ("加速上涨","匀速稳定"): up_v += 0.5
-    elif th.volume_signal == "量价背离": dn_v += 1
+    if   th.supply_signal == "供给配合" and th.steepness_signal in ("加速上涨","匀速稳定"): up_v += 0.5
+    elif th.supply_signal == "供给背离": dn_v += 1
 
     tot = up_v + dn_v
     net = (up_v - dn_v) / tot if tot > 0 else 0
@@ -661,14 +650,14 @@ def trend_health_summary(th):
         "persistence_score": th.persistence_score,
         "steepness_score": th.steepness_score,
         "structure_score": th.structure_score,
-        "volume_score": th.volume_score,
+        "supply_score": th.supply_score,
         "anomaly_score": th.anomaly_score,
         "consecutive_above_ma": th.consecutive_above_ma,
         "consecutive_below_ma": th.consecutive_below_ma,
         "ma_structure": th.ma_structure,
         "ma_cross_type": th.ma_cross_type,
         "steepness_signal": th.steepness_signal,
-        "volume_signal": th.volume_signal,
+        "supply_signal": th.supply_signal,
         "has_anomaly": th.has_anomaly,
         "anomaly_count": th.anomaly_count,
         "anomaly_type": th.anomaly_type,
@@ -763,15 +752,15 @@ def compute_fusion_decision(percentile_90d, th, liquidity_score=50, zscore_90d=0
 
     else:  # overvalued
         if ts >= T["TH_STRONG"]:
-            # Split by volume-price health
-            if th.volume_signal == "量价配合":
+            # Split by supply-price health (去量 2026-08-07)
+            if th.supply_signal == "供给配合":
                 fd.action = "hold"
                 fd.action_label = "\U0001f7e2 强势趋势·持有（设移动止盈）"
-                fd.action_detail = "高位 + 趋势强劲 + 量价配合健康，继续持有但设置移动止盈保护利润"
+                fd.action_detail = "高位 + 趋势强劲 + 供给配合健康，继续持有但设置移动止盈保护利润"
             else:
                 fd.action = "reduce"
                 fd.action_label = "\U0001f534 抱团风险·分批止盈"
-                fd.action_detail = "高位泡沫 + 趋势强劲但量价背离，可能是抱团拉升，禁止新开仓，分批止盈"
+                fd.action_detail = "高位泡沫 + 趋势强劲但供给背离，可能是抱团拉升，禁止新开仓，分批止盈"
         elif ts >= T["TH_NEUTRAL"]:
             # Moderate TH at high percentile - direction-aware
             if th.direction == "up":

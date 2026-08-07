@@ -1,8 +1,8 @@
 """Item-level exit-rule grid scan (P1): fit stop-loss / take-profit / holding days.
 
-Loads data/item_backtest_latest.json (produced by run_item_backtest.py, which now
-records entry_price, position_limit, atr_pct and the post-signal price series per
-buy signal), then simulates each trade exiting on the first of {stop-loss,
+Loads data/item_backtest_full_2025.json (去量 v2 标准回放，references/run_item_backtest_full.py
+生成；旧引擎官方 88 基准 item_backtest_latest.json 已于 2026-08-07 删除), which records
+entry_price, position_limit and the post-signal price series per buy signal; simulates each trade exiting on the first of {stop-loss,
 take-profit, max holding days, end of data}. Contribution = position_limit x trade
 return, so the fitted rules are comparable with the portfolio backtest (P0-2).
 
@@ -24,9 +24,9 @@ DEFAULT_HOLD = 14
 
 
 def load_signals():
-    p = Path("data/item_backtest_latest.json")
+    p = Path("data/item_backtest_full_2025.json")
     if not p.exists():
-        raise SystemExit("run `python run_item_backtest.py --all --warmup 30` first")
+        raise SystemExit("run `python references/run_item_backtest_full.py` first")
     data = json.loads(p.read_text(encoding="utf-8"))
     out = []
     for s in data.get("signals", []):

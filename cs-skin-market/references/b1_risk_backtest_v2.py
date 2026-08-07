@@ -1,46 +1,52 @@
+
 # -*- coding: utf-8 -*-
-"""B1 风险预算层回测验证：组合回撤熔断 + 单票敞口上限（离线只读，不改引擎信号）。
+"""B1 风险预算层回测验证 v2：用去量引擎 v2（370 信号）复验 cap/熔断/单票敞口。
 
-注：本脚本输入 data/deepvalue_replay_tmp.json（旧引擎 301 信号）已删除；
-去量引擎 v2 复验见 b1_risk_backtest_v2.py（结果 data/b1_risk_validation_v2.json）。
+输入: data/item_backtest_full_2025.devol_v2.json（2026-08-07 去量 v2 回放）
+口径: 与 references/b1_risk_backtest.py 一致——仓位=position_limit、hold14、手续费2%、
+      拒绝模式优先级 panic(3) > accumulate/base(2) > deep_value(1)（按 action_label 归类）。
+旧版 B1（data/b1_risk_validation.json）基于旧引擎 301 信号（深值241/基础20/恐慌40）；
+新引擎组合结构剧变（深值241→56、恐慌40→92、吸筹→222），需复验 cap0.8/熔断10% 是否仍成立。
 
-数据: data/deepvalue_replay_tmp.json（301 信号, 2025-11-02~2026-07-13 组合回放）。
-口径与 references/portfolio_cap_fit.py 一致：仓位=position_limit、hold14、手续费2%、
-拒绝模式优先级 panic > base > deep_value。
-
-验证目标：
-1. 组合回撤熔断：组合权益（已实现+未实现）自峰值回撤 X% 时拒绝新信号，权益收复峰值后解除
-   （滞回）。叠加 cap=0.8 拒绝模式（2026-08-04 现有最优）。
-2. 单票敞口：单信号建议仓位 > 上限时拒绝（cap 的分量版），验证 PORTFOLIO_CAP_CONCURRENT
-   之外单票上限是否还有额外价值。
-
-结论写入 data/b1_risk_validation.json，供决策日志引用。
+用法: python references/b1_risk_backtest_v2.py [--start 2025-11-02]
+结论写入 data/b1_risk_validation_v2.json。
 """
-import io
+import io as _io
 import json
 import sys
+import argparse
 from collections import Counter
 from datetime import date, timedelta
 
 sys.path.insert(0, ".")
 
-PRIORITY = {"panic": 3, "base": 2, "deep_value": 1, "oversold": 2, "accumulate": 2}
+PRIORITY = {"panic": 3, "accumulate": 2, "base": 2, "oversold": 2, "deep_value": 1}
 HOLD = 14
 COST = 0.02
 
 
-def load_signals():
-    d = json.load(io.open("data/deepvalue_replay_tmp.json", encoding="utf-8"))
+def classify(label):
+    lab = label or ""
+    if "恐慌" in lab:
+        return "panic"
+    if "深值" in lab:
+        return "deep_value"
+    return "accumulate"
+
+
+def load_signals(start=None):
+    d = json.load(_io.open("data/item_backtest_full_2025.devol_v2.json", encoding="utf-8"))
     out = []
     for s in d["signals"]:
         fwd = s.get("fwd_series") or []
         if not fwd:
             continue
-        st = s.get("signal_type") or "base"
-        if abs((s.get("position_limit") or 0) - 0.10) < 0.001:
-            st = "deep_value"
+        dt = date.fromisoformat(s["date"])
+        if start and dt < date.fromisoformat(start):
+            continue
+        st = classify(s.get("action_label"))
         out.append({
-            "date": date.fromisoformat(s["date"]), "item": s["name"],
+            "date": dt, "item": s["name"],
             "entry": s["entry_price"], "limit": s.get("position_limit") or 0.0,
             "fwd": fwd, "st": st, "prio": PRIORITY.get(st, 1),
             "net14": s.get("net14"),
@@ -49,8 +55,6 @@ def load_signals():
 
 
 def simulate(sigs, cap=None, dd_breaker=None, item_cap=None, disarm_at_peak=True):
-    """组合模拟。dd_breaker: 权益峰值回撤触发阈值(如 0.10)；item_cap: 单票建议仓位上限。
-    熔断判定用「前一日收盘权益 vs 峰值」，当日信号按该状态放行/拒绝（现实一日滞后）。"""
     by_day = {}
     for s in sigs:
         by_day.setdefault(s["date"], []).append(s)
@@ -72,7 +76,6 @@ def simulate(sigs, cap=None, dd_breaker=None, item_cap=None, disarm_at_peak=True
     while day <= last:
         for a in active:
             a["idx"] += 1
-        # 熔断判定：基于前一交易日收盘权益
         if dd_breaker is not None and prev_eq is not None:
             if breaker_on:
                 if prev_eq >= peak if disarm_at_peak else prev_eq >= peak * (1 - dd_breaker / 2):
@@ -145,20 +148,27 @@ def metrics(res):
 
 
 def main():
-    sigs = load_signals()
-    print("signals: %d  type: %s" % (len(sigs), dict(Counter(s["st"] for s in sigs))))
-    print("%-18s %8s %8s %8s %8s %8s %9s" % (
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--start", default=None, help="只取该日期后的信号（项目原则 2025-11-02）")
+    args = ap.parse_args()
+    sigs = load_signals(start=args.start)
+    print("signals: %d  type: %s  range: %s ~ %s" % (
+        len(sigs), dict(Counter(s["st"] for s in sigs)), min(s["date"] for s in sigs),
+        max(s["date"] for s in sigs)))
+    print("%-20s %8s %8s %8s %8s %8s %9s" % (
         "rule", "total%", "maxDD%", "maxPos", "rejCap", "rejBrk", "brkActive%"))
 
     def show(label, cap, dd=None, item=None, disarm=True):
         r = simulate(sigs, cap=cap, dd_breaker=dd, item_cap=item, disarm_at_peak=disarm)
         m = metrics(r)
-        print("%-18s %8.2f %8.2f %8.2f %8d %8d %8.1f%%" % (
+        print("%-20s %8.2f %8.2f %8.2f %8d %8d %8.1f%%" % (
             label, m["total_return_pct"], m["max_drawdown_pct"], m["max_position"],
             m["rejected_cap"], m["rejected_breaker"], m["breaker_active_pct"]))
         return m
 
     results = {}
+    results["baseline_nocap"] = show("no cap", cap=None)
+    results["baseline_cap06"] = show("cap0.6", cap=0.6)
     results["baseline_cap08"] = show("cap0.8", cap=0.8)
     for dd in (0.05, 0.08, 0.10, 0.15, 0.20):
         results["cap08_dd%.2f" % dd] = show("cap0.8+dd%.2f" % dd, cap=0.8, dd=dd)
@@ -167,13 +177,19 @@ def main():
     results["cap08_dd10_item10"] = show("cap0.8+dd10+单票10", cap=0.8, dd=0.10, item=0.10)
     results["dd10_only"] = show("dd0.10 only", cap=None, dd=0.10)
 
-    with io.open("data/b1_risk_validation.json", "w", encoding="utf-8") as f:
-        json.dump({
-            "generated": date.today().isoformat(),
-            "note": "B1 风险预算层回测: 组合回撤熔断(前一日权益判定, 收复峰值解除) + 单票敞口上限",
-            "results": {k: v for k, v in results.items()},
-        }, f, ensure_ascii=False, indent=2)
-    print("written data/b1_risk_validation.json")
+    out = {
+        "generated": __import__("datetime").datetime.now().isoformat(timespec="minutes"),
+        "note": "B1 v2: 去量引擎 v2 (devol_v2, 370信号) 组合回测复验。口径同 b1_risk_backtest.py: "
+                "hold14/手续费2%/拒绝优先级 panic>accumulate>deep_value; 熔断前一日权益判定, 收复峰值解除。"
+                "旧版 b1_risk_validation.json 基于旧引擎 301 信号(深值241/基础20/恐慌40)。",
+        "start_filter": args.start,
+        "signal_types": dict(Counter(s["st"] for s in sigs)),
+        "results": results,
+    }
+    out_path = "data/b1_risk_validation_v2.json"
+    with _io.open(out_path, "w", encoding="utf-8") as f:
+        json.dump(out, f, ensure_ascii=False, indent=1)
+    print("written:", out_path)
 
 
 if __name__ == "__main__":

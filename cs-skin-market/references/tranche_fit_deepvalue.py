@@ -7,7 +7,7 @@
 
 安全约束：
 - 只读复用 run_item_backtest.backtest_item（当前引擎，含 P0-8 通道）
-- 输出写到 data/deepvalue_replay_tmp.json，绝不覆盖 data/item_backtest_latest.json（88 信号基准）
+- 输出写到 data/deepvalue_replay_tmp.json（旧 88 信号基准 item_backtest_latest.json 已删，无覆盖问题）
 """
 import sys, io, json, argparse, statistics
 from datetime import datetime

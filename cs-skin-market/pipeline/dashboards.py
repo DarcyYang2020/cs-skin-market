@@ -8,7 +8,7 @@ from .config import PORTFOLIO_CAP_CONCURRENT
 
 _SCAN_CACHE = Path(__file__).resolve().parent.parent / "data" / "batch_scan_latest.json"
 _SIGNAL_EVENTS = Path(__file__).resolve().parent.parent / "data" / "signal_event_counts.json"
-VOLUME_TARGET_DAYS = 90  # 真实成交量目标覆盖天数（数据积累主线：价格 K 线已成熟，成交量是长板）
+SUPPLY_TARGET_DAYS = 90  # 在售量目标覆盖天数（P3 2026-08-07 去量：全品每日刷新后按天积累）
 _ADD_ACTIONS = ("\u53ef\u5206\u6279\u5efa\u4ed3", "\u53ef\u5206\u6279\u8865\u4ed3")  # 可分批建仓/可分批补仓
 
 
@@ -24,7 +24,7 @@ def _snapshot_days(conn, table, col):
 
 
 def _signal_families():
-    """信号族样本深度（J-3）：读 data/signal_event_counts.json（K-2 引擎回放同源，j1_event_counts.py 生成）。
+    """信号族样本深度（J-3）：读 data/signal_event_counts.json（去量引擎 v2 回放同源，sync_expectancy_config.py 同步生成）。
 
     返回 {display_keys, families, total_signals, generated, source}；文件缺失/损坏返回 None（进度卡隐藏该区块）。
     """
@@ -35,7 +35,7 @@ def _signal_families():
 
 
 def data_progress(conn):
-    """数据积累进度：大盘指数 / 单品价格 K 线 / 真实成交量覆盖度。"""
+    """数据积累进度：大盘指数 / 单品价格 K 线 / 在售量 in_sale_count 覆盖度。"""
     def _scalar(sql, args=()):
         row = conn.execute(sql, args).fetchone()
         return row[0] if row else 0
@@ -43,19 +43,19 @@ def data_progress(conn):
     idx = conn.execute("SELECT COUNT(*), MIN(date), MAX(date) FROM market_index").fetchone()
     ph = conn.execute(
         "SELECT COUNT(*), COUNT(DISTINCT item_id), MIN(date), MAX(date), "
-        "SUM(CASE WHEN volume_day IS NOT NULL AND volume_day>0 THEN 1 ELSE 0 END) "
+        "SUM(CASE WHEN in_sale_count IS NOT NULL AND in_sale_count>0 THEN 1 ELSE 0 END) "
         "FROM price_history").fetchone()
     items_total = _scalar("SELECT COUNT(*) FROM items")
     per_item = conn.execute(
         "SELECT COUNT(*) days, "
-        "SUM(CASE WHEN volume_day IS NOT NULL AND volume_day>0 THEN 1 ELSE 0 END) vol "
+        "SUM(CASE WHEN in_sale_count IS NOT NULL AND in_sale_count>0 THEN 1 ELSE 0 END) sup "
         "FROM price_history GROUP BY item_id").fetchall()
     days_list = [r["days"] for r in per_item]
-    vol_list = [r["vol"] for r in per_item]
+    sup_list = [r["sup"] for r in per_item]
     n90 = sum(1 for d in days_list if d >= 90)
     n180 = sum(1 for d in days_list if d >= 180)
-    items_vol = sum(1 for v in vol_list if v > 0)
-    avg_vol = round(sum(vol_list) / len(vol_list), 1) if vol_list else 0.0
+    items_sup = sum(1 for v in sup_list if v > 0)
+    avg_sup = round(sum(sup_list) / len(sup_list), 1) if sup_list else 0.0
     return {
         "index": {"rows": idx[0] or 0, "start": idx[1], "end": idx[2]},
         "price": {
@@ -65,14 +65,14 @@ def data_progress(conn):
             "pct_90d": round(100.0 * n90 / items_total, 1) if items_total else 0.0,
             "pct_180d": round(100.0 * n180 / items_total, 1) if items_total else 0.0,
         },
-        "volume": {
+        "supply": {
             "rows": ph[4] or 0,
-            "items_with_volume": items_vol,
-            "pct_items": round(100.0 * items_vol / items_total, 1) if items_total else 0.0,
-            "avg_days_per_item": avg_vol,
+            "items_with_supply": items_sup,
+            "pct_items": round(100.0 * items_sup / items_total, 1) if items_total else 0.0,
+            "avg_days_per_item": avg_sup,
             "latest": _scalar("SELECT MAX(date) FROM price_history "
-                              "WHERE volume_day IS NOT NULL AND volume_day>0"),
-            "est_days_to_target": max(0, VOLUME_TARGET_DAYS - int(avg_vol)),
+                              "WHERE in_sale_count IS NOT NULL AND in_sale_count>0"),
+            "est_days_to_target": max(0, SUPPLY_TARGET_DAYS - int(avg_sup)),
         },
         # 全市场快照 / 大户集中度 (2026-08-04 开始积累)
         "market_snapshot": _snapshot_days(conn, "market_snapshot", "good_id"),

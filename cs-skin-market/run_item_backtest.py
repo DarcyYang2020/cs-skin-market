@@ -271,10 +271,6 @@ if __name__ == "__main__":
         _bucket(deep, -99, 99, "pct", "deep+pct<=25&th>=40")
 
     sigs_out = [s for r in results for s in r.get("signals", []) if "fwd14" in s]
-    with open("data/item_backtest_latest.json", "w", encoding="utf-8") as f:
-        json.dump({"args": vars(args), "aggregate": agg, "per_item": rows, "signals": sigs_out},
-                  f, ensure_ascii=False, indent=2)
-    print("\nsaved: data/item_backtest_latest.json")
 
     # dated snapshot for factor-decay monitor (factor_monitor.py)
     snap_dir = Path("data/backtest_snapshots")

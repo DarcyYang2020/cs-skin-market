@@ -312,7 +312,7 @@ def _analyze_position(prices):
 #  Helper: Cycle Detection (4-phase)
 # ============================================================
 
-def _analyze_cycle(prices, volumes=None, sentiment_factor=0.0):
+def _analyze_cycle(prices, volumes=None, sentiment_factor=0.0, supply=None):
     """Four-phase market cycle detection."""
     cyc = CycleAnalysis()
     n = len(prices)
@@ -404,14 +404,14 @@ def _analyze_cycle(prices, volumes=None, sentiment_factor=0.0):
         elif cyc.phase == "consolidation":
             cyc.phase_confidence = min(90, cyc.phase_confidence + sentiment_factor * 5)
 
-    # --- Volume confirmation for markup phase ---
-    if cyc.phase == "markup" and volumes and sum(1 for v in volumes if v and v > 0) >= 20:
-        avg_vol_5d = sum(volumes[-5:]) / 5
-        avg_vol_20d = sum(volumes[-20:]) / 20
-        if avg_vol_5d < avg_vol_20d * 0.7:
+    # --- Supply confirmation for markup phase (去量 2026-08-07：在售量扩张 → 供给涌入警惕) ---
+    if cyc.phase == "markup" and supply and sum(1 for s in supply if s and s > 0) >= 20:
+        avg_s5 = sum(supply[-5:]) / 5
+        avg_s20 = sum(supply[-20:]) / 20
+        if avg_s20 > 0 and avg_s5 > avg_s20 * 1.3:
             cyc.phase = "consolidation"
-            cyc.phase_label = "无量拉升·警惕"
-            cyc.phase_description = "价格上涨但成交量萎缩，可能是庄家对倒或散户跟风不足"
+            cyc.phase_label = "供给扩张·警惕"
+            cyc.phase_description = "价格上涨但在售量骤增，供给涌入，可能是派发或热度假象"
             cyc.phase_strategy = "不建议追涨，已有持仓可分批止盈"
             cyc.phase_confidence = 40
 
@@ -425,7 +425,7 @@ def _analyze_cycle(prices, volumes=None, sentiment_factor=0.0):
                 cyc.phase_description = "短期走强但价格长期受MA90压制，可能只是超跌反弹"
                 cyc.phase_strategy = "谨慎参与，设好止损"
                 cyc.phase_confidence = 35
-                cyc.next_phase_trigger = "放量突破MA90确认趋势反转"
+                cyc.next_phase_trigger = "供给配合突破MA90确认趋势反转"
 
     # --- Duration estimation (consecutive days in current phase state) ---
     if n >= 20:
@@ -449,70 +449,26 @@ def _analyze_cycle(prices, volumes=None, sentiment_factor=0.0):
 # ============================================================
 
 def score_liquidity(prices, volumes, volume_total):
-    """Score liquidity 0-100 based on volume, spread, and supply depth."""
+    """Score liquidity 0-100 based on supply depth and price stability (去量 2026-08-07)."""
     liq = LiquidityScore()
     liq.breakdown = {}
 
-    # Volume score (40%): 相对量能——当日/7日均量 vs 30日真实量基准
-    vol_day = volume_total // 20 if volume_total > 0 else 1  # rough daily estimate
-    if volumes and len(volumes) >= 7:
-        vol_day = max(1, sum(volumes[-7:]) // 7)
-
-    # 相对量基准：近 30 日真实成交量均值；真实量不足时用近 7 日均值兜底
-    vol_base = 0
-    recent7 = [v for v in volumes[-7:] if v and v > 0] if volumes else []
-    recent30 = [v for v in volumes[-30:] if v and v > 0] if volumes else []
-    if len(recent30) >= 20:
-        vol_base = statistics.mean(recent30)
-    elif len(recent7) >= 3:
-        vol_base = statistics.mean(recent7)
-
-    if vol_base > 0:
-        vol_ratio = vol_day / vol_base
-        if vol_ratio >= 3:
-            vol_score = 20
-        elif vol_ratio >= 2:
-            vol_score = 16
-        elif vol_ratio >= 1.5:
-            vol_score = 12
-        elif vol_ratio >= 1:
-            vol_score = 8
-        elif vol_ratio >= 0.5:
-            vol_score = 4
-        else:
-            vol_score = 1
-    else:
-        # 无历史真实量：绝对量兜底（低频市场，不参与相对判定）
-        if vol_day >= 100:
-            vol_score = 20
-        elif vol_day >= 30:
-            vol_score = 16
-        elif vol_day >= 10:
-            vol_score = 12
-        elif vol_day >= 3:
-            vol_score = 8
-        elif vol_day >= 1:
-            vol_score = 4
-        else:
-            vol_score = 1
-    liq.breakdown["volume"] = vol_score
-
-    # Supply depth score (30%)
+    # Supply depth score (50%): 当前在售量（可交易池深度）
     if volume_total >= 500:
-        supply_score = 30
+        supply_score = 50
     elif volume_total >= 200:
-        supply_score = 24
+        supply_score = 40
     elif volume_total >= 100:
-        supply_score = 20
+        supply_score = 33
     elif volume_total >= 50:
-        supply_score = 15
+        supply_score = 25
     elif volume_total >= 10:
-        supply_score = 8
+        supply_score = 13
     else:
-        supply_score = 3
+        supply_score = 5
     liq.breakdown["supply"] = supply_score
 
-    # Stability score (30%) - price volatility
+    # Stability score (50%) - price volatility
     if prices and len(prices) >= 10:
         rets = []
         for i in range(1, min(len(prices), 30)):
@@ -521,32 +477,28 @@ def score_liquidity(prices, volumes, volume_total):
         if rets:
             avg_vol = statistics.mean(rets)
             if avg_vol < 1:
-                stab_score = 30
+                stab_score = 50
             elif avg_vol < 2:
-                stab_score = 25
+                stab_score = 42
             elif avg_vol < 4:
-                stab_score = 18
+                stab_score = 30
             elif avg_vol < 7:
-                stab_score = 10
+                stab_score = 17
             else:
-                stab_score = 4
+                stab_score = 7
             liq.breakdown["stability"] = stab_score
         else:
-            stab_score = 15
+            stab_score = 25
             liq.breakdown["stability"] = stab_score
     else:
-        stab_score = 15
+        stab_score = 25
         liq.breakdown["stability"] = stab_score
 
-    liq.score = min(100, int(vol_score + supply_score + stab_score))
+    liq.score = min(100, int(supply_score + stab_score))
 
     # Level label via __post_init__ handles this
     return liq
 
-
-# ============================================================
-#  Helper: Probability Prediction (Z-score mean-reversion)
-# ============================================================
 
 def analyze_probability(prices, trend_score=None, whale_prob=0, cycle_phase="unknown", market_pct=50, sentiment_factor=0.0):
     """Probability of price direction 3d/7d/30d based on Z-score reversion."""
@@ -716,7 +668,7 @@ def compute_value_score(position, cycle, liquidity, probability):
 #  Helper: Whale Detection (4-factor weighted)
 # ============================================================
 
-def analyze_whale(prices, volumes):
+def analyze_whale(prices, volumes, supply=None):
     """Whale/manipulation detection model."""
     wh = WhaleDetection()
     if not prices or len(prices) < 10:
@@ -725,17 +677,17 @@ def analyze_whale(prices, volumes):
     n = len(prices)
     recent = min(15, n)
 
-    # 1. Volume divergence (40%): volume spike without price movement
-    # 真实量 < 20 天时不参与（避免采样假量干扰）
-    real_vol_days = sum(1 for v in (volumes or []) if v and v > 0)
-    if volumes and len(volumes) >= recent and real_vol_days >= 20:
-        vol_recent = volumes[-recent:]
-        vol_mean = statistics.mean(vol_recent) if vol_recent else 1
-        if vol_mean > 0:
-            max_vol = max(vol_recent)
-            vol_spike = max_vol / vol_mean if vol_mean > 0 else 1
-            vol_score = min(20, max(0, (vol_spike - 2) * 5))  # reduced weight (volume data limited)
-            wh.volume_divergence_score = round(vol_score, 1)
+    # 1. Supply divergence (40%): 在售量骤增（供给堆积/派发嫌疑），替代原成交量维度（2026-08-07 去量）
+    # 在售量 < 20 天时不参与（避免采样干扰）
+    real_s_days = sum(1 for s in (supply or []) if s and s > 0)
+    if supply and len(supply) >= recent and real_s_days >= 20:
+        s_recent = supply[-recent:]
+        s_mean = statistics.mean(s_recent) if s_recent else 1
+        if s_mean > 0:
+            max_s = max(s_recent)
+            s_spike = max_s / s_mean if s_mean > 0 else 1
+            s_score = min(20, max(0, (s_spike - 1.5) * 8))  # 供给骤增 = 派发嫌疑
+            wh.volume_divergence_score = round(s_score, 1)
 
     # 2. Volatility anomaly (25%): low volatility + price rise = lock
     if len(prices) >= recent:
@@ -793,26 +745,26 @@ def analyze_whale(prices, volumes):
     if wh.probability >= 35:
         pct = percentile
         vol_sig = ""
-        # Check volume trend
-        if volumes and len(volumes) >= 10:
-            recent_vol = sum(volumes[-5:]) / 5
-            prev_vol = sum(volumes[-10:-5]) / 5
-            if prev_vol > 0:
-                vol_ratio = recent_vol / prev_vol
-                if vol_ratio > 1.5:
-                    vol_sig = "volume_up"
-                elif vol_ratio < 0.6:
-                    vol_sig = "volume_down"
+        # Check supply trend (去量：在售量趋势替代成交量)
+        if supply and len(supply) >= 10:
+            recent_s = sum(supply[-5:]) / 5
+            prev_s = sum(supply[-10:-5]) / 5
+            if prev_s > 0:
+                s_ratio = recent_s / prev_s
+                if s_ratio > 1.5:
+                    vol_sig = "supply_up"
+                elif s_ratio < 0.6:
+                    vol_sig = "supply_down"
 
         if pct < 30 and wh.position_lock_score > 10:
             whale_type = "低位吸筹锁仓"
             wh.trading_rule = "疑似庄家低位吸筹锁仓，价格可能被压制，可轻仓试探但需耐心等待拉升"
-        elif pct > 70 and vol_sig == "volume_down":
-            whale_type = "无量拉升诱多"
-            wh.trading_rule = "疑似无量拉升诱多，庄家可能在高位派发，禁止追涨，持仓应立即减仓"
-        elif pct > 70 and vol_sig == "volume_up":
-            whale_type = "高位放量出货"
-            wh.trading_rule = "疑似高位放量出货，庄家在拉高过程中逐步派发，持仓应分批清仓"
+        elif pct > 70 and vol_sig == "supply_down":
+            whale_type = "供给收缩拉升"
+            wh.trading_rule = "在售量收缩但价格高位拉升，疑似锁仓诱多，禁止追涨，持仓注意减仓"
+        elif pct > 70 and vol_sig == "supply_up":
+            whale_type = "高位供给涌出"
+            wh.trading_rule = "疑似高位供给涌出，庄家在拉高过程中逐步派发，持仓应分批清仓"
         else:
             whale_type = "异常控盘"
     else:
@@ -1057,7 +1009,8 @@ SIGNAL_FAMILIES = (
             and F["z"] is not None and F["z"] <= -0.5
             and F["th"] >= 35 and F["market_th"] >= 40
             # I-6 阴跌中继闸门 (2026-08-06 回放验证): 大盘 chg30 在 [-3,3) 横盘段期望 18-53% ，剔除；[-15,-3) 深跌修复段 85-93%
-            and (F["mchg30"] is None or F["mchg30"] <= -3 or F["mchg30"] >= 3)
+            # I-13 (2026-08-07 去量回测验证): 大盘 chg30>=3 上涨段深值失效（93信号14d 44%胜率/+2.2，跨10月40品，基线与去量版同款），仅保留 <=-3 企稳/修复环境
+            and (F["mchg30"] is None or F["mchg30"] <= -3)
             and 40 <= F["sent"] <= 65 and F["drop21"] >= -5
             and not _dedup_hit(F["recent_buy_dates"], F["signal_date"])
         ),
@@ -1066,8 +1019,7 @@ SIGNAL_FAMILIES = (
         detail=lambda F: (
             f"深值低估(pct={F['pct']:.0f}%,Z={F['z']:.1f})"
             f"+大盘企稳(TH={F['market_th']},21日跌幅{F['drop21']:.1f}%)·"
-            f"回测14d+4.2%/30d+8.2%(轻仓0.10)·分批:首仓10%→跌10%加20%→跌15%加30%"
-            f"(241信号14d资金加权+11.0%)"
+            f"回测14d+14.9%/30d+52.4%(56信号14d75%胜率,轻仓0.10)·分批:首仓10%→跌10%加20%→跌15%加30%"
         ),
         sources=("deep_value_stable_market",),
     ),
@@ -1474,12 +1426,12 @@ def run_item_analysis(
 
     # ---- Core Analyses ----
     position = _analyze_position(prices)
-    cycle = _analyze_cycle(prices, volumes, sentiment_factor=compute_sentiment_factor())
+    cycle = _analyze_cycle(prices, volumes, sentiment_factor=compute_sentiment_factor(), supply=supply_hist)
     liquidity = score_liquidity(prices, volumes, vol_total)
 
     # ---- Trend Health (with category params + cycle/whale/lock/liquidity corrections) ----
     th = compute_trend_health(
-        prices, volumes,
+        prices, volumes, supply=supply_hist,
         cycle_phase=cycle.phase,
         whale_prob=None,
         position_lock_score=0,
@@ -1490,12 +1442,12 @@ def run_item_analysis(
     th_dict = trend_health_summary(th)
 
     # ---- Whale Detection ----
-    whale = analyze_whale(prices, volumes)
+    whale = analyze_whale(prices, volumes, supply=supply_hist)
 
     # Re-run trend health with whale info for better detection
     if whale.probability > 0:
         th2 = compute_trend_health(
-            prices, volumes,
+            prices, volumes, supply=supply_hist,
             cycle_phase=cycle.phase,
             whale_prob=whale.probability,
             position_lock_score=whale.position_lock_score,
@@ -1766,7 +1718,7 @@ def run_item_analysis(
                 strat.append(stop_loss_note)
             if fd.action in ("buy", "hold"):
                 # 展示层 (2026-08-05 策略研究): 回测最优持有期 panic 14d / 其他 21d；
-                # 固定百分比止盈截断反弹利润，改以时间退出为主（参数定稿等成交量90天积累后）
+                # 固定百分比止盈截断反弹利润，改以时间退出为主（2026-08-07 去量解冻：参数定稿，不再等待成交量）
                 _hold = 14 if sentiment_score >= 75 else 21
                 strat.append("\u5efa\u8bae\u6301\u4ed3\u7ea6" + str(_hold) + "\u5929\u9000\u51fa(\u56de\u6d4b\u6700\u4f18\uff1b\u56fa\u5b9a\u6b62\u76c8\u4f1a\u622a\u65ad\u53cd\u5f39\u5229\u6da6)")
 

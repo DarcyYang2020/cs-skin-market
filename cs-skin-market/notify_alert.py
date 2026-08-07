@@ -3,7 +3,7 @@
 
 Usage:
     python notify_alert.py --monitor             # run health monitor, push on FAIL (no pipe encoding issues)
-    python notify_alert.py --title "CS alert" --text "volume FAIL: check uu_headers"
+    python notify_alert.py --title "CS alert" --text "collect FAIL: check network"
 
 Config: NOTIFY_WEBHOOK_URL=https://oapi.dingtalk.com/robot/send?access_token=xxx  in root .env
 Exit codes: 0 = no push needed / pushed / webhook not configured (non-blocking); 2 = push failed

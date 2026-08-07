@@ -6,7 +6,7 @@ per cell. Goal: verify the "fake bottom" (low valuation + greedy) cell has negat
 expectancy, so the engine can add a targeted downgrade rule if the data supports it.
 
 Usage:
-  python run_item_9grid_backtest.py                 # run from data/*_latest.json
+  python run_item_9grid_backtest.py                 # default signals: data/item_backtest_full_2025.json
   python run_item_9grid_backtest.py --signals path
 """
 import sys, json, argparse
@@ -37,7 +37,7 @@ def stats(rows, key14="fwd14", key30="fwd30"):
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--signals", default="data/item_backtest_latest.json")
+    p.add_argument("--signals", default="data/item_backtest_full_2025.json")  # 去量 v2 标准回放（旧 88 基准已删）
     args = p.parse_args()
     data = json.loads(Path(args.signals).read_text(encoding="utf-8"))
     signals = data["signals"]

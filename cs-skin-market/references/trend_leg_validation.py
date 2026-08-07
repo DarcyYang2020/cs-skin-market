@@ -98,7 +98,7 @@ def main():
     out = {"generated": datetime.now().strftime("%Y-%m-%d %H:%M"),
            "window": f"{START}~{END}", "gate": {"S2": "禁贪婪(s<40) 且 禁(恐惧+中TH: s>=60&th>=45)",
                                                  "S3": "禁(贪婪+弱TH: s<40&th<45)"}}
-    eng = json.load(open("data/item_backtest_latest.json", encoding="utf-8"))["signals"]
+    eng = json.load(open("data/item_backtest_full_2025.json", encoding="utf-8"))["signals"]  # 去量 v2（旧 88 基准已删）
     eng_by_item = {}
     for e in eng:
         eng_by_item.setdefault(e["name"], []).append(e["date"])

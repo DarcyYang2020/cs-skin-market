@@ -90,20 +90,20 @@ def run_checks(db_path=None):
     else:
         rows.append(("单品K线", "FAIL", "近7日无 price_history"))
 
-    # 3. 悠悠成交量
-    vol = _q(c, "SELECT date, COUNT(*) n FROM price_history WHERE volume_day>0 AND volume_day IS NOT NULL AND date>=date('now','-7 day') GROUP BY date ORDER BY date DESC LIMIT 1")
-    if vol and vol[0][0] != "__ERR__":
-        d, n = vol[0]
+    # 3. 在售量覆盖（2026-08-07 去量：原悠悠成交量检查改为 in_sale_count）
+    sup = _q(c, "SELECT date, COUNT(*) n FROM price_history WHERE in_sale_count>0 AND in_sale_count IS NOT NULL AND date>=date('now','-7 day') GROUP BY date ORDER BY date DESC LIMIT 1")
+    if sup and sup[0][0] != "__ERR__":
+        d, n = sup[0]
         age = _days_since(d)
         bad = []
         if n < expect * 0.9:
-            bad.append(f"有量{n}<预期{expect}*0.9")
+            bad.append(f"有在售量{n}<预期{expect}*0.9")
         if age > 4:
             bad.append(f"latest={d} 距今{age}天")
-        rows.append(("成交量", "FAIL" if bad else "PASS",
-                     f"{d} 有量{n}/{expect}品" + (f" | 异常: {'; '.join(bad)}" if bad else "")))
+        rows.append(("在售量", "FAIL" if bad else "PASS",
+                     f"{d} 有在售量{n}/{expect}品" + (f" | 异常: {'; '.join(bad)}" if bad else "")))
     else:
-        rows.append(("成交量", "FAIL", "近7日无 volume_day>0（检查 uu_headers 登录态）"))
+        rows.append(("在售量", "FAIL", "近7日无 in_sale_count>0（需每日 K 线/在售量刷新）"))
 
     # 4. 贪婪/卡价
     g = _cnt(c, "SELECT COUNT(*) FROM macro_history WHERE greedy_index IS NOT NULL")

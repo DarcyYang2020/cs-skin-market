@@ -3,8 +3,7 @@
 
 - 大盘指数：csQAQ 当日指数落库（复用 collector）
 - 贪婪历史：market_macro 写穿透（~60 天全量 upsert）
-- 单品成交量：悠悠有品近 7 日逐日量，更新 price_history.volume_day（需 yyyp_id）
-- 每周日（isoweekday=7）额外全量刷新 90 日 K 线
+- 每日全量刷新 90 日 K 线（P3 2026-08-07 去量：全品价格 + 在售量 in_sale_count 日更，补齐非自选品停更缺口）
 
 用法: python run_daily_collect.py
 """
@@ -84,46 +83,6 @@ def collect_macro() -> bool:
         return False
 
 
-async def collect_volume() -> int:
-    from pipeline import db
-    from pipeline.collector_youpin import fetch_youpin_volume
-    conn = db.get_conn()
-    rows = conn.execute("SELECT id, yyyp_id FROM items WHERE yyyp_id IS NOT NULL AND yyyp_id != '' AND (notes IS NULL OR notes NOT LIKE '%存世量过低%') ORDER BY id").fetchall()
-    conn.close()
-    if not rows:
-        log("无 yyyp_id 记录，跳过成交量（先跑 backfill_yyyp.py）")
-        return 0
-    ok = 0
-    total_vol = 0
-    for r in rows:
-        try:
-            vol_map = await fetch_youpin_volume(r["yyyp_id"])
-        except Exception as e:
-            log(f"  [{r['id']}] 悠悠量异常(重试1次): {e}")
-            try:
-                await asyncio.sleep(1.0)
-                vol_map = await fetch_youpin_volume(r["yyyp_id"])
-            except Exception as e2:
-                log(f"  [{r['id']}] 悠悠量重试仍失败: {e2}")
-                continue
-        if not vol_map:
-            continue
-        conn = db.get_conn()
-        try:
-            for date, vol in vol_map.items():
-                cur = conn.execute(
-                    "UPDATE price_history SET volume_day=? WHERE item_id=? AND date=?",
-                    (int(vol), r["id"], date))
-                if cur.rowcount:
-                    total_vol += int(vol)
-            conn.commit()
-        finally:
-            conn.close()
-        ok += 1
-    log(f"成交量更新: {ok}/{len(rows)} 个品有量，累计 {total_vol} 件")
-    return ok
-
-
 async def collect_kline_all() -> int:
     from pipeline import collector_csqaq, db
     conn = db.get_conn()
@@ -174,8 +133,6 @@ async def collect_market_snapshot(max_pages: int = 25) -> int:
     return len(rows)
 
 
-
-
 async def collect_monitor_rank(top_n: int = 50) -> int:
     """大户集中度快照采集(monitor/rank, 每品顶头大户 Top N, 存 monitor_rank_snapshot)。"""
     from pipeline import db
@@ -214,18 +171,12 @@ async def collect_monitor_rank(top_n: int = 50) -> int:
 def main():
     import argparse
     ap = argparse.ArgumentParser(description="每日自动采集")
-    ap.add_argument("--kline", action="store_true", help="全量刷新 90 日 K 线（慢，建议单独跑）")
+    ap.add_argument("--kline", action="store_true", help="兼容保留：每日已自动全量刷新 K 线")
     args = ap.parse_args()
-    # 每周日额外全量刷新 90 日 K 线（对齐 docstring；--kline 亦可手动触发）
-    is_sunday = datetime.now(TZ_BJ).isoweekday() == 7
     log("=== 每日采集开始 ===")
     collect_bind_ip()
     collect_market_index()
     collect_macro()
-    try:
-        asyncio.run(collect_volume())
-    except Exception as e:
-        log(f"成交量任务异常: {e}")
     # 浏览器任务合并到同一个 event loop（Playwright 实例绑定 loop，多次 asyncio.run 会导致后续任务拿到已失效浏览器）
     async def _playwright_tasks():
         try:
@@ -236,12 +187,11 @@ def main():
             await collect_monitor_rank(top_n=50)
         except Exception as e:
             log(f"大户集中度快照任务异常: {e}")
-        if args.kline or is_sunday:
-            log("--kline：全量刷新 90 日 K 线")
-            try:
-                await collect_kline_all()
-            except Exception as e:
-                log(f"K线任务异常: {e}")
+        # P3 (2026-08-07 去量)：每日全量刷新 90 日 K 线（全品价格+在售量日更，补齐非自选品停更缺口）
+        try:
+            await collect_kline_all()
+        except Exception as e:
+            log(f"K线任务异常: {e}")
     try:
         asyncio.run(_playwright_tasks())
     except Exception as e:

@@ -2,14 +2,15 @@
 """J-1/J-3 信号族样本深度：从当前引擎回放同源统计各族「信号数 / 独立事件数（±3天去簇）」。
 
 口径（K-3：展示统计必须与回放产物同源）：
-- 数据源：data/item_backtest_full_2025.json（K-2 引擎 458 信号，含 C2 deep_value 阴跌闸门）
+- 数据源：data/item_backtest_full_2025.json（去量引擎 v2（I-13）回放 370 信号）
 - 细族划分：按 action_label 关键词（恐慌共振/恐慌退潮/深值/供给收缩/深度回调/分批建仓）
 - 展示键：action_label 匹配（含「恐慌」→panic / 含「深值」→deep_value / 其余→accumulate，与 config.ITEM_EXPECTANCY_STATS 同口径）
 - 事件数：backtest_methodology.signal_cluster_report(dates, window=3) 的 event_count
 - win/avg：net14/net30（回放内已扣 2% 双边成本）；ci14 = Wilson 95% 区间（与 config 旧口径一致）
 
 产出：data/signal_event_counts.json（供数据积累进度卡 J-3 展示「信号数/独立事件数」随采集增长；
-      display_keys 与 config.ITEM_EXPECTANCY_STATS 同源，改 config 时以本脚本输出为准）。
+      display_keys 与 config.ITEM_EXPECTANCY_STATS 同源；config 块由 references/sync_expectancy_config.py
+     自动同步生成（勿手改），改回放产物后重跑该同步脚本即可双端一致）。
 运行：python references/j1_event_counts.py
 """
 import io
@@ -85,8 +86,8 @@ def main():
     data = json.load(io.open(REPLAY, encoding="utf-8"))
     signals = data["signals"]
 
-    out = {"generated": "2026-08-06", "window": 3, "total_signals": len(signals),
-           "note": "K-2 引擎回放同源（item_backtest_full_2025.json）；事件簇数=±3天去簇；细族按 action_label 关键词，展示键按「恐慌/深值」匹配（与 config.ITEM_EXPECTANCY_STATS 同口径，改 config 以此文件为准）",
+    out = {"generated": __import__("datetime").datetime.now().strftime("%Y-%m-%d"), "window": 3, "total_signals": len(signals),
+           "note": "去量引擎 v2 回放同源（item_backtest_full_2025.json）；事件簇数=±3天去簇；细族按 action_label 关键词，展示键按「恐慌/深值」匹配（与 config.ITEM_EXPECTANCY_STATS 同口径，config 由 sync_expectancy_config.py 同步生成）",
            "source": REPLAY}
 
     for key, kw in FAMILIES:
@@ -119,7 +120,7 @@ def main():
     with io.open(OUT, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, indent=1)
 
-    print("=== 信号族样本深度（K-2 引擎回放 %d 信号）===" % len(signals))
+    print("=== 信号族样本深度（去量引擎 v2 回放 %d 信号）===" % len(signals))
     for key, _ in FAMILIES:
         if key in out:
             v = out[key]

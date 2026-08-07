@@ -601,96 +601,6 @@ def t_advice_buy_distance_passthrough():
     assert adv2["buy_distance"] is None, adv2
 check('portfolio advice 透传距买点摘要', t_advice_buy_distance_passthrough)
 
-print('[Youpin Volume Collector]')
-def t_youpin_aggregation():
-    import asyncio
-    from pipeline import collector_youpin as cy
-    rows = [
-        {"time": 1, "price": "10.0", "localDate": "2026-07-25", "proportion": "1", "sourceType": 0},
-        {"time": 2, "price": "10.1", "localDate": "2026-07-25", "proportion": "0.5", "sourceType": 0},
-        {"time": 3, "price": "10.2", "localDate": "2026-07-26", "proportion": "0.5", "sourceType": 0},
-        {"time": 4, "price": "10.3", "localDate": "2026-07-27", "proportion": "1", "sourceType": 0},
-    ]
-    class FakeResp:
-        def raise_for_status(self):
-            pass
-        def json(self):
-            return {"code": 0, "data": {"tradeDataList": rows}}
-    class FakeClient:
-        def __init__(self, *a, **k):
-            pass
-        async def __aenter__(self):
-            return self
-        async def __aexit__(self, *a):
-            return False
-        async def post(self, url, json=None, headers=None):
-            assert url == cy.API_URL
-            assert headers.get('authorization') == 'test-token'
-            assert json['templateId'] == '49533'
-            assert json['day'] == '90'
-            return FakeResp()
-    orig_headers, orig_client = cy._api_headers, cy.httpx.AsyncClient
-    cy._api_headers = lambda: {'authorization': 'test-token'}
-    cy.httpx.AsyncClient = FakeClient
-    try:
-        result = asyncio.run(cy.fetch_youpin_volume('49533', days=90))
-    finally:
-        cy._api_headers, cy.httpx.AsyncClient = orig_headers, orig_client
-    assert result == {'2026-07-25': 2, '2026-07-26': 1, '2026-07-27': 1}, result
-check('youpin volume aggregates tradeDataList by day', t_youpin_aggregation)
-
-def t_youpin_auth_error():
-    import asyncio
-    from pipeline import collector_youpin as cy
-    class FakeResp:
-        def raise_for_status(self):
-            pass
-        def json(self):
-            return {"code": -1, "msg": "system busy"}
-    class FakeClient:
-        def __init__(self, *a, **k):
-            pass
-        async def __aenter__(self):
-            return self
-        async def __aexit__(self, *a):
-            return False
-        async def post(self, url, json=None, headers=None):
-            return FakeResp()
-    orig_headers, orig_client = cy._api_headers, cy.httpx.AsyncClient
-    cy._api_headers = lambda: {'authorization': 'expired'}
-    cy.httpx.AsyncClient = FakeClient
-    try:
-        result = asyncio.run(cy.fetch_youpin_volume('49533'))
-    finally:
-        cy._api_headers, cy.httpx.AsyncClient = orig_headers, orig_client
-    assert result == {}, result
-check('youpin volume returns {} on auth error', t_youpin_auth_error)
-
-def t_youpin_no_auth():
-    import asyncio
-    from pipeline import collector_youpin as cy
-    orig = cy._api_headers
-    cy._api_headers = lambda: {}
-    try:
-        result = asyncio.run(cy.fetch_youpin_volume('49533'))
-    finally:
-        cy._api_headers = orig
-    assert result == {}, result
-check('youpin volume returns {} without auth', t_youpin_no_auth)
-
-def t_volume_map_fill():
-    from webapp import main as webapp
-    class Bar:
-        def __init__(self, date):
-            self.date = date
-            self.volume = 0
-    vol_map = {'2026-07-25': 2, '2026-07-26': 1}
-    bars = [Bar('2026-07-24'), Bar('2026-07-25'), Bar('2026-07-26'), Bar('2026-07-27')]
-    webapp._apply_volume_map(bars, vol_map)
-    vols = [b.volume for b in bars]
-    assert vols == [0, 2, 1, 0], vols
-check('volume map fills matching daily bars', t_volume_map_fill)
-
 print('[Guidance]')
 def t_guidance():
     from pipeline.batch_scan import signal_guidance
@@ -798,23 +708,23 @@ check('buy_distance anchor_price is display-only (chart-consistent)', t_buy_dist
 print('[Data Sane: K线脏价校验]')
 def t_kline_price_sane():
     from types import SimpleNamespace
-    from webapp.main import _kline_price_sane
+    from webapp.analysis_service import kline_price_sane
     def bars(last):
         # 平滑序列（无大跳变），只改最后一天 → 专测「整体口径偏移」漏检场景
         b = [SimpleNamespace(date="2026-08-%02d" % (d + 1), close=640.0) for d in range(4)]
         b[-1].close = last
         return b
     # 死寂空间场景：chart 883 vs 悠悠锚 614 → 应拦截（整体偏移、序列平滑）
-    ok, msg = _kline_price_sane(bars(883.28), 999999, anchor_price=614.0)
+    ok, msg = kline_price_sane(bars(883.28), 999999, anchor_price=614.0)
     assert not ok and "悠悠锚" in msg, (ok, msg)
     # 正常：chart 614 vs 锚 614 → 通过
-    ok, _ = _kline_price_sane(bars(614.0), 999999, anchor_price=614.0)
+    ok, _ = kline_price_sane(bars(614.0), 999999, anchor_price=614.0)
     assert ok
     # 正常小偏差：chart 618 vs 锚 614（0.7%）→ 通过
-    ok, _ = _kline_price_sane(bars(618.0), 999999, anchor_price=614.0)
+    ok, _ = kline_price_sane(bars(618.0), 999999, anchor_price=614.0)
     assert ok
     # 新品无历史（item_id 不存在）+ 无锚 → 原逻辑不误伤
-    ok, _ = _kline_price_sane(bars(640.0), 999999)
+    ok, _ = kline_price_sane(bars(640.0), 999999)
     assert ok
 check('kline dirty-price anchor rule blocks offset series', t_kline_price_sane)
 
@@ -917,10 +827,10 @@ check('backtest market cycle is live-consistent (not unknown)', t_market_cycle_s
 
 def t_live_snapshot_sync():
     from pipeline.backtest_common import build_market_context
-    from webapp.main import _market_snapshot
+    from webapp.analysis_service import market_snapshot
     ctx = build_market_context("2025-11-02")
     today = max(ctx)
-    live = _market_snapshot()
+    live = market_snapshot()
     assert live["cycle"] == ctx[today]["cycle"], (live["cycle"], ctx[today]["cycle"])
     assert live["th"] == ctx[today]["th"], (live["th"], ctx[today]["th"])
     assert abs(live["pct"] - ctx[today]["pct"]) < 1.0, (live["pct"], ctx[today]["pct"])
@@ -1030,9 +940,9 @@ def t_data_progress():
         assert d['index']['rows'] > 0, d['index']
         assert d['price']['items'] > 0 and d['price']['median_days'] >= 0
         assert 0.0 <= d['price']['pct_90d'] <= 100.0
-        assert d['volume']['rows'] >= 0 and d['volume']['avg_days_per_item'] >= 0
-        assert d['volume']['est_days_to_target'] >= 0
-        assert d['volume']['pct_items'] >= 0.0
+        assert d['supply']['rows'] >= 0 and d['supply']['avg_days_per_item'] >= 0
+        assert d['supply']['est_days_to_target'] >= 0
+        assert d['supply']['pct_items'] >= 0.0
         assert d['market_snapshot']['days'] >= 0 and d['market_snapshot']['latest'] is not None
         assert d['monitor_rank']['days'] >= 0 and d['monitor_rank']['n'] >= 0
         # J-3 信号族样本深度: signal_event_counts.json 必须存在且与回放展示键同源
@@ -1053,7 +963,7 @@ def t_data_progress():
         assert fam['total_signals'] == len(replay['signals']), 'total_signals 与回放不一致'
     finally:
         conn.close()
-check('data_progress reports index/price/volume coverage + J-3 families 同源', t_data_progress)
+check('data_progress reports index/price/supply coverage + J-3 families 同源', t_data_progress)
 
 def t_portfolio_dash():
     from pipeline import db, dashboards
@@ -1225,15 +1135,16 @@ check('upsert_item 空格变体去重 (半角/全角复用规范名)', t_upsert_
 
 
 
-def t_is_sunday_order():
-    # 回归防护 (2026-08-04): is_sunday 必须在 _playwright_tasks 定义前赋值,
-    # 否则闭包引用未绑定自由变量 -> NameError -> 周日 K 线全量刷新永久失效。
+def t_kline_daily():
+    # 回归防护 (2026-08-07 去量 P3): K 线全量刷新（含在售量）每日无条件执行，
+    # 不再依赖 is_sunday 条件（旧守卫：is_sunday 先赋值再定义 _playwright_tasks）。
     src = open(r"C:\Users\81572\Desktop\codex\cs-model\cs-skin-market\run_daily_collect.py", encoding="utf-8").read()
-    i_assign = src.index("is_sunday = datetime.now")
-    i_def = src.index("async def _playwright_tasks")
-    assert i_assign < i_def, "is_sunday 赋值必须早于 _playwright_tasks 定义"
-    assert "_playwright_tasks" in src and "collect_kline_all" in src
-check('run_daily_collect is_sunday 定义顺序', t_is_sunday_order)
+    assert "is_sunday" not in src, "去量后不应再依赖 is_sunday 条件刷新"
+    i_pw = src.index("async def _playwright_tasks")
+    i_kline = src.index("await collect_kline_all()")
+    assert i_pw < i_kline, "collect_kline_all 必须在 _playwright_tasks 内调用"
+    assert "P3 (2026-08-07" in src, "缺少 P3 日更注释"
+check('run_daily_collect K线每日无条件刷新', t_kline_daily)
 
 
 def t_keep_wear():
@@ -1448,13 +1359,13 @@ def t_health_monitor():
             # 1. 大盘指数（value>1000、mood 三态、近 4 日内）
             c.execute("INSERT INTO market_index (date, value, change_7d, mood) VALUES (?, 1551.82, -1.2, ?)",
                       (today, "恐惧"))
-            # 2/3. 单品 K 线 + 悠悠成交量（10 品全量覆盖/有量）
+            # 2/3. 单品 K 线 + 在售量（10 品全量覆盖/有在售量）
             for i in range(1, 11):
                 c.execute("INSERT INTO items (id, good_id, name, in_watchlist) VALUES (?, ?, ?, 1)",
                           (i, 900000 + i, "测试品%d" % i))
-                c.execute("INSERT INTO price_history (item_id, date, price_rmb, volume_day) VALUES (?, ?, 100.0, 5)",
+                c.execute("INSERT INTO price_history (item_id, date, price_rmb, in_sale_count) VALUES (?, ?, 100.0, 120)",
                           (i, today))
-                c.execute("INSERT INTO price_history (item_id, date, price_rmb, volume_day) VALUES (?, ?, 99.0, 4)",
+                c.execute("INSERT INTO price_history (item_id, date, price_rmb, in_sale_count) VALUES (?, ?, 99.0, 110)",
                           (i, yesterday))
             # 4. 贪婪/卡价（greedy>=55 点、card>=170 点）
             for k in range(200):
@@ -1589,7 +1500,7 @@ def t_replay_source():
     assert p.exists(), f'replay 数据源缺失: {p}'
     d = _J.loads(p.read_text(encoding='utf-8'))
     sigs = d.get('signals', [])
-    assert len(sigs) > 400, f'K-2 回放信号数异常: {len(sigs)}'
+    assert 250 < len(sigs) < 600, f'回放信号数异常: {len(sigs)}'
     assert all(s.get('fwd_series') for s in sigs), 'fwd_series 缺失'
     assert all(s.get('net14') is not None for s in sigs), 'net14 缺失'
     from pipeline.config import ITEM_EXPECTANCY_STATS
@@ -1612,6 +1523,54 @@ def t_event_calendar():
     assert historical_event_impact('2026-01-01') == [], '无事件日期误命中'
     assert historical_event_impact('bad-date') == [], '非法日期应返回空'
 check('事件日历: 黑天鹅 impact 窗口标注', t_event_calendar)
+
+print('[期望统计单一事实源 + 基准对照 + 参数冻结 (2026-08-07)]')
+def t_expectancy_sync():
+    import importlib.util
+    from pathlib import Path
+    from pipeline.config import ITEM_EXPECTANCY_STATS
+    base = Path(TEST_DIR).parent
+    ref = base / 'references' / 'sync_expectancy_config.py'
+    spec = importlib.util.spec_from_file_location('sync_expectancy_config', ref)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    stats, _total, _comp = mod.compute_display_stats(str(base / 'data' / 'item_backtest_full_2025.json'))
+    assert set(stats) == set(ITEM_EXPECTANCY_STATS), f'展示键不一致: {sorted(stats)} vs {sorted(ITEM_EXPECTANCY_STATS)}'
+    for k, v in stats.items():
+        c = ITEM_EXPECTANCY_STATS[k]
+        for f in ('n', 'events', 'win14', 'avg14', 'ci14_lo', 'ci14_hi', 'win30', 'avg30'):
+            assert c[f] == v[f], (
+                f'{k}.{f} 漂移: config={c[f]} 回放计算={v[f]}；'
+                f'改回放产物后必须重跑 references/sync_expectancy_config.py')
+check('期望统计单一事实源: config == 回放计算值（全字段）', t_expectancy_sync)
+
+def t_benchmark():
+    import json as _J
+    from pathlib import Path
+    base = Path(TEST_DIR).parent
+    p = base / 'data' / 'benchmark_compare.json'
+    assert p.exists(), 'benchmark_compare.json 缺失（运行 references/benchmark_compare.py 生成）'
+    d = _J.loads(p.read_text(encoding='utf-8'))
+    for wname, w in d['windows'].items():
+        assert w['range'][0] < w['range'][1], f'{wname} 窗口倒置'
+        for leg in ('strategy', 'pool_buy_hold', 'market_index'):
+            m = w[leg]
+            assert isinstance(m['total_return_pct'], (int, float)), f'{wname}.{leg} total 缺失'
+            assert m['max_drawdown_pct'] <= 0, f'{wname}.{leg} maxDD 应为非正'
+            assert m['days'] > 0, f'{wname}.{leg} days 异常'
+    full = d['windows']['full']
+    assert full['strategy']['total_return_pct'] > full['market_index']['total_return_pct'], '策略应相对大盘超额'
+    assert full['strategy']['max_drawdown_pct'] > full['pool_buy_hold']['max_drawdown_pct'], '策略回撤应小于池内等权持有'
+check('基准对照 JSON 内部一致性', t_benchmark)
+
+def t_param_freeze():
+    from pipeline.config import PARAM_FREEZE
+    assert PARAM_FREEZE['frozen_at'] == '2026-08-07', '冻结起点日期漂移'
+    assert any('去量引擎' in s for s in PARAM_FREEZE['frozen_set']), '冻结集缺少去量引擎 v2'
+    assert PARAM_FREEZE['oos_revalidate_after'] > '2027-01-01', 'OOS 复验窗口过近'
+    assert len(PARAM_FREEZE['triggers']) >= 3, '复验触发条件缺失'
+check('参数冻结条款 (OOS 纪律) 存在且完整', t_param_freeze)
+
 
 
 print()

@@ -1,0 +1,132 @@
+{
+ "generated": "2026-08-07T12:18",
+ "note": "B1 v2: 去量引擎 v2 (devol_v2, 370信号) 组合回测复验。口径同 b1_risk_backtest.py: hold14/手续费2%/拒绝优先级 panic>accumulate>deep_value; 熔断前一日权益判定, 收复峰值解除。旧版 b1_risk_validation.json 基于旧引擎 301 信号(深值241/基础20/恐慌40)。",
+ "start_filter": "2025-11-02",
+ "signal_types": {
+  "accumulate": 203,
+  "panic": 91,
+  "deep_value": 21
+ },
+ "results": {
+  "baseline_nocap": {
+   "total_return_pct": 995.42,
+   "max_drawdown_pct": -61.53,
+   "max_position": 18.2,
+   "rejected_cap": 0,
+   "rejected_breaker": 0,
+   "rejected_item": 0,
+   "breaker_active_pct": 0.0,
+   "days": 255
+  },
+  "baseline_cap06": {
+   "total_return_pct": 78.17,
+   "max_drawdown_pct": -12.53,
+   "max_position": 0.6,
+   "rejected_cap": 270,
+   "rejected_breaker": 0,
+   "rejected_item": 0,
+   "breaker_active_pct": 0.0,
+   "days": 255
+  },
+  "baseline_cap08": {
+   "total_return_pct": 97.88,
+   "max_drawdown_pct": -14.4,
+   "max_position": 0.8,
+   "rejected_cap": 260,
+   "rejected_breaker": 0,
+   "rejected_item": 0,
+   "breaker_active_pct": 0.0,
+   "days": 255
+  },
+  "cap08_dd0.05": {
+   "total_return_pct": 5.48,
+   "max_drawdown_pct": -8.28,
+   "max_position": 0.8,
+   "rejected_cap": 3,
+   "rejected_breaker": 299,
+   "rejected_item": 0,
+   "breaker_active_pct": 85.1,
+   "days": 255
+  },
+  "cap08_dd0.08": {
+   "total_return_pct": 70.05,
+   "max_drawdown_pct": -8.55,
+   "max_position": 0.8,
+   "rejected_cap": 19,
+   "rejected_breaker": 266,
+   "rejected_item": 0,
+   "breaker_active_pct": 68.6,
+   "days": 255
+  },
+  "cap08_dd0.10": {
+   "total_return_pct": 94.95,
+   "max_drawdown_pct": -14.4,
+   "max_position": 0.8,
+   "rejected_cap": 211,
+   "rejected_breaker": 50,
+   "rejected_item": 0,
+   "breaker_active_pct": 3.5,
+   "days": 255
+  },
+  "cap08_dd0.15": {
+   "total_return_pct": 97.88,
+   "max_drawdown_pct": -14.4,
+   "max_position": 0.8,
+   "rejected_cap": 260,
+   "rejected_breaker": 0,
+   "rejected_item": 0,
+   "breaker_active_pct": 0.0,
+   "days": 255
+  },
+  "cap08_dd0.20": {
+   "total_return_pct": 97.88,
+   "max_drawdown_pct": -14.4,
+   "max_position": 0.8,
+   "rejected_cap": 260,
+   "rejected_breaker": 0,
+   "rejected_item": 0,
+   "breaker_active_pct": 0.0,
+   "days": 255
+  },
+  "cap08_dd10_soft": {
+   "total_return_pct": 95.53,
+   "max_drawdown_pct": -14.4,
+   "max_position": 0.8,
+   "rejected_cap": 225,
+   "rejected_breaker": 35,
+   "rejected_item": 0,
+   "breaker_active_pct": 1.2,
+   "days": 255
+  },
+  "cap08_item10": {
+   "total_return_pct": 82.09,
+   "max_drawdown_pct": -11.61,
+   "max_position": 0.8,
+   "rejected_cap": 173,
+   "rejected_breaker": 0,
+   "rejected_item": 87,
+   "breaker_active_pct": 0.0,
+   "days": 255
+  },
+  "cap08_dd10_item10": {
+   "total_return_pct": 84.18,
+   "max_drawdown_pct": -11.61,
+   "max_position": 0.8,
+   "rejected_cap": 173,
+   "rejected_breaker": 24,
+   "rejected_item": 67,
+   "breaker_active_pct": 14.9,
+   "days": 255
+  },
+  "dd10_only": {
+   "total_return_pct": 521.43,
+   "max_drawdown_pct": -72.28,
+   "max_position": 9.8,
+   "rejected_cap": 0,
+   "rejected_breaker": 116,
+   "rejected_item": 0,
+   "breaker_active_pct": 7.1,
+   "days": 255
+  }
+ }
+}

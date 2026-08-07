@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """\u5206\u6279\u52a0\u4ed3\u6a21\u62df + \u8d44\u91d1\u52a0\u6743\u671f\u671b\u7f51\u683c\uff08\u542b\u4e00\u6b21\u6027\u5bf9\u7167\uff09
-\u57fa\u51c6\uff1adata/item_backtest_latest.json (88 \u4fe1\u53f7, fwd_series = \u4fe1\u53f7\u65e5\u6b21\u65e5\u8d77\u9010\u65e5)
+\u57fa\u51c6\uff1adata/item_backtest_full_2025.json (370 \u4fe1\u53f7, fwd_series = \u4fe1\u53f7\u65e5\u6b21\u65e5\u8d77\u9010\u65e5)
 """
 import io, json, statistics
 
-d = json.load(io.open('data/item_backtest_latest.json', encoding='utf-8'))
+d = json.load(io.open('data/item_backtest_full_2025.json', encoding='utf-8'))
 sigs = d['signals']
 print('signals:', len(sigs), flush=True)
 
