@@ -371,6 +371,27 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         checks_json TEXT NOT NULL,
         created_at TEXT DEFAULT (datetime('now','localtime')))""")
 
+    # 生产实盘信号跟踪（2026-08-07 C 通道实盘化）: buy 信号记录 -> 14/30 交易日后按真实价格回填
+    conn.execute("""CREATE TABLE IF NOT EXISTS signal_tracking (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+        item_name TEXT NOT NULL,
+        signal_date TEXT NOT NULL,
+        action TEXT NOT NULL,
+        action_label TEXT NOT NULL,
+        entry_price REAL NOT NULL,
+        position_limit REAL DEFAULT 0.10,
+        source TEXT NOT NULL DEFAULT 'analyze',
+        fwd14 REAL,
+        fwd30 REAL,
+        net14 REAL,
+        net30 REAL,
+        checked14_at TEXT,
+        checked30_at TEXT,
+        created_at TEXT DEFAULT (datetime('now','localtime')),
+        UNIQUE (item_id, signal_date, action_label))""")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_signal_tracking_date ON signal_tracking(signal_date)")
+
     conn.execute("""CREATE TABLE IF NOT EXISTS backtest_results (
 
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -404,6 +425,9 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         metrics_json TEXT,
 
         created_at TEXT DEFAULT (datetime('now','localtime')))""")
+
+    # 2026-08-07 修复: _init_schema 全部 DDL 统一提交（此前 236 行迁移块 commit 之后的建表依赖调用方 commit，只读路径会回滚）
+    conn.commit()
 
 
 

@@ -898,6 +898,23 @@ async def _scan_item(row, idx, ms, market_th_score, sentiment_score, total_asset
         )
         # Save to analysis_results (同步至单品报告)
         save_analysis_result(analysis)
+        # 生产实盘信号跟踪 (2026-08-07 C 通道实盘化): 批量扫描 buy 信号同样记录
+        try:
+            _fd = getattr(analysis, "fusion_decision", None) or {}
+            if isinstance(_fd, dict) and _fd.get("action") in ("buy", "oversold_buy"):
+                _entry = daily_bars[-1].close if daily_bars and getattr(daily_bars[-1], "close", 0) > 0 else (getattr(item, "price_rmb", 0) or 0)
+                conn_t = db.get_conn()
+                try:
+                    from pipeline.signal_tracking import record_buy_signal
+                    record_buy_signal(conn_t, item_id=item_id, item_name=exact_name,
+                                      signal_date=_today_str(), action=_fd.get("action", "buy"),
+                                      action_label=_fd.get("action_label", "") or "",
+                                      entry_price=_entry, position_limit=_fd.get("position_limit") or 0.10,
+                                      source="batch_scan")
+                finally:
+                    conn_t.close()
+        except Exception as _te:
+            _web_log.warning(f"batch signal tracking failed {exact_name}: {_te}")
         # Persist
         conn_p = db.get_conn()
         try:

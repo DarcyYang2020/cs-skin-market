@@ -174,12 +174,19 @@ fetch("/api/data/progress")
         var cFlags = [];
         crows.forEach(function(r) { (r.flags || []).forEach(function(f) { cFlags.push(r.month + " " + f); }); });
         var cText = lastC ? (lastC.month + " 14d " + (lastC.win14 == null ? "-" : lastC.win14) + "% / 30d " + (lastC.win30 == null ? "-" : lastC.win30) + "% (n=" + lastC.n + ")") : "-";
+        function _prodText(ch) {
+          var p = ch && ch.production;
+          if (!p) return "未启用";
+          var w14 = (p.n_filled14 >= 1 && p.net14 && p.net14.win != null) ? (" · 实盘14d " + p.net14.win + "%") : "";
+          return p.n_total + " 信号 · 已回填14d " + p.n_filled14 + "/30d " + p.n_filled30 + w14 + "（14/30 交易日后按真实价格回填）";
+        }
         html += '<div style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.08);padding-top:8px;">'
           + '<div style="color:var(--text-muted);font-size:12px;margin-bottom:4px;">重拟合触发（J-2 三通道，' + _dpFmt(j2.generated) + ' 口径）</div>'
           + '<table style="width:100%;font-size:12px;"><tbody>'
           + '<tr><td style="width:130px;color:var(--text-muted);padding:2px 0;">A 独立恐慌事件</td><td style="padding:2px 0;">' + ch.A.value + '/' + ch.A.threshold + ' · ' + _pctBar(ch.A.progress_pct) + ' · ' + _cBadge(ch.A.status) + '</td></tr>'
           + '<tr><td style="width:130px;color:var(--text-muted);padding:2px 0;">B 冻结后新数据</td><td style="padding:2px 0;">' + ch.B.value_days + '/' + ch.B.threshold_days + ' 天 · ' + _pctBar(ch.B.progress_pct) + ' · ' + _cBadge(ch.B.status) + ' · 约 ' + ch.B.target_date + ' 复验</td></tr>'
           + '<tr><td style="width:130px;color:var(--text-muted);padding:2px 0;">C 胜率监测</td><td style="padding:2px 0;">' + cText + ' · ' + _cBadge(ch.C.status) + (cFlags.length ? ' <span style="color:#f87171;">' + cFlags.join('；') + '</span>' : '') + '</td></tr>'
+          + '<tr><td style="width:130px;color:var(--text-muted);padding:2px 0;">C 生产实盘</td><td style="padding:2px 0;">' + _prodText(ch.C) + '</td></tr>'
           + '</tbody></table>'
           + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + (j2.overall ? j2.overall.note : '') + '；C 通道为回放口径，低胜率月按事件簇纪律复核（j2_channel_status.json）</div></div>';
       }

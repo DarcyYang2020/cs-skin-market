@@ -1296,3 +1296,17 @@ S2 回踩族在 C1（2026-08-05）已被证伪留研究池（A2 三件套未过�
 **学到的新思路**：① 冻结期「按最优路线落地」= 落地触发条件仪表而非调参；② 触发类监测必须给原始+去簇双口径与样本门槛（n>=10），防单事件簇误触发；
 ③ 三通道状态要有单一生成脚本 + 测试硬校验，防文档与实现漂移。
 **验证**：test_smoke 63 passed / 3 failed = csQAQ 401 环境 IP 绑定（非回归；新增 t_j2_channel_status）。
+
+## 生产实盘信号跟踪：J-2 C 通道实盘化（2026-08-07，数据闭环）
+**背景**：用户「对系统有价值就做」。上轮 C 通道为 370 信号回放近似，生产实盘信号跟踪未建立——本轮补上「信号当日记录 → 14/30 交易日后按真实价格回填」闭环，使胜率监测从回放近似变成真实验证。
+
+**落地**：
+- DB 新增 signal_tracking 表（item_id+signal_date+action_label UNIQUE 去重；fwd14/fwd30/net14/net30 + 回填时间戳 + source）。
+- 新增 `pipeline/signal_tracking.py`：record_buy_signal（仅 buy/oversold_buy，同 item+同日+同族去重，先查后插）、backfill_signal_tracking（按 price_history 信号日后第 14/30 个交易日 close 计算 fwd，net 扣 2% 双边成本，与 run_item_backtest 口径一致）、tracking_summary（实盘胜率/均值统计）。
+- 记录点：analysis_service.analyze_fresh（单品/搜索/自选，source=analyze）+ main._scan_item（批量扫描，source=batch_scan），entry_price=信号日 chart close（daily_bars 最后 bar），与回放 entry 口径一致。
+- 每日回填：run_daily_collect 收尾自动调 run_backfill_once（日志输出累计/回填数，异常不中断采集）。
+- 展示：j2_channel_monitor.py C 通道新增 production 段（n_total/n_filled14/n_filled30/net14/net30 实盘统计）；dashboard 数据积累进度卡新增「C 生产实盘」行（N 信号/已回填/实盘胜率，样本增长自动点亮）。
+- 顺带修复：db._init_schema 236 行迁移块 commit 之后的建表 DDL 未提交，只读监控路径（j2_channel_monitor 直连 DB）会回滚表 → 在 _init_schema 末尾统一 conn.commit()。
+
+**验证**：内存 DB 逻辑自测（重复信号去重/非 buy 不记录/fwd14=+14% fwd30=+30% net 扣 2% 后 +12%/+28%）+ t_signal_tracking 用例硬校验；test_smoke 64 passed / 3 failed = csQAQ 401 环境 IP 绑定（非回归）。
+**学到的新思路**：① 「回放近似 → 实盘验证」的关键是信号当日记录 + 到期自动回填的持续闭环，不是一次性回测；② 只读监控脚本直连 DB 会暴露建表 DDL 未提交的隐患，schema 初始化必须自带 commit；③ 回填口径必须与回放同源（entry=信号日 close、fwd=第 N 个交易日、net 扣 2%），否则实盘与回放不可比。

@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """J-2 重拟合三通道监测（2026-08-07 J-2 修订落地，展示层）。
 
 读 item_backtest_full_2025.json（370 信号）+ signal_event_counts.json（事件计数），
@@ -107,6 +107,41 @@ def _channel_c(sigs):
     return {"monthly": rows, "two_month_flags": two_month}
 
 
+def _production_tracking():
+    """生产实盘信号跟踪（2026-08-07）：读 signal_tracking 表（pipeline/signal_tracking.py 记录/回填）。
+    返回 {n_total, n_filled14, n_filled30, net14, net30, earliest_open, latest}；无表/异常返回 None。
+    """
+    import sqlite3
+    dbp = BASE / "data" / "market.db"
+    if not dbp.exists():
+        return None
+    try:
+        conn = sqlite3.connect(str(dbp))
+        conn.row_factory = sqlite3.Row
+        try:
+            total = conn.execute("SELECT COUNT(*) n FROM signal_tracking").fetchone()["n"] or 0
+            n14 = conn.execute("SELECT COUNT(*) n FROM signal_tracking WHERE fwd14 IS NOT NULL").fetchone()["n"] or 0
+            n30 = conn.execute("SELECT COUNT(*) n FROM signal_tracking WHERE fwd30 IS NOT NULL").fetchone()["n"] or 0
+
+            def _st(field):
+                r = conn.execute("SELECT COUNT(*) n, AVG({0}) a FROM signal_tracking WHERE {0} IS NOT NULL".format(field)).fetchone()
+                n = r["n"] or 0
+                if n == 0:
+                    return {"n": 0, "win": None, "avg": None}
+                w = conn.execute("SELECT COUNT(*) n FROM signal_tracking WHERE {0} > 0".format(field)).fetchone()["n"] or 0
+                return {"n": n, "win": round(100.0 * w / n, 1), "avg": round(r["a"], 2) if r["a"] is not None else None}
+
+            earliest = conn.execute("SELECT MIN(signal_date) d FROM signal_tracking WHERE fwd14 IS NULL").fetchone()["d"]
+            latest = conn.execute("SELECT MAX(signal_date) d FROM signal_tracking").fetchone()["d"]
+            return {"n_total": total, "n_filled14": n14, "n_filled30": n30,
+                    "net14": _st("net14"), "net30": _st("net30"),
+                    "earliest_open": earliest, "latest": latest}
+        finally:
+            conn.close()
+    except Exception:
+        return None
+
+
 def compute():
     replay = _load(REPLAY)
     events = _load(SIGNAL_EVENTS)
@@ -121,6 +156,7 @@ def compute():
     b_pct = round(100.0 * days / B_THRESHOLD_DAYS, 1)
 
     c = _channel_c(sigs)
+    production = _production_tracking()
 
     channels = {
         "A": {
@@ -143,9 +179,10 @@ def compute():
             "monthly": c["monthly"],
             "two_month_flags": c["two_month_flags"],
             "thresholds": {"14d_month": C14_MONTH, "30d_month": C30_MONTH, "14d_2m": C14_2M},
+            "production": production,
             "status": "已触发" if (c["two_month_flags"] or any(r["flags"] for r in c["monthly"])) else "未触发",
-            "note": "口径=去量 v2 370 信号回放（生产实盘信号跟踪未建立）；月度 n>=10 才判定；去簇(±3天) n>=10 才判定；"
-                    "5 月恐慌单事件簇退出集中在 6 月，低胜率月度须按事件簇纪律复核后再定",
+            "note": "回放口径：去量 v2 370 信号，月度 n>=10 判定，去簇(±3天) n>=10 判定，5 月恐慌单事件簇退出集中在 6 月须按事件簇纪律复核；"
+                    "生产实盘口径：signal_tracking 表（buy 信号 14/30 交易日后按真实价格回填，net 扣 2%），回填满 20 条后实盘胜率纳入判定",
         },
     }
 

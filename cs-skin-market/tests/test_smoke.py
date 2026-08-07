@@ -1620,6 +1620,39 @@ def t_j2_channel_status():
     assert d['overall']['triggered'] in (True, False), '总体触发标记缺失'
 check('J-2 三通道监测 JSON 完整且与冻结条款同源', t_j2_channel_status)
 
+def t_signal_tracking():
+    import sqlite3
+    from pipeline import db as _db
+    conn = _db.get_conn()
+    try:
+        r = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='signal_tracking'").fetchone()
+        assert r, 'signal_tracking 表缺失'
+    finally:
+        conn.close()
+    from pipeline import signal_tracking as _st
+    m = sqlite3.connect(':memory:')
+    m.row_factory = sqlite3.Row
+    _st.ensure_schema(m)
+    m.execute('CREATE TABLE items (id INTEGER PRIMARY KEY, name TEXT)')
+    m.execute('CREATE TABLE price_history (item_id INTEGER, date TEXT, price_rmb REAL)')
+    assert _st.record_buy_signal(m, item_id=1, item_name='AWP', signal_date='2026-07-01',
+                                 action='buy', action_label='🟢 分批建仓', entry_price=100.0, source='analyze') is True
+    assert _st.record_buy_signal(m, item_id=1, item_name='AWP', signal_date='2026-07-01',
+                                 action='buy', action_label='🟢 分批建仓', entry_price=100.0) is False, '重复信号未去重'
+    assert _st.record_buy_signal(m, item_id=1, item_name='AWP', signal_date='2026-07-01',
+                                 action='watch', action_label='观望', entry_price=100.0) is False, '非 buy 信号不应记录'
+    for i in range(1, 31):
+        d = '2026-07-{:02d}'.format(i + 1) if i < 30 else '2026-08-01'
+        m.execute('INSERT INTO price_history VALUES (1,?,?)', (d, 100 + i))
+    m.commit()
+    assert _st.backfill_signal_tracking(m) == 1, '回填应更新 1 条'
+    row = m.execute('SELECT fwd14, net14, fwd30, net30 FROM signal_tracking').fetchone()
+    assert abs(row['fwd14'] - 14.0) < 0.01 and abs(row['fwd30'] - 30.0) < 0.01, 'fwd 计算口径漂移'
+    s = _st.tracking_summary(m)
+    assert s['n_total'] == 1 and s['n_filled30'] == 1 and s['net30']['avg'] == 28.0, '统计口径漂移'
+    m.close()
+check('生产实盘信号跟踪: 表/记录去重/回填口径', t_signal_tracking)
+
 
 
 print()

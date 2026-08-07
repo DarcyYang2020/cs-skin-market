@@ -207,6 +207,14 @@ def main():
         log(f"数据健康: status={res['status']} FAIL={res['fail_count']}（已写入 health_checks）")
     except Exception as e:
         log(f"数据健康检查异常（不中断采集）: {e}")
+    # 生产实盘信号跟踪回填 (2026-08-07 C 通道实盘化): 14/30 交易日后按真实价格回填 buy 信号收益
+    try:
+        from pipeline.signal_tracking import run_backfill_once
+        _sig = run_backfill_once()
+        _s = _sig["summary"]
+        log(f"信号跟踪回填: 更新 {_sig['updated']} 条, 累计 {_s['n_total']} 信号 / 已回填14d {_s['n_filled14']} / 30d {_s['n_filled30']}")
+    except Exception as e:
+        log(f"信号跟踪回填异常（不中断采集）: {e}")
     log("=== 每日采集完成 ===")
 
 

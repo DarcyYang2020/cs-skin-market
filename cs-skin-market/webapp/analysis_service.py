@@ -11,7 +11,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from fastapi.templating import Jinja2Templates
-from pipeline import db, collector, collector_csqaq, item_analysis
+from pipeline import db, collector, collector_csqaq, item_analysis, signal_tracking as _sig_tracking
 
 _log = logging.getLogger("webapp")  # 与 main.py 同通道
 TZ_BJ = timezone(timedelta(hours=8))
@@ -467,6 +467,24 @@ async def analyze_fresh(item, good_id, exact_name, *, db_item_id=None, apply_anc
     except Exception as _se:
         _log.warning(f"save snapshot failed {exact_name}: {_se}")
     save_analysis_result(analysis, kline_stale_days, kline_stale_date)
+
+    # 生产实盘信号跟踪 (2026-08-07 C 通道实盘化): buy 信号当日记录, 14/30 交易日后按真实价格回填
+    try:
+        _fd = getattr(analysis, "fusion_decision", None) or {}
+        if isinstance(_fd, dict) and _fd.get("action") in ("buy", "oversold_buy"):
+            _entry = daily_bars[-1].close if daily_bars and getattr(daily_bars[-1], "close", 0) > 0 else (price_rmb or 0)
+            conn_t = db.get_conn()
+            try:
+                _sig_tracking.record_buy_signal(
+                    conn_t, item_id=use_id, item_name=exact_name,
+                    signal_date=_today_str(), action=_fd.get("action", "buy"),
+                    action_label=_fd.get("action_label", "") or "",
+                    entry_price=_entry, position_limit=_fd.get("position_limit") or 0.10,
+                    source="analyze")
+            finally:
+                conn_t.close()
+    except Exception as _te:
+        _log.warning(f"signal tracking record failed {exact_name}: {_te}")
 
     return {
         "analysis": analysis,
