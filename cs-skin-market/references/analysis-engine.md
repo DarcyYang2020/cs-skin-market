@@ -19,14 +19,14 @@
 
 ### 数据采集流程
 
-`
+```
 用户点击分析
   → csQAQ search_good_id(name)       # 搜索物品 good_id
   → csQAQ fetch_item_detail(good_id)  # 获取详情+K线+在售数(platform=2 悠悠有品)
   → youpin fetch_youpin_volume(yyyp_id)      # 悠悠近7日真实逐笔成交按日聚合（滚动累积）
   → _apply_volume_map(daily_bars, vol_map)     # 按日期回填K线成交量
   → run_item_analysis()              # 执行分析管线
-`
+```
 
 注意事项:
 - bar.date 必须为 YYYY-MM-DD 格式，否则悠悠逐日成交量回填失效；token 约10天过期需更新 data/uu_headers.json
@@ -127,7 +127,7 @@ S(>=8) / A(>=6.5) / B(>=4.5) / C(<4.5)
 百分位三档(低估<=30% / 中性30-70% / 高估>70%) x 趋势健康三档 x 方向三档 → 操作指令
 
 结构:
-`
+```
 if 百分位 <= 30%:     # 低估区
     TH>=55 → 分批建仓
     TH>=35 → 筑底观察
@@ -141,7 +141,7 @@ else:                 # 高估区
     TH>=55 → 强势趋势持有 / 抱团风险分批止盈
     TH>=35 → 方向感知: 高位强势整理 / 横盘减仓 / 回调减仓
     else   → 方向感知: 趋势反转清仓 / 高位震荡减仓
-`
+```
 
 | 保护 | 触发条件 |
 |---|---|
@@ -157,13 +157,13 @@ else:                 # 高估区
 
 ### 超跌买入例外 (P0)
 当标准融合决策无法触发 buy 时，额外检查超跌反弹条件:
-`
+```
 if pct <= 15% AND zscore <= -2.0:
     no_new_low2 = min(prices[-2:]) > min(prices[-3:])  # 最后2日不创新低
     chg3d = (prices[-1] - prices[-4]) / prices[-4] * 100
     if no_new_low2 AND chg3d > 0%:
         action = buy  # 超跌反弹-分批建仓
-`
+```
 此规则位于 zone/action 矩阵之后、流动性/事件过滤器之前。
 
 ### 单品买入硬过滤 (P0, 2026-08-01)

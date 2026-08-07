@@ -189,10 +189,10 @@ V 型反弹后 MA30 不能立即翻牛，必须完全站上 MA90 才出熊，避
 
 #### 情绪修正
 融合决策接收 sentiment_score 参数, 在分区判定前对 TH 做微调:
-`
+```
 sentiment_adjustment = (sentiment_score - 50) / 50 * 3
 ts = ts + sentiment_adjustment
-`
+```
 - 恐惧80分: ts +1.8 (帮助 avoid→watch)
 - 恐惧90分: ts +2.4 (帮助 avoid→watch, 但不足以 watch→buy)
 - 贪婪20分: ts -1.8 (谨慎压制)
@@ -254,7 +254,7 @@ hysteresis_applied 标记本次判定是否触发了迟滞修正。
 
 ## 数据流架构 (刷新链路)
 
-`
+```
 用户点击刷新 / 自动刷新
     |
     +-- 1. collector.fetch_market_index()   -> 当前指数值 + 市场情绪
@@ -268,7 +268,7 @@ hysteresis_applied 标记本次判定是否触发了迟滞修正。
     |
     v
 返回 dashboard_refresh.html 模板片段
-`
+```
 
 ---
 

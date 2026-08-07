@@ -1,7 +1,7 @@
 # TH 矫正预研：牛熊不分家的趋势健康度语义（2026-08-06）
 
 > 状态：**已落地（2026-08-06）**——C2 deep_value 阴跌闸门回放验证通过；X2 TH 门槛修正被回放证伪；展示层三区语义已同步
-> 数据：`data/item_backtest_full_2025.json`（K-2 引擎 503 信号，2025-01-31~2026-07-17）+ 黑天鹅事件日历剔除（fwd30 重叠剔除，干净 399 信号）
+> 数据：`data/item_backtest_full_2025.json`（K-2 引擎 503 信号，2025-01-31~2026-07-17；注：该回放文件已于 2026-08-07 去量 v2 重建为 370 信号，本文 503/458/399 为去量前研究口径）+ 黑天鹅事件日历剔除（fwd30 重叠剔除，干净 399 信号）
 > 脚本：`references/th_calibration_study.py` → `data/th_calibration_study.json`；`references/th_scene_study.py` → `data/th_scene_study.json`
 
 ## 1. 问题：TH 是熊市抄底血统的参数

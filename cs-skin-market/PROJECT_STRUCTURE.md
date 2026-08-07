@@ -4,7 +4,7 @@
 
 ## 目录结构
 
-`
+```
 cs-skin-market/
 ├── run_server.py              # Web 服务入口（uvicorn，唯一启动方式）
 ├── run_daily_collect.py       # 每日自动采集总调度（大盘/宏观/全市场快照/大户集中度/K线全量刷新 + 数据健康 + J-2 刷新 + 信号回填 + DB 备份）
@@ -28,128 +28,125 @@ cs-skin-market/
 ├── tests/                     # 冒烟测试 + 编码健康 + 回放快照
 ├── references/                # 策略文档 + 研究脚本（见下）
 └── data/                      # 运行时数据（market.db + 回放/研究产物 JSON）
-`
+```
 
-## pipeline/ 核心引擎
+## `pipeline/` 核心引擎
 
 ### 入口与配置
 
 | 文件 | 功能 |
 |---|---|
-| config.py | 全局配置中心：评分权重、阈值（含 PARAM_FREEZE 冻结条款 / J2_THRESHOLDS / ENGINE_VERSION 引擎版本号）、路径 |
-| db.py | SQLite 存储：全表 CRUD + schema 版本化（schema_version 表 + SCHEMA_VERSION + MIGRATIONS 增量迁移） |
+| `config.`py | 全局配置中心：评分权重、阈值（含 PARAM_FREEZE 冻结条款 / J2_THRESHOLDS / ENGINE_VERSION 引擎版本号）、路径 |
+| `db.`py | SQLite 存储：全表 CRUD + schema 版本化（schema_version 表 + SCHEMA_VERSION + MIGRATIONS 增量迁移） |
 
 ### 数据采集层
 
 | 文件 | 功能 |
 |---|---|
-| collector.py | csQAQ HTTP：大盘指数/品类排名/搜索/hash→good_id（requests） |
-| collector_csqaq.py | csQAQ Playwright：单品搜索/详情/90日K线/深历史（响应拦截 chart/info API，StatTrak/纪念品过滤） |
-| collector_snapshot.py | 全市场快照：get_page_list 翻页拉全市场价格+在售数，存 market_snapshot |
-| collector_monitor.py | 大户集中度快照：monitor/rank 每日 Top50，存 monitor_rank_snapshot |
+| `collector.`py | csQAQ HTTP：大盘指数/品类排名/搜索/hash→good_id（requests） |
+| `collector_csqaq.`py | csQAQ Playwright：单品搜索/详情/90日K线/深历史（响应拦截 `chart/`info API，StatTrak/纪念品过滤） |
+| `collector_snapshot.`py | 全市场快照：get_page_list 翻页拉全市场价格+在售数，存 market_snapshot |
+| `collector_monitor.`py | 大户集中度快照：`monitor/`rank 每日 Top50，存 monitor_rank_snapshot |
 
 ### 分析引擎
 
 | 文件 | 功能 |
 |---|---|
-| item_analysis.py | 单品分析主入口：信号族注册制 + 六态状态桶 + 12 闸门融合决策 |
-| index_analysis.py | 大盘分析引擎：估值+情绪+资金+趋势+周期+融合决策 |
-| 	rend_health.py | 趋势健康度（单品+大盘共用）+ 融合决策 |
-| market_th.py | 大盘趋势健康度 |
-| market_macro.py | 宏观情绪/资金面（贪婪指数/在线人数/点卡溢价等） |
-| market_context.py | 大盘上下文构建（供单品分析参考，state_bucket 状态桶） |
-| aluation.py | 估值分位（百分位 + Z-score + 估值标签） |
-| supply.py | 供给分析（在售量变化率 + 吸筹/派发检测，唯一量源） |
-| uy_distance.py | 距买点 v3（下跌寻底企稳闸门/供给吸筹场景/大盘TH三区化） |
-| portfolio_risk.py | B1 风险预算层（组合回撤熔断 + 单票敞口提示） |
-| signal_tracking.py | 生产实盘信号跟踪（J-2 C 通道：记录 buy 信号 → 14/30 交易日回填） |
+| `item_analysis.`py | 单品分析主入口：信号族注册制 + 六态状态桶 + 12 闸门融合决策 |
+| `index_analysis.`py | 大盘分析引擎：估值+情绪+资金+趋势+周期+融合决策 |
+| `t`rend_health.`py` | 趋势健康度（单品+大盘共用）+ 融合决策 |
+| `market_th.`py | 大盘趋势健康度 |
+| `market_macro.`py | 宏观情绪/资金面（贪婪指数/在线人数/点卡溢价等） |
+| `market_context.`py | 大盘上下文构建（供单品分析参考，state_bucket 状态桶） |
+| `v`aluation.`py` | 估值分位（百分位 + Z-score + 估值标签） |
+| `supply.`py | 供给分析（在售量变化率 + 吸筹/派发检测，唯一量源） |
+| `b`uy_distance.`py` | 距买点 v3（下跌寻底企稳闸门/供给吸筹场景/大盘TH三区化） |
+| `portfolio_risk.`py | B1 风险预算层（组合回撤熔断 + 单票敞口提示） |
+| `signal_tracking.`py | 生产实盘信号跟踪（J-2 C 通道：记录 buy 信号 → 14/30 交易日回填） |
 
 ### 回测/研究公共
 
 | 文件 | 功能 |
 |---|---|
-| acktest_common.py | 回测公共：build_market_context / patch_sentiment / approx_sentiment |
-| acktest_methodology.py | A2 三件套：walk_forward_split / signal_cluster_report / permutation_baseline |
+| `b`acktest_common.`py` | 回测公共：build_market_context / patch_sentiment / approx_sentiment |
+| `b`acktest_methodology.`py` | A2 三件套：walk_forward_split / signal_cluster_report / permutation_baseline |
 
 ### 批量扫描与仪表盘
 
 | 文件 | 功能 |
 |---|---|
-| atch_scan.py | 自选批量扫描（信号提取/按建议执行/组合建议/距买点列） |
-| dashboards.py | 仪表盘数据（数据积累进度/J-2 三通道/组合仓位，纯展示层） |
-| actor_monitor.py | 因子衰减监控 |
+| `b`atch_scan.`py` | 自选批量扫描（信号提取/按建议执行/组合建议/距买点列） |
+| `dashboards.`py | 仪表盘数据（数据积累进度/J-2 三通道/组合仓位，纯展示层） |
+| `f`actor_monitor.`py` | 因子衰减监控 |
 
-## webapp/ Web 层
-
-| 文件 | 功能 |
-|---|---|
-| main.py | FastAPI 应用：全部 REST API + Jinja2 渲染 + 批量扫描进度落盘持久化 |
-| nalysis_service.py | 公共分析服务层：analyze_fresh 统一核心 + 锚价校验/DB K线兜底/market_snapshot 等助手 |
-| static/css/style.css | 全局样式 |
-| static/js/app.js | 前端交互（HTMX/模态/表单） |
-| 	emplates/ | base/dashboard/search/watchlist/discover/replay + partials/* |
-
-## tests/ 测试
+## `webapp/` Web 层
 
 | 文件 | 功能 |
 |---|---|
-| 	est_smoke.py | 冒烟测试（约 70 用例，支持 CS_MODEL_SKIP_NET 离线跳过网络用例） |
-| check_encoding.py | 仓库文本编码健康检查（UTF-8 无 BOM / 无乱码） |
-| snapshots/replay_v2.json | 回放口径快照（aggregate+月度，防无意漂移） |
+| `main.`py | FastAPI 应用：全部 REST API + Jinja2 渲染 + 批量扫描进度落盘持久化 |
+| `a`nalysis_service.`py` | 公共分析服务层：analyze_fresh 统一核心 + 锚价校验/DB K线兜底/market_snapshot 等助手 |
+| `static/css/style.`css | 全局样式 |
+| `static/js/app.`js | 前端交互（HTMX/模态/表单） |
+| `templates/` | `base/dashboard/search/watchlist/discover/`replay + `partials/*` |
 
-## references/ 策略文档与研究脚本
+## `tests/` 测试
+
+| 文件 | 功能 |
+|---|---|
+| `t`est_smoke.`py` | 冒烟测试（约 70 用例，支持 CS_MODEL_SKIP_NET 离线跳过网络用例） |
+| `check_encoding.`py | 仓库文本编码健康检查（UTF-8 无 BOM / 无乱码） |
+| `snapshots/replay_v2.`json | 回放口径快照（aggregate+月度，防无意漂移） |
+
+## `references/` 策略文档与研究脚本
 
 ### 文档
 
-- nalysis-engine.md / market-engine.md — 单品/大盘引擎设计
-- engine-unified.md — 统一大脑架构（信号族注册制 + 期望条件表）
-- plan-supply-price-v1.md — 去量方案（在售量+价格）与引擎演进链
-- acktest-methodology.md / acktest_layered.md — 回测方法学（A2 工作流）
-- 	h_calibration.md / 	rend_leg_research.md — TH 校准 / 趋势腿研究
-- project-principles.md — 项目三原则 + 参数冻结条款
-- decision-log.md — 关键决策历史；iteration-roadmap.md — 迭代方案
-- data-source-health.md / cs-knowledge.md / 	rading-strategies.md / item-sample-plan.md
+- `a`nalysis-engine.`md` / `market-engine.`md — 单品/大盘引擎设计
+- `engine-unified.`md — 统一大脑架构（信号族注册制 + 期望条件表）
+- `plan-supply-price-v1.`md — 去量方案（在售量+价格）与引擎演进链
+- `b`acktest-methodology.`md` / `b`acktest_layered.`md` — 回测方法学（A2 工作流）
+- `t`h_calibration.`md` / `t`rend_leg_research.`md` — TH 校准 / 趋势腿研究
+- `project-principles.`md — 项目三原则 + 参数冻结条款
+- `decision-log.`md — 关键决策历史；`iteration-roadmap.`md — 迭代方案
+- `data-source-health.`md / `cs-knowledge.`md / `t`rading-strategies.`md` / `item-sample-plan.`md
 
-### 研究脚本（产出 data/*.json）
+### 研究脚本（产出 `data/*.`json）
 
-- j2_channel_monitor.py — J-2 三通道监测（A 恐慌事件/B 新数据天数/C 胜率）→ j2_channel_status.json
-- 
-efit_pipeline.py — Phase 3 重拟合流水线（A2 三件套 + 达标判定）→ refit_pipeline_report.json
-- portfolio_backtest.py — Phase 2 组合层回测（cap 变体）→ portfolio_backtest.json
-- 1_risk_backtest_v2.py — B1 风险预算 v2 复验 → b1_risk_validation_v2.json
-- cost_sensitivity.py — 成本敏感性 → cost_sensitivity.json
-- supply_quality.py — 在售量质量诊断 → supply_quality.json
-- enchmark_compare.py — 策略 vs 池/指数基准 → benchmark_compare.json
-- cap_family_backtest.py / s3_bucket_replay.py — cap 族级/分桶复验
-- sync_expectancy_config.py / sync_replay_snapshot.py — 期望统计/回放口径同步
-- j1_event_counts.py — 各族独立事件数 → signal_event_counts.json
-- 
-un_item_backtest_full.py — 全窗口单品回放（标准基准 item_backtest_full_2025.json）
-- 	rend_leg_*.py / 	h_*_study.py / 	opup_replay.py / 	ranche_fit*.py / c1_p10_replay.py / dvice_layer_fit.py / portfolio_cap_fit.py — 历史研究脚本
-- scripts-archive/ — 已下线脚本归档（成交量时代等，仅存证）
+- `j2_channel_monitor.`py — J-2 三通道监测（A 恐慌事件/B 新数据天数/C 胜率）→ `j2_channel_status.`json
+- `r`efit_pipeline.`py` — Phase 3 重拟合流水线（A2 三件套 + 达标判定）→ `refit_pipeline_report.`json
+- `portfolio_backtest.`py — Phase 2 组合层回测（cap 变体）→ `portfolio_backtest.`json
+- `b1`_risk_backtest_v2.`py` — B1 风险预算 v2 复验 → `b1_risk_validation_v2.`json
+- `cost_sensitivity.`py — 成本敏感性 → `cost_sensitivity.`json
+- `supply_quality.`py — 在售量质量诊断 → `supply_quality.`json
+- `b`enchmark_compare.`py` — 策略 vs 池/指数基准 → `benchmark_compare.`json
+- `cap_family_backtest.`py / `s3_bucket_replay.`py — cap 族级/分桶复验
+- `sync_expectancy_config.`py / `sync_replay_snapshot.`py — 期望统计/回放口径同步
+- `j1_event_counts.`py — 各族独立事件数 → `signal_event_counts.`json
+- `r`un_item_backtest_full.`py` — 全窗口单品回放（标准基准 `item_backtest_full_2025.`json）
+- `t`rend_leg_*.`py` / `t`h_*_study.`py` / `t`opup_replay.`py` / `t`ranche_fit*.`py` / `c1_p10_replay.`py / `a`dvice_layer_fit.`py` / `portfolio_cap_fit.`py — 历史研究脚本
+- `scripts-archive/` — 已下线脚本归档（成交量时代等，仅存证）
 
 ## 数据文件（data/）
 
 | 文件 | 说明 |
 |---|---|
-| market.db | SQLite 主库（gitignore） |
-| item_backtest_full_2025.json | **标准回放基准**（去量 v2，370 信号） |
-| item_backtest_full_2025.baseline450.json / .devol_v1.json | 去量演进对比存档（旧引擎产物，仅存证） |
-| j2_channel_status.json / 
-efit_pipeline_report.json / portfolio_backtest.json 等 | 研究产物 |
-| ackup/ | 每日 DB 备份（保留 14 份，gitignore） |
-| scan_history/ / scan_progress_*.json / atch_scan_latest.json | 批量扫描归档/进度/缓存（gitignore） |
+| `market.`db | SQLite 主库（gitignore） |
+| `item_backtest_full_2025.`json | **标准回放基准**（去量 v2，370 信号） |
+| `item_backtest_full_2025.baseline450.`json / `.devol_v1.`json | 去量演进对比存档（旧引擎产物，仅存证） |
+| `j2_channel_status.`json / `r`efit_pipeline_report.`json` / `portfolio_backtest.`json 等 | 研究产物 |
+| `backup/` | 每日 DB 备份（保留 14 份，gitignore） |
+| `scan_history/` / `scan_progress_*.`json / `b`atch_scan_latest.`json` | 批量扫描归档/进度/缓存（gitignore） |
 
 ## 数据库表（schema_version = 1）
 
 items / price_history / market_index / macro_history / snapshots / positions / settings /
 executions（执行记录+复盘）/ market_snapshot（全市场快照）/ monitor_rank_snapshot（大户集中度）/
-health_checks（数据健康）/ signal_tracking（生产信号跟踪）/ acktest_results / schema_version
+health_checks（数据健康）/ signal_tracking（生产信号跟踪）/ `backtest_results` / schema_version
 
 ## 运维
 
-- 每日 21:30 定时采集：python run_daily_collect.py（Windows 计划任务 CS_Daily_Collect）
-- 每日 23:30 DB 备份：python backup_db.py（保留 14 份）
-- 健康告警：python notify_alert.py --monitor（钉钉 webhook）
-- pre-commit：install_hooks.ps1 → git commit 自动跑 test_smoke
-- 本地/CI 冒烟：python tests/test_smoke.py（CI 设 CS_MODEL_SKIP_NET=1 跳网络用例）
+- 每日 21:30 定时采集：python `run_daily_collect.`py（Windows 计划任务 CS_Daily_Collect）
+- 每日 23:30 DB 备份：python `backup_db.`py（保留 14 份）
+- 健康告警：python `notify_alert.`py --monitor（钉钉 webhook）
+- pre-commit：`install_hooks.`ps1 → git commit 自动跑 test_smoke
+- 本地/CI 冒烟：python `tests/test_smoke.`py（CI 设 CS_MODEL_SKIP_NET=1 跳网络用例）

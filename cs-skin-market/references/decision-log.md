@@ -582,11 +582,9 @@
 - **修复：asyncio.run() 在运行中事件循环崩溃**：collector.py 的 401 浏览器 fallback 在 FastAPI 请求上下文里调用 asyncio.run 会抛 RuntimeError（实际静默失败）；新增 _run_browser_fallback：脚本/worker 线程正常 asyncio.run，运行中 loop 直接放弃并记 warning，且保持旧的容错语义（失败返回 None/[] 不抛异常）。
 - **性能：同步网络调用不再阻塞事件循环**：api_market_refresh/api_items_search/api_items_analyze/批量扫描任务中的 fetch_market_index（含 1.1s 限速 sleep + urllib）改为 asyncio.to_thread。
 - **健壮性：内存无界增长**：_analysis_cache 封顶 200 条 FIFO 淘汰；_scan_progress/_discover_progress 新增 24h 过期清理。
-- **死代码清理**：pyflakes 全量清零（14 个文件，-121 行）：未用 import/局部变量（含 confidence/ma30/
-isk_label/mid_start/recent_chg/avg_chg 等纯死计算）、field,field,field 重复导入、无占位 f-string、stdout 重复包装防护。
+- **死代码清理**：pyflakes 全量清零（14 个文件，-121 行）：未用 import/局部变量（含 confidence/ma30/`risk_label`/mid_start/recent_chg/avg_chg 等纯死计算）、field,field,field 重复导入、无占位 f-string、stdout 重复包装防护。
 - **配置运维化**：API_TOKEN 支持 CSQAQ_API_TOKEN 环境变量覆盖；DB_PATH 支持 CS_MODEL_DB 覆盖（测试隔离/多库）。
-- **数据修复**：USP 消音版 | 守护者（id=119，名称多空格）与持仓品 id=6 同 good_id=6554 重复，91 条价格全被 id=6 覆盖、零独有数据，备份后删除；
-un_data_health 恢复 7/7 通过。
+- **数据修复**：USP 消音版 | 守护者（id=119，名称多空格）与持仓品 id=6 同 good_id=6554 重复，91 条价格全被 id=6 覆盖、零独有数据，备份后删除；`run_data_health` 恢复 7/7 通过。
 - **验证**：test_smoke 52/52；全新库建表/迁移冒烟通过；服务重启后全部页面/API 200；数据健康 7/7。
 - **未做（性价比考量）**：main.py 2540 行路由单体拆分（风险>收益，暂缓）；测试库与生产库隔离（测试依赖真实历史数据，且 WAL 复制有风险，暂缓）。
 

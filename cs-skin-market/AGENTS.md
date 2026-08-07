@@ -93,10 +93,10 @@ analyze_index_full(value, change_7d, mood, kline_data) 协调：
 
 ## Web 应用 (FastAPI + Jinja2 + htmx)
 
-`ash
+```bash
 cd cs-skin-market && python run_server.py
 # 或 python -m uvicorn webapp.main:app --host 127.0.0.1 --port 8000
-`
+```
 
 | 页面 | 路由 | 说明 |
 |---|---|---|
@@ -131,7 +131,7 @@ cd cs-skin-market && python run_server.py
 | GET  | /api/discover/latest | 获取上次扫描缓存结果 |
 
 **模板结构**:
-`
+```
 webapp/templates/
   base.html              -- 公共布局（左侧栏 + Modal）
   dashboard.html         -- 大盘仪表盘页
@@ -144,7 +144,7 @@ webapp/templates/
     index_card.html      -- 大盘指数卡片
     sectors_card.html    -- 品类排名卡片
     dashboard_refresh.html -- 仪表盘刷新区域
-`
+```
 
 ### 牛熊动态 TH 阈值 + 牛市深调买点 (P1-2, 2026-08-02)
 

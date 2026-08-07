@@ -80,7 +80,7 @@ csQAQ chart API 提供 price + in_sale_count（在售量），为引擎唯一量
 
 ## 启动服务
 
-`ash
+```bash
 cd cs-skin-market && python run_server.py
 # 访问 http://127.0.0.1:8000/
-`
+```

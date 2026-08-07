@@ -6,6 +6,7 @@ Checks every .md/.py/.html/.css/.js/.json/.txt under the repo for:
   2. no UTF-8 BOM
   3. no U+FFFD replacement character
   4. suspicious long runs of '?' (PowerShell pipe damage: Chinese -> '?')
+  5. C0 control characters (PowerShell here-string escapes: `b/`t/`a/`f/`v/`r -> control chars)
 
 Usage:
     python tests/check_encoding.py            # scan + report
@@ -21,6 +22,8 @@ SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", "venv",
              ".idea", ".vscode", "data", "backup"}
 EXTENSIONS = {".md", ".py", ".html", ".css", ".js", ".json", ".txt"}
 QUESTION_RUN = re.compile(r"\?{3,}")
+# C0 control chars (excluding tab/LF/CR) = PowerShell here-string escape damage
+CONTROL_CHAR = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 
 
 def repo_root(start=None):
@@ -57,6 +60,10 @@ def check_file(path):
     m = QUESTION_RUN.search(text)
     if m:
         warn.append("long '?' run (x%d) at col %d" % (len(m.group()), m.start() + 1))
+    m = CONTROL_CHAR.search(text)
+    if m:
+        n = text.count(m.group())
+        warn.append("control char %r (x%d) at col %d" % (m.group(), n, m.start() + 1))
     return hard, warn
 
 

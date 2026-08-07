@@ -182,7 +182,7 @@ CS饰品投资分析系统，提供大盘分析、单品分析、持仓管理三
 
 ## 数据流总览
 
-`
+```
 用户操作 → webapp/main.py (FastAPI端点)
   → collector_csqaq.py (csqaq搜索+K线+详情)
     collector.py (大盘指数)
@@ -193,7 +193,7 @@ CS饰品投资分析系统，提供大盘分析、单品分析、持仓管理三
   → db.py (存储快照+价格)
     webapp/templates/partials/*.html (报告渲染)
   → 用户查看分析报告
-`
+```
 
 ## 数据库表结构
 | 表 | 用途 |

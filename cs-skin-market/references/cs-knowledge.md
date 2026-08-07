@@ -26,14 +26,12 @@
 > 指数大小 = 板块容纳资金规模。收藏品 ≈ 96万 > 一代手套 ≈ 56万 > 千战 ≈ 25万 > 百战 ≈ 12万 > 探员 ≈ 1万。
 
 ### 板块数据字段
-- index / yesterdayIndex / highIndex / lowIndex — 价格数据
-- 
-iseFallDiff / 
-iseFallRate — 涨跌值/涨跌幅
-- 	ransactionAmount / 	ransactionCount — 成交额/成交量
-- upNum / latNum / downNum — 涨跌家数
-- platforms — 各平台分项（ALL / BUFF / 悠悠 / C5GAME）
-- 	rendList — 历史趋势点（25个时间点）
+- `index` / `yesterdayIndex` / `highIndex` / `lowIndex` — 价格数据
+- `riseFallDiff` / `riseFallRate` — 涨跌值/涨跌幅
+- `transactionAmount` / `transactionCount` — 成交额/成交量
+- `upNum` / `flatNum` / `downNum` — 涨跌家数
+- `platforms` — 各平台分项（ALL / BUFF / 悠悠 / C5GAME）
+- `trendList` — 历史趋势点（25个时间点）
 
 ---
 
@@ -66,11 +64,11 @@ iseFallRate — 涨跌值/涨跌幅
 
 ### 核心逻辑
 
-`
+```
 箱子 → 红色材料（同箱隐秘级皮肤）
          ↓ 5合1炼金
        刀/手套（目标产物）
-`
+```
 
 **不直接买刀/手套，而是囤积同箱红色材料**，控制供给端瓶颈：
 1. 红色材料被扫货 → 炼金成本飙升
@@ -247,14 +245,13 @@ CS2饰品市场**不是随机波动市场，而是「周期规律+事件驱动+�
 - sub_index_data[] — 23个子指数(id, name, market_index, chg_num, chg_rate, open/close/high/low)
 - chg_type_data[] — 75个品类(name, total_price, price_diff_1/7/15/30/90/180, type)
 - chg_price_data[] — 按价格分层的涨跌(小/中/大件)
-- 
-ate_data — 涨平跌家数统计
-- online_number — 在线人数(current/today_peak/month_peak)
-- online_chart[] — 在线人数历史
-- greedy[] — 恐惧贪婪指数历史(daily)
-- greedy_status — 当前贪婪状态(level/label)
-- lteration[] — 异动监控
-- iew_count[] — 浏览热度排行
+- `rate_data` — 涨平跌家数统计
+- `online_number` — 在线人数(current/today_peak/month_peak)
+- `online_chart[]` — 在线人数历史
+- `greedy[]` — 恐惧贪婪指数历史(daily)
+- `greedy_status` — 当前贪婪状态(level/label)
+- `alteration[]` — 异动监控
+- `view_count[]` — 浏览热度排行
 
 #### 2. 饰品搜索 GET /api/v1/search/suggest?text=（新版，2026-08-06 迁移）
 
@@ -346,9 +343,9 @@ Body: {\"good_id\": int, \"key\": \"sell_price|sell_num|buy_price|buy_num|turnov
 
 #### 对项目的价值判断与落地（2026-08-04）
 
-- **真实成交量主线不变**：官方文档无「单品每日真实成交历史」接口（simple/chartAll 的 v 为 csQAQ 内部成交量口径，实测与悠悠逐日量不一致，**未确认、勿用于成交量因子**），悠悠有品仍是唯一真实量来源，等成交量积累继续。
+- **成交量方向已废除（2026-08-07）**：官方文档无「单品每日真实成交历史」接口（simple/chartAll 的 v 为 csQAQ 内部成交量口径，与悠悠逐日量不一致，不做量因子）；真实成交量采集（悠悠有品）已整体删除，量源 = csQAQ chart 在售量（in_sale_count），引擎改为「在售量 + 价格」双核心（见 plan-supply-price-v1.md）。
 - **历史深度（已落地）**：simple/chartAll(plat=2 悠悠价) 多窗口向前翻页可回补至 2023-08。经研判 **2024 及更早市场逻辑已过时，回填起点定为 2025-01-01**（覆盖 2025-02 反弹、2025-05 深底、2026-02 小牛，全部关键样本点）。`run_backfill_history.py` 给现有品补 2025-01-01~2025-08-03 缺失价格（仅补缺失、不覆盖已有 volume_day）。
-- **全市场快照（已落地）**：`collector_snapshot.py` 用 get_page_list 翻页（200/页，按热度取前 5000 品 ≈ 25 页 ≈ 2 分钟/天）每日采集悠悠锚价+在售数，存 market_snapshot 表，为未来全市场选品/估值分布/异动扫描积累面板，与成交量积累并行。
+- **全市场快照（已落地）**：`collector_snapshot.py` 用 get_page_list 翻页（200/页，按热度取前 5000 品 ≈ 25 页 ≈ 2 分钟/天）每日采集悠悠锚价+在售数，存 market_snapshot 表，为未来全市场选品/估值分布/异动扫描积累面板，与在售量积累并行。
 - **P1 已落地（2026-08-04）**：monitor/rank 大户集中度每日快照（collector_monitor.py，每品 Top50 大户持有量，存 monitor_rank_snapshot，挂 run_daily_collect 每日任务）；复验期回测「集中度变化」能否提升吸筹信号（等数据积累 2~3 个月）。
 - **P2 开箱量因子：预研暂缓（2026-08-06）**——开箱量为同步/滞后热度指标（32 天窗口无领先预测力）、历史仅 32 天、自选品与活跃箱交集≈0，无边际信息不投产；详见 decision-log「P2 开箱量因子预研」。
 - **待办**：get_all_goods_* 权限确认后做全市场估值分布。
