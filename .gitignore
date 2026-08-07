@@ -45,3 +45,6 @@ cs-skin-market/data/uu_headers.json
 **/data/*_tmp.json
 **/data/topup_replay_*.json
 **/data/scan_history/
+
+# Batch scan progress persistence (Phase 4) - runtime state
+**/data/scan_progress_*.json

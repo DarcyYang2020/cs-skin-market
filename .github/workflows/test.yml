@@ -1,0 +1,24 @@
+name: smoke-tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cs-skin-market
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install fastapi uvicorn python-multipart jinja2
+      - name: Run smoke tests (offline subset, network tests skipped)
+        env:
+          CS_MODEL_SKIP_NET: "1"
+          CS_MODEL_DB: ci_market.db
+        run: python tests/test_smoke.py

@@ -223,6 +223,13 @@ def main():
         log(f"信号跟踪回填: 更新 {_sig['updated']} 条, 累计 {_s['n_total']} 信号 / 已回填14d {_s['n_filled14']} / 30d {_s['n_filled30']}")
     except Exception as e:
         log(f"信号跟踪回填异常（不中断采集）: {e}")
+    # 每日备份 (Phase 4): SQLite online backup -> data/backup/, 保留最近 14 份
+    try:
+        from backup_db import backup as _daily_backup
+        from pipeline.config import DB_PATH as _db_path
+        _daily_backup(_db_path, keep=14)
+    except Exception as e:
+        log(f"每日备份异常（不中断采集）: {e}")
     log("=== 每日采集完成 ===")
 
 

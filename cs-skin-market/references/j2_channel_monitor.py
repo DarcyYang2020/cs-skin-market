@@ -226,7 +226,9 @@ def compute():
             "note": "J-2 三通道任一满足即解锁重拟合：A 事件>=3 / B 新数据>=260 天 / C 胜率监测触发",
             "trigger_action": "触发后动作（Phase 3 自动化）：1) 冻结当前参数版本(ENGINE_VERSION bump 前禁止发布新信号口径)；"
                               "2) 以冻结后新增数据重跑新旧引擎对比；3) A2 三件套(walk-forward+聚类+置换检验)验证；"
-                              "4) 人工确认后发布新参数版本并复位监测",
+                              "4) 人工确认后发布新参数版本并复位监测；"
+                              "重拟合流水线已挂载（Phase 3）：python references/refit_pipeline.py，"
+                              "输出 data/refit_pipeline_report.json（--simulate 演练 / 默认冻结后新增信号）",
         },
     }
 

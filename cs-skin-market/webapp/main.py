@@ -799,12 +799,53 @@ async def api_watchlist_set_assets(request: Request, amount: float = Form(...)):
 _scan_progress: dict = {}
 
 
+def _scan_progress_file(scan_id):
+    from pathlib import Path as _P
+    return _P(__file__).resolve().parent.parent / "data" / ("scan_progress_" + scan_id + ".json")
+
+
+def _persist_scan_progress(scan_id):
+    """内存进度落盘（Phase 4 持久化）：服务重启后仍可查询进度与结果。"""
+    import json as _json
+    p = _scan_progress.get(scan_id)
+    if not p:
+        return
+    try:
+        _scan_progress_file(scan_id).write_text(
+            _json.dumps({k: p.get(k) for k in ("current", "total", "name", "done", "html", "ts")},
+                        ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        pass
+
+
+def _load_scan_progress(scan_id):
+    """内存优先，磁盘恢复兜底（Phase 4）。"""
+    p = _scan_progress.get(scan_id)
+    if p is not None:
+        return p
+    try:
+        fp = _scan_progress_file(scan_id)
+        if fp.exists():
+            import json as _json
+            data = _json.loads(fp.read_text(encoding="utf-8"))
+            if isinstance(data, dict) and "ts" in data:
+                _scan_progress[scan_id] = data
+                return data
+    except Exception:
+        pass
+    return None
+
+
 def _prune_progress(store, max_age=86400):
     """清理超过 max_age 秒的进度条目，防长跑任务内存无界增长。"""
     now = time.time()
     stale = [k for k, v in store.items() if isinstance(v, dict) and (now - v.get("ts", 0)) > max_age]
     for k in stale:
         store.pop(k, None)
+        try:
+            _scan_progress_file(k).unlink(missing_ok=True)
+        except Exception:
+            pass
 
 def _item_report_link(name):
     """批量扫描结果中可点击的名称链接：弹窗查看已存报告（不重新分析）。"""
@@ -970,6 +1011,7 @@ async def _run_batch_scan_task(scan_id: str, rows: list):
         total = len(rows)
         _scan_progress[scan_id]["total"] = total
         _scan_progress[scan_id]["name"] = "准备扫描..."
+        _persist_scan_progress(scan_id)
         # 串行采集：并发共享浏览器多 page 导航会把不同品的 chart/锚价串到一起
         # （复现：AWP 火卫一 并发 chart 收盘 59.78/93.63 vs 串行 64.69；沙鹰 53.62 vs 36.20）
         sem = asyncio.Semaphore(1)
@@ -983,6 +1025,7 @@ async def _run_batch_scan_task(scan_id: str, rows: list):
                 _scan_progress[scan_id]["current"] = done
                 if res:
                     _scan_progress[scan_id]["name"] = res.get("name", "")
+                _persist_scan_progress(scan_id)
                 return res
 
         raw_results = await asyncio.gather(*(_one(r) for r in rows))
@@ -999,6 +1042,7 @@ async def _run_batch_scan_task(scan_id: str, rows: list):
             risk_ctx={"drawdown": _dd_status},
         )
         _scan_progress[scan_id]["html"] = final_html
+        _persist_scan_progress(scan_id)
         _scan_progress[scan_id]["done"] = True
         # Persist to disk (latest + 历史归档, 2026-08-04)
         _data_dir = _P(__file__).resolve().parent.parent / "data"
@@ -1039,6 +1083,9 @@ async def _run_batch_scan_task(scan_id: str, rows: list):
         _scan_progress[scan_id]["html"] = ('<div class="card" style="padding:20px;color:var(--red);">批量扫描异常：'
                                            + _esc(str(_e))[:200] + "</div>")
         _scan_progress[scan_id]["done"] = True
+
+        _persist_scan_progress(scan_id)
+
 @app.get("/api/watchlist/batch-scan-latest")
 async def api_batch_scan_latest():
     """Return the latest cached batch scan result."""
@@ -1328,13 +1375,14 @@ async def api_watchlist_batch_scan_selected(request: Request):
     scan_id = uuid.uuid4().hex[:8]
     _prune_progress(_scan_progress)
     _scan_progress[scan_id] = {"current": 0, "total": len(rows), "name": "", "done": False, "html": "", "ts": time.time()}
+    _persist_scan_progress(scan_id)
     asyncio.create_task(_run_batch_scan_task(scan_id, rows))
     html = '<div class="card" id="scan-progress-{sid}" data-scanid="{sid}"><div class="card-header"><span class="card-title">\u626b\u63cf\u8fdb\u5ea6</span></div><div class="card-body" id="scan-status-{sid}"><p style="text-align:center;padding:20px;">\u6b63\u5728\u51c6\u5907\u626b\u63cf... <span class="spinner"></span></p></div></div>'.format(sid=scan_id)
     return HTMLResponse(html)
 # ---- Batch Scan Progress Polling ----
 @app.get("/api/watchlist/batch-scan-progress/{scan_id}")
 async def api_batch_scan_progress(scan_id: str):
-    p = _scan_progress.get(scan_id)
+    p = _load_scan_progress(scan_id)
     if not p:
         return {"error": "not found"}
     return {"current": p["current"], "total": p["total"], "name": p.get("name", ""), "done": p["done"], "html": p.get("html", "")}

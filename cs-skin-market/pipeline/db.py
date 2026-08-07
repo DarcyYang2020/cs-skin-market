@@ -22,6 +22,9 @@ from .config import DB_PATH, DATA_DIR
 
 TZ_BJ = timezone(timedelta(hours=8))
 
+SCHEMA_VERSION = 1  # Phase 4 schema 版本化：新增表/列时 bump，并在 MIGRATIONS 登记迁移
+MIGRATIONS = {}     # {版本号: 迁移函数(conn)}，_init_schema 按版本号增量执行
+
 
 
 
@@ -433,6 +436,24 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         created_at TEXT DEFAULT (datetime('now','localtime')))""")
 
     # 2026-08-07 修复: _init_schema 全部 DDL 统一提交（此前 236 行迁移块 commit 之后的建表依赖调用方 commit，只读路径会回滚）
+    # ---- Phase 4: schema 版本化 ----
+    # schema_version 表记录当前 schema 版本；MIGRATIONS 按版本号增量迁移。
+    # 既有 CREATE IF NOT EXISTS / ALTER try-except 保持幂等，不在此重构，避免破坏旧库。
+    conn.execute("""CREATE TABLE IF NOT EXISTS schema_version (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        version INTEGER NOT NULL,
+        applied_at TEXT DEFAULT (datetime('now','localtime')))""")
+    _sv_row = conn.execute("SELECT version FROM schema_version WHERE id = 1").fetchone()
+    _sv_cur = _sv_row[0] if _sv_row else 0
+    _sv_final = _sv_cur
+    for _v in sorted(MIGRATIONS):
+        if _v > _sv_cur:
+            MIGRATIONS[_v](conn)
+            _sv_final = _v
+    if _sv_final < SCHEMA_VERSION:
+        _sv_final = SCHEMA_VERSION
+    conn.execute("INSERT OR REPLACE INTO schema_version (id, version, applied_at) "
+                 "VALUES (1, ?, datetime('now','localtime'))", (_sv_final,))
     conn.commit()
 
 
