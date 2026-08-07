@@ -1587,7 +1587,8 @@ async def page_monitor(request: Request, days: int = Query(default=7)):
     events = list_events(days=days)
     by_date = {}
     for _e in events:
-        by_date.setdefault(_e["date"], []).append(_e)
+        _key = (_e["date"], _e.get("slot", "night"))
+        by_date.setdefault(_key, []).append(_e)
     return templates.TemplateResponse(request, "monitor.html", {
         "active_page": "monitor",
         "days": days,

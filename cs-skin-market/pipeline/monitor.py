@@ -27,6 +27,8 @@ _TYPE_LABEL = {"near_buy": "买点接近", "stop_loss": "破位止损", "decisio
                "supply_shift": "供给突变", "price_spike": "价格异动", "market_state": "大盘状态",
                "exec_due": "持仓到期", "new_buy_signal": "新买信号"}
 
+SLOT_LABEL = {"noon": "午间", "night": "晚间"}
+
 
 def _today() -> str:
     return datetime.now(TZ_BJ).strftime("%Y-%m-%d")
@@ -223,10 +225,11 @@ def _gen_new_buy_events(conn, date):
     return events
 
 
-def _write_md(date, summary, events):
-    """监控日报 data/monitor_daily.md（纯展示）。"""
+def _write_md(date, summary, events, slot="night"):
+    """监控日报 data/monitor_daily.md（纯展示；午间/晚间覆盖写入，标题标注时段）。"""
     try:
-        lines = [f"# 监控日报 {date}", "",
+        _tag = SLOT_LABEL.get(slot, slot)
+        lines = [f"# 监控日报 {date}（{_tag}）", "",
                  f"大盘状态：**{summary['bucket']}** · 分析 {summary['analyzed']} 品 / 数据不足跳过 {summary['skipped']} 品", ""]
         if not events:
             lines.append("今日无异动事件。")
@@ -242,7 +245,7 @@ def _write_md(date, summary, events):
         pass
 
 
-def _build_push_text(summary, events):
+def _build_push_text(summary, events, slot="night"):
     """组装钉钉正文（纯函数）：danger 明细全列（截断 PUSH_DETAIL_MAX），warn/info 计数。"""
     danger = [e for e in events if e["level"] == "danger"]
     warn = [e for e in events if e["level"] == "warn"]
@@ -262,7 +265,7 @@ def _build_push_text(summary, events):
     if info_n:
         lines.append("")
         lines.append(f"🔵 信息 {info_n} 条（详见 http://127.0.0.1:8000/monitor）")
-    title = f"CS 监控 {summary['date']} · {summary['bucket']}"
+    title = f"CS 监控 {summary['date']} · {SLOT_LABEL.get(slot, slot)} · {summary['bucket']}"
     if danger:
         title += f" · 🚨{len(danger)}危险"
     elif warn:
@@ -270,12 +273,12 @@ def _build_push_text(summary, events):
     return title, "\n".join(lines)
 
 
-def push_daily(summary, events):
-    """M2 钉钉推送（2026-08-08）：每日一次摘要 + danger 明细；按日期幂等（settings 记已推送）。
+def push_daily(summary, events, slot="night"):
+    """M2 钉钉推送（2026-08-08）：午间/晚间各一次摘要 + danger 明细；按 日期+slot 幂等（settings 记已推送）。
 
     复用 notify_alert.py（.env NOTIFY_WEBHOOK_URL）；未配置 / 推送失败均不中断，返回原因。
     """
-    key = f"monitor_push_{summary['date']}"
+    key = f"monitor_push_{summary['date']}_{slot}"
     conn = db.get_conn()
     try:
         if db.get_setting(conn, key, "") == "1":
@@ -289,7 +292,7 @@ def push_daily(summary, events):
     url = load_webhook_url()
     if not url:
         return {"pushed": False, "reason": "no_webhook"}
-    title, text = _build_push_text(summary, events)
+    title, text = _build_push_text(summary, events, slot)
     try:
         send(title, text, url)
     except Exception as e:
@@ -297,12 +300,13 @@ def push_daily(summary, events):
     conn = db.get_conn()
     try:
         db.set_setting(conn, key, "1")
+        conn.commit()
     finally:
         conn.close()
     return {"pushed": True}
 
 
-def run_daily_monitor(date=None):
+def run_daily_monitor(date=None, slot="night"):
     """M1 监控主入口：大盘上下文 + 自选品只读分析 + 8 类事件生成 + 落库 + 日报。
 
     返回 summary dict（供 run_daily_collect 日志 / M2 推送）。
@@ -326,15 +330,17 @@ def run_daily_monitor(date=None):
         events.extend(_gen_market_events(conn, date, ms["bucket"]))
         events.extend(_gen_exec_events(conn, date))
         events.extend(_gen_new_buy_events(conn, date))
+        for _e in events:
+            _e["dedup_key"] = f"{slot}::{_e['dedup_key']}"
         saved = db.save_monitor_events(conn, date, events)
         conn.commit()
     finally:
         conn.close()
-    summary = {"date": date, "bucket": ms["bucket"], "analyzed": analyzed,
+    summary = {"date": date, "slot": slot, "bucket": ms["bucket"], "analyzed": analyzed,
                "skipped": skipped, "generated": len(events), "saved": saved}
-    _write_md(date, summary, events)
+    _write_md(date, summary, events, slot)
     try:
-        summary["pushed"] = push_daily(summary, events)
+        summary["pushed"] = push_daily(summary, events, slot)
     except Exception as _e:
         summary["pushed"] = {"pushed": False, "reason": f"error: {_e}"}
     return summary

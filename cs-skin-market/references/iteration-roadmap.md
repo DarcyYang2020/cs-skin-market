@@ -7,6 +7,16 @@
 
 ## 版本历史
 
+- **v35（2026-08-08）**：监控日报双时段推送——午间 12:00 + 晚间 21:30（用户建议，纯提醒层）：
+  - 背景：用户建议改为两次推送（中午 12:00 + 晚上 21:30）；核心价值：午间看盘中变化、晚间看收盘定论，事件与推送均按 slot 独立幂等。
+  - slot 机制：`run_daily_monitor(date, slot)`，slot=noon/night；事件 dedup_key 统一加 `slot::` 前缀（同日两套事件快照各自幂等）；
+    `push_daily` 幂等 key 改 `monitor_push_{date}_{slot}`；钉钉标题带时段（午间/晚间）；`db.list_monitor_events` 解析前缀返回 slot，/monitor 页面按 日期+时段 分组。
+  - 午间入口：新增 `run_daily_monitor.py`——重绑 csQAQ IP → 大盘指数刷新（HTTP 轻量）→ 自选/持仓品 90 日 K 线轻量刷新（Playwright，实测 20 品约 5 分钟）→ `run_daily_monitor(slot="noon")`，
+    保证午间推送有当日盘中数据增量而非昨晚快照；晚间仍由 run_daily_collect 收尾（slot=night）。
+  - 调度：`install_tasks.ps1` 新增 `CS_Skin_NoonMonitor` 12:00（已注册，下次 2026-08-08 12:00）；晚间 21:30 采集收尾不变。
+  - 顺带修复 M2 遗留 bug：`push_daily` 写幂等 key 后未 commit（close 回滚 → 同日重跑会重复推送），加 `conn.commit()` + 回归用例。
+  - 验证：离线 smoke 73/0/6（新增 M3 双时段 slot 用例 + 幂等持久化用例）；真库午间链路跑通（IP 绑定 / 大盘 1582.15 / 自选品 K 线 20 品 / 13 事件 / 钉钉实际收到午间日报）；编码健康 PASS。
+  - 学到的新思路：① settings 类幂等标记必须 commit，否则 close 回滚变成「永远不幂等」的假幂等；② 多时段推送必须带数据增量（轻量 K 线刷新），否则午间推的是昨晚快照；③ 同一日期多时段事件用 dedup_key 前缀区分，天然满足「各自幂等 + 页面分组」双需求。
 - **v34（2026-08-08）**：M2 钉钉推送配置验证 + send() errcode 加固（用户提供 webhook 后收尾）：
   - 背景：用户配置好钉钉机器人并给出 webhook（安全设置自定义关键词「监控」）；写入 .env 后试推返回 310000 关键词不匹配，
     排查发现：① 关键词本身没错，是 PowerShell 管道喂 Python 时中文变 ? 导致实际推送乱码；② 原 send() 只看 HTTP 200 不校验钉钉业务 errcode，存在假成功。

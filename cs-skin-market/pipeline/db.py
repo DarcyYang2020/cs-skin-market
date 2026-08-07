@@ -535,10 +535,17 @@ def list_monitor_events(conn, days=7):
     """近 N 天监控事件，日期倒序。"""
     from datetime import datetime, timezone, timedelta
     cutoff = (datetime.now(timezone(timedelta(hours=8))) - timedelta(days=days)).strftime("%Y-%m-%d")
-    return conn.execute(
-        "SELECT date, item_id, item_name, event_type, level, detail FROM monitor_events "
+    rows = conn.execute(
+        "SELECT date, item_id, item_name, event_type, level, detail, dedup_key FROM monitor_events "
         "WHERE date >= ? ORDER BY date DESC, id DESC", (cutoff,),
     ).fetchall()
+    out = []
+    for r in rows:
+        d = dict(r)
+        dk = d.pop("dedup_key") or ""
+        d["slot"] = dk.split("::", 1)[0] if dk.startswith(("noon::", "night::")) else "night"
+        out.append(d)
+    return out
 
 
 def get_item_history(conn, item_id, limit=90):

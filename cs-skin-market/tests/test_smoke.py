@@ -1904,22 +1904,97 @@ def t_monitor_push():
         {"item_id": None, "item_name": None, "event_type": "market_state", "level": "info",
          "detail": "大盘状态：阴跌中继区"},
     ]
-    title, text = _mon._build_push_text(summary, events)
+    title, text = _mon._build_push_text(summary, events, "night")
     assert "🚨1危险" in title and "破位止损" in text and "买点接近" in text, (title, text)
     os.environ["NOTIFY_WEBHOOK_URL"] = ""
     try:
-        r = _mon.push_daily(summary, events)
+        r = _mon.push_daily(summary, events, "night")
         assert r == {"pushed": False, "reason": "no_webhook"}, r
     finally:
         os.environ.pop("NOTIFY_WEBHOOK_URL", None)
     from pipeline import db as _db
     conn = _db.get_conn()
     try:
-        k = conn.execute("SELECT value FROM settings WHERE key='monitor_push_2099-01-01'").fetchone()
+        k = conn.execute("SELECT value FROM settings WHERE key='monitor_push_2099-01-01_night'").fetchone()
         assert k is None, "无 webhook 不应写幂等 key"
     finally:
         conn.close()
 check('M2 监控推送组装 + 无 webhook 跳过', t_monitor_push)
+
+def t_monitor_slots():
+    """M3 双时段：标题区分午间/晚间；推送幂等 key 按 slot 独立；事件 dedup 前缀区分并存。"""
+    from pipeline import monitor as _mon
+    summary = {"date": "2099-01-03", "bucket": "阴跌中继区", "analyzed": 25, "skipped": 0}
+    events = [{"item_id": 1, "item_name": "AWP | 火卫一", "event_type": "stop_loss", "level": "danger",
+               "detail": "现价 ≤ 成本-25%"}]
+    t_n, _ = _mon._build_push_text(summary, events, "noon")
+    t_d, _ = _mon._build_push_text(summary, events, "night")
+    assert "午间" in t_n and "晚间" in t_d, (t_n, t_d)
+    import os
+    os.environ["NOTIFY_WEBHOOK_URL"] = ""
+    try:
+        r1 = _mon.push_daily(summary, events, "noon")
+        r2 = _mon.push_daily(summary, events, "night")
+        assert r1 == r2 == {"pushed": False, "reason": "no_webhook"}, (r1, r2)
+    finally:
+        os.environ.pop("NOTIFY_WEBHOOK_URL", None)
+    from pipeline import db as _db
+    conn = _db.get_conn()
+    try:
+        for k in ("monitor_push_2099-01-03_noon", "monitor_push_2099-01-03_night"):
+            assert conn.execute("SELECT value FROM settings WHERE key=?", (k,)).fetchone() is None, k
+        evs = [
+            {"item_id": None, "item_name": None, "event_type": "market_state", "level": "info",
+             "detail": "大盘状态：阴跌中继区", "dedup_key": f"noon::{summary['date']}||market_state"},
+            {"item_id": None, "item_name": None, "event_type": "market_state", "level": "info",
+             "detail": "大盘状态：阴跌中继区", "dedup_key": f"night::{summary['date']}||market_state"},
+        ]
+        _db.save_monitor_events(conn, summary["date"], evs)
+        conn.commit()
+        rows = _db.list_monitor_events(conn, days=400)
+        got = {(r["date"], r["slot"]) for r in rows
+               if r["date"] == summary["date"] and r["event_type"] == "market_state"}
+        assert ("2099-01-03", "noon") in got and ("2099-01-03", "night") in got, got
+        conn.execute("DELETE FROM monitor_events WHERE date=?", (summary["date"],))
+        conn.commit()
+    finally:
+        conn.close()
+check('M3 双时段 noon/night slot 区分', t_monitor_slots)
+
+def t_monitor_push_idempotent():
+    """M2 修复：推送成功后幂等 key 持久化(commit)，同日重跑返回 already_pushed 不重复推。"""
+    from unittest import mock
+    from pipeline import monitor as _mon, db as _db
+    summary = {"date": "2099-01-04", "bucket": "阴跌中继区", "analyzed": 25, "skipped": 0}
+    events = [{"item_id": 1, "item_name": "AWP | 火卫一", "event_type": "stop_loss", "level": "danger",
+               "detail": "现价 ≤ 成本-25%"}]
+    key = "monitor_push_2099-01-04_noon"
+    conn = _db.get_conn()
+    try:
+        conn.execute("DELETE FROM settings WHERE key=?", (key,))
+        conn.commit()
+    finally:
+        conn.close()
+    try:
+        with mock.patch("notify_alert.send", return_value=200):
+            r1 = _mon.push_daily(summary, events, "noon")
+            assert r1 == {"pushed": True}, r1
+        r2 = _mon.push_daily(summary, events, "noon")
+        assert r2 == {"pushed": False, "reason": "already_pushed"}, r2
+        conn = _db.get_conn()
+        try:
+            v = conn.execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()
+            assert v and v["value"] == "1", v
+        finally:
+            conn.close()
+    finally:
+        conn = _db.get_conn()
+        try:
+            conn.execute("DELETE FROM settings WHERE key=?", (key,))
+            conn.commit()
+        finally:
+            conn.close()
+check('M2 推送幂等 key 持久化 + 重跑不重复', t_monitor_push_idempotent)
 
 def t_notify_send_errcode():
     """M2 hardening: send() must check dingtalk errcode, 310000 raises not fake-success."""

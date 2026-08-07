@@ -1404,3 +1404,15 @@ S2 回踩族在 C1（2026-08-05）已被证伪留研究池（A2 三件套未过�
 离线 smoke 71/0/6；编码健康 PASS。
 **学到的新思路**：① 推送类外部依赖必须校验业务成功码，HTTP 200 只是传输层成功；② Windows 下 PowerShell→Python 管道会破坏中文，
 凡涉及中文的推送/写文件验证都要走 base64 或文件通道，避免「假失败/假成功」干扰排查；③ 端到端验证（webhook → errcode → 群内可见）才算推送闭环。
+## M3 双时段监控推送：午间 12:00 + 晚间 21:30（2026-08-08，纯提醒层）
+**背景**：用户建议监控日报改为两次推送（中午 12:00 + 晚上 21:30）。原 M2 只有晚间一次（21:30 采集收尾），午间推送的价值是盘中可见变化。
+
+**落地**：
+- `pipeline/monitor.py` slot 机制：`run_daily_monitor(date, slot)`，事件生成后统一给 dedup_key 加 `slot::` 前缀（同日两套事件快照各自幂等）；`push_daily(summary, events, slot)` 幂等 key 改 `monitor_push_{date}_{slot}`；钉钉标题带时段（午间/晚间）；`_write_md` 标题标注时段（monitor_daily.md 单文件覆盖）。
+- `pipeline/db.py` `list_monitor_events` 解析 dedup_key 前缀返回 slot（旧数据无前缀归为 night）；`/monitor` 页面按 日期+时段 分组展示。
+- 新增 `run_daily_monitor.py` 午间入口：重绑 csQAQ IP → 大盘指数刷新 → 自选/持仓品 90 日 K 线轻量刷新（Playwright，仅自选品）→ `run_daily_monitor(slot="noon")`；保证午间推送有当日盘中数据。
+- `run_daily_collect.py` 收尾改 `slot="night"`；`install_tasks.ps1` 新增 `CS_Skin_NoonMonitor` 12:00（已 schtasks 注册，下次运行 2026-08-08 12:00）。
+- **修复 M2 遗留 bug**：`push_daily` 写幂等 key 后未 `conn.commit()`（`close()` 回滚 → 幂等 key 从不持久化 → 同日重跑重复推送）；加 commit + 回归测试 `t_monitor_push_idempotent`。
+
+**验证**：离线 smoke 73/0/6（新增 M3 slot 区分用例 + 幂等持久化用例）；真库午间链路跑通（IP 绑定 / 大盘指数 1582.15 / 自选品 K 线 20 品 / 监控事件 13 条 / 钉钉实际收到午间日报）；编码健康 PASS。
+**学到的新思路**：① settings 类幂等标记必须 commit，否则 close 回滚变成「永远不幂等」的假幂等（M2 落地时无 webhook 未暴露，配置后立刻踩中）；② 多时段推送必须带数据增量（自选品 K 线轻量刷新），否则午间推的是昨晚快照；③ 同一日期多时段事件用 dedup_key 前缀区分，天然满足「各自幂等 + 页面分组」双需求。

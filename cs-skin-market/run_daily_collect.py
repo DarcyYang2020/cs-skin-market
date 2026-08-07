@@ -244,7 +244,7 @@ def main():
     # M1 监控模式 (2026-08-08): 自选品异动事件生成 + 日报 (纯提醒层, 只读引擎输出, 不触碰冻结参数)
     try:
         from pipeline.monitor import run_daily_monitor
-        _mon = run_daily_monitor()
+        _mon = run_daily_monitor(slot="night")
         log(f"监控事件: 生成 {_mon['generated']} / 新增 {_mon['saved']} 条 (大盘 {_mon['bucket']}, 分析 {_mon['analyzed']} 品)")
     except Exception as e:
         log(f"监控事件生成异常（不中断采集）: {e}")
