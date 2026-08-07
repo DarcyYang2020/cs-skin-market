@@ -382,6 +382,7 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         entry_price REAL NOT NULL,
         position_limit REAL DEFAULT 0.10,
         source TEXT NOT NULL DEFAULT 'analyze',
+        engine_version TEXT,
         fwd14 REAL,
         fwd30 REAL,
         net14 REAL,
@@ -390,6 +391,11 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         checked30_at TEXT,
         created_at TEXT DEFAULT (datetime('now','localtime')),
         UNIQUE (item_id, signal_date, action_label))""")
+    # Migrate: add engine_version if missing (Phase 0 版本化: 记录信号时的引擎参数版本)
+    try:
+        conn.execute("ALTER TABLE signal_tracking ADD COLUMN engine_version TEXT")
+    except sqlite3.OperationalError:
+        pass  # column already exists
     conn.execute("CREATE INDEX IF NOT EXISTS idx_signal_tracking_date ON signal_tracking(signal_date)")
 
     conn.execute("""CREATE TABLE IF NOT EXISTS backtest_results (

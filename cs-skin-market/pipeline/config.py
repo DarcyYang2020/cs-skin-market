@@ -186,3 +186,20 @@ PARAM_FREEZE = {
     "triggers": ["A 独立恐慌市场事件≥3（当前 2，自然积累）", "B 新数据≥260 天（约 2027-04-25）", "C 胜率监测: buy 连续 2 月 14d<70% 或月度 14d<80%/30d<55%"],
     "frozen_period_note": "冻结期内禁止以回放数据为依据调参；仅允许新增独立数据观察项 / 新信号族研究（A2 三件套）",
 }
+
+
+# ---- J-2 重拟合触发阈值（单一事实源，Phase 0 单源化）----
+# references/j2_channel_monitor.py 运行时从本字典读取，禁止在 monitor 内硬编码；
+# 改阈值须同步更新 PARAM_FREEZE["triggers"] 文案，并重跑 monitor 刷新 data/j2_channel_status.json。
+J2_THRESHOLDS = {
+    "a_events": 3,       # A 通道: 独立恐慌市场事件数
+    "b_days": 260,       # B 通道: 冻结后新数据积累天数
+    "c14_month": 80.0,   # C 通道: 月度 14d 胜率阈值(%)
+    "c30_month": 55.0,   # C 通道: 月度 30d 胜率阈值(%)
+    "c14_2m": 70.0,      # C 通道: 连续 2 月 14d 胜率阈值(%)
+}
+
+# ---- 引擎参数版本（Phase 0 版本化）----
+# signal_tracking 记录每条生产信号时的引擎版本；重拟合发布新参数时 bump，
+# 使新旧引擎产生的实盘信号可区分、可分别统计。
+ENGINE_VERSION = "v2-I13"  # 对应 PARAM_FREEZE.frozen_set 首项: 去量引擎 v2（I-13）全参数

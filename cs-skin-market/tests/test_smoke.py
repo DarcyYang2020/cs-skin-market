@@ -1604,12 +1604,14 @@ def t_j2_channel_status():
     ch = d['channels']
     for k in ('A', 'B', 'C'):
         assert k in ch, f'J-2 通道 {k} 缺失'
-    assert ch['A']['threshold'] >= 3, 'A 通道阈值异常'
-    assert ch['B']['threshold_days'] >= 200, 'B 通道 260 天阈值漂移'
+    from pipeline.config import PARAM_FREEZE, J2_THRESHOLDS, ENGINE_VERSION
+    assert ch['A']['threshold'] == J2_THRESHOLDS['a_events'], 'A 通道阈值与 config 不同源'
+    assert ch['B']['threshold_days'] == J2_THRESHOLDS['b_days'], 'B 通道阈值与 config 不同源'
     assert ch['B']['target_date'] > '2027-01-01', 'B 通道复验点异常'
-    assert ch['C']['thresholds']['14d_month'] == 80.0, 'C 通道 14d 阈值漂移'
-    assert ch['C']['thresholds']['30d_month'] == 55.0, 'C 通道 30d 阈值漂移'
-    assert ch['C']['thresholds']['14d_2m'] == 70.0, 'C 通道连续2月阈值漂移'
+    assert ch['C']['thresholds']['14d_month'] == J2_THRESHOLDS['c14_month'], 'C 通道 14d 阈值与 config 不同源'
+    assert ch['C']['thresholds']['30d_month'] == J2_THRESHOLDS['c30_month'], 'C 通道 30d 阈值与 config 不同源'
+    assert ch['C']['thresholds']['14d_2m'] == J2_THRESHOLDS['c14_2m'], 'C 通道连续2月阈值与 config 不同源'
+    assert d.get('engine_version') == ENGINE_VERSION, 'J-2 状态缺少引擎版本标识'
     assert isinstance(ch['C']['monthly'], list) and ch['C']['monthly'], 'C 通道月度数据缺失'
     ev = _J.loads((base / 'data' / 'signal_event_counts.json').read_text(encoding='utf-8'))
     assert ch['A']['value'] == ev['display_keys']['panic']['events'], 'A 通道事件数与事件计数不同源'
@@ -1641,6 +1643,8 @@ def t_signal_tracking():
                                  action='buy', action_label='🟢 分批建仓', entry_price=100.0) is False, '重复信号未去重'
     assert _st.record_buy_signal(m, item_id=1, item_name='AWP', signal_date='2026-07-01',
                                  action='watch', action_label='观望', entry_price=100.0) is False, '非 buy 信号不应记录'
+    row_v = m.execute('SELECT engine_version FROM signal_tracking').fetchone()
+    assert row_v['engine_version'] == _st.ENGINE_VERSION, 'engine_version 未按 config 记录'
     for i in range(1, 31):
         d = '2026-07-{:02d}'.format(i + 1) if i < 30 else '2026-08-01'
         m.execute('INSERT INTO price_history VALUES (1,?,?)', (d, 100 + i))
@@ -1652,6 +1656,59 @@ def t_signal_tracking():
     assert s['n_total'] == 1 and s['n_filled30'] == 1 and s['net30']['avg'] == 28.0, '统计口径漂移'
     m.close()
 check('生产实盘信号跟踪: 表/记录去重/回填口径', t_signal_tracking)
+
+def t_replay_snapshot():
+    import json as _J, sys as _sys
+    from pathlib import Path
+    base = Path(TEST_DIR).parent
+    p = base / 'data' / 'item_backtest_full_2025.json'
+    snap = base / 'tests' / 'snapshots' / 'replay_v2.json'
+    assert p.exists(), '回放产物缺失 item_backtest_full_2025.json'
+    assert snap.exists(), '回放口径快照缺失 tests/snapshots/replay_v2.json（运行 references/sync_replay_snapshot.py 生成）'
+    d = _J.loads(p.read_text(encoding='utf-8'))
+    expected = _J.loads(snap.read_text(encoding='utf-8'))
+    ag = d['aggregate']
+    for k, v in expected['aggregate'].items():
+        assert k in ag, f'aggregate.{k} 缺失'
+        assert abs(ag[k] - v) < 1e-6, (
+            f'aggregate.{k} 漂移: 当前={ag[k]} 快照={v}；改动回放产物/成本口径后须重跑 '
+            f'references/sync_replay_snapshot.py 并人工确认')
+    _sys.path.insert(0, str(base / 'references'))
+    import j2_channel_monitor as _j2
+    monthly = _j2._monthly(d['signals'])
+    assert set(monthly) == set(expected['monthly']), f'月度集合漂移: {sorted(monthly)} vs {sorted(expected["monthly"])}'
+    for m, exp in expected['monthly'].items():
+        cur = monthly[m]
+        for f in ('n', 'win14', 'win30', 'dedup_n', 'dedup_win14', 'dedup_win30'):
+            assert cur.get(f) == exp[f], f'monthly.{m}.{f} 漂移: 当前={cur.get(f)} 快照={exp[f]}'
+check('回放口径快照: aggregate+月度(含去簇) 无漂移', t_replay_snapshot)
+
+def t_progress_schema():
+    from pipeline import db as _db, dashboards as _dash
+    conn = _db.get_conn()
+    try:
+        d = _dash.data_progress(conn)
+    finally:
+        conn.close()
+    assert set(d) == {'index', 'price', 'supply', 'market_snapshot', 'monitor_rank', 'families', 'j2'}, (
+        f'/api/data/progress 顶层字段漂移: {sorted(d)}')
+    assert set(d['supply']) == {'rows', 'items_with_supply', 'pct_items', 'avg_days_per_item', 'latest'}
+    assert set(d['index']) == {'rows', 'start', 'end'}
+    assert set(d['price']) == {'rows', 'items', 'start', 'end', 'median_days', 'pct_90d', 'pct_180d'}
+    assert set(d['market_snapshot']) == {'days', 'n', 'latest'}
+    assert set(d['monitor_rank']) == {'days', 'n', 'latest'}
+    assert set(d['families']) >= {'generated', 'window', 'total_signals', 'display_keys'}
+    j2 = d['j2']
+    assert j2 is not None, 'j2 状态缺失'
+    assert set(j2) == {'generated', 'frozen_at', 'oos_revalidate_after', 'engine_version', 'channels', 'overall'}, (
+        f'j2 字段漂移: {sorted(j2)}')
+    assert set(j2['channels']) == {'A', 'B', 'C'}
+    assert set(j2['channels']['A']) == {'label', 'value', 'threshold', 'progress_pct', 'status', 'note'}
+    assert set(j2['channels']['B']) == {'label', 'value_days', 'threshold_days', 'progress_pct', 'target_date', 'status', 'note'}
+    assert set(j2['channels']['C']) == {'label', 'monthly', 'two_month_flags', 'thresholds', 'production', 'status', 'note'}
+    assert set(j2['overall']) == {'triggered', 'triggered_channels', 'note'}
+check('数据积累进度接口结构契约 (字段快照)', t_progress_schema)
+
 
 
 

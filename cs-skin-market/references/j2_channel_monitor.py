@@ -12,6 +12,7 @@
 """
 import io
 import json
+import sys
 from collections import defaultdict
 from datetime import date
 from pathlib import Path
@@ -21,14 +22,20 @@ REPLAY = BASE / "data" / "item_backtest_full_2025.json"
 SIGNAL_EVENTS = BASE / "data" / "signal_event_counts.json"
 OUT = BASE / "data" / "j2_channel_status.json"
 
-FROZEN_AT = "2026-08-07"
-OOS_AFTER = "2027-04-25"
-A_THRESHOLD = 3
-B_THRESHOLD_DAYS = 260
-C14_MONTH = 80.0
-C30_MONTH = 55.0
-C14_2M = 70.0
 CLUSTER_GAP = 4  # 同簇定义：距上一保留信号 <4 天则跳过（±3 天簇，与 j1_event_counts 一致）
+
+# ---- 阈值单一事实源 (Phase 0 单源化): 全部从 pipeline.config 读取，禁止本地硬编码 ----
+# 改阈值须同步 PARAM_FREEZE["triggers"] 文案，并重跑本脚本刷新 data/j2_channel_status.json
+sys.path.insert(0, str(BASE))
+from pipeline.config import PARAM_FREEZE, J2_THRESHOLDS, ENGINE_VERSION
+
+FROZEN_AT = PARAM_FREEZE["frozen_at"]
+OOS_AFTER = PARAM_FREEZE["oos_revalidate_after"]
+A_THRESHOLD = J2_THRESHOLDS["a_events"]
+B_THRESHOLD_DAYS = J2_THRESHOLDS["b_days"]
+C14_MONTH = J2_THRESHOLDS["c14_month"]
+C30_MONTH = J2_THRESHOLDS["c30_month"]
+C14_2M = J2_THRESHOLDS["c14_2m"]
 
 
 def _load(p):
@@ -189,6 +196,7 @@ def compute():
     triggered = [k for k, v in channels.items() if v["status"] in ("已达标", "已触发")]
     return {
         "generated": today.isoformat(),
+        "engine_version": ENGINE_VERSION,
         "frozen_at": FROZEN_AT,
         "oos_revalidate_after": OOS_AFTER,
         "channels": channels,

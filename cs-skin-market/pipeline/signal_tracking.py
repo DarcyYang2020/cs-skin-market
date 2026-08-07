@@ -8,8 +8,10 @@
 net = fwd - 2%（双边成本，同 run_item_backtest.py）。表结构见 db.py signal_tracking。
 """
 import logging
+import sqlite3
 
 from . import db
+from .config import ENGINE_VERSION
 
 _LOG = logging.getLogger(__name__)
 
@@ -29,6 +31,7 @@ def ensure_schema(conn):
         entry_price REAL NOT NULL,
         position_limit REAL DEFAULT 0.10,
         source TEXT NOT NULL DEFAULT 'analyze',
+        engine_version TEXT,
         fwd14 REAL,
         fwd30 REAL,
         net14 REAL,
@@ -37,12 +40,17 @@ def ensure_schema(conn):
         checked30_at TEXT,
         created_at TEXT DEFAULT (datetime('now','localtime')),
         UNIQUE (item_id, signal_date, action_label))""")
+    # Migrate: add engine_version if missing（既有库幂等补列）
+    try:
+        conn.execute("ALTER TABLE signal_tracking ADD COLUMN engine_version TEXT")
+    except sqlite3.OperationalError:
+        pass  # column already exists
     conn.execute("CREATE INDEX IF NOT EXISTS idx_signal_tracking_date ON signal_tracking(signal_date)")
     conn.commit()
 
 
 def record_buy_signal(conn, *, item_id, item_name, signal_date, action, action_label,
-                      entry_price, position_limit=0.10, source="analyze"):
+                      entry_price, position_limit=0.10, source="analyze", engine_version=None):
     """记录一条生产 buy 信号（去重：同 item + 同日 + 同族只记一次）。返回 True 新插入 / False 重复。"""
     if action not in _BUY_ACTIONS:
         return False
@@ -55,10 +63,11 @@ def record_buy_signal(conn, *, item_id, item_name, signal_date, action, action_l
         return False
     conn.execute(
         "INSERT INTO signal_tracking "
-        "(item_id, item_name, signal_date, action, action_label, entry_price, position_limit, source) "
-        "VALUES (?,?,?,?,?,?,?,?)",
+        "(item_id, item_name, signal_date, action, action_label, entry_price, position_limit, source, engine_version) "
+        "VALUES (?,?,?,?,?,?,?,?,?)",
         (item_id, item_name, signal_date, action, action_label,
-         round(float(entry_price), 4), float(position_limit or 0.10), source))
+         round(float(entry_price), 4), float(position_limit or 0.10), source,
+         engine_version or ENGINE_VERSION))
     conn.commit()
     return True
 
