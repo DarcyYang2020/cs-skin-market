@@ -157,7 +157,32 @@ fetch("/api/data/progress")
       + '<table style="width:100%;font-size:12px;"><tbody>' + famRows.map(function(r) {
         return '<tr><td style="width:130px;color:var(--text-muted);padding:2px 0;">' + r[0] + '</td><td style="padding:2px 0;">' + r[1] + '</td></tr>';
       }).join("") + '</tbody></table>'
-      + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">重拟合门槛(J-2)：恐慌独立事件需 ≥3（当前 ' + _dk("panic","events") + '）+ 2~3 个中性回升段 —— 随每日采集增长</div></div>';
+      // ---- J-2 重拟合三通道 (2026-08-07 修订): A 独立恐慌事件 / B 冻结后新数据 / C 胜率监测 ----
+      var j2 = d.j2;
+      if (j2 && j2.channels) {
+        var ch = j2.channels;
+        function _cBadge(st) {
+          if (st === "已触发" || st === "已达标") return '<span style="color:#f87171;font-weight:bold;">' + st + '</span>';
+          return '<span style="color:#fbbf24;">' + st + '</span>';
+        }
+        function _pctBar(pct) {
+          pct = Math.max(0, Math.min(100, pct || 0));
+          return '<div style="display:inline-block;width:56px;height:6px;background:rgba(255,255,255,0.1);border-radius:3px;vertical-align:middle;margin-right:4px;"><div style="width:' + pct + '%;height:100%;background:#60a5fa;border-radius:3px;"></div></div>' + pct + '%';
+        }
+        var crows = ch.C.monthly || [];
+        var lastC = crows.length ? crows[crows.length - 1] : null;
+        var cFlags = [];
+        crows.forEach(function(r) { (r.flags || []).forEach(function(f) { cFlags.push(r.month + " " + f); }); });
+        var cText = lastC ? (lastC.month + " 14d " + (lastC.win14 == null ? "-" : lastC.win14) + "% / 30d " + (lastC.win30 == null ? "-" : lastC.win30) + "% (n=" + lastC.n + ")") : "-";
+        html += '<div style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.08);padding-top:8px;">'
+          + '<div style="color:var(--text-muted);font-size:12px;margin-bottom:4px;">重拟合触发（J-2 三通道，' + _dpFmt(j2.generated) + ' 口径）</div>'
+          + '<table style="width:100%;font-size:12px;"><tbody>'
+          + '<tr><td style="width:130px;color:var(--text-muted);padding:2px 0;">A 独立恐慌事件</td><td style="padding:2px 0;">' + ch.A.value + '/' + ch.A.threshold + ' · ' + _pctBar(ch.A.progress_pct) + ' · ' + _cBadge(ch.A.status) + '</td></tr>'
+          + '<tr><td style="width:130px;color:var(--text-muted);padding:2px 0;">B 冻结后新数据</td><td style="padding:2px 0;">' + ch.B.value_days + '/' + ch.B.threshold_days + ' 天 · ' + _pctBar(ch.B.progress_pct) + ' · ' + _cBadge(ch.B.status) + ' · 约 ' + ch.B.target_date + ' 复验</td></tr>'
+          + '<tr><td style="width:130px;color:var(--text-muted);padding:2px 0;">C 胜率监测</td><td style="padding:2px 0;">' + cText + ' · ' + _cBadge(ch.C.status) + (cFlags.length ? ' <span style="color:#f87171;">' + cFlags.join('；') + '</span>' : '') + '</td></tr>'
+          + '</tbody></table>'
+          + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + (j2.overall ? j2.overall.note : '') + '；C 通道为回放口径，低胜率月按事件簇纪律复核（j2_channel_status.json）</div></div>';
+      }
   }
   document.getElementById("data-progress-body").innerHTML = html;
 });

@@ -20,8 +20,9 @@
 ### 参数冻结 + 基准对照 + 期望统计单一事实源（2026-08-07 定稿）
 
 - **参数冻结**：`config.PARAM_FREEZE` 冻结去量引擎 v2（I-13）全参数、组合层 cap0.8、单票敞口提示 30%、
-  `ITEM_EXPECTANCY_STATS` 展示口径；~260 天新数据（约 2027-04-25）后真 OOS 复验；复验触发 = 260 天 /
-  buy 连续 2 月 14d 胜率 <70% / 月度检查 14d>=80%、30d>=55% 则不动。冻结期内禁止以回放数据为依据调参。
+  `ITEM_EXPECTANCY_STATS` 展示口径；~260 天新数据（约 2027-04-25）后真 OOS 复验；复验触发（J-2 三通道，
+  任一满足）= A 独立恐慌事件≥3（当前 2）/ B 260 天数据 / C buy 连续 2 月 14d<70% 或月度 14d<80%/30d<55%；
+  监测 `python references/j2_channel_monitor.py` → `data/j2_channel_status.json`（dashboard 展示）。冻结期内禁止以回放数据为依据调参。
 - **期望统计单一事实源**：`data/item_backtest_full_2025.json`（回放产物）→
   `python references/sync_expectancy_config.py` 自动同步 `config.ITEM_EXPECTANCY_STATS` +
   `data/signal_event_counts.json`；`t_expectancy_sync` 全字段硬校验防漂移（改回放不重跑同步即测试失败）。

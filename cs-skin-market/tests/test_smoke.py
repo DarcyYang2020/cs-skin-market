@@ -1593,6 +1593,33 @@ def t_param_freeze():
     assert len(PARAM_FREEZE['triggers']) >= 3, '复验触发条件缺失'
 check('参数冻结条款 (OOS 纪律) 存在且完整', t_param_freeze)
 
+def t_j2_channel_status():
+    import json as _J
+    from datetime import date
+    from pathlib import Path
+    base = Path(TEST_DIR).parent
+    p = base / 'data' / 'j2_channel_status.json'
+    assert p.exists(), 'j2_channel_status.json 缺失（运行 references/j2_channel_monitor.py 生成）'
+    d = _J.loads(p.read_text(encoding='utf-8'))
+    ch = d['channels']
+    for k in ('A', 'B', 'C'):
+        assert k in ch, f'J-2 通道 {k} 缺失'
+    assert ch['A']['threshold'] >= 3, 'A 通道阈值异常'
+    assert ch['B']['threshold_days'] >= 200, 'B 通道 260 天阈值漂移'
+    assert ch['B']['target_date'] > '2027-01-01', 'B 通道复验点异常'
+    assert ch['C']['thresholds']['14d_month'] == 80.0, 'C 通道 14d 阈值漂移'
+    assert ch['C']['thresholds']['30d_month'] == 55.0, 'C 通道 30d 阈值漂移'
+    assert ch['C']['thresholds']['14d_2m'] == 70.0, 'C 通道连续2月阈值漂移'
+    assert isinstance(ch['C']['monthly'], list) and ch['C']['monthly'], 'C 通道月度数据缺失'
+    ev = _J.loads((base / 'data' / 'signal_event_counts.json').read_text(encoding='utf-8'))
+    assert ch['A']['value'] == ev['display_keys']['panic']['events'], 'A 通道事件数与事件计数不同源'
+    from pipeline.config import PARAM_FREEZE
+    frozen = date.fromisoformat(PARAM_FREEZE['frozen_at'])
+    days = max(0, (date.today() - frozen).days)
+    assert ch['B']['value_days'] == days, 'B 通道天数与冻结起点不一致'
+    assert d['overall']['triggered'] in (True, False), '总体触发标记缺失'
+check('J-2 三通道监测 JSON 完整且与冻结条款同源', t_j2_channel_status)
+
 
 
 print()
