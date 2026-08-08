@@ -1993,6 +1993,53 @@ def t_notify_send_errcode():
         assert send("t", "x", "http://fake") == 200
 check('M2 send() dingtalk errcode guard', t_notify_send_errcode)
 
+def t_snapshot_bid_cols():
+    """快照持久化求购(bid/spread)字段：数据储备，供后续版本迭代验证求购因子（决策零改动）。"""
+    from pipeline import db
+    from webapp.analysis_service import save_item_snapshot
+
+    class _V:
+        score = 8.0; grade = "A"; scarcity = 10; volume = 0
+        market_sentiment = 60; liquidity = 80
+    class _P:
+        valuation_tier = "低估"; percentile_90d = 25; zscore_90d = 0.0
+        current_price = 100.0; data_points = 90
+    class _C:
+        phase = "accumulation"; phase_label = "吸筹期"; phase_confidence = 70
+        phase_description = "低位"; phase_strategy = "分批建仓"
+    class _A:
+        name = "测试求购品"; price_rmb = 100.0
+        value = _V(); position = _P(); cycle = _C()
+        fusion_decision = {"action": "watch"}
+        supply_analysis = {}; aux = None; liquidity = None; probability = None
+        whale = None; data_quality = "good"; trend_health = {}
+        price_zones = {}; buy_distance = {}
+
+    conn = db.get_conn()
+    try:
+        cols = [r[1] for r in conn.execute("PRAGMA table_info(snapshots)")]
+        for c in ("bid_highest", "bid_7d_chg", "bid_30d_chg", "spread_pct", "spread_avg"):
+            assert c in cols, c
+        conn.execute("INSERT OR IGNORE INTO items (id, name) VALUES (999001, '测试求购品')")
+        conn.commit()
+        save_item_snapshot(conn, 999001, _A(), 100.0, today="2099-01-01",
+                           order_book={"highest_buy": 98.0, "bid_7d_chg": 1.5, "bid_30d_chg": -30.0,
+                                       "spread_pct": 2.0, "spread_avg": 2.5})
+        row = conn.execute("SELECT bid_highest, bid_7d_chg, bid_30d_chg, spread_pct, spread_avg "
+                           "FROM snapshots WHERE item_id=999001 AND date='2099-01-01'").fetchone()
+        assert row and abs(row["bid_highest"] - 98.0) < 1e-9
+        assert abs(row["bid_7d_chg"] - 1.5) < 1e-9 and abs(row["spread_pct"] - 2.0) < 1e-9
+        # 幂等覆盖：无 order_book 时求购列置 NULL
+        save_item_snapshot(conn, 999001, _A(), 101.0, today="2099-01-01", order_book=None)
+        row2 = conn.execute("SELECT bid_highest, spread_pct FROM snapshots WHERE item_id=999001 AND date='2099-01-01'").fetchone()
+        assert row2["bid_highest"] is None and row2["spread_pct"] is None, dict(row2)
+    finally:
+        conn.execute("DELETE FROM snapshots WHERE item_id=999001")
+        conn.execute("DELETE FROM items WHERE id=999001")
+        conn.commit(); conn.close()
+check('snapshot 持久化求购 bid/spread 字段', t_snapshot_bid_cols)
+
+
 print(f'=== Results: {passed} passed, {failed} failed, {skipped} skipped ===')
 if failures:
     print()

@@ -268,6 +268,14 @@ def _init_schema(conn: sqlite3.Connection) -> None:
     except sqlite3.OperationalError:
         pass  # column already exists
 
+    # Migrate: 求购(bid/order_book)字段持久化（2026-08-08 数据储备，供后续版本迭代验证求购因子；决策零改动）
+    for _bid_col in ("bid_highest REAL", "bid_7d_chg REAL", "bid_30d_chg REAL",
+                     "spread_pct REAL", "spread_avg REAL"):
+        try:
+            conn.execute("ALTER TABLE snapshots ADD COLUMN " + _bid_col)
+        except sqlite3.OperationalError:
+            pass  # column already exists
+
     conn.execute("""CREATE TABLE IF NOT EXISTS macro_history (
         date TEXT PRIMARY KEY,
         greedy_index REAL,

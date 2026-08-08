@@ -214,8 +214,16 @@ def recent_buy_dates(conn, item_id, days=7):
     return [r["date"][:10] for r in rows]
 
 
-def save_item_snapshot(conn, item_id, analysis, price_rmb, today=None):
-    """Render + upsert today report into snapshots; records fusion action for 7-day buy dedup."""
+def save_item_snapshot(conn, item_id, analysis, price_rmb, today=None, order_book=None):
+    """Render + upsert today report into snapshots; records fusion action for 7-day buy dedup.
+
+    order_book: 可选，求购(order_book)原始字段，持久化供后续版本迭代验证求购因子（决策零改动）。
+    """
+    def _bid_vals(ob):
+        if not isinstance(ob, dict):
+            return (None, None, None, None, None)
+        return (ob.get("highest_buy"), ob.get("bid_7d_chg"), ob.get("bid_30d_chg"),
+                ob.get("spread_pct"), ob.get("spread_avg"))
     if today is None:
         today = _now_str()
     report_html = templates.get_template("partials/analysis.html").render(build_analysis_ctx(analysis))
@@ -239,23 +247,23 @@ def save_item_snapshot(conn, item_id, analysis, price_rmb, today=None):
     # score_volume 为 DB 兼容字段：去量后恒 0（ValueScore 无成交量维度，勿再引用）
     if existing:
         conn.execute(
-            "UPDATE snapshots SET report_html=?, total_score=?, grade=?, price_rmb=?, score_scarcity=?, score_volume=?, score_market=?, score_liquidity=?, recommendation=?, action=? WHERE id=?",
+            "UPDATE snapshots SET report_html=?, total_score=?, grade=?, price_rmb=?, score_scarcity=?, score_volume=?, score_market=?, score_liquidity=?, recommendation=?, action=?, bid_highest=?, bid_7d_chg=?, bid_30d_chg=?, spread_pct=?, spread_avg=? WHERE id=?",
             (report_html, score, grade, price_rmb,
              analysis.value.scarcity if hasattr(analysis.value, "scarcity") else 0,
              analysis.value.volume if hasattr(analysis.value, "volume") else 0,
              analysis.value.market_sentiment if hasattr(analysis.value, "market_sentiment") else 0,
              analysis.value.liquidity if hasattr(analysis.value, "liquidity") else 0,
-             summary_json, action, existing["id"]),
+             summary_json, action, *_bid_vals(order_book), existing["id"]),
         )
     else:
         conn.execute(
-            "INSERT INTO snapshots (item_id, date, report_html, total_score, grade, price_rmb, score_scarcity, score_volume, score_market, score_liquidity, recommendation, action) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO snapshots (item_id, date, report_html, total_score, grade, price_rmb, score_scarcity, score_volume, score_market, score_liquidity, recommendation, action, bid_highest, bid_7d_chg, bid_30d_chg, spread_pct, spread_avg) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (item_id, today, report_html, score, grade, price_rmb,
              analysis.value.scarcity if hasattr(analysis.value, "scarcity") else 0,
              analysis.value.volume if hasattr(analysis.value, "volume") else 0,
              analysis.value.market_sentiment if hasattr(analysis.value, "market_sentiment") else 0,
              analysis.value.liquidity if hasattr(analysis.value, "liquidity") else 0,
-             summary_json, action),
+             summary_json, action, *_bid_vals(order_book)),
         )
     conn.commit()
 
@@ -409,7 +417,7 @@ async def analyze_fresh(item, good_id, exact_name, *, db_item_id=None, apply_anc
     try:
         conn_s = db.get_conn()
         try:
-            save_item_snapshot(conn_s, use_id, analysis, price_rmb)
+            save_item_snapshot(conn_s, use_id, analysis, price_rmb, order_book=getattr(item, "order_book", None))
         finally:
             conn_s.close()
     except Exception as _se:

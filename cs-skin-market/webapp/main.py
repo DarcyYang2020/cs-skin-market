@@ -1143,7 +1143,7 @@ async def _scan_item(row, idx, ms, market_th_score, sentiment_score, total_asset
         # Snapshot + summary
         conn_s = db.get_conn()
         try:
-            save_item_snapshot(conn_s, item_id, analysis, item.price_rmb)
+            save_item_snapshot(conn_s, item_id, analysis, item.price_rmb, order_book=getattr(item, "order_book", None))
             db.set_setting(conn_s, f"th_{pid}", _json.dumps(analysis.trend_health, ensure_ascii=False) if analysis.trend_health else "")
             conn_s.commit()
         except Exception as _se:
