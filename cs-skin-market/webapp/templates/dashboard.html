@@ -49,15 +49,6 @@
   <div id="health-body" style="padding:10px 14px;font-size:13px;"></div>
 </div>
 
-<!-- 信号中心 (2026-08-05): 最近一次批量扫描信号摘要 -->
-<div class="card" id="signal-center" style="display:none;margin-top:16px;">
-  <div class="card-header">
-    <span class="card-title">🔔 信号中心</span>
-    <span id="signal-time" style="font-size:12px;color:var(--text-muted);"></span>
-  </div>
-  <div id="signal-list" style="padding:10px 14px;font-size:13px;color:var(--text-secondary);"></div>
-</div>
-
 <!-- 数据积累进度 (P0-3, 2026-08-04) -->
 <div class="card" id="data-progress-card" style="display:none;margin-top:16px;">
   <div class="card-header">
@@ -134,36 +125,6 @@ function loadHealth() {
   });
 }
 loadHealth();
-
-// ---- 信号中心 (2026-08-05): 复用 watchlist 扫描信号数据源 ----
-fetch("/api/watchlist/scan-history")
-.then(function(r) { return r.json(); })
-.then(function(d) {
-  var sc = document.getElementById("signal-center");
-  if (!sc || !d.found) return;
-  var signals = d.latest_signals || [];
-  sc.style.display = "block";
-  document.getElementById("signal-time").textContent = d.scans && d.scans.length ? "上次扫描 " + d.scans[0].time : "";
-  if (!signals.length) {
-    document.getElementById("signal-list").innerHTML = "暂无触发信号（已到买点 / 可补仓 / 建议止损）；去「自选」页批量扫描获取最新信号。";
-    return;
-  }
-  var rows = signals.map(function(s) {
-    var gapTxt = (s.gap_pct !== null && s.gap_pct !== undefined) ? "距买点还差 " + s.gap_pct + "%" : "";
-    if (s.pnl_pct !== null && s.pnl_pct !== undefined) gapTxt += (gapTxt ? " · " : "") + "浮亏" + Math.abs(s.pnl_pct) + "%";
-    var color = "var(--accent)";
-    if (s.action === "可分批补仓" || s.action === "已到买点") color = "var(--green)";
-    if (s.action === "建议止损" || s.action === "接近止损位") color = "var(--red)";
-    if (s.action === "浮盈可观·考虑止盈") color = "var(--yellow)";
-    return '<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.06);flex-wrap:wrap;">'
-      + '<span style="font-weight:600;">' + s.name + '</span>'
-      + '<span class="badge" style="background:rgba(255,255,255,0.08);color:' + color + ';">' + (s.holding ? "持仓·" : "") + s.action + '</span>'
-      + '<span style="font-size:11px;color:var(--text-muted);">' + gapTxt + '</span>'
-      + '<span style="font-size:11px;color:var(--text-muted);">' + (s.suggest || "") + '</span>'
-      + '</div>';
-  }).join("");
-  document.getElementById("signal-list").innerHTML = rows;
-});
 
 function _dpFmt(s) { return s ? String(s).slice(0, 10) : "--"; }
 fetch("/api/data/progress")
