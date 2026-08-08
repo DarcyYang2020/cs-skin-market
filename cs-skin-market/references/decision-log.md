@@ -1427,3 +1427,23 @@ S2 回踩族在 C1（2026-08-05）已被证伪留研究池（A2 三件套未过�
 
 **验证**：离线 smoke 73/0/6（t_monitor_push 新增「不得含 127.0.0.1/:8000」回归断言）；真库实测推送（3 危险明细 + 24 提醒明细 + 2 信息计数）钉钉 HTTP 200 / errcode 0。
 **学到的新思路**：① 提醒类推送必须自包含，内网 URL 对手机是死链；② 事件明细直接文字化优于「详见网页」，尤其预警场景；③ 推送文案要有防内网地址回归断言，避免再次引入。
+## 系统冗余清理全量落地（2026-08-08，展示/工程层）
+**背景**：用户反馈 dashboard 信号中心冗余（监控/单品都有此功能），并要求系统性排查重复冗余后全量落地。
+
+**排查结论**（A 明确冗余 / B 功能重叠 / C 治理）：
+- A：6 个回测脚本零引用（run_backtest/run_item_backtest/run_item_9grid/run_item_exit/run_portfolio/run_backfill_history，被 refit_pipeline 取代）；每日备份两次（采集收尾 + CS_DB_Backup 23:30）；事件类型标签双维护（monitor.py _TYPE_LABEL vs monitor.html type_label）；backtest_results 5 行死数据。
+- B：大盘指数统计两套实现（analysis_service.market_snapshot vs monitor._market_ctx_from_db）；dashboard 引擎状态徽章与 checkup 都解析 j2_channel_status.json。
+- C：settings 6 个孤儿 th_* 缓存（已删品目）；三份文档重复维护文件树。
+
+**落地**：
+- dashboard 移除信号中心（HTML 卡 + JS 块，分离提交不含主题改动）；scan-history API 保留（watchlist 使用）。
+- 归档 6 脚本 → references/scripts-archive/；同步移除 test_smoke 中 2 个针对归档脚本的期望口径测试（价值由 t_expectancy_sync 承接）；AGENTS.md/PROJECT_STRUCTURE.md 更新引用与分工（PROJECT_STRUCTURE 为文件结构唯一事实源）。
+- 删除 CS_DB_Backup 计划任务；install_tasks.ps1 移除备份任务注册（备份保留在 run_daily_collect 收尾，与采集同生命周期数据最新）。
+- 类型标签单一事实源：monitor.html 删除内联映射，page_monitor 注入 pipeline.monitor._TYPE_LABEL。
+- 大盘统计公共化：market_context.market_index_stats（分位/Z/周期/TH/7-30-21日涨跌），analysis_service.market_snapshot（情绪在线口径）与 monitor._market_ctx_from_db（情绪纯 DB 口径）复用同源指数计算。
+- J-2 加载公共化：main.py _load_j2()，dashboard 徽章与 checkup 共用。
+- 数据清理：backtest_results 清空 + db.py 标注废弃；settings 删除 6 个孤儿 th_* key。
+
+**保留项（评估后不动）**：watchlist 监控提醒卡（/monitor 子集但自选页快速看）；K 线三路径（每日全量/午间自选/单品在线 互补）；dashboard 信号密度 vs checkup C 通道（热度 vs 胜率维度不同）；market_snapshot/monitor_rank_snapshot 周度积累（研究价值保留）。
+**验证**：离线 smoke 71/0/6；pre-commit 77/0/0；编码健康 PASS；三页面渲染 200。
+**学到的新思路**：① 归档/删除前 rg 必须覆盖 tests/（遗漏会直接冒烟红）；② 并行会话工作区下提交用「备份-分离-恢复」隔离他人改动；③ 口径测试退役时确保有更高层校验承接（t_expectancy_sync），避免口径失守。

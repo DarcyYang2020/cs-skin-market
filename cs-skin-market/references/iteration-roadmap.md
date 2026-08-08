@@ -7,6 +7,14 @@
 
 ## 版本历史
 
+- **v37（2026-08-08）**：系统冗余清理全量落地（用户「都做」，先删 dashboard 信号中心再批量清理）：
+  - dashboard 移除信号中心模块（与自选页/监控功能重复，用户反馈）；`/api/watchlist/scan-history` 保留（watchlist 仍在用）。
+  - A 类：6 个零引用回测脚本归档 references/scripts-archive/（当前回测统一走 refit_pipeline.py）；删除 CS_DB_Backup 计划任务（备份由采集收尾负责，避免每日两次）；事件类型标签单一事实源（monitor.html 由后端注入 _TYPE_LABEL）；backtest_results 死数据清空+标注废弃。
+  - B 类：大盘指数统计抽公共函数 market_context.market_index_stats（analysis_service 引擎路径与 monitor 监控路径复用同源计算，情绪口径各自保留）；main.py 抽 _load_j2() 共用 j2_channel_status.json 加载（dashboard 徽章 + checkup 体检）。
+  - C 类：清理 settings 中 6 个已删除品目 th_* 缓存残留；PROJECT_STRUCTURE.md 标注文件结构唯一事实源，AGENTS.md 文件树加注 + 更新归档脚本说明。
+  - 保留项（评估后不动）：watchlist 监控提醒卡（/monitor 子集摘要，自选页快速看）、K 线三路径（全量/轻量/按需互补）、dashboard 信号密度 vs checkup C 通道（热度 vs 胜率不同维度）、market_snapshot/monitor_rank_snapshot 周度积累（研究价值）。
+  - 验证：离线 smoke 71/0/6（移除 2 个随脚本归档的期望口径测试，口径已由 t_expectancy_sync 覆盖）；pre-commit 全量 77/0/0；编码健康 PASS；/ /monitor /checkup 渲染 200（type_label 后端注入生效）。
+  - 学到的新思路：① 归档脚本前必须 rg 全仓含 tests/ 的引用（此前遗漏导致冒烟 ModuleNotFoundError）；② 并行工作区下提交要「备份-分离-恢复」，绝不混入他人未提交改动；③ 口径类测试随工具归档后，其价值要能由更高层校验（t_expectancy_sync）承接。
 - **v36（2026-08-08）**：监控推送改纯文字自包含——移除内网 URL，danger/warn 明细直接列出（用户反馈手机无法访问 127.0.0.1）：
   - 背景：推送正文含「信息 N 条（详见 http://127.0.0.1:8000/monitor）」，手机端打不开本机地址；要求信息直接写在推送里。
   - 落地：`_build_push_text` 重构——🔴 危险/🟡 提醒明细直接列出（各截断 PUSH_DETAIL_MAX，超出计数）；🔵 信息按类型计数（如「大盘状态 2 条」）；彻底移除内网 URL 行。
