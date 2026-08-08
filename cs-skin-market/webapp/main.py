@@ -1711,9 +1711,11 @@ async def page_discover(request: Request):
 
 # ---- Discover high-score items by weapon type ----
 _discover_progress: dict = {}
+# F-3 扩容 (2026-08-08 第二轮): 8 -> 13 个武器；仍只采「崭新出厂 + 非 StatTrak + 非纪念品」
 DISCOVER_WEAPONS = [
     "AK-47", "AWP", "沙漠之鹰", "M4A4",
     "USP", "MP7", "SSG 08", "法玛斯",
+    "M4A1 消音版", "格洛克 18 型", "MP9", "Tec-9", "加利尔 AR",
 ]
 
 async def _run_discover_task(task_id: str, items: list):
@@ -2090,7 +2092,7 @@ async def _run_discover_scan_all_task(task_id: str):
     capped = []
     for wt_items in by_type.values():
         capped.extend(wt_items[:20])
-    capped = capped[:120]
+    capped = capped[:240]  # 13 武器 x 每类 20 = 260 候选，总量 240 让新武器候选都能进
     fresh_gids = set()
     conn_f = db.get_conn()
     try:
