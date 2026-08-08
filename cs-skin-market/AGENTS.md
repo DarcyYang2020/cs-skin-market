@@ -33,32 +33,17 @@
 
 ## 数据来源与采集
 
-| 数据 | 来源 | 方式 | 说明 |
-|---|---|---|---|
-| 大盘指数 + 品类排名 | csQAQ API | HTTP GET（同步） | /api/v1/current_data?type=init + ?type=kline |
-| 单品搜索 + 详情 + K线 | csQAQ Playwright | 浏览器自动化（异步） | 导航 goods/{id}，拦截 info/chart API |
+数据层完整手册（数据源/采集链路/每日任务/表结构/维护/故障 SOP）见 `references/data-layer.md`；官方接口端点清单见 `references/cs-knowledge.md`。
 
-**定价锚**: 悠悠有品 (platform=2) > Buff > C5GAME，Steam 价格不采用。
+- **量源**: csQAQ chart API 的 `in_sale_count`（在售量）为唯一量源；2026-08-07 起引擎去成交量，真实成交量采集器与 uu_headers 凭据已删除。
+- **定价锚**: 悠悠有品 (platform=2) > Buff > C5GAME；Steam 价格不采用。
+- **浏览器**: `_get_browser()` 全局单例，5 分钟超时重建；等待策略 `domcontentloaded`（SPA 长连接永不 idle）。
+- **StatTrak/纪念品**: 自动排除，仅分析普通版；`（★）` 普通标记不过滤（StatTrak 刀显示 `（★ StatTrak™）`）。
+- **快照 `_keep_wear`**: 枪皮/刀仅崭新出厂、手套仅略磨+久经、无磨损品类（印花/箱/胶囊）保留。
+- **存世量**: 崭新出厂 <3000 → 不建仓（`survive_too_low`）；口径为 `info/good.statistic_list`（非 `buff_sell_num`）。
+- **每日采集**: SQL 排除「存世量过低 / 活跃池淘汰」标记品（自选/持仓豁免）；大户集中度每周一采集。
 
-**K线数据**: csQAQ chart API 提供 90日日线 OHLCV（price + in_sale_count 在售量）。2026-08-07 起引擎去量：真实成交量（悠悠有品）不再采集/消费（采集器与 uu_headers 凭据已删除），在售量为唯一量源。
-
-**浏览器复用**: _get_browser() 全局单例，5 分钟超时重建。
-
-**官方接口文档**: https://docs.csqaq.com/（Apifox 托管）。除上表外还有 30+ 未用端点（全量价格/排行榜 get_all_goods_*、饰品列表 get_page_list、系列 get_series_list、库存监控 monitor/rank、开箱 stat/case + info/roi 等）。直连需先 `POST /sys/bind_local_ip` 绑定当前公网 IP（每日采集自动重绑；旧版 search_good_id/get_good_id/good_detail 绑定后仍 401 已废弃），亦可访问对应页面（/detail /rank /monitor /series /stat/case /exchange）拦截 /proxies/api/v1/* 响应绕过。完整清单与页面映射见 references/cs-knowledge.md「官方接口文档 (docs.csqaq.com) 端点清单」。
-
-
-**StatTrak 过滤**: 自动排除 StatTrak™ 和纪念品版本，仅分析普通版。名称匹配时优先 market_hash_name，失败则通过搜索栏降级查询。
-
-**数据层过滤规则 (2026-08-04 定稿，不动信号算法)**:
-- StatTrak/纪念品排除：`（★）` 是普通标记**不过滤**（StatTrak 刀显示 `（★ StatTrak™）`）。
-- 快照采集 `_keep_wear`：枪皮/刀仅崭新出厂、手套仅略磨+久经、无磨损品类（印花/箱/胶囊）保留 → 5000→1468 品。
-- 单品分析：崭新出厂存世量 <3000 → 存世量过低·不建仓（`survive_too_low`），仅普通版枪皮生效。
-- 存世量口径：`info/good` 的 `statistic_list` 按 good_id 匹配磨损档的 `statistic`，**不是** `buff_sell_num`（在售挂单数）；快照接口 `get_page_list` 无存世量字段，快照层无法按存世量过滤。
-- 每日采集 SQL 排除 `notes LIKE '%存世量过低%'` 的品（K线/大户等）；大户集中度 2026-08-08 起降为每周一采集（引擎不消费，仅进度卡/健康检查计数）。
-- 数据源健康检查见 `references/data-source-health.md`（每周跑一次，防脏数据/错误数据使用）。
-
-
-## 单品分析引擎 (item_analysis.py)
+## 单品分析引擎## 单品分析引擎 (item_analysis.py)
 
 run_item_analysis(name, prices, volumes, supply_hist, order_book, index_change_7d, market_history, market_pct_90d, market_zscore) 协调以下模块：
 
@@ -361,25 +346,11 @@ cs-skin-market/
 
 ## 数据库表
 
-| 表名 | 用途 | 关键字段 |
-|---|---|---|
-| items | 自选/持仓物品 | name, steam_name, good_id, rarity, source, in_watchlist, holding |
-| market_index | 大盘指数历史 | date, value, change_7d, mood |
-| price_history | 单品价格历史 | item_id, date, price_rmb, in_sale_count（在售量，唯一量源） |
-| snapshots | 分析报告存档 | item_id, date, grade, total_score, report_html, report_md, action |
-| positions | 持仓记录 | item_id, buy_price, quantity, closed, close_price |
-| settings | 配置键值对 | key, value |
-| macro_history | 每日宏观快照（贪婪指数/点卡价） | date, greedy_index, card_price |
-| backtest_results | 回测结果 | strategy, sharpe_ratio, max_drawdown_pct |
-| executions | 执行记录+复盘（P0-2） | item_id, name, action, advice_date, exec_price, qty, settle_14/30, pnl_14/30 |
-| market_snapshot | 全市场周度快照（价格+在售数） | date, good_id, yyyp_sell_price, yyyp_sell_num |
-| monitor_rank_snapshot | 大户集中度每周 Top50 | date, item_id, rank, num |
-| health_checks | 数据源健康检查 | date, status, checks_json |
-| signal_tracking | 生产 buy 信号跟踪（J-2 C 通道） | signal_date, entry_price, engine_version, fwd14/30, net14/30 |
-| monitor_events | M1 监控事件归档（近 7 天） | date, item_id, event_type, level, detail |
-| schema_version | schema 版本记录（Phase 4） | version, applied_at |
+完整表结构与用途见 `references/data-layer.md` 第 5 节：
+items / price_history / market_index / macro_history / snapshots / market_snapshot / monitor_rank_snapshot /
+monitor_events / positions / executions / signal_tracking / health_checks / backtest_results / settings / schema_version。
 
-## 风控/信号职责分工（三层闸门，2026-08-06 定稿）
+## 风控/信号职责分工## 风控/信号职责分工（三层闸门，2026-08-06 定稿）
 
 - **组合闸门（portfolio_risk.py）**：组合回撤熔断（10%，收复峰值解除）+ 单票敞口提示（30%，只提示不拒绝）——管「组合层面是否开新仓」。
 - **信号族闸门（未来路由层）**：按市场状态（贪婪禁入/恐慌+深跌=V型底区/恐慌+中跌=阴跌中继区/恐慌浅跌/中性企稳/弱市观望）决定哪些信号族开火——当前由各族门控隐含实现，界面标注见 batch_scan.market_regime。
@@ -390,6 +361,7 @@ cs-skin-market/
 - **数据库自动备份**：`python backup_db.py`（SQLite online backup API → `data/backup/market_YYYYMMDD_HHMMSS.db`，默认保留 14 份）；计划任务 `CS_DB_Backup` 每日 23:30。
 - **健康告警**：`python notify_alert.py --monitor`（健康检查 FAIL 时推送）；`.env` 配 `NOTIFY_WEBHOOK_URL`（钉钉机器人）后生效，未配置则静默；计划任务 `CS_Health_Alert` 每日 22:00（采集落库后告警）。
 - **计划任务安装**：`powershell -ExecutionPolicy Bypass -File install_tasks.ps1`（在 cs-skin-market 目录）。任务清单：`CS_Skin_DailyCollect` 每日 18:00 全量采集（2026-08-08 由 21:30 提前；收尾仅生成监控事件+日报不推送）、`CS_Skin_NightPush` 每日 21:30 晚间推送（事件幂等去重，保持 12:00 午间 + 21:30 晚间两时段）、`CS_Skin_NoonMonitor` 每日 12:00 午间轻量、`CS_Health_Alert` 每日 22:00 健康告警。
+- **调度与数据维护总览**：见 `references/data-layer.md`（第 3 节调度表 + 第 4 节更新维护）。
 - **本地 CI（pre-commit hook）**：`powershell -ExecutionPolicy Bypass -File install_hooks.ps1` → 每次 `git commit` 自动跑 `tests/test_smoke.py`，失败则拦截提交。
 - **执行记录滑点统计**：`executions.advice_price`（建议价，批量扫描「按建议执行」自动带入）；复盘页显示单笔滑点与平均滑点，用于校准 2% 双边成本假设。
 

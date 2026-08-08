@@ -12,21 +12,12 @@ CS 饰品市场投资分析工具。FastAPI Web 应用，从 csQAQ 采集大盘/
 
 ## 数据采集
 
-- **定价锚**: 悠悠有品 (csQAQ platform=2) > Buff > C5GAME，Steam 价格失真仅作参考
-- **等待策略**: `domcontentloaded`（非 networkidle，SPA 长连接永不 idle）
-- **StatTrak 过滤**: 自动排除 StatTrak 和纪念品版本，仅分析普通版
-- **浏览器复用**: 采集函数支持 `pw`/`browser` 参数，批量扫描时共享单一浏览器会话
+数据层完整手册见 `cs-skin-market/references/data-layer.md`（数据源/采集链路/每日任务/表结构/维护/故障 SOP）。
 
-### 数据采集路径
-
-| 数据 | 来源 | 方式 |
-|---|---|---|
-| 大盘指数 + 品类排名 | csQAQ `/api/v1/current_data?type=init` | HTTP GET |
-| 大盘 K 线 | csQAQ `/api/v1/current_data?type=kline` | HTTP GET |
-| 单品搜索/详情/90日K线 | csQAQ Playwright 导航 `goods/{id}` | 响应拦截 info/chart API |
-| ~~真实成交量~~（已删除） | 悠悠有品 `price/trend/data` API（登录态 headers） | 2026-08-07 起引擎不再消费；采集器与 uu_headers 凭据已删除 |
-
-csQAQ chart API 提供 price + in_sale_count（在售量），为引擎唯一量源。历史 `volume_day` 字段与悠悠有品回填数据保留在库中（供数据进度卡展示历史覆盖），评分/决策不再读取。
+- **量源**: csQAQ chart API 的 `in_sale_count`（在售量）为引擎唯一量源；2026-08-07 起去成交量，真实成交量采集器已删除。
+- **定价锚**: 悠悠有品 (csQAQ platform=2) > Buff > C5GAME，Steam 价格失真仅参考。
+- **StatTrak/纪念品**: 自动排除，仅分析普通版；采集函数共享单一浏览器会话。
+- **每日任务**: 18:00 `run_daily_collect.py`（Windows 计划任务 `CS_Skin_DailyCollect`）全量刷新活跃池 K 线 + 淘汰评估 + 健康检查。
 
 ## 命名规则
 
@@ -148,10 +139,8 @@ C buy 连续 2 月 14d<70% 或月度 14d<80%、30d<55%；监测见 data/j2_chann
 
 ## 数据保留策略
 
-- price_history、snapshots、market_index：保留 365 天（延长前为 90 天，解锁更长回测）
-- scan_*.md 报告：保留 90 天
-- debug 文件（_debug_*）：保留 7 天
-- 批量扫描自动执行清理 + VACUUM
+- price_history、snapshots、market_index：保留 365 天；scan_*.md 报告 90 天；debug 文件 7 天；池台账 `pool_maintenance_log.jsonl` 不清理。
+- 批量扫描自动执行清理 + VACUUM；完整口径见 `cs-skin-market/references/data-layer.md`。
 
 ## 常见坑
 

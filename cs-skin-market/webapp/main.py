@@ -1035,6 +1035,31 @@ def _persist_discover_progress(task_id):
         pass
 
 
+def _finalize_discover(task_id: str, note: str = "completed"):
+    """discover 扫描收尾台账（F-3.2）：无论成功/空结果/搜索失败/浏览器失败都留痕。"""
+    try:
+        from pipeline.pool_log import append_pool_log
+        from pipeline import db as _db
+        _pc = _db.get_conn()
+        _pool_now = _pc.execute("SELECT COUNT(*) FROM items WHERE good_id>0").fetchone()[0]
+        _pc.close()
+        _p = _discover_progress.get(task_id) or {}
+        _res = _p.get("results") or []
+        append_pool_log({
+            "type": "discover",
+            "task_id": task_id,
+            "note": note,
+            "candidates": len(_res) + (_p.get("skipped") or 0),
+            "ok": sum(1 for _x in _res if not _x.get("error")),
+            "error": sum(1 for _x in _res if _x.get("error")),
+            "skipped": _p.get("skipped", 0),
+            "market_th": _p.get("market_th"),
+            "pool_size_now": _pool_now,
+        })
+    except Exception:
+        pass
+
+
 def _prune_progress(store, max_age=86400):
     """清理超过 max_age 秒的进度条目，防长跑任务内存无界增长。"""
     now = time.time()
@@ -2031,6 +2056,7 @@ async def _run_discover_scan_all_task(task_id: str):
     if not browser:
         _discover_progress[task_id]["done"] = True
         _discover_progress[task_id]["html"] = '<div class="card" style="padding:20px;color:var(--danger);">\u65e0\u6cd5\u542f\u52a8\u6d4f\u89c8\u5668</div>'
+        _finalize_discover(task_id, note="browser_fail")
         return
     all_items = []
     page = None
@@ -2076,11 +2102,13 @@ async def _run_discover_scan_all_task(task_id: str):
         _web_log.error(f"Discover scan-all error: {e}")
         _discover_progress[task_id]["done"] = True
         _discover_progress[task_id]["html"] = f'<div class="card" style="padding:20px;color:var(--danger);">\u641c\u7d22\u5931\u8d25: {str(e)[:200]}</div>'
+        _finalize_discover(task_id, note="search_error")
         return
 
     if not all_items:
         _discover_progress[task_id]["done"] = True
         _discover_progress[task_id]["html"] = '<div class="card" style="padding:20px;">\u672a\u627e\u5230\u9970\u54c1</div>'
+        _finalize_discover(task_id, note="empty")
         return
 
     by_type = defaultdict(list)
@@ -2151,26 +2179,8 @@ async def _run_discover_scan_all_task(task_id: str):
         pass
 
 
-    # 池维护台账 (F-3.2, 2026-08-08): discover 扫描完成留痕（数据积累后评估是否增量更新）
-    try:
-        from pipeline.pool_log import append_pool_log
-        from pipeline import db as _db
-        _pc = _db.get_conn()
-        _pool_now = _pc.execute("SELECT COUNT(*) FROM items WHERE good_id>0").fetchone()[0]
-        _pc.close()
-        _res = _discover_progress[task_id].get('results') or []
-        append_pool_log({
-            "type": "discover",
-            "task_id": task_id,
-            "candidates": len(capped),
-            "ok": sum(1 for _x in _res if not _x.get('error')),
-            "error": sum(1 for _x in _res if _x.get('error')),
-            "skipped": _discover_progress[task_id].get('skipped', 0),
-            "market_th": _discover_progress[task_id].get('market_th'),
-            "pool_size_now": _pool_now,
-        })
-    except Exception:
-        pass
+    # 池维护台账 (F-3.2, 2026-08-08): discover 扫描完成统一留痕（成功/空/失败全覆盖）
+    _finalize_discover(task_id)
 
 
 def _settle_discover_items(items, scan_time):

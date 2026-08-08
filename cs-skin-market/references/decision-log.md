@@ -1617,3 +1617,13 @@ vs 池内等权 +509.75%/-54.12% vs 大盘 -4.02%；引擎边际价值在回撤�
 - 新增 `references/pool-maintenance.md`：完整链路手册（口径/链路图/调度表/台账字段/淘汰恢复/增量评估/故障 SOP）。
 **增量评估决策点**（数据积累后人工判断，不做自动增量）：① 活跃池萎缩（pruned 占比 >20%）；② 连续 3 次 discover ok 新品骤降；③ active_pool 近 4 天 K 线覆盖率 <95%；④ 新武器/新收藏品上线。评估通过才手动扩池。
 **验证**：py_compile 通过；冒烟全绿；台账首条基线（daily）由下次每日采集写入，discover 行由当前第三轮扫描完成时写入。
+
+
+## F-3.3 文档分层：数据层独立成册（2026-08-08，文档层）
+**背景**：用户「重新整理下文档，将数据层单独列出来，包括每日的数据采集、数据更新维护等，不然有点太乱了，数据太多有点分不清」——数据层内容此前散落在根 AGENTS.md、cs-skin-market/AGENTS.md、PROJECT_STRUCTURE.md、pool-maintenance.md 多处，且存在口径冲突（PROJECT_STRUCTURE 运维章节仍写「每日 21:30 / CS_Daily_Collect」，实际为 18:00 / CS_Skin_DailyCollect）。
+**落地**：
+- 新建 `references/data-layer.md` 数据层唯一权威：数据源与定价锚 / 采集链路（5 类）/ 调度时间表 / 更新维护（K线刷新、F-3.1 淘汰、F-3.2 台账、健康检查、备份、保留策略）/ 15 张表结构 / 质量过滤规则 / 故障 SOP。
+- 根 `AGENTS.md`：「数据采集」「数据保留策略」压缩为要点 + 指向 data-layer.md。
+- `cs-skin-market/AGENTS.md`：「数据来源与采集」压至 8 条要点、「数据库表」压缩为引用清单、「运维」加调度总览引用。
+- `PROJECT_STRUCTURE.md`：references 列表加 data-layer.md / pool-maintenance.md；修正过时运维描述（21:30→18:00、CS_Daily_Collect→CS_Skin_DailyCollect）；数据文件表加 pool_maintenance_log.jsonl。
+- 原则：数据层只维护一个权威源（data-layer.md），其余文档只留引用与摘要，防止多源口径漂移。

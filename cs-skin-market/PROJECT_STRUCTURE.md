@@ -106,6 +106,8 @@ cs-skin-market/
 - `t`h_calibration.`md` / `t`rend_leg_research.`md` — TH 校准 / 趋势腿研究
 - `project-principles.`md — 项目三原则 + 参数冻结条款
 - `decision-log.`md — 关键决策历史；`iteration-roadmap.`md — 迭代方案
+- `data-layer.md` — **数据层手册**（数据源/采集链路/每日任务/表结构/维护/故障 SOP，唯一权威）
+- `pool-maintenance.md` — 260 品池专项维护（淘汰/台账/增量评估决策点）
 - `data-source-health.`md / `cs-knowledge.`md / `t`rading-strategies.`md` / `item-sample-plan.`md
 
 ### 研究脚本（产出 `data/*.`json）
@@ -133,6 +135,7 @@ cs-skin-market/
 | `item_backtest_full_2025.baseline450.`json / `.devol_v1.`json | 去量演进对比存档（旧引擎产物，仅存证） |
 | `j2_channel_status.`json / `r`efit_pipeline_report.`json` / `portfolio_backtest.`json 等 | 研究产物 |
 | `backup/` | 每日 DB 备份（保留 14 份，gitignore） |
+| `pool_maintenance_log.`jsonl | 池维护台账（daily/prune/discover 三类，F-3.2） |
 | `scan_history/` / `scan_progress_*.`json / `b`atch_scan_latest.`json` | 批量扫描归档/进度/缓存（gitignore） |
 
 ## 数据库表（schema_version = 1）
@@ -143,8 +146,9 @@ health_checks（数据健康）/ signal_tracking（生产信号跟踪）/ `backt
 
 ## 运维
 
-- 每日 21:30 定时采集：python `run_daily_collect.`py（Windows 计划任务 CS_Daily_Collect）
+- 每日 18:00 定时采集：python `run_daily_collect.`py（Windows 计划任务 CS_Skin_DailyCollect；12:00 午间/21:30 晚间推送、22:00 健康告警、23:30 备份）
 - 每日 23:30 DB 备份：python `backup_db.`py（保留 14 份）
 - 健康告警：python `notify_alert.`py --monitor（钉钉 webhook）
 - pre-commit：`install_hooks.`ps1 → git commit 自动跑 test_smoke
 - 本地/CI 冒烟：python `tests/test_smoke.`py（CI 设 CS_MODEL_SKIP_NET=1 跳网络用例）
+- 完整调度与维护口径见 `references/data-layer.md`
