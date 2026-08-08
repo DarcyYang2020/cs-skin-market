@@ -2125,6 +2125,103 @@ def t_exec_review():
         conn.close()
 check("F-2 执行复盘对照聚合口径", t_exec_review)
 
+
+
+print('[F-3: 采集复用优先 (2026-08-08)]')
+def t_kline_fresh():
+    """F-3: db_kline_fresh 判定——新鲜（<=max_stale_days）复用，过期/不足 14 行返回 None。"""
+    from datetime import date, timedelta
+    from webapp.analysis_service import db_kline_fresh
+    from pipeline import db
+    conn = db.get_conn()
+    TEST = "__SMOKE_FRESH__"
+    try:
+        conn.execute("DELETE FROM price_history WHERE item_id IN (SELECT id FROM items WHERE name=?)", (TEST,))
+        conn.execute("DELETE FROM items WHERE name=?", (TEST,))
+        conn.commit()
+        iid = db.upsert_item(conn, TEST, good_id=999999001)
+        conn.commit()
+        today = date.today()
+        base = today - timedelta(days=90)
+        for d in range(91):  # 含今天：最新日期 = today，stale=0
+            dt = (base + timedelta(days=d)).isoformat()
+            conn.execute(
+                "INSERT INTO price_history (item_id, date, price_rmb, volume_day, volume_total, in_sale_count) VALUES (?,?,?,?,?,?)",
+                (iid, dt, 100.0 + d * 0.1, 0, 0, 500))
+        conn.commit()
+        # 新鲜（最新=今天，stale=0）：3 天与 0 天阈值均命中
+        f3 = db_kline_fresh(999999001, TEST, max_stale_days=3)
+        assert f3 and len(f3["bars"]) == 90 and f3["stale"] == 0, f3
+        assert f3["db_name"] == TEST and f3["item_id"] == iid
+        f0 = db_kline_fresh(999999001, TEST, max_stale_days=0)
+        assert f0 is not None, "stale=0 应命中"
+        # 过期：删除最近 10 天行 -> 最新=07-29, stale=10, 3 天阈值不命中
+        conn.execute("DELETE FROM price_history WHERE item_id=? AND date > ?",
+                     (iid, (today - timedelta(days=10)).isoformat()))
+        conn.commit()
+        assert db_kline_fresh(999999001, TEST, max_stale_days=3) is None
+        assert db_kline_fresh(999999001, TEST, max_stale_days=14) is not None
+    finally:
+        try:
+            conn.execute("DELETE FROM price_history WHERE item_id IN (SELECT id FROM items WHERE name=?)", (TEST,))
+            conn.execute("DELETE FROM items WHERE name=?", (TEST,))
+            conn.commit()
+        except Exception:
+            pass
+        conn.close()
+check("F-3 db_kline_fresh 新鲜度判定", t_kline_fresh)
+
+def t_resolve_item_reuse():
+    """F-3: DB 新鲜时 resolve_item 直接复用，不触发网络采集。"""
+    import asyncio
+    from datetime import date, timedelta
+    from pipeline import db
+    from webapp import analysis_service
+    from webapp.analysis_service import db_kline_fresh, item_from_db
+    conn = db.get_conn()
+    TEST = "__SMOKE_REUSE__"
+    try:
+        conn.execute("DELETE FROM price_history WHERE item_id IN (SELECT id FROM items WHERE name=?)", (TEST,))
+        conn.execute("DELETE FROM items WHERE name=?", (TEST,))
+        conn.commit()
+        iid = db.upsert_item(conn, TEST, good_id=999999002)
+        conn.commit()
+        base = date.today() - timedelta(days=60)
+        for d in range(60):
+            dt = (base + timedelta(days=d)).isoformat()
+            conn.execute(
+                "INSERT INTO price_history (item_id, date, price_rmb, volume_day, volume_total, in_sale_count) VALUES (?,?,?,?,?,?)",
+                (iid, dt, 50.0 + d * 0.2, 0, 0, 300))
+        conn.commit()
+
+        async def _run():
+            orig = analysis_service.collector_csqaq.fetch_item_detail
+            called = {"n": 0}
+            async def fake_fetch(good_id):
+                called["n"] += 1
+                raise AssertionError("DB 新鲜时不应触发网络采集")
+            analysis_service.collector_csqaq.fetch_item_detail = fake_fetch
+            try:
+                item = await analysis_service.resolve_item(999999002, TEST, max_stale_days=3)
+            finally:
+                analysis_service.collector_csqaq.fetch_item_detail = orig
+            return item, called["n"]
+
+        item, fetch_n = asyncio.run(_run())
+        assert fetch_n == 0, "网络采集被触发"
+        assert item is not None and getattr(item, "from_db", False), "未标记 from_db"
+        assert item.name == TEST and item.price_rmb > 0 and len(item.kline_90d) == 60, (item.name, item.price_rmb, len(item.kline_90d))
+        assert item.sell_num_yyyp == 300 and item.in_sale_count == 300
+    finally:
+        try:
+            conn.execute("DELETE FROM price_history WHERE item_id IN (SELECT id FROM items WHERE name=?)", (TEST,))
+            conn.execute("DELETE FROM items WHERE name=?", (TEST,))
+            conn.commit()
+        except Exception:
+            pass
+        conn.close()
+check("F-3 resolve_item DB 复用不触发采集", t_resolve_item_reuse)
+
 print(f'=== Results: {passed} passed, {failed} failed, {skipped} skipped ===')
 if failures:
     print()

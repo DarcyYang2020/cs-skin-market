@@ -38,9 +38,97 @@ def _today_str() -> str:
 # 以下函数由 webapp.main 迁入（2026-08-07），行为不变
 # ============================================================
 
+
+# ============================================================
+# 采集复用优先（F-3, 2026-08-08）：DB 有新鲜 K 线则不重复采集
+# 新鲜度 = 行数>=14 且 最新日期距今 <= max_stale_days
+# 单品主动分析要求当天数据（stale==0）；批量/积累场景容忍 3 天
+# ============================================================
+KLINE_FRESH_SINGLE = 0     # 单品主动分析（search/analyze/watchlist analyze）
+KLINE_FRESH_BATCH = 3      # 批量扫描 / 午间监控轻量刷新
+KLINE_FRESH_DISCOVER = 3   # discover 全量/增量扫描
+
+
+def _history_to_bars(rows):
+    """price_history 行 -> 90 日 K 线 SimpleNamespace 列表（close/high/low/in_sale_count）。"""
+    import types as _types
+    bars = []
+    for r in rows:
+        price = float(r["price_rmb"] or 0)
+        bars.append(_types.SimpleNamespace(
+            ts=0, date=r["date"], close=price, high=price, low=price,
+            volume=float(r["volume_day"] or 0),
+            in_sale_count=int(r["in_sale_count"] or 0),  # 去量: 在售量为唯一量源（勿用 volume_total）
+            tx_amount=0, tx_count=0, survive=0,
+        ))
+    return bars
+
+
+def db_kline_fresh(good_id, name, max_stale_days=KLINE_FRESH_BATCH):
+    """DB 新鲜 K 线判定：定位 items 行 -> 近 90 日价格 -> 行数>=14 且最新日期距今<=max_stale_days。
+    返回 dict(bars, stale, last_date, item_id, db_name, yyyp_id) 或 None。纯读不采集。"""
+    conn = db.get_conn()
+    try:
+        row = None
+        if name:
+            row = conn.execute("SELECT id, name, yyyp_id FROM items WHERE name=?", (name,)).fetchone()
+        if row is None and good_id:
+            row = conn.execute("SELECT id, name, yyyp_id FROM items WHERE good_id=?", (good_id,)).fetchone()
+        if row is None:
+            return None
+        rows = db.get_item_history(conn, row["id"], limit=90)
+        if not rows or len(rows) < 14:
+            return None
+        rows = sorted(rows, key=lambda r: r["date"])
+        last_date = rows[-1]["date"]
+        stale = (datetime.now(TZ_BJ).date() - datetime.strptime(last_date, "%Y-%m-%d").date()).days
+        if stale > max_stale_days:
+            return None
+        return {"bars": _history_to_bars(rows), "stale": stale, "last_date": last_date,
+                "item_id": row["id"], "db_name": row["name"], "yyyp_id": row["yyyp_id"] or ""}
+    except Exception as _e:
+        _log.warning(f"db_kline_fresh failed: {_e}")
+        return None
+    finally:
+        conn.close()
+
+
+def item_from_db(fresh, good_id):
+    """用 DB 新鲜数据构造 ItemData（from_db=True），供分析路径复用，避免重复采集。"""
+    from pipeline.collector_csqaq import ItemData
+    bars = fresh["bars"]
+    last = next((k for k in reversed(bars) if getattr(k, "close", 0) or 0), None)
+    last_sale = 0
+    for k in reversed(bars):
+        if getattr(k, "in_sale_count", 0) or 0:
+            last_sale = k.in_sale_count
+            break
+    it = ItemData()
+    it.good_id = good_id
+    it.name = fresh["db_name"]
+    it.price_rmb = float(last.close) if last else 0.0
+    it.sell_num_yyyp = last_sale
+    it.in_sale_count = last_sale
+    it.yyyp_id = fresh["yyyp_id"]
+    it.kline_90d = bars
+    it.order_book = None  # 求购为数据储备阶段，DB 复用不采集（分析可选参数）
+    it.from_db = True
+    it.stale_days = fresh["stale"]
+    return it
+
+
+async def resolve_item(good_id, name, max_stale_days=KLINE_FRESH_BATCH):
+    """复用优先入口：DB 新鲜则返回 DB ItemData（不采集）；否则走 csQAQ 采集。
+    返回 ItemData（可能 from_db=True）或 None。"""
+    fresh = db_kline_fresh(good_id, name, max_stale_days)
+    if fresh:
+        _log.info(f"采集复用 DB {fresh['db_name']}: stale={fresh['stale']}d bars={len(fresh['bars'])}")
+        return item_from_db(fresh, good_id)
+    return await collector_csqaq.fetch_item_detail(good_id)
+
+
 def kline_db_fallback(good_id, name):
     """csQAQ 图表采集失败时，用数据库缓存的90日K线兜底。Returns (bars, stale_days, last_date) or (None, None, "")."""
-    import types as _types
     conn = db.get_conn()
     try:
         row = db.find_item(conn, name) if name else None
@@ -56,16 +144,7 @@ def kline_db_fallback(good_id, name):
         stale = (datetime.now(TZ_BJ).date() - datetime.strptime(last_date, "%Y-%m-%d").date()).days
         if stale > 14 or len(rows) < 14:
             return None, None, ""
-        bars = []
-        for r in rows:
-            price = float(r["price_rmb"] or 0)
-            bars.append(_types.SimpleNamespace(
-                ts=0, date=r["date"], close=price, high=price, low=price,
-                volume=float(r["volume_day"] or 0),
-                in_sale_count=int(r["in_sale_count"] or 0),  # 去量: 在售量为唯一量源（勿用 volume_total）
-                tx_amount=0, tx_count=0, survive=0,
-            ))
-        return bars, stale, last_date
+        return _history_to_bars(rows), stale, last_date
     except Exception as _e:
         _log.warning(f"db kline fallback failed: {_e}")
         return None, None, ""

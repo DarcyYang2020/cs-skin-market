@@ -1542,3 +1542,12 @@ vs 池内等权 +509.75%/-54.12% vs 大盘 -4.02%；引擎边际价值在回撤�
 - watchlist「执行记录与复盘」区下方新增对照卡：两行（真实执行 / 纸面信号）×（样本 / 14日 / 30日 / 成本滑点），样本≥30 笔时即可回答「按建议做到底赚不赚」。
 **验证**：冒烟 75/0/6（新增 t_report_exec_btn 模板渲染、t_exec_review 基线差值口径）；六页面渲染 200 含共享 modal；真库 API 闭环（POST 记录 → review n=2/滑点 -0.06% → DELETE 恢复 n=1）；ref-price 822.5（钴蓝禁锢，悠悠锚口径）。
 **学到的新思路**：① 「零摩擦」的工程落点是共享基础设施而非页面复制——exec-modal 移到 base 一次接入，所有页面自动获得能力；② 聚合测试对真库用「基线差值」断言，避免测试残留数据造成误红；③ 断言浮点要 round 到产品展示精度（avg 2 位），否则 round(5.2631,2)=5.26 vs 5.2631 恒不相等。
+
+## P0 F-3 采集复用优先（2026-08-08，采集/数据层）
+**背景**：用户「采取最优采集方案，不要重复采集，再仔细想出方案后直接执行」。discover 全量重扫受 csQAQ 限流约 25-40 分钟，反复刷新会重复采集已验证的品。
+**方案（复用优先三件套，全零触碰冻结参数）**：
+- DB 新鲜度复用优先：`db_kline_fresh(good_id, name, max_stale_days)`——items 定位 → 近 90 日价格（行数>=14）→ 最新日期距今 <= 阈值则复用；新鲜则 `item_from_db` 构造 ItemData（from_db=True、sell_num_yyyp=最新在售、order_book=None）跳过网络采集。
+- 阈值口径：单品主动分析 KLINE_FRESH_SINGLE=0（当天采集过才复用）；批量扫描 / discover KLINE_FRESH_BATCH=3、KLINE_FRESH_DISCOVER=3（3 天内不重采）。
+- 失败重试一轮：discover 首轮失败/error 的品轮尾统一重试（复用优先，DB 新鲜的秒过）；进度落盘：每品 `_persist_discover_progress` 写 progress json，重启可查进度，完成即删；/api/items/discover-progress 加磁盘兜底。
+**验证**：冒烟 77/0/6（新增 t_kline_fresh——插入 91 行断言返回 90 条 + stale 过期判定；t_resolve_item_reuse——mock fetch_item_detail 抛错验证 DB 新鲜不触发网络采集）；/ /watchlist /discover-progress 渲染 200；服务器重启加载新代码。
+**教训**：① 测试断言必须对齐数据源真实口径——get_item_history 按 date DESC LIMIT 90 取最近 90 条，91 行只返回 90 条；把最新行改到已存在日期会触发 (item_id,date) 唯一约束，正确做法是删除最近 10 天行让最新自然变为 stale=10；② 超大函数整体替换前先确认函数边界与相邻依赖——重构 _run_discover_task 时误删紧随其后的 _render_discover_html，已恢复。

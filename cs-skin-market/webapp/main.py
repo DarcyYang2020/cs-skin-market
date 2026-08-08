@@ -19,6 +19,7 @@ from pipeline import db, collector, index_analysis, item_analysis
 from pipeline import collector_csqaq
 from webapp.analysis_service import (
     AnalysisAbort, analyze_fresh, build_analysis_ctx,
+    resolve_item, KLINE_FRESH_SINGLE, KLINE_FRESH_BATCH, KLINE_FRESH_DISCOVER,
     anchor_override, kline_db_fallback, kline_price_sane,
     market_snapshot, recent_buy_dates, save_analysis_result, save_item_snapshot,
 )
@@ -640,7 +641,7 @@ async def api_items_search(request: Request, query: str = Form(...)):
             return HTMLResponse('<div class="card"><div class="empty-state" style="text-align:center;padding:40px;color:var(--text-muted);">未找到相关饰品，请尝试简化关键词</div></div>')
 
         # Step 2: Fetch detail
-        item = await collector_csqaq.fetch_item_detail(good_id)
+        item = await resolve_item(good_id, page_title or query, KLINE_FRESH_SINGLE)
         if item is None:
             return HTMLResponse('<div class="card"><div class="empty-state" style="text-align:center;padding:40px;color:var(--text-muted);">获取详情失败，请重试</div></div>')
 
@@ -676,7 +677,7 @@ async def api_items_analyze(
         if good_id == 0:
             return HTMLResponse(_ae("未找到物品: " + name))
 
-        item = await collector_csqaq.fetch_item_detail(good_id)
+        item = await resolve_item(good_id, name, KLINE_FRESH_SINGLE)
         if item is None:
             return HTMLResponse(_ae(f"获取详情失败: good_id={good_id}"))
         exact_name = _clean_csqaq_name(item.name or page_title or name)
@@ -687,7 +688,7 @@ async def api_items_analyze(
             if simple_q and simple_q != name:
                 gid2, _ = await collector_csqaq.search_good_id(simple_q)
                 if gid2 and gid2 != good_id:
-                    item2 = await collector_csqaq.fetch_item_detail(gid2)
+                    item2 = await resolve_item(gid2, simple_q, KLINE_FRESH_SINGLE)
                     if item2 and item2.name:
                         exact_name2 = item2.name
                         if _verify_item_name(name, exact_name2):
@@ -790,7 +791,7 @@ async def api_watchlist_analyze(request: Request, item_id: int):
         if good_id == 0:
             return HTMLResponse(_ae(f"未找到: {name}"))
 
-        item = await collector_csqaq.fetch_item_detail(good_id)
+        item = await resolve_item(good_id, name, KLINE_FRESH_SINGLE)
         if item is None:
             return HTMLResponse(_ae("详情获取失败"))
 
@@ -1014,6 +1015,26 @@ def _load_scan_progress(scan_id):
     return None
 
 
+
+def _discover_progress_file(task_id):
+    from pathlib import Path as _P
+    return _P(__file__).resolve().parent.parent / "data" / ("discover_progress_" + task_id + ".json")
+
+
+def _persist_discover_progress(task_id):
+    """discover 扫描进度落盘（F-3, 2026-08-08）：重启后进度可查；配合复用优先实现断点续扫语义。"""
+    import json as _json
+    p = _discover_progress.get(task_id)
+    if not p:
+        return
+    try:
+        _discover_progress_file(task_id).write_text(
+            _json.dumps({k: p.get(k) for k in ("current", "total", "name", "done", "html", "ts", "skipped")},
+                        ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        pass
+
+
 def _prune_progress(store, max_age=86400):
     """清理超过 max_age 秒的进度条目，防长跑任务内存无界增长。"""
     now = time.time()
@@ -1041,7 +1062,7 @@ async def _scan_item(row, idx, ms, market_th_score, sentiment_score, total_asset
         good_id, _ = await _resolve_good_id(name)
         if good_id == 0:
             return dict(name=name, holding=holding, error="未找到")
-        item = await collector_csqaq.fetch_item_detail(good_id)
+        item = await resolve_item(good_id, name, KLINE_FRESH_BATCH)
         if item is None:
             return dict(name=name, holding=holding, error="详情获取失败")
         exact_name = item.name or name
@@ -1696,8 +1717,12 @@ DISCOVER_WEAPONS = [
 ]
 
 async def _run_discover_task(task_id: str, items: list):
-    """Background: search each item via shared browser, analyze, sort by composite score."""
-    from pipeline import collector_csqaq, item_analysis as _ia
+    """Background: analyze each discover candidate, sort by composite score.
+
+    F-3 (2026-08-08): 采集复用优先——DB 有新鲜 K 线（<=3 天）直接复用不重复采集；
+    失败品重试一轮（复用优先，DB 已新鲜的秒过）；进度逐品落盘，重启后仍可查。
+    """
+    from pipeline import item_analysis as _ia
     # Get market TH for context-aware filtering
     ms = market_snapshot()
     market_th = ms["th"]
@@ -1705,14 +1730,14 @@ async def _run_discover_task(task_id: str, items: list):
     results = []
     analysis_objs = {}
     skipped = 0
-    for i, (good_id, name, price_rmb) in enumerate(items):
-        _discover_progress[task_id]["current"] = i + 1
-        _discover_progress[task_id]["name"] = name
+
+    async def _analyze_one(good_id, name, price_rmb):
+        """分析单个候选（复用优先取数）。返回 (status, reason)；status: ok / error / skip。"""
+        nonlocal skipped
         try:
-            item = await collector_csqaq.fetch_item_detail(good_id)
+            item = await resolve_item(good_id, name, KLINE_FRESH_DISCOVER)
             if item is None:
-                results.append(dict(name=name, error="详情获取失败"))
-                continue
+                return "error", "详情获取失败"
             exact_name = item.name or name
             daily_bars = item.kline_90d if hasattr(item, "kline_90d") and item.kline_90d else []
             if not daily_bars:
@@ -1746,7 +1771,7 @@ async def _run_discover_task(task_id: str, items: list):
             _suspect, _lc, _ls = _kline_dev()
             if _suspect:
                 _web_log.warning(f"Discover kline 串品防护 {exact_name}: 最新价¥{_lc}/在售{_ls} vs 悠悠锚¥{anchor_price}/{anchor_sell} 偏差超限 -> 重取一次")
-                _item2 = await collector_csqaq.fetch_item_detail(good_id)
+                _item2 = await resolve_item(good_id, exact_name, KLINE_FRESH_DISCOVER)
                 if _item2 and _item2.kline_90d:
                     item = _item2
                     daily_bars = item.kline_90d
@@ -1761,18 +1786,18 @@ async def _run_discover_task(task_id: str, items: list):
                 else:
                     _web_log.warning(f"Discover kline 串品防护 {exact_name}: 重取与 DB 回退均失败 -> 跳过")
                     skipped += 1
-                    continue
+                    return "skip", "串品防护跳过"
             prices = [k.close for k in daily_bars if k.close > 0] if daily_bars else [price_rmb]
 
             # P0-2: 轻量预筛 - K线不足14天直接跳过(节省采集+分析耗时)
             if len(prices) < 14:
                 skipped += 1
-                continue
+                return "skip", "K线不足14天"
             current_p = prices[-1]
             pct_quick = sum(1 for p in prices if p < current_p) / len(prices) * 100
             if pct_quick > 75:
                 skipped += 1
-                continue
+                return "skip", "分位过高"
 
             supply_hist = [k.in_sale_count for k in daily_bars] if daily_bars else []
 
@@ -1808,7 +1833,7 @@ async def _run_discover_task(task_id: str, items: list):
             # P3: Market-linked filter
             if market_th < 55 and score < 6.0 and composite < 5.0:
                 skipped += 1
-                continue
+                return "skip", "市场弱过滤"
 
             results.append(dict(
                 name=exact_name, good_id=good_id, price_rmb=price_rmb or item.price_rmb,
@@ -1824,14 +1849,36 @@ async def _run_discover_task(task_id: str, items: list):
                 valuation_tier=getattr(analysis.position, "valuation_tier", ""),
                 tier_label=getattr(analysis.position, "tier_label", ""),
             ))
+            return "ok", ""
         except Exception as e:
             _web_log.error(f"Discover analyze {name} error: {traceback.format_exc()}")
-            results.append(dict(name=name, error=str(e)[:200]))
+            return "error", str(e)[:200]
+
+    deferred_errors = {}
+    for i, (good_id, name, price_rmb) in enumerate(items):
+        _discover_progress[task_id]["current"] = i + 1
+        _discover_progress[task_id]["name"] = name
+        _persist_discover_progress(task_id)
+        status, reason = await _analyze_one(good_id, name, price_rmb)
+        if status == "error":
+            deferred_errors[(good_id, name, price_rmb)] = reason
+
+    # F-3 失败重试一轮：复用优先，DB 已新鲜的秒过；仍失败才记 error
+    if deferred_errors:
+        _web_log.warning(f"Discover retry round: {len(deferred_errors)} items")
+        for (good_id, name, price_rmb), reason in list(deferred_errors.items()):
+            _discover_progress[task_id]["name"] = name
+            status, _reason = await _analyze_one(good_id, name, price_rmb)
+            if status != "error":
+                deferred_errors.pop((good_id, name, price_rmb))
+    for (good_id, name, price_rmb), reason in deferred_errors.items():
+        results.append(dict(name=name, error=reason or "采集失败"))
 
     _discover_progress[task_id]["skipped"] = skipped
     results.sort(key=lambda r: r.get("composite", 0) or r.get("score", 0) or 0, reverse=True)
     _discover_progress[task_id]["results"] = results
     _discover_progress[task_id]["done"] = True
+    _persist_discover_progress(task_id)
 
     # 保存 top10 报告到 analysis_results + snapshots（查看报告不再重新分析）
     try:
@@ -1864,6 +1911,14 @@ async def _run_discover_task(task_id: str, items: list):
 
     html = _render_discover_html(results, market_th)
     _discover_progress[task_id]["html"] = html
+
+    # 扫描完成，清理进度落盘文件
+    try:
+        _discover_progress_file(task_id).unlink(missing_ok=True)
+    except Exception:
+        pass
+
+
 def _render_discover_html(results, market_th=50):
     """Render discover results with valuation columns, add-to-watchlist, and heatmap."""
     sorted_r = sorted(results, key=lambda r: -(r.get("composite", 0) or r.get("score", 0) or 0))
@@ -2165,6 +2220,19 @@ async def api_discover_latest():
 @app.get("/api/items/discover-progress/{task_id}")
 async def api_discover_progress(task_id: str):
     p = _discover_progress.get(task_id)
+    if p is None:
+        try:
+            fp = _discover_progress_file(task_id)
+            if fp.exists():
+                import json as _json
+                data = _json.loads(fp.read_text(encoding="utf-8"))
+                if isinstance(data, dict) and "ts" in data:
+                    _discover_progress[task_id] = data
+                    p = data
+        except Exception:
+            pass
     if not p:
         return {"error": "not found"}
-    return {"current": p["current"], "total": p["total"], "name": p.get("name", ""), "done": p["done"], "html": p.get("html", ""), "results": p.get("results", []) if p["done"] else []}
+    return {"current": p.get("current", 0), "total": p.get("total", 0), "name": p.get("name", ""),
+            "done": p.get("done", False), "html": p.get("html", ""), "skipped": p.get("skipped", 0),
+            "results": p.get("results", []) if p.get("done") else []}
