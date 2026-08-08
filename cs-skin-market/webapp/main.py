@@ -2100,6 +2100,10 @@ async def _run_discover_scan_all_task(task_id: str):
             "SELECT i.good_id FROM items i JOIN price_history p ON p.item_id=i.id "
             "WHERE i.good_id>0 GROUP BY i.id HAVING MAX(p.date)>=date('now','-3 day')").fetchall():
             fresh_gids.add(_r["good_id"])
+        # F-3.1 活跃池淘汰品不重新采集（数据保留，避免淘汰后又被 discover 捞回）
+        for _r in conn_f.execute(
+            "SELECT good_id FROM items WHERE good_id>0 AND notes LIKE '%活跃池淘汰%'").fetchall():
+            fresh_gids.add(_r["good_id"])
     finally:
         conn_f.close()
     capped = [x for x in capped if x[0] not in fresh_gids]

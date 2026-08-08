@@ -98,7 +98,8 @@ def collect_macro() -> bool:
 async def collect_kline_all() -> int:
     from pipeline import collector_csqaq, db
     conn = db.get_conn()
-    rows = conn.execute("SELECT id, good_id, name FROM items WHERE good_id > 0 AND (notes IS NULL OR notes NOT LIKE '%存世量过低%') ORDER BY id").fetchall()
+    # F-3.1 活跃池淘汰：自选/持仓必采集；其余排除「存世量过低 / 活跃池淘汰」标记品（数据保留）
+    rows = conn.execute("SELECT id, good_id, name FROM items WHERE good_id > 0 AND (in_watchlist=1 OR holding=1 OR notes IS NULL OR (notes NOT LIKE '%存世量过低%' AND notes NOT LIKE '%活跃池淘汰%')) ORDER BY id").fetchall()
     conn.close()
     ok = 0
     for r in rows:
@@ -121,6 +122,31 @@ async def collect_kline_all() -> int:
         ok += 1
     log(f"K线全量刷新: {ok}/{len(rows)}")
     return ok
+
+
+def prune_inactive(min_avg_sale: int = 10, days: int = 7) -> int:
+    """活跃池淘汰（F-3.1, 2026-08-08）：非自选/非持仓品最近 days 天平均在售量 < min_avg_sale，
+    标记 notes「活跃池淘汰:在售量过低」，退出每日采集（数据保留；加回自选即恢复采集）。
+    纯数据层标记，不触碰冻结参数。"""
+    from pipeline import db
+    conn = db.get_conn()
+    try:
+        rows = conn.execute(f"""
+            SELECT i.id FROM items i WHERE i.good_id>0 AND i.in_watchlist=0 AND COALESCE(i.holding,0)=0
+            AND (i.notes IS NULL OR (i.notes NOT LIKE '%存世量过低%' AND i.notes NOT LIKE '%活跃池淘汰%'))
+            AND (SELECT AVG(in_sale_count) FROM (SELECT in_sale_count FROM price_history p
+                 WHERE p.item_id=i.id ORDER BY p.date DESC LIMIT {int(days)})) < {int(min_avg_sale)}
+        """).fetchall()
+        mark = f"活跃池淘汰:在售量过低(<{min_avg_sale})"
+        for r in rows:
+            conn.execute("UPDATE items SET notes=?, updated_at=datetime('now','localtime') WHERE id=?",
+                         (mark, r["id"]))
+        conn.commit()
+        if rows:
+            log(f"活跃池淘汰: {len(rows)} 品（最近{int(days)}天平均在售量 <{min_avg_sale}，已标记退出每日采集）")
+        return len(rows)
+    finally:
+        conn.close()
 
 
 async def collect_market_snapshot(max_pages: int = 25) -> int:
@@ -151,7 +177,7 @@ async def collect_monitor_rank(top_n: int = 50) -> int:
     from pipeline.collector_monitor import fetch_monitor_rank
     conn = db.get_conn()
     try:
-        items = conn.execute("SELECT id, good_id, name FROM items WHERE good_id > 0 AND (notes IS NULL OR notes NOT LIKE '%存世量过低%') ORDER BY id").fetchall()
+        items = conn.execute("SELECT id, good_id, name FROM items WHERE good_id > 0 AND (in_watchlist=1 OR holding=1 OR notes IS NULL OR (notes NOT LIKE '%存世量过低%' AND notes NOT LIKE '%活跃池淘汰%')) ORDER BY id").fetchall()
     finally:
         conn.close()
     if not items:
@@ -210,6 +236,11 @@ def main():
             await collect_kline_all()
         except Exception as e:
             log(f"K线任务异常: {e}")
+    # 活跃池淘汰 (F-3.1, 2026-08-08): K线刷新后评估流动性，淘汰品退出每日采集（数据保留）
+    try:
+        prune_inactive()
+    except Exception as e:
+        log(f"活跃池淘汰异常（不中断采集）: {e}")
     try:
         asyncio.run(_playwright_tasks())
     except Exception as e:
