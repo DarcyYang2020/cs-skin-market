@@ -943,7 +943,7 @@ def t_exec_btn_display():
     assert 'data-action="buy"' in _exec_btn('x', {'action': '可分批建仓'}, 1.0)
     assert 'data-action="reduce"' in _exec_btn('x', {'action': '建议止盈减仓'}, 1.0)
     assert 'data-action="sell"' in _exec_btn('x', {'action': '趋势走弱，考虑止损'}, 1.0)
-    assert 'data-action="hold"' in _exec_btn('x', {'action': '持有观察'}, 1.0)  # F-1.2: 观望也可记录（默认 hold，可改）
+    assert _exec_btn('x', {'action': '持有观察'}, 1.0) == ''  # F-1.3: 观望类无按钮（没操作不记录）
 check('batch scan exec button maps actionable advice only', t_exec_btn_display)
 
 
@@ -2084,7 +2084,9 @@ def t_report_exec_btn():
     assert 'data-price="55.50"' in h, h[:500]
     assert 'data-action="reduce"' in _render("reduce")
     assert 'data-action="sell"' in _render("sell")
-    assert 'data-action="hold"' in _render("watch")  # F-1.1: 回调中·关注/筑底中·观察 -> 观望，不再硬映射建仓
+    assert 'data-action="hold"' not in _render("watch")
+    assert "按建议记录执行" not in _render("watch")  # F-1.3: 观望类无按钮
+    assert "无需记录" in _render("watch")  # 提示观望无需记录
     assert 'data-action="sell"' in _render("avoid")
     h2 = templates.get_template("partials/analysis.html").render(name="X", price_rmb=1.0)
     assert "按建议记录执行" not in h2  # 无决策不显示

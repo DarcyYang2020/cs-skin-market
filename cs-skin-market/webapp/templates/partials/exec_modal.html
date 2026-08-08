@@ -15,7 +15,6 @@
           <option value="add">➕ 补仓</option>
           <option value="reduce">🔻 减仓</option>
           <option value="sell">🔴 清仓/止损</option>
-          <option value="hold">⏸️ 观望（不操作）</option>
         </select>
       </div>
       <div class="form-group" style="flex:1;">
@@ -49,7 +48,7 @@ function openExecModal(btn) {
   nameEl.value = btn.getAttribute('data-name') || '';
   nameEl.readOnly = true;
   document.getElementById('exec-modal-title').textContent = '💼 按建议执行';
-  var ea = btn.getAttribute('data-action') || 'hold';
+  var ea = btn.getAttribute('data-action') || 'buy';
   document.getElementById('exec-action').value = ea;
   var sig = btn.getAttribute('data-signal') || '';
   document.getElementById('exec-signal').textContent = sig ? ('信号：' + sig + ' → 建议动作：' + (_EXEC_ACTION_LABELS[ea] || '观望') + '（可按实际情况修改）') : '';
