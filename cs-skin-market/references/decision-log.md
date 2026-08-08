@@ -1627,3 +1627,13 @@ vs 池内等权 +509.75%/-54.12% vs 大盘 -4.02%；引擎边际价值在回撤�
 - `cs-skin-market/AGENTS.md`：「数据来源与采集」压至 8 条要点、「数据库表」压缩为引用清单、「运维」加调度总览引用。
 - `PROJECT_STRUCTURE.md`：references 列表加 data-layer.md / pool-maintenance.md；修正过时运维描述（21:30→18:00、CS_Daily_Collect→CS_Skin_DailyCollect）；数据文件表加 pool_maintenance_log.jsonl。
 - 原则：数据层只维护一个权威源（data-layer.md），其余文档只留引用与摘要，防止多源口径漂移。
+
+
+## F-3.4 discover 改为从池内跑（2026-08-08，分析/展示层）
+**背景**：用户「寻找高分品模块能不能改为从池子里跑？」——原 discover 依赖 csQAQ 搜索 suggest 拿候选，两次被滑块验证码拦截（20:31 整轮 empty）；且用户已定「存量更新不增量扩池」，池内 90 日 K 线每日采集已在库，重新搜索库外新品不再是主要诉求。
+**结论**：discover 默认改为「池内扫描」——加载活跃池品（good_id>0，排除存世量过低/活跃池淘汰），走既有 `_run_discover_task` 复用优先分析（DB 新鲜 K 线秒过，过期品才触发网络补齐）；`mode=search` 保留原全网搜索扩池路径供手动扩池。
+**落地**：
+- `POST /api/discover/scan-all` 加 mode 参数（默认 pool）；新增 `_run_discover_pool_task`；完成产物（latest cache + top10 历史 + 台账）抽 `_save_discover_artifacts` 公共函数，pool/search 共用。
+- 页面文案/按钮更新为「扫描池内高分品」；刷新入口行为不变（默认 pool）。
+**验证**：冒烟 83/0/6；真库 pool 扫描 181 活跃品 / 70 通过 / 111 跳过（弱市 P3 过滤+分位过高），纯 DB 约 2.5 分钟；Top10 含 2 个 buy（M4A4 渐变斑纹 / M4A4 弹雨）；台账 note=completed（pool_size_now=188）。
+**边界**：池内扫描是「已有数据的重排序」，不产生新入库品；「找新品」仍走 mode=search（手动触发，受验证码/限流影响）。

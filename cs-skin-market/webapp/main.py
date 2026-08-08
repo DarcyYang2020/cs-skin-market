@@ -2040,13 +2040,87 @@ def _render_discover_html(results, market_th=50):
 
 @app.post("/api/items/discover")
 @app.post("/api/discover/scan-all")
-async def api_discover_scan_all(request: Request):
+async def api_discover_scan_all(request: Request, mode: str = Query("pool")):
+    """发现高分品扫描（F-3.4, 2026-08-08）：默认 pool 模式——从池内活跃品跑（DB 新鲜 K 线复用，
+    不依赖 csQAQ 搜索 suggest，规避滑块验证码）；mode=search 保留原全网搜索扩池路径。"""
     import time as _time
     task_id = f"discover_{int(_time.time())}"
     _prune_progress(_discover_progress)
     _discover_progress[task_id] = {"current": 0, "total": len(DISCOVER_WEAPONS), "name": "", "done": False, "html": "", "results": [], "ts": time.time()}
-    asyncio.create_task(_run_discover_scan_all_task(task_id))
+    if mode == "search":
+        asyncio.create_task(_run_discover_scan_all_task(task_id))
+    else:
+        asyncio.create_task(_run_discover_pool_task(task_id))
     return {"task_id": task_id}
+
+async def _run_discover_pool_task(task_id: str):
+    """从池内跑 discover（F-3.4, 2026-08-08）：加载活跃池品，DB 新鲜 K 线复用优先，
+    按综合分排序出高分品。池内 90 日 K 线每日采集已在库，纯 DB 扫描，只有过期品才触发网络补齐。"""
+    conn_p = db.get_conn()
+    try:
+        rows = conn_p.execute(
+            "SELECT i.id, i.good_id, i.name FROM items i "
+            "WHERE i.good_id>0 AND (i.notes IS NULL OR (i.notes NOT LIKE '%存世量过低%' "
+            "AND i.notes NOT LIKE '%活跃池淘汰%')) ORDER BY i.id"
+        ).fetchall()
+    finally:
+        conn_p.close()
+    items = [(r["good_id"], r["name"], 0) for r in rows]
+    if not items:
+        _discover_progress[task_id]["done"] = True
+        _discover_progress[task_id]["html"] = '<div class="card" style="padding:20px;">池内无活跃品</div>'
+        _finalize_discover(task_id, note="empty")
+        return
+    _discover_progress[task_id]["total"] = len(items)
+    _discover_progress[task_id]["current"] = 0
+    _discover_progress[task_id]["name"] = "池内扫描准备中"
+    await _run_discover_task(task_id, items)
+    _save_discover_artifacts(task_id)
+
+
+def _save_discover_artifacts(task_id: str):
+    """discover 完成产物统一落盘（F-3.4, 2026-08-08）：latest cache + top10 历史存档 + 池维护台账。
+    pool/search 两条路径共用，避免尾部逻辑漂移。"""
+    import json as _json_cache
+    from pathlib import Path as _Path_cache
+    _cache_path = _Path_cache(__file__).resolve().parent.parent / 'data' / 'discover_latest.json'
+    _cache_path.parent.mkdir(parents=True, exist_ok=True)
+    _cache_data = {
+        'time': __import__('datetime').datetime.now().isoformat(),
+        'html': _discover_progress[task_id].get('html', ''),
+        'results': _discover_progress[task_id].get('results', []),
+        'market_th': _discover_progress[task_id].get('market_th', None),
+    }
+    _cache_path.write_text(_json_cache.dumps(_cache_data, ensure_ascii=False), encoding='utf-8')
+
+    # 高分品追踪 (2026-08-05): top10 存档，14/30d 后回测表现
+    try:
+        _hist_dir = _Path_cache(__file__).resolve().parent.parent / 'data' / 'discover_history'
+        _hist_dir.mkdir(parents=True, exist_ok=True)
+        _top = [r for r in (_discover_progress[task_id].get('results') or []) if not r.get('error')][:10]
+        _snap = {
+            'time': _cache_data['time'],
+            'market_th': _cache_data['market_th'],
+            'items': [{
+                'name': r.get('name', ''), 'good_id': r.get('good_id'),
+                'price_rmb': r.get('price_rmb'), 'score': r.get('score'),
+                'composite': r.get('composite'), 'pct_90d': r.get('percentile_90d'),
+            } for r in _top],
+        }
+        (_hist_dir / ('discover_' + task_id.replace('discover_', '') + '.json')).write_text(
+            _json_cache.dumps(_snap, ensure_ascii=False), encoding='utf-8')
+        _olds = sorted(_hist_dir.glob('discover_*.json'))
+        for _f in _olds[:-30]:
+            try:
+                _f.unlink()
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+    # 池维护台账 (F-3.2, 2026-08-08): discover 扫描完成统一留痕（成功/空/失败全覆盖）
+    _finalize_discover(task_id)
+
 
 async def _run_discover_scan_all_task(task_id: str):
     """Full discover pipeline: search all weapon types, analyze results."""
@@ -2140,47 +2214,8 @@ async def _run_discover_scan_all_task(task_id: str):
     _discover_progress[task_id]["current"] = 0
     await _run_discover_task(task_id, capped)
 
-    # Save cache for re-viewing
-    import json as _json_cache
-    from pathlib import Path as _Path_cache
-    _cache_path = _Path_cache(__file__).resolve().parent.parent / 'data' / 'discover_latest.json'
-    _cache_path.parent.mkdir(parents=True, exist_ok=True)
-    _cache_data = {
-        'time': __import__('datetime').datetime.now().isoformat(),
-        'html': _discover_progress[task_id].get('html', ''),
-        'results': _discover_progress[task_id].get('results', []),
-        'market_th': _discover_progress[task_id].get('market_th', None),
-    }
-    _cache_path.write_text(_json_cache.dumps(_cache_data, ensure_ascii=False), encoding='utf-8')
-
-    # \u9ad8\u5206\u54c1\u8ffd\u8e2a (2026-08-05): top10 \u5b58\u6863\uff0c14/30d \u540e\u56de\u6d4b\u8868\u73b0
-    try:
-        _hist_dir = _Path_cache(__file__).resolve().parent.parent / 'data' / 'discover_history'
-        _hist_dir.mkdir(parents=True, exist_ok=True)
-        _top = [r for r in (_discover_progress[task_id].get('results') or []) if not r.get('error')][:10]
-        _snap = {
-            'time': _cache_data['time'],
-            'market_th': _cache_data['market_th'],
-            'items': [{
-                'name': r.get('name', ''), 'good_id': r.get('good_id'),
-                'price_rmb': r.get('price_rmb'), 'score': r.get('score'),
-                'composite': r.get('composite'), 'pct_90d': r.get('percentile_90d'),
-            } for r in _top],
-        }
-        (_hist_dir / ('discover_' + task_id.replace('discover_', '') + '.json')).write_text(
-            _json_cache.dumps(_snap, ensure_ascii=False), encoding='utf-8')
-        _olds = sorted(_hist_dir.glob('discover_*.json'))
-        for _f in _olds[:-30]:
-            try:
-                _f.unlink()
-            except Exception:
-                pass
-    except Exception:
-        pass
-
-
-    # 池维护台账 (F-3.2, 2026-08-08): discover 扫描完成统一留痕（成功/空/失败全覆盖）
-    _finalize_discover(task_id)
+    # 完成产物统一落盘：latest cache + top10 历史存档 + 池维护台账（F-3.4 抽公共函数）
+    _save_discover_artifacts(task_id)
 
 
 def _settle_discover_items(items, scan_time):
