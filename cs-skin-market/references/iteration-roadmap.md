@@ -7,6 +7,11 @@
 
 ## 版本历史
 
+- **v40（2026-08-08）**：大盘采集 401 自动重绑 IP（用户报「获取大盘数据失败」）：
+  - 根因：csQAQ 绑定 IP 校验，环境出口 IP 轮换导致间歇 401；Web 刷新路径无绑定机制，浏览器兜底在请求线程内跨 loop 不可用 → 返回 None。
+  - 修复：`collector` 的 current_data / sub/kline 401 分支先 `bind_local_ip()` 重新绑定再重试一次，仍 401 才走浏览器兜底；kline 解析抽 `_parse_kline_points` 复用。
+  - 验证：真实环境 bind 后恢复（指数 1586.01 / K线 996 点）；新增 `t_market_401_rebind_retry` 冒烟；73/0/6。
+  - 学到的新思路：① 第三方 API 的「绑定 IP」类间歇 401 应先走官方重绑接口再兜底，浏览器兜底跨 loop 成本高且不可靠；② 报错信息应区分「可自愈」（重绑/重试）与「真失败」，先自愈再报错。
 - **v39（2026-08-08）**：求购数据持久化（数据储备，为后续版本迭代验证求购因子攒样本；决策/展示零改动）：
   - T1 实测（8 品）：order_book 可得性 8/8；`bid_30d_chg` 口径不可信（8/8 极端负值背离售价）→ 禁用仅存档；`spread_avg` 有 0 脏值；`bid_count` 为估算假数据不持久化。
   - 落地：snapshots 新增 5 列（bid_highest/bid_7d_chg/bid_30d_chg/spread_pct/spread_avg），`save_item_snapshot` 统一写入；新增 `t_snapshot_bid_cols` 冒烟。

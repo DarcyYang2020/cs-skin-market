@@ -2039,6 +2039,34 @@ def t_snapshot_bid_cols():
         conn.commit(); conn.close()
 check('snapshot 持久化求购 bid/spread 字段', t_snapshot_bid_cols)
 
+def t_market_401_rebind_retry():
+    """大盘 401（出口 IP 轮换）→ bind_local_ip 重新绑定 → 重试成功。"""
+    from pipeline import collector
+    calls = {"n": 0, "bind": 0}
+    def fake_get(path):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return {"code": 401, "data": None, "msg": "IP mismatch"}
+        return {"code": 200, "data": {"sub_index_data": [
+            {"name_key": "init", "market_index": 1586.0, "chg_rate": 0.0}],
+            "greedy_status": {"level": "medium"}}}
+    def fake_bind():
+        calls["bind"] += 1
+        return "ok"
+    orig_get, orig_bind = collector._api_get, collector.bind_local_ip
+    collector._api_get, collector.bind_local_ip = fake_get, fake_bind
+    try:
+        idx = collector.fetch_market_index()
+        assert idx is not None and abs(idx.value - 1586.0) < 1e-6, idx
+        assert calls["n"] == 2 and calls["bind"] == 1, calls
+        # kline 解析函数直接可用
+        pts = collector._parse_kline_points([{"t": 1723104000000, "c": 1500.5}, {"bad": 1}])
+        assert len(pts) == 1 and pts[0][0] == "2024-08-08", pts
+    finally:
+        collector._api_get, collector.bind_local_ip = orig_get, orig_bind
+check('大盘 401 后 bind 重试成功', t_market_401_rebind_retry)
+
+
 
 print(f'=== Results: {passed} passed, {failed} failed, {skipped} skipped ===')
 if failures:

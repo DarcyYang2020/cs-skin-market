@@ -180,15 +180,25 @@ def _run_browser_fallback(coro_factory, label):
 
 
 def _current_data_with_fallback() -> dict | None:
-    """Fetch /current_data?type=init with 401 fallback to browser."""
+    """Fetch /current_data?type=init with 401 fallback to browser.
+
+    401（绑定 IP 校验，出口 IP 轮换导致间歇失败）→ 先 bind_local_ip 重新绑定再重试一次；
+    仍 401 才走浏览器兜底（Web 请求线程内浏览器跨 loop 不可用，兜底可能失败）。
+    """
     resp = _api_get("/current_data?type=init")
     data = resp.get("data")
-    
     if resp.get("code") == 401 and not data:
-        _log.warning("current_data: API 401 (IP binding mismatch), falling back to browser")
-        from .collector_csqaq import fetch_current_data_via_browser
-        return _run_browser_fallback(fetch_current_data_via_browser, "current_data")
-    
+        _log.warning("current_data: API 401 (IP binding mismatch), rebind then retry")
+        try:
+            bind_local_ip()
+        except Exception as _be:
+            _log.warning(f"current_data: bind_local_ip failed: {_be}")
+        resp2 = _api_get("/current_data?type=init")
+        data = resp2.get("data")
+        if resp2.get("code") == 401 and not data:
+            _log.warning("current_data: API 401 after rebind, falling back to browser")
+            from .collector_csqaq import fetch_current_data_via_browser
+            return _run_browser_fallback(fetch_current_data_via_browser, "current_data")
     return data
 
 def fetch_market_index() -> MarketIndex | None:
@@ -257,7 +267,16 @@ def _fetch_index_kline_raw() -> list:
     
     # Fallback: 401 -> browser interception (same session-bypass as current_data)
     if resp.get("code") == 401 and not data:
-        _log.warning("fetch_index_kline: API 401, falling back to browser")
+        _log.warning("fetch_index_kline: API 401 (IP binding mismatch), rebind then retry")
+        try:
+            bind_local_ip()
+        except Exception as _be:
+            _log.warning(f"fetch_index_kline: bind_local_ip failed: {_be}")
+        resp2 = _api_get("/sub/kline?id=1&type=1day")
+        data = resp2.get("data")
+        if resp2.get("code") != 401 or data:
+            return _parse_kline_points(data) if data else []
+        _log.warning("fetch_index_kline: API 401 after rebind, falling back to browser")
         from .collector_csqaq import fetch_index_kline_via_browser
         points = _run_browser_fallback(fetch_index_kline_via_browser, "index_kline")
         if points:
@@ -265,10 +284,14 @@ def _fetch_index_kline_raw() -> list:
         _log.warning("fetch_index_kline: browser fallback returned empty")
         return []
     
+    return _parse_kline_points(data)
+
+
+def _parse_kline_points(data) -> list:
+    """sub/kline data 解析为 (date_str, close) 列表；异常行跳过。"""
     if not data or not isinstance(data, list):
         _log.warning("fetch_index_kline: no data from API")
         return []
-
     points = []
     for row in data:
         try:
