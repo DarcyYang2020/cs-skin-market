@@ -243,13 +243,16 @@ webapp/templates/
 - 融合修正：≤25 且 buy → 🟡 求购承接弱·观望；≥75 + watch 低估 → 🟡 底部观察·承接增强
 - 单品报告 🛒 求购承接卡片
 
-### 单品回测工具 (run_item_backtest.py, 2026-07-31)
+### 单品回测工具 (run_item_backtest.py, 2026-07-31；2026-08-08 归档)
+
+> 已归档至 `references/scripts-archive/`（2026-08-08：与 refit_pipeline.py 功能重叠且零引用）。
+> 历史结论保留如下，当前回测/重拟合统一走 `references/refit_pipeline.py`。
 
 离线回放单品引擎（不采集、不联网），验证买入信号历史胜率：
 
 ```
-python run_item_backtest.py --all --warmup 30 --stratify
-python run_item_backtest.py --items "AWP | 冥界之河 (崭新出厂);AK-47 | 抽象派 1337 (崭新出厂)" --warmup 60
+python references/scripts-archive/run_item_backtest.py --all --warmup 30 --stratify
+python references/scripts-archive/run_item_backtest.py --items "AWP | 冥界之河 (崭新出厂);AK-47 | 抽象派 1337 (崭新出厂)" --warmup 60
 ```
 
 - 数据源: `price_history`（2026-04-21 起，按日期取最新采集去重）+ `market_index`（2025-11-02 起）
@@ -304,6 +307,8 @@ python run_item_backtest.py --items "AWP | 冥界之河 (崭新出厂);AK-47 | �
 
 ## 文件结构
 
+> 文件结构唯一事实源：`PROJECT_STRUCTURE.md`；本清单仅保留运行要点，改动时两处同步。
+
 
 cs-skin-market/
   AGENTS.md              -- 本文件
@@ -314,12 +319,7 @@ cs-skin-market/
   run_health_monitor.py  -- 健康监控入口（run_monitor，退出码 0/2）
   backup_db.py           -- 每日 SQLite 备份（保留 14 份）
   notify_alert.py        -- 告警/监控推送（钉钉，.env NOTIFY_WEBHOOK_URL；M2 监控日报复用）
-  run_backtest.py        -- 大盘回测（python run_backtest.py [--start 2025-11-02]）
-  run_item_backtest.py   -- 单品回测（--all/--items/--warmup/--stratify）
-  run_item_exit_backtest.py -- 出场规则回测
-  run_item_9grid_backtest.py -- 情绪×估值 9 宫格回测
-  run_portfolio_backtest.py -- 组合级执行回测（P0-1/P0-2）
-  run_backfill_history.py -- 单品历史深度回填（simple/chartAll，2025-01-01 起，仅补缺失日期）
+  references/scripts-archive/ -- 历史回测/回填脚本归档（run_backtest/run_item_backtest/run_item_9grid/run_item_exit/run_portfolio/run_backfill_history，2026-08-08 归档；当前回测统一走 references/refit_pipeline.py）
   data/market.db         -- SQLite 数据库
   data/item_backtest_full_2025.json -- 标准回放基准（去量 v2，370 信号）
   pipeline/

@@ -1,5 +1,7 @@
 # CS-Model 项目文件功能说明
 
+> 本文档为项目文件结构唯一事实源（AGENTS.md/SKILL.md 不再维护重复文件树）。
+
 > 最后更新: 2026-08-07（去量 v2 引擎 + Phase 0-4 落地后全面刷新）
 
 ## 目录结构
@@ -10,12 +12,7 @@ cs-skin-market/
 ├── run_daily_collect.py       # 每日自动采集总调度（大盘/宏观/K线全量每日 + 全市场快照/大户集中度每周一 + 数据健康 + J-2 刷新 + 信号回填 + 监控事件 + DB 备份）
 ├── run_data_health.py         # 数据源健康检查（全量可采集品动态基线，写 health_checks）
 ├── run_health_monitor.py      # 健康监控独立入口（run_monitor，退出码 0/2 供告警）
-├── run_backtest.py            # 大盘回测（低层引擎逐日回放）
-├── run_item_backtest.py       # 单品回测（--all/--items/--warmup/--stratify）
-├── run_item_exit_backtest.py  # 出场规则回测（-> data/item_exit_backtest_latest.json）
-├── run_item_9grid_backtest.py # 情绪×估值 9 宫格回测
-├── run_portfolio_backtest.py  # 组合级执行回测（P0-1 资金曲线 / P0-2 出场网格）
-├── run_backfill_history.py    # 单品历史深度回填（2025-01-01 起，仅补缺失日期）
+├── references/scripts-archive/ # 历史回测/回填脚本归档（run_backtest/run_item_backtest/run_item_exit/run_item_9grid/run_portfolio/run_backfill_history，2026-08-08；当前回测统一走 refit_pipeline.py）
 ├── backup_db.py               # SQLite online backup（每日，保留 14 份）
 ├── notify_alert.py            # 告警/监控推送（钉钉 webhook，.env NOTIFY_WEBHOOK_URL 配置）
 ├── install_tasks.ps1          # Windows 计划任务安装（每日采集/备份/告警）

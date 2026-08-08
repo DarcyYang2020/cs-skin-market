@@ -11,7 +11,6 @@
     <span class="card" style="padding:8px 14px;font-size:13px;">🟡 提醒 <b style="color:var(--yellow);">{{ counts.warn }}</b></span>
     <span class="card" style="padding:8px 14px;font-size:13px;">🔵 信息 <b style="color:var(--text-muted);">{{ counts.info }}</b></span>
   </div>
-  {% set type_label = {'near_buy':'买点接近','stop_loss':'破位止损','decision_flip':'决策翻转','supply_shift':'供给突变','price_spike':'价格异动','market_state':'大盘状态','exec_due':'持仓到期','new_buy_signal':'新买信号'} %}
   {% set level_color = {'danger':'var(--red)','warn':'var(--yellow)','info':'var(--text-secondary)'} %}
   {% if not events %}
   <div class="card" style="padding:30px;text-align:center;color:var(--text-muted);">近 {{ days }} 天暂无监控事件（每日采集收尾自动生成）</div>

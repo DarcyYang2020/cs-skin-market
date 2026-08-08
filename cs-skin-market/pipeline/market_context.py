@@ -183,3 +183,42 @@ def state_bucket(sentiment_score, market_th_score, market_30d_change):
     if t >= 45:
         return "中性企稳"
     return "弱市观望"
+
+
+# ============================================================
+# 大盘指数统计（单一事实源 2026-08-08）
+# 两处复用：analysis_service.market_snapshot（引擎路径，情绪在线口径）
+#           pipeline.monitor._market_ctx_from_db（监控路径，情绪纯 DB 口径）
+# 指数分位/Z/周期/TH/涨跌幅 必须统一走本函数，禁止各处自行计算。
+# ============================================================
+def market_index_stats(market_history):
+    """大盘指数统计（纯计算）：90日分位/Z/周期/TH/7-30-21日涨跌幅。
+
+    market_history: [(date_str, value), ...]（oldest -> newest）。
+    """
+    values = [v for _, v in market_history if v > 0]
+    pct, z = 50.0, 0.0
+    cycle, th = "unknown", 50.0
+    chg7 = chg30 = drop21 = 0.0
+    if len(values) >= 30:
+        from .index_analysis import analyze_index
+        _ires = analyze_index(market_history[-90:])
+        _ipos = _ires.get("position", {}) if isinstance(_ires, dict) else {}
+        pct = _ipos.get("percentile_90d", 50)
+        z = _ipos.get("zscore_90d", 0)
+        cur = values[-1]
+        m7 = values[-7] if len(values) >= 7 else values[0]
+        m30 = values[-30]
+        m21 = values[-21] if len(values) >= 21 else values[0]
+        chg7 = round((cur - m7) / m7 * 100, 1) if m7 > 0 else 0
+        chg30 = round((cur - m30) / m30 * 100, 1) if m30 > 0 else 0
+        drop21 = round((cur - m21) / m21 * 100, 1) if m21 > 0 else 0
+        from .market_th import derive_market_cycle, compute_market_trend_health
+        cycle = derive_market_cycle(values, len(values) - 1)
+        try:
+            _mth = compute_market_trend_health(values[-90:])
+            th = _mth.corrected_score if hasattr(_mth, "corrected_score") else _mth.score
+        except Exception:
+            th = max(0, min(100, 50 + chg30 * 3))
+    return {"pct": pct, "z": z, "cycle": cycle, "th": th,
+            "chg7": chg7, "chg30": chg30, "drop21": drop21}

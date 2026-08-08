@@ -183,6 +183,17 @@ def _dashboard_context():
         conn.close()
 
 
+def _load_j2():
+    """读 data/j2_channel_status.json（dashboard 引擎状态徽章 / checkup 信号体检 共用）。"""
+    _p = Path(__file__).resolve().parent.parent / "data" / "j2_channel_status.json"
+    if not _p.exists():
+        return None
+    try:
+        return json.loads(_p.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
 def _signal_density():
     """回放信号密度：最近30日信号数 vs 历史30日窗口分位（纯展示，读 item_backtest_full_2025.json）。"""
     try:
@@ -230,10 +241,9 @@ async def page_dashboard(request: Request):
         _ms_r.get("sentiment"), _ms_r.get("chg30"), _ms_r.get("th"))
     # ---- 引擎状态徽章（J-2 冻结监测，纯展示；读 j2_channel_status.json）----
     _engine_status = None
-    _j2_path = Path(__file__).resolve().parent.parent / "data" / "j2_channel_status.json"
-    if _j2_path.exists():
+    _j2 = _load_j2()
+    if _j2:
         try:
-            _j2 = json.loads(_j2_path.read_text(encoding="utf-8"))
             _ch = _j2.get("channels") or {}
             _c = _ch.get("C") or {}
             _monthly = _c.get("monthly") or []
@@ -1557,13 +1567,7 @@ async def api_batch_scan_progress(scan_id: str):
 # ---- 信号体检页 (P2-1, 2026-08-07: J-2 C 通道月度 + 实盘信号跟踪) ----
 @app.get("/checkup", response_class=HTMLResponse)
 async def page_checkup(request: Request):
-    _j2 = None
-    _j2_path = Path(__file__).resolve().parent.parent / "data" / "j2_channel_status.json"
-    if _j2_path.exists():
-        try:
-            _j2 = json.loads(_j2_path.read_text(encoding="utf-8"))
-        except Exception:
-            _j2 = None
+    _j2 = _load_j2()
     _signals = []
     _conn = db.get_conn()
     try:
@@ -1583,7 +1587,7 @@ async def page_checkup(request: Request):
 # ---- M1 监控模式页面 (2026-08-08): 每日自选品异动事件 + 历史归档（纯展示） ----
 @app.get("/monitor", response_class=HTMLResponse)
 async def page_monitor(request: Request, days: int = Query(default=7)):
-    from pipeline.monitor import list_events
+    from pipeline.monitor import list_events, _TYPE_LABEL
     events = list_events(days=days)
     by_date = {}
     for _e in events:
@@ -1594,6 +1598,7 @@ async def page_monitor(request: Request, days: int = Query(default=7)):
         "days": days,
         "events": events,
         "by_date": by_date,
+        "type_label": _TYPE_LABEL,
         "counts": {
             "danger": sum(1 for e in events if e["level"] == "danger"),
             "warn": sum(1 for e in events if e["level"] == "warn"),

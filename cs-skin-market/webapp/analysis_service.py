@@ -175,45 +175,21 @@ def anchor_override(daily_bars, anchor_price, label=""):
 
 
 def market_snapshot():
-    """Market context from stored index history (pct/z/cycle/th/chg7/chg30/sentiment)."""
+    """Market context from stored index history (pct/z/cycle/th/chg7/chg30/sentiment).
+
+    指数统计复用 pipeline.market_context.market_index_stats（与监控 _market_ctx_from_db 同源）；
+    情绪保持在线口径 compute_sentiment_score（10min 缓存），监控路径用 DB 口径。
+    """
     conn = db.get_conn()
-    market_history = []
-    market_pct = 50
-    market_z = 0.0
-    market_cycle = "unknown"
-    market_th = 50
-    market_7d_change = 0.0
-    market_30d_change = 0.0
-    market_21d_change = 0.0
     try:
         rows = conn.execute(
             "SELECT date, value FROM market_index ORDER BY date ASC"
         ).fetchall()
         market_history = [(r["date"], float(r["value"])) for r in rows] if rows else []
-        values = [v for _, v in market_history if v > 0]
-        if len(values) >= 30:
-            current_m = values[-1]
-            from pipeline.index_analysis import analyze_index
-            _ires = analyze_index(market_history[-90:])
-            _ipos = _ires.get("position", {}) if isinstance(_ires, dict) else {}
-            market_pct = _ipos.get("percentile_90d", 50)
-            market_z = _ipos.get("zscore_90d", 0)
-            m7 = values[-7] if len(values) >= 7 else values[0]
-            m30 = values[-30] if len(values) >= 30 else values[0]
-            market_7d_change = round((current_m - m7) / m7 * 100, 1) if m7 > 0 else 0
-            market_30d_change = round((current_m - m30) / m30 * 100, 1) if m30 > 0 else 0
-            m21 = values[-21] if len(values) >= 21 else values[0]
-            market_21d_change = round((current_m - m21) / m21 * 100, 1) if m21 > 0 else 0
-            from pipeline.market_th import derive_market_cycle, compute_market_trend_health
-            market_cycle = derive_market_cycle(values, len(values) - 1)
-            try:
-                _window = values[-90:]
-                _mth = compute_market_trend_health(_window)
-                market_th = _mth.corrected_score if hasattr(_mth, "corrected_score") else _mth.score
-            except Exception:
-                market_th = max(0, min(100, 50 + market_30d_change * 3))
     finally:
         conn.close()
+    from pipeline.market_context import market_index_stats
+    stats = market_index_stats(market_history)
     try:
         from pipeline.market_macro import compute_sentiment_score
         sentiment = float(compute_sentiment_score() or 50)
@@ -221,9 +197,9 @@ def market_snapshot():
         sentiment = 50.0
     return {
         "history": market_history,
-        "pct": market_pct, "z": market_z, "cycle": market_cycle,
-        "th": market_th, "chg7": market_7d_change, "chg30": market_30d_change,
-        "drop21": market_21d_change,
+        "pct": stats["pct"], "z": stats["z"], "cycle": stats["cycle"],
+        "th": stats["th"], "chg7": stats["chg7"], "chg30": stats["chg30"],
+        "drop21": stats["drop21"],
         "sentiment": sentiment,
     }
 

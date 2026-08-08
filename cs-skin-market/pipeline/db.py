@@ -396,6 +396,7 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         created_at TEXT DEFAULT (datetime('now','localtime')))""")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_monitor_events_date ON monitor_events(date)")
 
+    # 废弃: backtest_results 仅旧组合回测写入(run_portfolio_backtest.py 已归档 scripts-archive), 引擎不再消费; 表结构保留兼容历史库
     conn.execute("""CREATE TABLE IF NOT EXISTS backtest_results (
 
         id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -40,32 +40,12 @@ def _market_ctx_from_db(conn):
     与 webapp.analysis_service.market_snapshot 同源口径：分位/Z/周期/TH/涨跌幅 + 情绪。
     情绪用 macro_history 最新非空 greedy_index 映射（避免 live fetch 网络依赖）。
     """
+    from pipeline.market_context import market_index_stats, state_bucket
     rows = conn.execute("SELECT date, value FROM market_index WHERE value>0 ORDER BY date").fetchall()
     market_history = [(r["date"], float(r["value"])) for r in rows]
-    values = [v for _, v in market_history]
-    pct, z = 50.0, 0.0
-    cycle, th = "unknown", 50.0
-    chg7 = chg30 = drop21 = 0.0
-    if len(values) >= 30:
-        from pipeline.index_analysis import analyze_index
-        _ires = analyze_index(market_history[-90:])
-        _ipos = _ires.get("position", {}) if isinstance(_ires, dict) else {}
-        pct = _ipos.get("percentile_90d", 50)
-        z = _ipos.get("zscore_90d", 0)
-        cur = values[-1]
-        m7 = values[-7] if len(values) >= 7 else values[0]
-        m30 = values[-30]
-        m21 = values[-21] if len(values) >= 21 else values[0]
-        chg7 = round((cur - m7) / m7 * 100, 1) if m7 > 0 else 0
-        chg30 = round((cur - m30) / m30 * 100, 1) if m30 > 0 else 0
-        drop21 = round((cur - m21) / m21 * 100, 1) if m21 > 0 else 0
-        from pipeline.market_th import derive_market_cycle, compute_market_trend_health
-        cycle = derive_market_cycle(values, len(values) - 1)
-        try:
-            _mth = compute_market_trend_health(values[-90:])
-            th = _mth.corrected_score if hasattr(_mth, "corrected_score") else _mth.score
-        except Exception:
-            th = max(0, min(100, 50 + chg30 * 3))
+    stats = market_index_stats(market_history)
+    pct, z, cycle, th = stats["pct"], stats["z"], stats["cycle"], stats["th"]
+    chg7, chg30, drop21 = stats["chg7"], stats["chg30"], stats["drop21"]
     sent = 50.0
     _g = conn.execute(
         "SELECT greedy_index FROM macro_history WHERE greedy_index IS NOT NULL ORDER BY date DESC LIMIT 1"
@@ -73,7 +53,6 @@ def _market_ctx_from_db(conn):
     if _g and _g["greedy_index"]:
         from pipeline.market_macro import greedy_to_sentiment
         sent = float(greedy_to_sentiment(float(_g["greedy_index"])))
-    from pipeline.market_context import state_bucket
     bucket = state_bucket(sent, th, chg30)
     return {"pct": pct, "z": z, "cycle": cycle, "th": th,
             "chg7": chg7, "chg30": chg30, "drop21": drop21,
