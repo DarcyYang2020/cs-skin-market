@@ -91,6 +91,53 @@
 </div>
 {% endif %}
 
+
+{# ====== 持仓浮亏：补仓/止损双路径（F-3.7，2026-08-09，仅持仓时显示，纯展示层） ====== #}
+{% if holding_advice and holding_advice.pnl_pct is defined and holding_advice.pnl_pct < -10 %}
+{% set sp = holding_advice.stop_plan or {} %}
+<div class="card" style="border:1px solid rgba(239,68,68,0.45);margin-bottom:12px;">
+  <div class="card-header" style="padding:10px 14px;">
+    <span style="font-size:15px;font-weight:800;color:var(--red);">💼 持仓浮亏 {{ "%+.1f"|format(holding_advice.pnl_pct) }}% · 补仓/止损双路径</span>
+  </div>
+  <div style="padding:10px 14px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+    <div style="border:1px solid var(--border);border-radius:8px;padding:10px;">
+      <div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:6px;">➕ 补仓路径</div>
+      <div style="font-size:12px;color:var(--text-secondary);line-height:1.7;">
+        <b>{{ holding_advice.action }}</b><br>{{ holding_advice.reason }}
+        {% if holding_advice.add_positions %}
+        <div style="margin-top:4px;">{% for ap in holding_advice.add_positions %}<span style="color:var(--text-primary);">¥{{ "%.2f"|format(ap.price) }} × {{ ap.qty }}件（{{ "%+.1f"|format(ap.drop_pct) }}%）</span>{% if not loop.last %} · {% endif %}{% endfor %}</div>
+        {% endif %}
+      </div>
+      {% if holding_advice.add_positions %}
+      <button type="button" class="btn btn-accent btn-sm exec-btn" style="margin-top:8px;"
+              data-name="{{ name|e }}" data-action="add" data-signal="{{ holding_advice.action|e }}"
+              data-price="{{ "%.2f"|format(holding_advice.add_positions[0].price) }}" data-qty="{{ holding_advice.add_positions[0].qty }}"
+              onclick="openExecModal(this)">➕ 按补仓建议执行</button>
+      {% endif %}
+    </div>
+    <div style="border:1px solid var(--border);border-radius:8px;padding:10px;">
+      <div style="font-size:12px;font-weight:700;color:var(--red);margin-bottom:6px;">🔴 止损路径</div>
+      {% if sp %}
+      <div style="font-size:12px;color:var(--text-secondary);line-height:1.7;">
+        <b>{{ sp.state }} · {{ sp.action }}</b><br>{{ sp.reason }}
+        {% if sp.stop_price %}<br>参考卖出价 ¥{{ "%.2f"|format(sp.stop_price) }}{% endif %}
+        {% if sp.sell_qty %}<br>建议卖出 {{ sp.sell_qty }} 件（{{ sp.ratio_pct }}%）{% endif %}
+      </div>
+      {% if sp.sell_action %}
+      <button type="button" class="btn btn-outline btn-sm exec-btn" style="margin-top:8px;border-color:var(--red);color:var(--red);"
+              data-name="{{ name|e }}" data-action="{{ sp.sell_action }}" data-signal="止损评估·{{ sp.state }}"
+              data-price="{{ "%.2f"|format(sp.stop_price or 0) }}" data-qty="{{ sp.sell_qty }}"
+              onclick="openExecModal(this)">🔴 按止损建议执行</button>
+      {% else %}
+      <div style="margin-top:6px;font-size:11px;color:var(--green);">{{ sp.evidence }}</div>
+      {% endif %}
+      {% else %}
+      <div style="font-size:12px;color:var(--text-muted);line-height:1.7;">浮亏 {{ "%+.1f"|format(holding_advice.pnl_pct) }}% 未达评估线（成本-15%），暂不需要止损评估；跌破后再按矩阵决策。</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endif %}
 {# ====== 关键指标条 ====== #}
 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px;">
   <div class="card" style="padding:10px;text-align:center;">

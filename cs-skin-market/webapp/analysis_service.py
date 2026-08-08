@@ -521,8 +521,28 @@ async def analyze_fresh(item, good_id, exact_name, *, db_item_id=None, apply_anc
     except Exception as _te:
         _log.warning(f"signal tracking record failed {exact_name}: {_te}")
 
+
+    # F-3.7 持仓上下文（展示层）：报告页在「持仓浮亏」时展示补仓/止损双建议（纯展示，不改引擎）
+    _holding_ctx = None
+    try:
+        conn_h = db.get_conn()
+        try:
+            _hr = conn_h.execute(
+                "SELECT holding, avg_cost, quantity FROM items WHERE id=?", (use_id,)).fetchone()
+            if _hr and _hr["holding"] and (_hr["avg_cost"] or 0) > 0:
+                _holding_ctx = {"holding": 1, "avg_cost": float(_hr["avg_cost"] or 0),
+                                "qty": int(_hr["quantity"] or 1)}
+        finally:
+            conn_h.close()
+    except Exception:
+        _holding_ctx = None
+
     return {
         "analysis": analysis,
+        "holding_ctx": _holding_ctx,
+        "market_30d_change": ms.get("chg30"),
+        "market_th": ms["th"],
+        "sentiment": ms.get("sentiment", 50.0),
         "pid": pid,
         "daily_bars": daily_bars,
         "kline_stale_days": kline_stale_days,
@@ -604,7 +624,8 @@ def _supply_display(supply_dict, position):
     return out
 
 
-def build_analysis_ctx(analysis, kline_stale_days=None, kline_stale_date=""):
+def build_analysis_ctx(analysis, kline_stale_days=None, kline_stale_date="",
+                       holding_ctx=None, market_30d_change=None, market_th=None, sentiment=50.0):
     """三条分析路径共用的模板上下文（与原 api_items_search/analyze 输出一致）。
 
     展示层增强（不参与决策，参数冻结不受影响）：
@@ -612,6 +633,18 @@ def build_analysis_ctx(analysis, kline_stale_days=None, kline_stale_date=""):
     - supply_analysis：高位供给收缩语义统一（锁仓诱多嫌疑）
     - buy_distance.decision_note：非买入态提示；supply_trap：高位供给徽章降级
     """
+    # F-3.7 持仓浮亏双路径（纯展示层，回测 data/stop_loss_backtest.json）：有持仓时复用批量扫描同一套建议口径
+    holding_advice = None
+    if holding_ctx and holding_ctx.get("holding"):
+        try:
+            from pipeline.batch_scan import _portfolio_advice
+            holding_advice = _portfolio_advice(
+                True, float(holding_ctx.get("avg_cost") or 0), int(holding_ctx.get("qty") or 1),
+                analysis.price_rmb or 0, analysis,
+                market_th=market_th, sentiment_score=sentiment,
+                market_30d_change=market_30d_change, total_assets=0.0)
+        except Exception as _he:
+            _log.warning(f"holding advice failed {analysis.name}: {_he}")
     fd = dict(analysis.fusion_decision or {})
     fd["expectancy"] = _expectancy_badge(fd.get("action_label"))
     _src_labels = [_SOURCE_LABELS.get(str(s), str(s)) for s in (fd.get("deduction_sources") or [])]
@@ -647,5 +680,6 @@ def build_analysis_ctx(analysis, kline_stale_days=None, kline_stale_date=""):
         "kline_stale_date": kline_stale_date,
         "price_zones": analysis.price_zones,
         "buy_distance": bd,
+        "holding_advice": holding_advice,
         "analysis_time": datetime.now(TZ_BJ).strftime("%Y-%m-%d %H:%M"),
     }

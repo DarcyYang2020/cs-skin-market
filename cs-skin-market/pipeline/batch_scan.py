@@ -74,18 +74,37 @@ def market_regime(sent, chg30, th=None):
             "非恐慌但大盘TH<45：抄底腿等待企稳，吸筹腿受门控（禁贪婪弱TH共振）")
 
 
+def _split_topup_qty(qty):
+    """补仓批次数量分配：倒金字塔递减 3:2:1（F-3.7，2026-08-09 回测定稿）。
+
+    总补仓量=持仓量 qty，按 3:2:1 递减分 3 批（首批最深跌幅前最多、越深买得越少），
+    最大余数法保证整数和；零量批次自动剔除（小持仓退化为 1~2 批）。
+    """
+    parts = [3, 2, 1]
+    total = sum(parts)
+    raw = [qty * p / total for p in parts]
+    floors = [int(r) for r in raw]
+    rem = qty - sum(floors)
+    order = sorted(range(len(parts)), key=lambda i: raw[i] - floors[i], reverse=True)
+    for i in range(rem):
+        floors[order[i]] += 1
+    return [n for n in floors if n > 0]
+
+
 def _topup_price_plan(avg_cost, qty, current_price, analysis):
     """构建分批补仓价位计划（A方向 2026-08-03，与单品报告 price_zones 同源，纯展示层）。
 
     返回 (add_positions, entry_zone, avg_cost_after, suggest)；买入区间未放行时前三个为 None，
     suggest 退化为按批数加仓的通用提示。深跌恐慌提前补分支(2026-08-05)复用本函数。
+    2026-08-09 (F-3.7)：批次数量改倒金字塔 3:2:1 递减（data/stop_loss_backtest.json
+    strategy.topup.rhythm），首批最多、越深越少，总补仓量=持仓量 qty。
     """
     _pz = getattr(analysis, "price_zones", None) or {}
     _entry = _pz.get("entry") or {}
     _cur = _pz.get("current") or current_price
     _e_lo = _entry.get("low", 0) or 0
     _e_hi = _entry.get("high", 0) or 0
-    _q = max(1, qty // 3)
+    _qs = _split_topup_qty(max(1, int(qty)))
     _stats = TOPUP_EXPECTANCY_STATS["topup_ok"]
     _base = f"（回测：补仓点14d胜率{_stats['win14']:.0f}%、均值+{_stats['avg14']:.1f}%"
     if _stats.get("events"):
@@ -93,17 +112,85 @@ def _topup_price_plan(avg_cost, qty, current_price, analysis):
     _base += "）"
     if _e_lo > 0 and _e_hi > 0 and _e_hi < _cur:
         _mid = round((_e_lo + _e_hi) / 2, 2)
-        _steps = [(_e_hi, _q), (_mid, _q), (_e_lo, _q)]
+        _steps = list(zip((_e_hi, _mid, _e_lo), _qs))
         _drops = [round((p - _cur) / _cur * 100, 1) for p, _ in _steps]
         _cost_after = round((avg_cost * qty + sum(p * n for p, n in _steps)) / (qty + sum(n for _, n in _steps)), 2)
         add_positions = [{"price": p, "qty": n, "drop_pct": d} for (p, n), d in zip(_steps, _drops)]
-        suggest = (f"可分3批补仓，每批约{_q}件：批1 ¥{_e_hi:.2f}({_drops[0]:.1f}%)、"
-                   f"批2 ¥{_mid:.2f}({_drops[1]:.1f}%)、批3 ¥{_e_lo:.2f}({_drops[2]:.1f}%)；"
+        _part = "、".join(f"批{i+1} ¥{p:.2f} {n}件({d:.1f}%)" for i, ((p, n), d) in enumerate(zip(_steps, _drops)))
+        suggest = (f"可分{len(_steps)}批补仓（倒金字塔3:2:1递减，共{qty}件）：{_part}；"
                    f"补满后摊薄成本约¥{_cost_after:.2f}；单批不超过仓位上限15%{_base}")
         return add_positions, {"low": _e_lo, "high": _e_hi}, _cost_after, suggest
-    suggest = (f"可分2~3批加仓{_q}件，单批不超过仓位上限15%{_base}"
+    suggest = (f"可分2~3批加仓（倒金字塔3:2:1，单批不超过仓位上限15%）{_base}"
                f"（当前周期结构未放行买入区间，待企稳后更新补仓价位）")
     return None, None, None, suggest
+
+
+def _stop_loss_plan(avg_cost, qty, current_price, analysis, market_30d_change=None):
+    """止损评估矩阵（F-3.7，2026-08-09，纯展示层，数据见 data/stop_loss_backtest.json）。
+
+    触发线：浮亏≥成本线 -15% 触发评估（非直接止损）。状态判定优先级：
+      1) 供给扩张（单品在售量30日>+5%）：全止损——结构性派发无反弹预期（60d 深套 41%→1%）
+      2) 恐慌深跌（大盘30日≤-15%）：不止损→转补仓评估（60d +1.4% / 90d +7.6%，V型底指纹）
+      3) 阴跌中继（-15%~-5%）：减半止损（60d 深套 17.6%→3.4%，全损过激的折中）
+      4) 大盘上涨段（>+5%）：不止损（90d 扛+29% vs 损-21.6%，修正旧草案）
+      5) 中性（-5%~+5% / 大盘数据缺失）：不止损（90d +51%，控制仓位为主）
+    止损执行价 = min(90日关键支撑, 触发日价)，挂单限时避免市价砸穿。
+    返回 dict 或 None（未触发评估线）。不改任何引擎信号。
+    """
+    if avg_cost <= 0 or current_price <= 0:
+        return None
+    pnl_pct = (current_price - avg_cost) / avg_cost * 100
+    if pnl_pct > -15:
+        return None
+    supply = getattr(analysis, "supply_analysis", None) or {}
+    if isinstance(supply, dict):
+        s30 = float(supply.get("supply_change_30d") or 0)
+    else:
+        s30 = float(getattr(supply, "supply_change_30d", 0) or 0)
+    m = market_30d_change
+    low90 = float(getattr(analysis.position, "low_90d", 0) or 0)
+    support = low90 if low90 > 0 else current_price
+    stop_price = round(min(support, current_price), 2)
+
+    if s30 > 5:
+        state, action = "供给扩张", "全止损"
+        reason = (f"在售量30日扩张{s30:+.0f}%（>5%），结构性派发、无反弹预期；"
+                  f"回测60d深套率41%→全止损后降至1%")
+        sell_action, ratio_pct, sell_qty = "sell", 100, qty
+        evidence = "60d 深套 41%→1%，派发结构无反弹预期"
+    elif m is not None and m <= -15:
+        state, action = "恐慌深跌", "不止损，转补仓评估"
+        reason = (f"大盘30日{m:.1f}%（≤-15%）恐慌深跌，V型底指纹；"
+                  f"回测60d +1.4% / 90d +7.6%，止损反而踏空反弹")
+        sell_action, ratio_pct, sell_qty = None, 0, 0
+        evidence = "60d +1.4% / 90d +7.6%，V型底 win87% 佐证"
+    elif m is not None and -15 < m <= -5:
+        state, action = "阴跌中继", "减半止损"
+        reason = (f"大盘30日{m:.1f}%（-15%~-5%）阴跌中继，易继续阴跌；"
+                  f"回测60d深套率17.6%→减半后3.4%，全损过激（-21.1%）取折中")
+        sell_action, ratio_pct, sell_qty = "reduce", 50, max(1, qty // 2)
+        evidence = "60d 深套 17.6%→3.4%；均-16.3%（全损-21.1/扛单-11.6 折中）"
+    elif m is not None and m > 5:
+        state, action = "大盘上涨段", "不止损"
+        reason = (f"大盘30日{m:+.1f}%（>+5%）上涨段，持仓随大盘修复概率高；"
+                  f"回测90d扛单+29% vs 止损-21.6%")
+        sell_action, ratio_pct, sell_qty = None, 0, 0
+        evidence = "90d 扛+29% vs 损-21.6%，深套18%"
+    else:
+        state, action = "中性", "不止损"
+        _m_txt = f"{m:+.1f}%" if m is not None else "数据缺失"
+        reason = (f"大盘30日{_m_txt}（中性），深套概率低；"
+                  f"回测90d +51%，以控制仓位为主")
+        sell_action, ratio_pct, sell_qty = None, 0, 0
+        evidence = "90d +51%（深套19%，控制仓位为主）"
+    return {
+        "state": state, "action": action, "reason": reason,
+        "pnl_pct": round(pnl_pct, 1),
+        "stop_price": stop_price if sell_action else None,
+        "ratio_pct": ratio_pct, "sell_action": sell_action, "sell_qty": sell_qty,
+        "eval_line": "浮亏≥-15% 触发评估（非直接止损）",
+        "evidence": evidence,
+    }
 
 
 def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th=None, sentiment_score=50.0, market_30d_change=None, total_assets=0.0):
@@ -206,6 +293,11 @@ def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th
               "pnl_pct": round(pnl_pct, 1), "cost_total": round(cost_total, 2), "market_value": round(market_value, 2)}
     _fusion = getattr(analysis, "fusion_decision", {}) or {}
     _fusion_act = _fusion.get("action", "") if isinstance(_fusion, dict) else ""
+    # F-3.7 止损评估矩阵（纯展示层，回测 data/stop_loss_backtest.json）：浮亏≥-15% 触发评估
+    _sp = _stop_loss_plan(avg_cost, qty, current_price, analysis, market_30d_change)
+    if _sp:
+        advice["stop_plan"] = _sp
+
 
     if pnl_pct > 20 and th_score < 40:
         advice["action"] = "建议止盈减仓"
@@ -227,8 +319,21 @@ def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th
             "th": max(0, 40 - int(th_score)) if th_score < 40 else 0,
             "market_th": max(0, 45 - int(market_th)) if market_th is not None and market_th < 45 else 0,
         }
+        # 供给扩张禁补（F-3.7，2026-08-09）：在售量30日扩张>5% = 结构性派发（回测60d深套41%→全止损后1%）
+        _sup30 = 0.0
+        _sup_obj = getattr(analysis, "supply_analysis", None) or {}
+        if isinstance(_sup_obj, dict):
+            _sup30 = float(_sup_obj.get("supply_change_30d") or 0)
+        else:
+            _sup30 = float(getattr(_sup_obj, "supply_change_30d", 0) or 0)
+        if _sup30 > 5:
+            advice["action"] = "禁止补仓"
+            advice["reason"] = (f"浮亏{pnl_pct:.0f}%且在售量30日扩张{_sup30:+.0f}%（>5%），"
+                                f"供给扩张=结构性派发，补仓无反弹预期")
+            advice["suggest"] = (f"在售量30日扩张{_sup30:+.0f}%（>5%）：回测60d深套率41%→全止损后降至1%，"
+                                 f"禁止补仓，按止损建议全止损；待供给转收缩再评估补仓")
         # 市场极度贪婪：禁止补仓（回测 sent<=30: 30d胜率0%, 均-14%）
-        if sent <= 30:
+        elif sent <= 30:
             advice["action"] = "禁止补仓"
             advice["reason"] = f"浮亏{pnl_pct:.0f}%但市场贪婪(sent={sent:.0f})，逆势抄底期望为负"
             advice["suggest"] = (f"情绪贪婪(sent={sent:.0f}，≤30禁补)，距可补区间还差{max(0, 30 - sent):.0f}分，"
@@ -524,9 +629,10 @@ def extract_signals(results):
             pnl = float(pnl) if pnl is not None else None
         except (TypeError, ValueError):
             pnl = None
+        sp = pa.get("stop_plan") or {}
         if action == "可分批补仓":
             sig_action = "可分批补仓"
-        elif action == "趋势走弱，考虑止损":
+        elif action == "趋势走弱，考虑止损" or sp.get("sell_action"):
             sig_action = "建议止损"
         elif gap is not None and gap <= 0:
             sig_action = "已到买点"
@@ -542,7 +648,7 @@ def extract_signals(results):
             "holding": 1 if r.get("holding") else 0,
             "gap_pct": round(gap, 1) if gap is not None else None,
             "pnl_pct": round(pnl, 1) if pnl is not None else None,
-            "suggest": (pa.get("suggest") or "")[:120],
+            "suggest": ((pa.get("suggest") or "") + ("｜止损评估：" + str(sp.get("state", "")) if sp.get("sell_action") else ""))[:140],
         })
     _prio = {"可分批补仓": 0, "建议止损": 1, "已到买点": 2,
              "接近止损位": 3, "浮盈可观·考虑止盈": 4}
@@ -601,15 +707,27 @@ def _exec_btn(name, pa, price):
 
     F-1.3 (2026-08-08): 只给有意义的操作（建仓/补仓/减仓/清仓）出按钮；
     观望类无按钮——没操作不记录，真实相反操作用自选页手动录入。
+    F-3.7 (2026-08-09): 持仓浮亏≥15% 时叠加止损按钮（减半/全损），与补仓按钮并列，
+    data-qty 预填建议数量；纯展示层、不产生引擎信号。
     """
     act = (pa or {}).get("action") or ""
     ea = _EXEC_ACTION_MAP.get(act)
-    if not ea:
-        return ""
-    return ('<button type="button" class="btn btn-accent btn-sm exec-btn" '
-            'data-name="{n}" data-action="{a}" data-signal="{s}" data-price="{p:.2f}" '
-            'onclick="openExecModal(this)">💼 按建议执行</button>').format(
-        n=_esc(name), a=ea, s=_esc(act), p=float(price or 0))
+    btns = []
+    if ea:
+        btns.append(('<button type="button" class="btn btn-accent btn-sm exec-btn" '
+                     'data-name="{n}" data-action="{a}" data-signal="{s}" data-price="{p:.2f}" '
+                     'onclick="openExecModal(this)">💼 按建议执行</button>').format(
+            n=_esc(name), a=ea, s=_esc(act), p=float(price or 0)))
+    sp = (pa or {}).get("stop_plan") or {}
+    _sa = sp.get("sell_action")
+    if _sa in ("sell", "reduce"):
+        _label = "🔴 全止损" if _sa == "sell" else "🔻 减半止损"
+        btns.append(('<button type="button" class="btn btn-outline btn-sm exec-btn" '
+                     'data-name="{n}" data-action="{a}" data-signal="{s}" data-price="{p:.2f}" data-qty="{q}" '
+                     'onclick="openExecModal(this)">{l}</button>').format(
+            n=_esc(name), a=_sa, s=_esc("止损评估·" + str(sp.get("state", ""))),
+            p=float(sp.get("stop_price") or price or 0), q=int(sp.get("sell_qty") or 1), l=_label))
+    return " ".join(btns) if btns else ""
 
 
 def _bd_cell(bd):
@@ -724,7 +842,15 @@ def build_scan_html(results, total, market_ctx=None, now_str="", name_link=None,
             h.append('<td class="' + pnl_c + '">' + "%.1f" % pnl_pct + "%</td>")
             h.append('<td><span class="badge badge-' + g + '">' + _esc(str(r.get("grade", "?"))) + "</span></td>")
             h.append("<td>" + _bd_cell(r.get("buy_distance")) + "</td>")
-            h.append('<td>' + _action_badge(pa) + "<br><span style=\"font-size:11px;color:var(--text-muted);\">" + _esc(pa.get("suggest", "")) + "</span>" + _exec_btn(r["name"], pa, r["price_rmb"]) + "</td></tr>")
+            _sp_line = ""
+            _sp = pa.get("stop_plan") or {}
+            if _sp:
+                _sp_line = ('<br><span style="font-size:10px;color:var(--text-secondary);">🛑 止损评估：'
+                            + _esc(str(_sp.get("state", ""))) + " · " + _esc(str(_sp.get("action", "")))
+                            + (' · 参考 ¥%.2f' % float(_sp["stop_price"]) if _sp.get("stop_price") else "")
+                            + (' · 卖出%s件' % int(_sp["sell_qty"]) if _sp.get("sell_action") else "")
+                            + '</span>')
+            h.append('<td>' + _action_badge(pa) + "<br><span style=\"font-size:11px;color:var(--text-muted);\">" + _esc(pa.get("suggest", "")) + "</span>" + _sp_line + _exec_btn(r["name"], pa, r["price_rmb"]) + "</td></tr>")
         h.append("</tbody></table></div></div>")
     # 关注列表（非持仓）
     if unheld:

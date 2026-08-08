@@ -651,7 +651,10 @@ async def api_items_search(request: Request, query: str = Form(...)):
 
         # Step 3: 统一分析核心（2026-08-07 重构，原 ~90 行内联逻辑迁至 analysis_service.analyze_fresh）
         b = await analyze_fresh(item, good_id, exact_name, hard_error_no_kline=True)
-        ctx = build_analysis_ctx(b["analysis"], b["kline_stale_days"], b["kline_stale_date"])
+        ctx = build_analysis_ctx(b["analysis"], b["kline_stale_days"], b["kline_stale_date"],
+                                 holding_ctx=b.get("holding_ctx"),
+                                 market_30d_change=b.get("market_30d_change"),
+                                 market_th=b.get("market_th"), sentiment=b.get("sentiment", 50.0))
         return templates.TemplateResponse(request, "partials/analysis.html", ctx)
 
     except AnalysisAbort as _ab:
@@ -698,7 +701,10 @@ async def api_items_analyze(
 
         # 统一分析核心（2026-08-07 重构，原 ~90 行内联逻辑迁至 analysis_service.analyze_fresh）
         b = await analyze_fresh(item, good_id, exact_name)
-        ctx = build_analysis_ctx(b["analysis"], b["kline_stale_days"], b["kline_stale_date"])
+        ctx = build_analysis_ctx(b["analysis"], b["kline_stale_days"], b["kline_stale_date"],
+                                 holding_ctx=b.get("holding_ctx"),
+                                 market_30d_change=b.get("market_30d_change"),
+                                 market_th=b.get("market_th"), sentiment=b.get("sentiment", 50.0))
         return templates.TemplateResponse(request, "partials/analysis.html", ctx)
 
     except AnalysisAbort as _ab:
@@ -810,7 +816,10 @@ async def api_watchlist_analyze(request: Request, item_id: int):
         # watchlist 历史行为（与 search/analyze 的锚价口径差异为历史遗留，数据先行验证后统一）
         b = await analyze_fresh(item, good_id, exact_name, db_item_id=item_id,
                                 apply_anchor=False, allow_single_price=True)
-        ctx = build_analysis_ctx(b["analysis"], b["kline_stale_days"], b["kline_stale_date"])
+        ctx = build_analysis_ctx(b["analysis"], b["kline_stale_days"], b["kline_stale_date"],
+                                 holding_ctx=b.get("holding_ctx"),
+                                 market_30d_change=b.get("market_30d_change"),
+                                 market_th=b.get("market_th"), sentiment=b.get("sentiment", 50.0))
         return templates.TemplateResponse(request, "partials/analysis.html", ctx)
 
     except AnalysisAbort as _ab:

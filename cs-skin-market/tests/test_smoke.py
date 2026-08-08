@@ -2276,6 +2276,68 @@ def t_liquidity_gate_e2e():
 check("F-3.5 渐变斑纹端到端禁 buy", t_liquidity_gate_e2e)
 
 
+
+print('[F-3.7: 补仓倒金字塔 + 止损评估矩阵 (2026-08-09)]')
+def t_f37_stop_loss():
+    from pipeline.batch_scan import _split_topup_qty, _stop_loss_plan, _portfolio_advice
+    from types import SimpleNamespace
+    # 3:2:1 分配：总和=持仓量，递减，零量剔除
+    assert _split_topup_qty(10) == [5, 3, 2], _split_topup_qty(10)
+    assert sum(_split_topup_qty(7)) == 7
+    assert _split_topup_qty(1) == [1], _split_topup_qty(1)
+    assert _split_topup_qty(2) == [1, 1], _split_topup_qty(2)
+    assert _split_topup_qty(3) == [2, 1], _split_topup_qty(3)
+    def mk(pct=15.0, z=-1.0, th=45, s30=0.0, low90=60.0, fusion='hold', price_zones=None):
+        pos = SimpleNamespace(percentile_90d=pct, zscore_90d=z, low_90d=low90)
+        return SimpleNamespace(
+            position=pos,
+            trend_health={'score': th},
+            cycle=SimpleNamespace(phase='consolidation'),
+            fusion_decision={'action': fusion},
+            value=SimpleNamespace(score=5.0, grade='C'),
+            risk_level='D',
+            price_zones=price_zones,
+            supply_analysis={'supply_change_30d': s30},
+        )
+    # 未触发：浮亏<15% 无止损评估
+    assert _stop_loss_plan(100.0, 10, 90.0, mk()) is None
+    # 供给扩张 -> 全止损 sell
+    sp = _stop_loss_plan(100.0, 10, 80.0, mk(s30=8.0), market_30d_change=0.0)
+    assert sp['state'] == '供给扩张' and sp['action'] == '全止损' and sp['sell_action'] == 'sell'
+    assert sp['sell_qty'] == 10 and sp['ratio_pct'] == 100
+    # 恐慌深跌 -> 不止损（转补仓）
+    sp = _stop_loss_plan(100.0, 10, 80.0, mk(), market_30d_change=-18.0)
+    assert sp['state'] == '恐慌深跌' and sp['sell_action'] is None
+    # 阴跌中继 -> 减半止损 reduce
+    sp = _stop_loss_plan(100.0, 10, 80.0, mk(), market_30d_change=-8.0)
+    assert sp['state'] == '阴跌中继' and sp['action'] == '减半止损' and sp['sell_action'] == 'reduce'
+    assert sp['sell_qty'] == 5 and sp['ratio_pct'] == 50
+    # 大盘上涨段 -> 不止损
+    sp = _stop_loss_plan(100.0, 10, 80.0, mk(), market_30d_change=8.0)
+    assert sp['state'] == '大盘上涨段' and sp['sell_action'] is None
+    # 中性 -> 不止损
+    sp = _stop_loss_plan(100.0, 10, 80.0, mk(), market_30d_change=0.0)
+    assert sp['state'] == '中性' and sp['sell_action'] is None
+    # 止损参考价 = min(90日支撑, 现价)
+    sp = _stop_loss_plan(100.0, 10, 80.0, mk(s30=8.0, low90=70.0), market_30d_change=0.0)
+    assert sp['stop_price'] == 70.0, sp['stop_price']
+    # 持仓建议：浮亏-20% 挂 stop_plan；补仓批量为 3:2:1
+    a = _portfolio_advice(True, 100.0, 10, 80.0, mk(pct=15, z=-1.2, th=45, fusion='buy',
+                          price_zones={'entry': {'low': 60.0, 'high': 75.0}, 'current': 80.0}),
+                          market_th=50, sentiment_score=60, market_30d_change=0.0)
+    assert a['action'] == '可分批补仓', a['action']
+    assert a['stop_plan']['state'] == '中性'
+    qs = [p['qty'] for p in a['add_positions']]
+    assert qs == [5, 3, 2], qs
+    assert '倒金字塔3:2:1' in a['suggest'], a['suggest']
+    # 供给扩张 -> 禁止补仓（即使深度低估+融合buy）
+    a = _portfolio_advice(True, 100.0, 10, 80.0, mk(pct=15, z=-1.2, th=45, fusion='buy', s30=8.0,
+                          price_zones={'entry': {'low': 60.0, 'high': 75.0}, 'current': 80.0}),
+                          market_th=50, sentiment_score=60, market_30d_change=0.0)
+    assert a['action'] == '禁止补仓', a['action']
+    assert a['stop_plan']['state'] == '供给扩张'
+check('F-3.7 补仓倒金字塔 + 止损评估矩阵', t_f37_stop_loss)
+
 print(f'=== Results: {passed} passed, {failed} failed, {skipped} skipped ===')
 if failures:
     print()

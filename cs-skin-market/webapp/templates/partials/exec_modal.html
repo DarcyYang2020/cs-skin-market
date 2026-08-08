@@ -59,7 +59,8 @@ function openExecModal(btn) {
   else { apEl.style.display = 'none'; }
   window._execAdvicePrice = advVal;
   document.getElementById('exec-price').value = advRaw;
-  document.getElementById('exec-qty').value = 1;
+  var qtyRaw = btn.getAttribute('data-qty');
+  document.getElementById('exec-qty').value = (qtyRaw && Number(qtyRaw) > 0) ? Number(qtyRaw) : 1;
   document.getElementById('exec-date').value = new Date().toISOString().slice(0, 10);
   openModal('exec-modal');
 }
