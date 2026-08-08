@@ -80,6 +80,14 @@
   - 落地：run_daily_collect.py 新增 `is_weekly_collect_day`（BJ 周一，`CS_WEEKLY_ALWAYS=1` / `--force-weekly` 可补采），快照+大户仅周一执行；run_data_health.py 两检查 age 阈值 4→8 天；collector_monitor/collector_snapshot 保留为手动工具；进度卡字段保留（test 契约不动）。
   - 收益：每天省 ~9-11 分钟 Playwright 负载（大户逐品最重），数据积累能力保留（每周一份）。
   - 学到的新思路：① 采集审计看「引擎/决策/展示」三级消费链，只被健康检查计数的数据可降频不可盲停；② 降频必须同步放宽健康检查 age 阈值，否则健康度恒 FAIL 变噪声告警；③ 有明确研究价值但未接入的数据（大户集中度）用「周度积累」保底，优于完全停采。
+- **v32（2026-08-08）**：Discover 高分品报告串品修复（采集层+展示层，决策零改动）——用户「高分品里 沙漠之鹰 | 钴蓝禁锢 (崭新出厂) 报告错误，应该是拿错品了」：
+  - **根因**：discover 扫描直连消费 `fetch_item_detail` 的 K 线，而采集偶发捕获到非悠悠 chart——13:53 该品捕获到 **Steam chart**（价 1187.16 / 在售 97，与 info/good 的 steam_sell_price / steam_sell_num 完全一致；悠悠锚 824/577），报告按错误 K 线生成（当前价 1187.16、90 日最低 1175、MA30 1261）；实测另偶发捕获 **Buff chart**（在售 336 vs 悠悠 577，偏差 42%）。discover 路径缺少单品分析路径的 `anchor_override` / `kline_price_sane` 锚价防护（analyze_fresh 与批量扫描均有），错误数据直接进入评分/供给/估值/报告（列表价走 DOM 悠悠锚正确，报告价走错误 chart）。
+  - **修复**：
+    - `collector_csqaq.py`：captured 改多 chart 列表捕获 + `_pick_best_chart`（悠悠 DOM 价 + yyyp_sell_num 双锚打分）；新增 `_kline_matches_anchor`（价偏差>20% / 在售偏差>30% 判串品），`fetch_item_detail` 不符自愈重试 3 次，仍不符清空 K 线交由调用方回退 DB（悠悠口径）；`_wait_chart` 参数化 key 兼容既有调用方。
+    - `webapp/main.py` `_run_discover_task`：新增串品防护——K 线最新价/在售 vs 悠悠锚双校验，不合格重取一次，仍不合格回退 DB K 线，再不行跳过该品（不产出错误报告）。
+    - 数据修复：钴蓝禁锢 analysis_results + snapshot 用正确数据（823/579）重新生成，discover 报告页已恢复（恐慌退潮 73%，不再显示 Steam 口径 1187/97）。
+  - **验证**：fetch_item_detail(541) 连续 5 次全部返回悠悠口径（823/579）；冒烟 73/0/6；py_compile 通过；服务器重启后全量 discover 重扫确认列表价与报告口径一致。
+  - **学到的新思路**：① 「拦截页面自带请求」采集天然不可靠（页面 localStorage 固定 chart 设置、可能并发多源请求），消费方必须用定价锚（DOM 价 + 平台在售量）双重校验；② 同款皮肤不同平台在售量可差 42%——仅校验价格会漏判 Buff 串品（价差<1% 但在售差 42%）；③ discover 这类轻量批量路径要复用单品路径的脏价防护，否则同一数据源两套口径各坏各的。
 - **v30（2026-08-07）**：PM 方案展示层落地（P0-P2，引擎零改动）——用户「以专业产品经理角度分析系统不足并提出优化方案」后按计划三批落地：
   - **买点接近度（程度可视化）**：`compute_buy_proximity` 对每个 buy 信号族算条件达标度 0-100%（几何平均，硬条件不达标归零），取最接近一族 + 缺口列表；单品报告「距买点最近信号」条 + 自选页 proximity 排序/徽章——解决「决策栏回调中/筑底看不出谁更接近买点」。
   - **决策条回测徽章（口径透明）**：按 ITEM_EXPECTANCY_STATS 族口径显示 14d 胜率 / 30d 期望 / 样本数，tooltip 含 95% CI——回答「阈值是否回测得到」。

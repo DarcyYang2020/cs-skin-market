@@ -70,6 +70,7 @@ class ItemData:
         self.turnover_number: int = 0  # Steam market daily volume (from info/good)
         self.yyyp_id: str = ""  # youpin898 template id (from info/good)
         self.in_sale_count: int = 0
+        self.sell_num_yyyp: int = 0  # 悠悠有品在售量锚（info/good 的 yyyp_sell_num），用于 chart 串品筛选
         self.survive_count: int = 0  # 存世量（statistic_list 对应磨损的 statistic）
         self.order_book: Optional[dict] = None
         self.kline_90d: list = []
@@ -144,6 +145,52 @@ def _chart_to_raw(cd: dict) -> list:
             continue
         out.append([ts_arr[i], p, v])
     return out
+
+def _pick_best_chart(charts, anchor_price=0.0, anchor_sell_num=0):
+    """从捕获的多个 info/chart 响应中挑选与悠悠锚最一致的 chart。
+
+    采集偶发会同时捕获到其他平台（Buff/Steam）的 chart（2026-08-08 钴蓝禁锢曾捕获
+    Steam 价 1187 vs 悠悠 824、在售 97 vs 悠悠 577），用悠悠 DOM 价 + 悠悠在售量
+    双锚点打分（偏差越小越好）；无锚点时退回第一个响应。
+    """
+    if not charts:
+        return None
+    if len(charts) == 1:
+        return charts[0]
+    best, best_score = charts[0], None
+    for c in charts:
+        try:
+            d = json.loads(c)
+            cd = d.get('data') or {}
+            pr = cd.get('main_data') or []
+            nm = cd.get('num_data') or []
+            last_close = 0.0
+            for p in reversed(pr):
+                try:
+                    if float(p) > 0:
+                        last_close = float(p)
+                        break
+                except (TypeError, ValueError):
+                    continue
+            last_num = 0
+            for v in reversed(nm):
+                try:
+                    if float(v) > 0:
+                        last_num = float(v)
+                        break
+                except (TypeError, ValueError):
+                    continue
+            score = 0.0
+            if anchor_price > 0 and last_close > 0:
+                score += abs(last_close / anchor_price - 1)
+            if anchor_sell_num > 0 and last_num > 0:
+                score += abs(last_num / anchor_sell_num - 1) * 0.5
+            if best_score is None or score < best_score:
+                best, best_score = c, score
+        except Exception:
+            continue
+    return best
+
 
 def _extract_chart(item, data, set_price=True) -> int:
     """Populate ItemData from csQAQ chart response. Returns number of daily bars.
@@ -319,10 +366,10 @@ async def search_good_id(query: str) -> tuple[int, str]:
 
 
 
-async def _wait_chart(page, captured, timeout=2.5):
+async def _wait_chart(page, captured, timeout=2.5, key='chart'):
     """Wait briefly for the chart API response to be captured (poll, no fixed sleep)."""
     for _ in range(int(timeout * 10)):
-        if captured.get("chart"):
+        if captured.get(key):
             return True
         await asyncio.sleep(0.1)
     return False
@@ -342,15 +389,55 @@ async def _modify_chart_route(route, request, platform=2):
     else:
         await route.continue_()
 
+def _kline_matches_anchor(item):
+    """chart 最新价/在售 vs 悠悠锚（DOM 价 + yyyp_sell_num）偏差是否在合理范围。
+
+    采集偶发捕获到 Buff/Steam chart（2026-08-08 钴蓝禁锢曾捕获 Steam 价 1187 vs
+    悠悠 824、在售 97 vs 悠悠 577；Buff 在售 336 vs 悠悠 577 偏差 42%），
+    价格偏差>20% 或 在售量偏差>30% 判为串品。
+    """
+    if not item.kline_90d:
+        return False
+    closes = [k.close for k in item.kline_90d if k.close and k.close > 0]
+    if not closes:
+        return False
+    if item.price_rmb and item.price_rmb > 0 and abs(closes[-1] / item.price_rmb - 1) > 0.20:
+        return False
+    if item.sell_num_yyyp and item.sell_num_yyyp > 0:
+        last_sale = 0
+        for k in reversed(item.kline_90d):
+            if getattr(k, "in_sale_count", 0) or 0:
+                last_sale = k.in_sale_count
+                break
+        if last_sale and abs(last_sale / item.sell_num_yyyp - 1) > 0.30:
+            return False
+    return True
+
+
 async def fetch_item_detail(good_id: int):
-    """Fetch item detail + 90-day K-line with retry (csQAQ chart API is flaky)."""
+    """Fetch item detail + 90-day K-line with retry (csQAQ chart API is flaky).
+
+    2026-08-08 串品防护：chart 与悠悠锚（DOM 价 + yyyp_sell_num）不符时自愈重试；
+    3 次仍不符则清空 K线，交由调用方回退 DB（悠悠口径），避免错误数据进入分析。
+    """
+    last_item = None
     for attempt in range(3):
         item = await _fetch_item_detail_once(good_id)
+        if item is not None:
+            last_item = item
         if item and len(item.kline_90d) > 0:
-            return item
+            if _kline_matches_anchor(item):
+                return item
+            _last_close = next((k.close for k in reversed(item.kline_90d) if getattr(k, "close", 0) or 0), 0)
+            _csq_log.warning(f"fetch_item_detail good={good_id}: chart 与悠悠锚不符(最新价{_last_close} vs 锚{item.price_rmb}) → 重试")
+            await asyncio.sleep(1.0)
+            continue
         if attempt < 2:
             await asyncio.sleep(1.5)
-    return item
+    if last_item and last_item.kline_90d:
+        _csq_log.warning(f"fetch_item_detail good={good_id}: 重试后 chart 仍与悠悠锚不符 → 清空 K线交由调用方回退 DB")
+        last_item.kline_90d = []
+    return last_item
 
 
 async def _fetch_item_detail_once(good_id: int):
@@ -359,7 +446,7 @@ async def _fetch_item_detail_once(good_id: int):
     item.good_id = good_id
     pw, browser = await _get_browser()
     page = await browser.new_page()
-    captured = {'chart': None, 'detail': None, 'buy_chart': None}
+    captured = {'charts': [], 'detail': None, 'buy_chart': None}
     want_buy = {'flag': False}
     try:
         async def on_response(response):
@@ -370,8 +457,8 @@ async def _fetch_item_detail_once(good_id: int):
                     if want_buy['flag']:
                         captured["buy_chart"] = body
                         want_buy['flag'] = False
-                    else:
-                        captured["chart"] = body
+                    elif len(captured['charts']) < 8:
+                        captured['charts'].append(body)
                 if "info/good?id=" in url and response.ok:
                     body = await response.text()
                     captured["detail"] = body
@@ -384,7 +471,8 @@ async def _fetch_item_detail_once(good_id: int):
                     body["period"] = "90"
                     body["platform"] = 2
                     await route.continue_(post_data=json.dumps(body))
-                except Exception:
+                except Exception as _me:
+                    _csq_log.warning(f"modify_chart rewrite failed good={good_id}: {_me} (post={str(request.post_data)[:120]})")
                     await route.continue_()
             else:
                 await route.continue_()
@@ -394,10 +482,33 @@ async def _fetch_item_detail_once(good_id: int):
             await page.goto(f'{CSQAQ_WEB}/goods/{good_id}', wait_until='domcontentloaded', timeout=25000)
         except Exception as _ge:
             _csq_log.warning(f"goto goods/{good_id} failed: {_ge}")
-        await _wait_chart(page, captured)
-        if captured['chart']:
+        await _wait_chart(page, captured, key='charts')
+        # 悠悠锚优先：先用 DOM 价 + info/good 悠悠在售量 挑选 platform=2 的 chart，
+        # 防偶发捕获到 Buff/Steam chart（2026-08-08 钴蓝禁锢曾捕获 Steam 价 1187 vs 悠悠 824）
+        try:
+            yyyp_price_dom = await page.evaluate("() => { const el = document.querySelector('.ant-statistic-content-value'); if (el) return el.innerText.trim(); return ''; }")
+            if yyyp_price_dom:
+                _pd = float(yyyp_price_dom.replace(',', '').replace('¥', ''))
+                if _pd > 0:
+                    item.price_rmb = _pd
+        except Exception:
+            pass
+        if not captured.get('detail'):
+            for _i in range(15):
+                if captured.get('detail'):
+                    break
+                await asyncio.sleep(0.1)
+        if captured.get('detail'):
             try:
-                _extract_chart(item, json.loads(captured['chart']))
+                _dd0 = json.loads(captured['detail'])
+                _gi0 = ((_dd0.get('data') or {}).get('goods_info')) or {}
+                item.sell_num_yyyp = int(_gi0.get('yyyp_sell_num', 0) or 0)
+            except Exception:
+                pass
+        _best_chart = _pick_best_chart(captured.get('charts') or [], item.price_rmb, item.sell_num_yyyp)
+        if _best_chart:
+            try:
+                _extract_chart(item, json.loads(_best_chart))
             except Exception:
                 pass
         # Retry with Buff (platform=1) / C5GAME (platform=3) if chart still empty
@@ -406,13 +517,13 @@ async def _fetch_item_detail_once(good_id: int):
                 break
             _csq_log.info(f"Empty chart from platform=2, retrying with platform={fb_platform} ({fb_name}) good_id={good_id}")
             try:
-                captured['chart'] = None
+                captured['charts'] = []
                 await page.route('**/info/chart**', lambda r, req, p=fb_platform: _modify_chart_route(r, req, platform=p))
                 await page.goto(f'{CSQAQ_WEB}/goods/{good_id}', wait_until='domcontentloaded', timeout=25000)
-                await _wait_chart(page, captured)
-                if captured['chart']:
+                await _wait_chart(page, captured, key='charts')
+                if captured['charts']:
                     # fallback chart fills K-line only; price stays youpin-anchored
-                    _extract_chart(item, json.loads(captured['chart']), set_price=False)
+                    _extract_chart(item, json.loads(captured['charts'][0]), set_price=False)
                     _csq_log.info(f"{fb_name} platform returned {len(item.kline_90d)} bars")
             except Exception as e2:
                 _csq_log.warning(f"{fb_name} retry failed: {e2}")
@@ -445,6 +556,7 @@ async def _fetch_item_detail_once(good_id: int):
                         except (TypeError, ValueError):
                             pass
                     item.in_sale_count = int(gi.get('in_sale_count', gi.get('sale_num', gi.get('buff_sell_num', 0))) or 0)
+                    item.sell_num_yyyp = int(gi.get('yyyp_sell_num', 0) or 0)
                     # 存世量：statistic_list 按 good_id 匹配当前磨损档的 statistic（普通版仅留帖纹盘面）
                     for _sl in (d.get('statistic_list') or []):
                         try:

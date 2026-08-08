@@ -1707,6 +1707,49 @@ async def _run_discover_task(task_id: str, items: list):
                 _db_bars, _stale, _stale_date = kline_db_fallback(good_id, exact_name)
                 if _db_bars:
                     daily_bars = _db_bars
+            # 串品防护 (2026-08-08): fetch_item_detail 偶发捕获到 Buff/Steam chart
+            # （钴蓝禁锢 13:53 曾捕获 Steam 价 1187 vs 悠悠锚 824），discover 直接消费
+            # kline 会产出错误报告。用悠悠锚（DOM 价 + info/good 悠悠在售量）双重校验，
+            # 不合格重取一次，仍不合格回退 DB K线（悠悠口径），再不行跳过该品。
+            anchor_price = getattr(item, "price_rmb", 0) or 0
+            anchor_sell = getattr(item, "sell_num_yyyp", 0) or 0
+            def _kline_dev():
+                """返回 (是否串品, 最新价, 最新在售)；空 K 线不判串品（交给既有跳过逻辑）。"""
+                if not daily_bars:
+                    return False, 0, 0
+                _closes = [k.close for k in daily_bars if k.close and k.close > 0]
+                if not _closes:
+                    return False, 0, 0
+                _last_close = _closes[-1]
+                _last_sale = 0
+                for _k in reversed(daily_bars):
+                    if getattr(_k, "in_sale_count", 0) or 0:
+                        _last_sale = _k.in_sale_count
+                        break
+                _bad = (
+                    (anchor_price > 0 and abs(_last_close / anchor_price - 1) > 0.20)
+                    or (anchor_sell > 0 and _last_sale > 0 and abs(_last_sale / anchor_sell - 1) > 0.30)
+                )
+                return _bad, _last_close, _last_sale
+            _suspect, _lc, _ls = _kline_dev()
+            if _suspect:
+                _web_log.warning(f"Discover kline 串品防护 {exact_name}: 最新价¥{_lc}/在售{_ls} vs 悠悠锚¥{anchor_price}/{anchor_sell} 偏差超限 -> 重取一次")
+                _item2 = await collector_csqaq.fetch_item_detail(good_id)
+                if _item2 and _item2.kline_90d:
+                    item = _item2
+                    daily_bars = item.kline_90d
+                    anchor_price = getattr(item, "price_rmb", 0) or anchor_price
+                    anchor_sell = getattr(item, "sell_num_yyyp", 0) or anchor_sell
+            _suspect, _lc, _ls = _kline_dev()
+            if _suspect:
+                _db_bars2, _stale2, _date2 = kline_db_fallback(good_id, exact_name)
+                if _db_bars2:
+                    _web_log.warning(f"Discover kline 串品防护 {exact_name}: 重取仍异常(最新价¥{_lc}/在售{_ls}) -> 回退 DB K线 (stale {_stale2}d)")
+                    daily_bars = _db_bars2
+                else:
+                    _web_log.warning(f"Discover kline 串品防护 {exact_name}: 重取与 DB 回退均失败 -> 跳过")
+                    skipped += 1
+                    continue
             prices = [k.close for k in daily_bars if k.close > 0] if daily_bars else [price_rmb]
 
             # P0-2: 轻量预筛 - K线不足14天直接跳过(节省采集+分析耗时)

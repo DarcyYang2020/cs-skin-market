@@ -1497,3 +1497,16 @@ S2 回踩族在 C1（2026-08-05）已被证伪留研究池（A2 三件套未过�
 **验证**：冒烟 73/0/6；py_compile 全过；计划任务状态 Ready（Run As User 81572 与既有任务一致）。未实跑 run_night_push（会真实推送占用当日 slot）。
 
 **学到的新思路**：① 调度解耦：推送类任务幂等 key 只认日期+slot 时，可拆成「采集收尾生成 + 独立时点推送」两个任务，重跑安全；② 维护 Windows 脚本文件时先检测编码（GBK/UTF-8），混合编码文件用字节级追加，避免强解破坏。
+
+## Discover 高分品报告串品修复（2026-08-08，采集层+展示层）
+**背景**：用户报「高分品里 沙漠之鹰 | 钴蓝禁锢 (崭新出厂) 报告错误，应该是拿错品了」。定位：discover 扫描直连消费 `fetch_item_detail` 的 K 线，而采集偶发捕获到非悠悠 chart——2026-08-08 13:53 该品捕获到 Steam chart（价 1187.16 / 在售 97，与 info/good 的 steam_sell_price / steam_sell_num 完全一致；悠悠锚 824/577），报告按错误 K 线生成（当前价 1187.16、90 日最低 1175.43、MA30 1261.24），而 discover 路径缺少单品分析路径的 `anchor_override` / `kline_price_sane` 锚价防护（analyze_fresh 有；批量扫描路径也有「batch scan DB kline fallback 偏差46%」日志为证）。实测另偶发捕获 Buff chart（在售 336 vs 悠悠 577，偏差 42%）。
+
+**决策**：
+- 采集层（collector_csqaq.py）：captured 改多 chart 列表捕获 + `_pick_best_chart` 用悠悠双锚（DOM 价 + yyyp_sell_num）打分挑选；新增 `_kline_matches_anchor` 判串品（价偏差>20% / 在售偏差>30%），`fetch_item_detail` 不符自愈重试 3 次，仍不符清空 K 线交由调用方回退 DB（悠悠口径），避免错误数据进入任何分析路径。
+- 展示/批量层（webapp/main.py `_run_discover_task`）：新增串品防护——最新价/在售 vs 悠悠锚双校验，不合格重取一次，仍不合格回退 DB K 线，再不行跳过该品；不产出错误报告优先于凑齐扫描结果。
+- 数据修复：钴蓝禁锢 analysis_results + snapshot 以正确数据（823/579）重新生成，discover 报告页恢复（恐慌退潮 73%，不再显示 Steam 口径 1187/97）。
+- 未触碰参数冻结条款：决策逻辑/族条件/阈值零改动，仅采集层 + 批量展示层。
+
+**验证**：fetch_item_detail(541) 连续 5 次全部返回悠悠口径（823/579）；smoke 73/0/6；py_compile 通过；服务器重启后全量 discover 重扫，列表价与报告口径一致。
+
+**学到的新思路**：① 「拦截页面自带请求」采集天然不可靠（页面 localStorage 固定 chart 设置、可能并发多源请求），消费方必须用定价锚双重校验（价格 + 平台在售量）；② 同款皮肤不同平台在售量可差 42%——只校验价格会漏判 Buff 串品（价差<1%）；③ 同数据源多条消费路径必须共享脏价防护（单品/批量扫描/discover 三套口径会各坏各的）。
