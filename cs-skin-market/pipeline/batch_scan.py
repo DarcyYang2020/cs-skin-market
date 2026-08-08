@@ -585,7 +585,7 @@ def _bd_cell(bd):
     gap = bd.get("gap_pct")
     bar = min(100.0, max(0.0, float(bd.get("bar_pct") or 0)))
     at = gap is not None and gap <= 0
-    color = "#4ade80" if at else "#fbbf24"
+    color = "var(--green)" if at else "var(--yellow)"
     gap_txt = "已到" if at else "还差 {:.1f}%".format(gap)
     # 条件达标徽标（下跌寻底场景）：估值线 / 超跌线 / 趋势分，直观展示接近程度
     conds = []
@@ -601,10 +601,10 @@ def _bd_cell(bd):
             except (TypeError, ValueError):
                 continue
             if v <= 0:
-                conds.append('<span style="padding:1px 5px;border-radius:3px;background:rgba(34,197,94,0.15);color:#4ade80;font-size:10px;">'
+                conds.append('<span style="padding:1px 5px;border-radius:3px;background:rgba(5,150,105,0.12);color:var(--green);font-size:10px;">'
                              + label + " ✓</span>")
             else:
-                conds.append('<span style="padding:1px 5px;border-radius:3px;background:rgba(245,158,11,0.15);color:#fbbf24;font-size:10px;">'
+                conds.append('<span style="padding:1px 5px;border-radius:3px;background:rgba(245,158,11,0.15);color:var(--yellow);font-size:10px;">'
                              + label + " 差" + fmt.format(v) + "</span>")
     cond_row = ('<div style="margin-top:3px;display:flex;gap:3px;flex-wrap:wrap;">'
                 + "".join(conds) + "</div>") if conds else ""
@@ -612,8 +612,8 @@ def _bd_cell(bd):
             + bd.get("scenario_label", "") + "</span><br>"
             + '<b style="color:{c};">¥{t:.2f}</b>'.format(c=color, t=bd.get("target_price") or 0)
             + ' <span style="color:{c};font-size:11px;">（{g}）</span>'.format(c=color, g=gap_txt)
-            + '<div style="height:5px;background:rgba(255,255,255,0.06);border-radius:3px;margin-top:3px;overflow:hidden;">'
-            + '<div style="height:100%;width:{b:.0f}%;background:linear-gradient(90deg,#3b82f6,#22c55e);"></div></div>'.format(b=bar)
+            + '<div style="height:5px;background:rgba(15,23,42,0.06);border-radius:3px;margin-top:3px;overflow:hidden;">'
+            + '<div style="height:100%;width:{b:.0f}%;background:linear-gradient(90deg,var(--blue),var(--green));"></div></div>'.format(b=bar)
             + cond_row)
 
 

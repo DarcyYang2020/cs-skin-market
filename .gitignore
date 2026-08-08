@@ -51,3 +51,9 @@ cs-skin-market/data/uu_headers.json
 
 # M1 monitor daily report (2026-08-08) - runtime state
 **/data/monitor_daily.md
+
+# Discover scan history (2026-08-08) - runtime state (like scan_history)
+**/data/discover_history/
+
+# Theme design check screenshots (2026-08-08) - debug only
+**/data/_theme_check_*.png

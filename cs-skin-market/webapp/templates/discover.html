@@ -28,7 +28,7 @@
   <div class="card-header"><span class="card-title">📊 扫描进度</span></div>
   <div class="card-body">
     <div class="row-flex" style="gap:8px;align-items:center;margin-bottom:10px;">
-      <div class="spinner" style="width:18px;height:18px;border:2px solid #e5e7eb;border-top-color:#3b82f6;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>
+      <div class="spinner" style="width:18px;height:18px;border:2px solid var(--border-strong);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>
       <span id="discover-status" style="font-size:14px;color:var(--text-muted);">正在准备...</span>
     </div>
     <div style="height:6px;background:var(--bg-input);border-radius:3px;overflow:hidden;">
@@ -85,7 +85,7 @@ function loadDiscoverHistory() {
         var p30 = it.fwd30 !== null ? it.fwd30 + "%" : "--";
         return '<div style="font-size:11px;color:var(--text-muted);padding:2px 0 0 16px;">' + it.name + ' · 14d ' + p14 + ' · 30d ' + p30 + '</div>';
       }).join("");
-      return '<div style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.06);">'
+      return '<div style="padding:8px 0;border-bottom:1px solid rgba(15,23,42,0.08);">'
         + '<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px;">'
         + '<span style="font-weight:600;">' + String(e.time || "").replace("T", " ").slice(0, 16) + '</span>'
         + '<span>' + e.n + ' 品</span>'

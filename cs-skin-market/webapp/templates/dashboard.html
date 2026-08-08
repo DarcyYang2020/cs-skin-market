@@ -77,7 +77,7 @@ function createBackup() {
 function _healthBadge(st, label) {
   var colors = {pass: "var(--green)", warn: "var(--yellow)", fail: "var(--red)"};
   var color = colors[st] || "var(--text-muted)";
-  return '<span class="badge" style="background:rgba(255,255,255,0.08);color:' + color + ';font-weight:700;">' + label + '</span>';
+  return '<span class="badge" style="background:rgba(79,70,229,0.1);color:' + color + ';font-weight:700;">' + label + '</span>';
 }
 function renderHealth(d) {
   var st = d.status || "pass";
@@ -91,7 +91,7 @@ function renderHealth(d) {
     + autoHtml
     + '</div>';
   var checks = d.checks || [];
-  html += '<div style="margin-top:8px;border-top:1px solid rgba(255,255,255,0.06);padding-top:8px;">'
+  html += '<div style="margin-top:8px;border-top:1px solid rgba(15,23,42,0.08);padding-top:8px;">'
     + '<div style="font-size:12px;color:var(--text-muted);margin-bottom:2px;">检查明细（' + checks.length + ' 项）</div>'
     + '<table style="width:100%;font-size:12px;"><tbody>';
   checks.forEach(function(x) {
@@ -157,7 +157,7 @@ fetch("/api/data/progress")
       ["深值·大盘企稳", _dk("deep_value","n") + " 信号 · " + _dk("deep_value","events") + " 次独立事件 · 最近 " + _dkLatest("deep_value")],
       ["吸筹族(供给收缩等)", _dk("accumulate","n") + " 信号 · " + _dk("accumulate","events") + " 次独立事件 · 最近 " + _dkLatest("accumulate")]
     ];
-    html += '<div style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.08);padding-top:8px;">'
+    html += '<div style="margin-top:12px;border-top:1px solid rgba(15,23,42,0.08);padding-top:8px;">'
       + '<div style="color:var(--text-muted);font-size:12px;margin-bottom:4px;">信号族样本深度（K-2 回放 ' + (fam.total_signals || 0) + ' 信号 · ' + _dpFmt(fam.generated) + ' 口径）</div>'
       + '<table style="width:100%;font-size:12px;"><tbody>' + famRows.map(function(r) {
         return '<tr><td style="width:130px;color:var(--text-muted);padding:2px 0;">' + r[0] + '</td><td style="padding:2px 0;">' + r[1] + '</td></tr>';
@@ -167,14 +167,14 @@ fetch("/api/data/progress")
       if (j2 && j2.channels) {
         var ch = j2.channels;
         function _cBadge(st) {
-          if (st === "已触发" || st === "已达标") return '<span style="color:#f87171;font-weight:bold;">' + st + '</span>';
-          return '<span style="color:#fbbf24;">' + st + '</span>';
+          if (st === "已触发" || st === "已达标") return '<span style="color:var(--red);font-weight:bold;">' + st + '</span>';
+          return '<span style="color:var(--yellow);">' + st + '</span>';
         }
         function _pctBar(pct) {
           pct = Math.max(0, Math.min(100, pct || 0));
-          var fill = pct > 0 ? '<div style="width:' + pct + '%;height:100%;background:linear-gradient(90deg,#3b82f6,#60a5fa);border-radius:3px;"></div>' : '';
+          var fill = pct > 0 ? '<div style="width:' + pct + '%;height:100%;background:linear-gradient(90deg,var(--accent),var(--blue));border-radius:3px;"></div>' : '';
           return '<div style="display:inline-flex;align-items:center;gap:6px;">'
-            + '<div style="width:90px;height:8px;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.18);border-radius:4px;overflow:hidden;">' + fill + '</div>'
+            + '<div style="width:90px;height:8px;background:rgba(15,23,42,0.06);border:1px solid rgba(15,23,42,0.12);border-radius:4px;overflow:hidden;">' + fill + '</div>'
             + '<span style="font-size:11px;color:var(--text-secondary);">' + pct + '%</span></div>';
         }
         var crows = ch.C.monthly || [];
@@ -200,12 +200,12 @@ fetch("/api/data/progress")
           if (!g) return '';
           return ' · 判定门槛 回填 ' + g.filled14 + '/' + g.min_filled14;
         }
-        html += '<div style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.08);padding-top:8px;">'
+        html += '<div style="margin-top:12px;border-top:1px solid rgba(15,23,42,0.08);padding-top:8px;">'
           + '<div style="color:var(--text-muted);font-size:12px;margin-bottom:4px;">重拟合触发（J-2 三通道，' + _dpFmt(j2.generated) + ' 口径）</div>'
           + '<table style="width:100%;font-size:12px;"><tbody>'
           + '<tr><td style="width:130px;color:var(--text-muted);padding:2px 0;">A 独立恐慌事件</td><td style="padding:2px 0;">' + ch.A.value + '/' + ch.A.threshold + ' · ' + _pctBar(ch.A.progress_pct) + ' · ' + _cBadge(ch.A.status) + '</td></tr>'
           + '<tr><td style="width:130px;color:var(--text-muted);padding:2px 0;">B 冻结后新数据</td><td style="padding:2px 0;">' + ch.B.value_days + '/' + ch.B.threshold_days + ' 天 · ' + _pctBar(ch.B.progress_pct) + ' · ' + _cBadge(ch.B.status) + ' · 约 ' + ch.B.target_date + ' 复验</td></tr>'
-          + '<tr><td style="width:130px;color:var(--text-muted);padding:2px 0;">C 胜率监测</td><td style="padding:2px 0;">' + cText + ' · ' + _cBadge(ch.C.status) + _cTrigText(ch.C) + (cFlags.length ? ' <span style="color:#f87171;">' + cFlags.join('；') + '</span>' : '') + '</td></tr>'
+          + '<tr><td style="width:130px;color:var(--text-muted);padding:2px 0;">C 胜率监测</td><td style="padding:2px 0;">' + cText + ' · ' + _cBadge(ch.C.status) + _cTrigText(ch.C) + (cFlags.length ? ' <span style="color:var(--red);">' + cFlags.join('；') + '</span>' : '') + '</td></tr>'
           + '<tr><td style="width:130px;color:var(--text-muted);padding:2px 0;">C 生产实盘</td><td style="padding:2px 0;">' + _prodText(ch.C) + _cGateText(ch.C) + '</td></tr>'
           + '</tbody></table>'
           + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + (j2.overall ? j2.overall.note : '') + (j2.overall && j2.overall.trigger_action ? '；触发动作：' + j2.overall.trigger_action : '') + '</div></div>';

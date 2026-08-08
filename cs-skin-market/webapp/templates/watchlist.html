@@ -19,7 +19,7 @@
 <div class="toolbar">
   <div class="row-flex">
     <button class="btn btn-primary btn-sm" onclick="openAddModal()">＋ 添加自选</button>
-    <button class="btn btn-accent btn-sm" onclick="openScanModal()">📊 批量扫描<span id="scan-signal-badge" style="display:none;margin-left:6px;background:var(--red);color:#fff;border-radius:10px;font-size:11px;padding:1px 7px;font-weight:600;"></span></button>
+    <button class="btn btn-accent btn-sm" onclick="openScanModal()">📊 批量扫描<span id="scan-signal-badge" style="display:none;margin-left:6px;background:var(--red-strong);color:#fff;border-radius:10px;font-size:11px;padding:1px 7px;font-weight:600;"></span></button>
     
   </div>
   <div class="row-flex">
@@ -399,13 +399,13 @@
 {% endblock %}
 
 {% block scripts %}<div id="loading-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:rgba(0,0,0,0.5);justify-content:center;align-items:center;" onclick="if(event.target===this)hideLoadingModal()">
-  <div style="background:#fff;border-radius:12px;padding:40px;text-align:center;max-width:400px;box-shadow:0 8px 30px rgba(0,0,0,0.2);position:relative;">
-    <button type="button" onclick="hideLoadingModal()" style="position:absolute;top:6px;right:10px;border:none;background:none;font-size:16px;cursor:pointer;color:#9ca3af;" title="关闭弹窗（扫描继续在后台进行）">✕</button>
-    <div class="spinner" style="width:40px;height:40px;margin:0 auto 20px;border:3px solid #e5e7eb;border-top-color:#3b82f6;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
-    <h3 style="margin-bottom:8px;color:#111;">分析中...</h3>
-    <p id="loading-status" style="font-size:13px;color:#6b7280;">正在准备...</p>
-    <div style="height:6px;background:#e5e7eb;border-radius:3px;overflow:hidden;margin-top:16px;">
-      <div id="loading-bar" style="height:100%;width:0%;background:#3b82f6;transition:width .4s;"></div>
+  <div style="background:var(--bg-elevated);border-radius:12px;padding:40px;text-align:center;max-width:400px;box-shadow:0 8px 30px rgba(0,0,0,0.2);position:relative;">
+    <button type="button" onclick="hideLoadingModal()" style="position:absolute;top:6px;right:10px;border:none;background:none;font-size:16px;cursor:pointer;color:var(--text-muted);" title="关闭弹窗（扫描继续在后台进行）">✕</button>
+    <div class="spinner" style="width:40px;height:40px;margin:0 auto 20px;border:3px solid var(--border-strong);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+    <h3 style="margin-bottom:8px;color:var(--text-primary);">分析中...</h3>
+    <p id="loading-status" style="font-size:13px;color:var(--text-secondary);">正在准备...</p>
+    <div style="height:6px;background:var(--bg-inset);border-radius:3px;overflow:hidden;margin-top:16px;">
+      <div id="loading-bar" style="height:100%;width:0%;background:var(--accent);transition:width .4s;"></div>
     </div>
   </div>
 </div>
@@ -737,9 +737,9 @@ function renderSignalCenter(scans, signals) {
   var rows = signals.map(function(s) {
     var gapTxt = (s.gap_pct !== null && s.gap_pct !== undefined) ? "距买点还差 " + s.gap_pct + "%" : "";
     if (s.pnl_pct !== null && s.pnl_pct !== undefined) gapTxt += (gapTxt ? " · " : "") + "浮亏" + Math.abs(s.pnl_pct) + "%";
-    return '<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.06);flex-wrap:wrap;">'
+    return '<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(15,23,42,0.08);flex-wrap:wrap;">'
       + '<span style="font-weight:600;">' + s.name + '</span>'
-      + '<span class="badge" style="background:rgba(255,255,255,0.08);color:' + sigColor(s.action) + ';">' + (s.holding ? "持仓·" : "") + s.action + '</span>'
+      + '<span class="badge" style="background:rgba(79,70,229,0.1);color:' + sigColor(s.action) + ';">' + (s.holding ? "持仓·" : "") + s.action + '</span>'
       + '<span style="font-size:11px;color:var(--text-muted);">' + gapTxt + '</span>'
       + '<span style="font-size:11px;color:var(--text-muted);">' + (s.suggest || "") + '</span>'
       + '</div>';
@@ -982,7 +982,7 @@ function loadPortfolioDash() {
       + '<b style="color:' + color + ';">' + Math.round((s.demand || 0) * 100) + '%</b> / 上限 ' + Math.round((s.cap || 0.8) * 100) + '%'
       + (s.over_cap ? ' <span style="color:var(--red);">⚠️ 超限：信号扎堆时优先处理靠前信号</span>' : '')
       + '</div>'
-      + '<div style="height:8px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden;margin-top:4px;">'
+      + '<div style="height:8px;background:rgba(15,23,42,0.06);border-radius:4px;overflow:hidden;margin-top:4px;">'
       + '<div style="height:100%;width:' + capPct + '%;background:' + color + ';"></div></div>';
     var holds = d.holdings || [];
     document.getElementById('pd-holdings').innerHTML = holds.length
@@ -990,8 +990,8 @@ function loadPortfolioDash() {
           var w = d.holding_value > 0 ? Math.max(1, Math.round(100 * h.value / d.holding_value)) : 0;
           return '<div style="display:flex;align-items:center;gap:8px;margin-top:6px;">'
             + '<span style="flex:0 0 200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + h.name + '</span>'
-            + '<div style="flex:1;height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;">'
-            + '<div style="height:100%;width:' + w + '%;background:#3b82f6;"></div></div>'
+            + '<div style="flex:1;height:6px;background:rgba(15,23,42,0.06);border-radius:3px;overflow:hidden;">'
+            + '<div style="height:100%;width:' + w + '%;background:var(--accent);"></div></div>'
             + '<span style="flex:0 0 90px;text-align:right;font-size:12px;">¥' + Number(h.value).toFixed(0) + ' (' + w + '%)</span>'
             + '</div>';
         }).join('')

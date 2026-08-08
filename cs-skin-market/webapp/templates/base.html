@@ -4,58 +4,74 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{% block title %}CS-Market{% endblock %}</title>
-<link rel="stylesheet" href="/static/css/style.css?v=7">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/style.css?v=8">
 <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-<script defer src="/static/js/app.js?v=7"></script>
+<script defer src="/static/js/app.js?v=8"></script>
 {% block head %}{% endblock %}
 </head>
 <body>
-  <!-- Left Sidebar -->
-  <div class="sidebar">
-    <div class="sidebar-logo">
-      <div class="logo-icon">C</div>
+  <a class="skip-link" href="#main">跳到主内容</a>
+
+  <!-- Mobile Topbar -->
+  <header class="topbar">
+    <button type="button" id="sidebar-toggle" class="icon-btn" aria-label="打开导航菜单" aria-expanded="false" aria-controls="sidebar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+    </button>
+    <div class="topbar-logo">
+      <div class="logo-icon" aria-hidden="true">C</div>
       <span>CS-Market</span>
     </div>
-    <div class="sidebar-nav">
+  </header>
+  <div class="sidebar-scrim" id="sidebar-scrim"></div>
+
+  <!-- Left Sidebar -->
+  <aside class="sidebar" id="sidebar" aria-label="主导航">
+    <div class="sidebar-logo">
+      <div class="logo-icon" aria-hidden="true">C</div>
+      <span>CS-Market</span>
+    </div>
+    <nav class="sidebar-nav">
       <div class="nav-label">市场分析</div>
-      <a href="/" class="{% if active_page == 'dashboard' %}active{% endif %}">
-        <span class="nav-icon">📊</span> 大盘
+      <a href="/" {% if active_page == 'dashboard' %}class="active" aria-current="page"{% endif %}>
+        <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg></span> 大盘
       </a>
-      <a href="/search" class="{% if active_page == 'search' %}active{% endif %}">
-        <span class="nav-icon">🔍</span> 单品分析
+      <a href="/search" {% if active_page == 'search' %}class="active" aria-current="page"{% endif %}>
+        <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></span> 单品分析
       </a>
-      <a href="/watchlist" class="{% if active_page == 'watchlist' %}active{% endif %}">
-        <span class="nav-icon">⭐</span> 持仓管理
+      <a href="/watchlist" {% if active_page == 'watchlist' %}class="active" aria-current="page"{% endif %}>
+        <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg></span> 持仓管理
       </a>
-      <a href="/discover" class="{% if active_page == 'discover' %}active{% endif %}">
-        <span class="nav-icon">🏆</span> 发现高分品
+      <a href="/discover" {% if active_page == 'discover' %}class="active" aria-current="page"{% endif %}>
+        <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg></span> 发现高分品
       </a>
-      <a href="/replay" class="{% if active_page == 'replay' %}active{% endif %}">
-        <span class="nav-icon">📊</span> 信号复盘
+      <a href="/replay" {% if active_page == 'replay' %}class="active" aria-current="page"{% endif %}>
+        <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></span> 信号复盘
       </a>
-      <a href="/checkup" class="{% if active_page == 'checkup' %}active{% endif %}">
-        <span class="nav-icon">🧪</span> 信号体检
+      <a href="/checkup" {% if active_page == 'checkup' %}class="active" aria-current="page"{% endif %}>
+        <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/></svg></span> 信号体检
       </a>
-      <a href="/monitor" class="{% if active_page == 'monitor' %}active{% endif %}">
-        <span class="nav-icon">🔔</span> 监控
+      <a href="/monitor" {% if active_page == 'monitor' %}class="active" aria-current="page"{% endif %}>
+        <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg></span> 监控
       </a>
-          </div>
+    </nav>
     <div class="sidebar-footer">v3.0 · csQAQ</div>
-  </div>
+  </aside>
 
   <!-- Right Content -->
-  <div class="main-content">
+  <main class="main-content" id="main" tabindex="-1">
     {% block content %}{% endblock %}
-  </div>
+  </main>
 
-  <div id="toast-container"></div>
+  <div id="toast-container" role="status" aria-live="polite"></div>
   {% block scripts %}{% endblock %}
 
-
   <!-- Confirm Modal (replaces native confirm) -->
-  <div id="confirm-modal" class="modal-overlay" style="display:none;">
+  <div id="confirm-modal" class="modal-overlay" style="display:none;" role="dialog" aria-modal="true" aria-label="确认操作">
     <div class="modal" style="max-width:400px;">
-      <h3 style="margin-bottom:8px;">⚠️ 确认操作</h3>
+      <h3>确认操作</h3>
       <p id="confirm-message" style="color:var(--text-secondary);font-size:14px;margin:8px 0 20px;line-height:1.6;"></p>
       <div class="modal-actions">
         <button type="button" class="btn btn-outline" onclick="closeConfirmModal(false)">取消</button>
@@ -64,26 +80,14 @@
     </div>
   </div>
   <!-- Global Analysis Modal -->
-  <div id="analysis-modal" class="modal-overlay" style="display:none;">
+  <div id="analysis-modal" class="modal-overlay" style="display:none;" role="dialog" aria-modal="true" aria-label="分析报告">
     <div class="modal-container">
       <div class="modal-header-bar">
-        <span class="modal-title-text">📊 分析报告</span>
-        <button class="modal-close-btn" onclick="closeModal('analysis-modal')">✕</button>
+        <span class="modal-title-text">分析报告</span>
+        <button class="modal-close-btn" onclick="closeModal('analysis-modal')" aria-label="关闭">✕</button>
       </div>
       <div class="modal-body-scroll" id="modal-body"></div>
     </div>
-<script>
-function openModal(id) { document.getElementById(id).style.display = 'flex'; }
-function closeModal(id) {
-  var el = document.getElementById(id);
-  if (!el) return;
-  el.style.display = 'none';
-}
-document.addEventListener('click', function(e) {
-  if (e.target.classList.contains('modal-overlay')) {
-    closeModal(e.target.id);
-  }
-});
-</script>
+  </div>
 </body>
 </html>

@@ -362,13 +362,13 @@ def _spark_svg(pts, cost):
         ("M" if i == 0 else "L") + f"{_x(i):.1f},{_y(p[1]):.1f}"
         for i, p in enumerate(pts))
     below_cost = cost > 0 and pts[-1][1] < cost
-    color = "#f87171" if below_cost else "#34d399"
+    color = "#DC2626" if below_cost else "#059669"
     parts = [f'<path d="{path}" fill="none" stroke="{color}" stroke-width="1.5" stroke-linejoin="round"/>']
     if cost > 0:
         cy = _y(cost)
         if 0 <= cy <= H:
-            parts.append(f'<line x1="{PAD}" y1="{cy:.1f}" x2="{W - PAD}" y2="{cy:.1f}" stroke="#fbbf24" stroke-width="1" stroke-dasharray="3,3"/>')
-            parts.append(f'<text x="{W - PAD}" y="{cy - 2:.1f}" font-size="8" fill="#fbbf24" text-anchor="end">\u6210\u672c\u00a5{cost:.2f}</text>')
+            parts.append(f'<line x1="{PAD}" y1="{cy:.1f}" x2="{W - PAD}" y2="{cy:.1f}" stroke="#B45309" stroke-width="1" stroke-dasharray="3,3"/>')
+            parts.append(f'<text x="{W - PAD}" y="{cy - 2:.1f}" font-size="8" fill="#B45309" text-anchor="end">\u6210\u672c\u00a5{cost:.2f}</text>')
     lx, ly = _x(len(pts) - 1), _y(pts[-1][1])
     parts.append(f'<circle cx="{lx:.1f}" cy="{ly:.1f}" r="2" fill="{color}"/>')
     return f'<svg width="{W}" height="{H}" viewBox="0 0 {W} {H}">{"".join(parts)}</svg>'
@@ -1858,7 +1858,7 @@ def _render_discover_html(results, market_th=50):
         f'<div class="card"><div class="card-header"><span class="card-title">\U0001f50d Top 10 \u9ad8\u5206\u9970\u54c1</span>'
         f'<span class="card-subtitle">\u5df2\u626b\u63cf {ok_count} \u4e2a\u9970\u54c1\uff0c\u5c55\u793a\u524d10{market_note}'
         f' <button class="btn btn-sm btn-outline" onclick="refreshDiscover()" style="margin-left:8px;">\U0001f504 \u5237\u65b0</button></span></div>'
-        f'<div class="card-body" style="padding:0;"><table class="data-table" style="width:100%;">'
+        f'<div class="card-body" style="padding:0;"><div class="table-wrap"><table class="data-table" style="width:100%;">'
         f'<thead><tr><th>#</th><th>\u8bc4\u7ea7</th><th>\u540d\u79f0</th><th>\u4ef7\u683c</th><th>\u8bc4\u5206</th><th>\u7efc\u5408</th><th>%\u4f4d</th><th>\u5468\u671f</th><th>\u64cd\u4f5c</th></tr></thead><tbody>'
     ]
     for idx, r in enumerate(top10):
@@ -1884,7 +1884,7 @@ def _render_discover_html(results, market_th=50):
             f'<td style="font-size:12px;">{cp}</td>'
             f'<td><button class="btn btn-xs btn-outline" onclick="addToWatchlist(\'{esc_name}\')" title="\u52a0\u5165\u81ea\u9009">+</button></td></tr>'
         )
-    lines.append("</tbody></table></div></div>")
+    lines.append("</tbody></table></div></div></div>")
     return heatmap_html + "\n".join(lines)
 
 @app.post("/api/items/discover")
