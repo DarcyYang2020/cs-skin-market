@@ -11,3 +11,8 @@ schtasks /Create /TN "CS_Health_Alert" /TR $alertCmd /SC DAILY /ST 22:00 /F  # 2
 schtasks /Create /TN "CS_Skin_NoonMonitor" /TR $noonCmd /SC DAILY /ST 12:00 /F  # 12:00: 午间监控(自选品K线轻量刷新 + 钉钉推送 slot=noon)
 Write-Host "Tasks installed: CS_Health_Alert (22:00, 采集落库后), CS_Skin_NoonMonitor (12:00, 午间监控推送)"
 Write-Host "Note: set NOTIFY_WEBHOOK_URL in .env to enable DingTalk alerts."
+# 2026-08-08: collect/push decoupled - full collect 18:00 (no push), night push 21:30 separate
+$collectCmd = '"' + $python + '" "' + $base + '\run_daily_collect.py"'
+$nightCmd   = '"' + $python + '" "' + $base + '\run_night_push.py"'
+schtasks /Create /TN "CS_Skin_DailyCollect" /TR $collectCmd /SC DAILY /ST 18:00 /F
+schtasks /Create /TN "CS_Skin_NightPush" /TR $nightCmd /SC DAILY /ST 21:30 /F

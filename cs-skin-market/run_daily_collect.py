@@ -242,10 +242,11 @@ def main():
     except Exception as e:
         log(f"信号跟踪回填异常（不中断采集）: {e}")
     # M1 监控模式 (2026-08-08): 自选品异动事件生成 + 日报 (纯提醒层, 只读引擎输出, 不触碰冻结参数)
+    # 2026-08-08 采集提前至 18:00: 收尾仅生成事件+日报, 推送由独立任务 run_night_push.py 在 21:30 执行
     try:
         from pipeline.monitor import run_daily_monitor
-        _mon = run_daily_monitor(slot="night")
-        log(f"监控事件: 生成 {_mon['generated']} / 新增 {_mon['saved']} 条 (大盘 {_mon['bucket']}, 分析 {_mon['analyzed']} 品)")
+        _mon = run_daily_monitor(slot="night", push=False)
+        log(f"监控事件: 生成 {_mon['generated']} / 新增 {_mon['saved']} 条 (大盘 {_mon['bucket']}, 分析 {_mon['analyzed']} 品, 推送延至21:30)")
     except Exception as e:
         log(f"监控事件生成异常（不中断采集）: {e}")
     # 每日备份 (Phase 4): SQLite online backup -> data/backup/, 保留最近 14 份

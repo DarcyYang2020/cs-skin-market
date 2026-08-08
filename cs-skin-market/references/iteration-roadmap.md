@@ -7,6 +7,12 @@
 
 ## 版本历史
 
+- **v41（2026-08-08）**：每日采集提前至 18:00 + 晚间推送解耦（用户「数据采集提前」）：
+  - 背景：全量采集原 21:30，用户希望采集提前；csQAQ 指数/在售量实时、K 线随时可采，无 21:30 硬依赖；提前到 18:00 当日 bar 覆盖白天主交易时段，口径损失可控。
+  - 落地：`run_daily_monitor` 加 `push` 参数（默认 True）；`run_daily_collect` 收尾改 `push=False`（事件/日报保留，不推送）；新增 `run_night_push.py` 21:30 独立推送（事件按 slot 前缀幂等去重，重跑不重复，推送保持 12:00+21:30 两时段）。
+  - 计划任务：`CS_Skin_DailyCollect` 21:30→18:00；新增 `CS_Skin_NightPush` 21:30；`install_tasks.ps1` 补齐全量注册（ASCII 追加，原文件 GBK 混合编码不动）。
+  - 验证：冒烟 73/0/6；py_compile 全过。
+  - 学到的新思路：① 采集时间与推送时间可以解耦——推送幂等 key 只认日期+slot，独立任务重跑同 slot 安全；② 改 Windows 计划任务用 `schtasks /Change` /`/Create`，脚本化注册时注意原文件编码（GBK/UTF-8 混合别强解）。
 - **v40（2026-08-08）**：大盘采集 401 自动重绑 IP（用户报「获取大盘数据失败」）：
   - 根因：csQAQ 绑定 IP 校验，环境出口 IP 轮换导致间歇 401；Web 刷新路径无绑定机制，浏览器兜底在请求线程内跨 loop 不可用 → 返回 None。
   - 修复：`collector` 的 current_data / sub/kline 401 分支先 `bind_local_ip()` 重新绑定再重试一次，仍 401 才走浏览器兜底；kline 解析抽 `_parse_kline_points` 复用。

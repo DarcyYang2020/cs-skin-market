@@ -291,10 +291,12 @@ def push_daily(summary, events, slot="night"):
     return {"pushed": True}
 
 
-def run_daily_monitor(date=None, slot="night"):
+def run_daily_monitor(date=None, slot="night", push=True):
     """M1 监控主入口：大盘上下文 + 自选品只读分析 + 8 类事件生成 + 落库 + 日报。
 
     返回 summary dict（供 run_daily_collect 日志 / M2 推送）。
+    push=False 时只生成事件+日报不推送（采集收尾用；推送由独立 21:30 任务 run_night_push.py 执行）。
+    事件按 slot 前缀幂等去重，21:30 重跑同 slot 不产生重复事件。
     """
     date = date or _today()
     conn = db.get_conn()
@@ -325,7 +327,10 @@ def run_daily_monitor(date=None, slot="night"):
                "skipped": skipped, "generated": len(events), "saved": saved}
     _write_md(date, summary, events, slot)
     try:
-        summary["pushed"] = push_daily(summary, events, slot)
+        if push:
+            summary["pushed"] = push_daily(summary, events, slot)
+        else:
+            summary["pushed"] = {"pushed": False, "reason": "push_deferred_to_night_task"}
     except Exception as _e:
         summary["pushed"] = {"pushed": False, "reason": f"error: {_e}"}
     return summary

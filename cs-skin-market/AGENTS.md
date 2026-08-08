@@ -388,8 +388,8 @@ cs-skin-market/
 ## 运维（2026-08-06）
 
 - **数据库自动备份**：`python backup_db.py`（SQLite online backup API → `data/backup/market_YYYYMMDD_HHMMSS.db`，默认保留 14 份）；计划任务 `CS_DB_Backup` 每日 23:30。
-- **健康告警**：`python notify_alert.py --monitor`（健康检查 FAIL 时推送）；`.env` 配 `NOTIFY_WEBHOOK_URL`（钉钉机器人）后生效，未配置则静默；计划任务 `CS_Health_Alert` 每日 21:30。
-- **计划任务安装**：`powershell -ExecutionPolicy Bypass -File install_tasks.ps1`（在 cs-skin-market 目录）。
+- **健康告警**：`python notify_alert.py --monitor`（健康检查 FAIL 时推送）；`.env` 配 `NOTIFY_WEBHOOK_URL`（钉钉机器人）后生效，未配置则静默；计划任务 `CS_Health_Alert` 每日 22:00（采集落库后告警）。
+- **计划任务安装**：`powershell -ExecutionPolicy Bypass -File install_tasks.ps1`（在 cs-skin-market 目录）。任务清单：`CS_Skin_DailyCollect` 每日 18:00 全量采集（2026-08-08 由 21:30 提前；收尾仅生成监控事件+日报不推送）、`CS_Skin_NightPush` 每日 21:30 晚间推送（事件幂等去重，保持 12:00 午间 + 21:30 晚间两时段）、`CS_Skin_NoonMonitor` 每日 12:00 午间轻量、`CS_Health_Alert` 每日 22:00 健康告警。
 - **本地 CI（pre-commit hook）**：`powershell -ExecutionPolicy Bypass -File install_hooks.ps1` → 每次 `git commit` 自动跑 `tests/test_smoke.py`，失败则拦截提交。
 - **执行记录滑点统计**：`executions.advice_price`（建议价，批量扫描「按建议执行」自动带入）；复盘页显示单笔滑点与平均滑点，用于校准 2% 双边成本假设。
 

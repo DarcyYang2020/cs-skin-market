@@ -1482,3 +1482,18 @@ S2 回踩族在 C1（2026-08-05）已被证伪留研究池（A2 三件套未过�
 **验证**：真实环境 bind 后恢复（指数 1586.01、K线 996 点）；新增冒烟 `t_market_401_rebind_retry`（401→bind→重试成功 + 解析函数单测）；冒烟 73/0/6。
 
 **学到的新思路**：① 第三方 API「绑定 IP」类间歇 401：先走官方重绑接口（成本一行）再兜底，浏览器兜底跨 loop 不可靠且启动慢；② 失败处理分级：可自愈错误先自愈（重绑+重试），自愈失败才报错，避免用户直面底层故障。
+
+## 每日采集提前至 18:00 + 晚间推送解耦（2026-08-08，调度层）
+**背景**：用户希望每日数据采集提前（不要等 21:30）。核实：csQAQ 指数/在售量实时、90 日 K 线随时可抓（白天手动跑过），21:30 非数据源硬依赖；其真正意义只是「当日 K 线 bar 更接近全天快照」。折中定 18:00：当日 bar 覆盖白天主交易时段，信号口径损失可控。
+
+**耦合发现**：晚间推送（slot=night）由 `run_daily_collect.py` 收尾执行，幂等 key 只认「日期+slot」不认时间——采集提前则推送必跟着提前，破坏用户「12:00 + 21:30」两时段设定。
+
+**落地**：
+- `pipeline/monitor.py`：`run_daily_monitor(date, slot, push=True)` 新增 push 参数；push=False 时生成事件+日报但不推送（reason=push_deferred_to_night_task）。
+- `run_daily_collect.py`：收尾改 `run_daily_monitor(slot="night", push=False)`。
+- 新增 `run_night_push.py`：21:30 独立任务，完整重跑 `run_daily_monitor(slot="night")`——事件按 slot 前缀幂等去重不重复，日报覆盖写，推送正常执行。
+- 计划任务：`CS_Skin_DailyCollect` 改 18:00（schtasks /Change）；新增 `CS_Skin_NightPush` 21:30；`install_tasks.ps1` 追加 ASCII 注册（原文件为 GBK 混合编码，不整体重写）。
+
+**验证**：冒烟 73/0/6；py_compile 全过；计划任务状态 Ready（Run As User 81572 与既有任务一致）。未实跑 run_night_push（会真实推送占用当日 slot）。
+
+**学到的新思路**：① 调度解耦：推送类任务幂等 key 只认日期+slot 时，可拆成「采集收尾生成 + 独立时点推送」两个任务，重跑安全；② 维护 Windows 脚本文件时先检测编码（GBK/UTF-8），混合编码文件用字节级追加，避免强解破坏。
