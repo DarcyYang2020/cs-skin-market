@@ -1841,6 +1841,12 @@ async def _run_discover_task(task_id: str, items: list):
                 return "skip", "分位过高"
 
             supply_hist = [k.in_sale_count for k in daily_bars] if daily_bars else []
+            # F-3.5 流动性闸门 (2026-08-08): 近 7 天平均在售量 <15 -> 结构性无流动性，不入高分榜
+            if supply_hist:
+                _recent_sale = [s for s in supply_hist[-7:] if s]
+                if _recent_sale and sum(_recent_sale) / len(_recent_sale) < 15:
+                    skipped += 1
+                    return "skip", "流动性不足(avg7在售<15)"
 
             analysis = await asyncio.get_running_loop().run_in_executor(
                 None,
@@ -2060,7 +2066,8 @@ async def _run_discover_pool_task(task_id: str):
     try:
         rows = conn_p.execute(
             "SELECT i.id, i.good_id, i.name FROM items i "
-            "WHERE i.good_id>0 AND (i.notes IS NULL OR (i.notes NOT LIKE '%存世量过低%' "
+            "WHERE i.good_id>0 AND i.name LIKE '%崭新出厂%' "
+            "AND (i.notes IS NULL OR (i.notes NOT LIKE '%存世量过低%' "
             "AND i.notes NOT LIKE '%活跃池淘汰%')) ORDER BY i.id"
         ).fetchall()
     finally:

@@ -667,13 +667,15 @@ def trend_health_summary(th):
 #  Fusion Decision Engine
 # ============================================================
 
-def compute_fusion_decision(percentile_90d, th, liquidity_score=50, zscore_90d=0.0, cycle_phase="unknown", market_cycle="unknown", market_30d_change=0.0, item_7d_change=0.0, event_risk_discount=1.0, prices=None, sentiment_score=50.0):
+def compute_fusion_decision(percentile_90d, th, liquidity_score=50, zscore_90d=0.0, cycle_phase="unknown", market_cycle="unknown", market_30d_change=0.0, item_7d_change=0.0, event_risk_discount=1.0, prices=None, sentiment_score=50.0, supply_depth=0):
     """Combine percentile + corrected trend health -> action.
 
     When market is weak (bear/distribution) but item shows independent strength
     (item_7d_change outperforms market_30d_change by 5%+), buy thresholds are lowered.
 
-    Liquidity filter: if liquidity < 30, any 'buy' downgrades to 'watch'.
+    Liquidity filter (F-3.5, 2026-08-08): buy 降级 watch 双条件——
+    ① liquidity_score < 30（综合流动性极差）；② 最新在售量 supply_depth 在 (0,15)（结构性无流动性，
+    如渐变斑纹在售仅 13，总分 63 不触发旧闸门但实际无法出货）。
     """
     fd = FusionDecision()
     fd.percentile_90d = percentile_90d
@@ -832,12 +834,14 @@ def compute_fusion_decision(percentile_90d, th, liquidity_score=50, zscore_90d=0
                 fd.action_detail = "\u6df1\u5ea6\u8d85\u8dcc\u533a\uff0c\u8dcc\u901f\u8870\u51cf\u4f01\u7a33\uff0c\u53ef\u5206\u6279\u5efa\u4ed3"
                 fd.deduction_sources.append("oversold_buy_exception")
 
-    # Liquidity filter
-    if liquidity_score < 30 and fd.action == "buy":
+    # Liquidity filter (F-3.5, 2026-08-08): 综合分<30 或 最新在售量<15 都拦 buy（结构性无流动性）
+    if (liquidity_score < 30 or (0 < supply_depth < 15)) and fd.action == "buy":
         fd.action = "watch"
         fd.action_label = "\U0001f7e1 \u6d41\u52a8\u6027\u4e0d\u8db3\u00b7\u89c2\u671b"
         fd.action_detail = "\u4f4e\u4f30\u4f46\u6d41\u52a8\u6027\u6781\u5dee\uff0c\u51fa\u8d27\u56f0\u96be\uff0c\u5efa\u4ed3\u964d\u7ea7\u4e3a\u89c2\u671b"
         fd.liquidity_filtered = True
+        if 0 < supply_depth < 15:
+            fd.deduction_sources.append("liquidity_depth_gate")
 
     # Event risk filter (P0)
     if event_risk_discount < 0.85 and fd.action in ("buy", "hold"):

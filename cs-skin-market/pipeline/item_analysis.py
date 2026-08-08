@@ -1493,8 +1493,9 @@ def decide_fusion_signal(
     _apply_guards(fd, F, _GUARD1)
 
     # ---- 升级族1：恐慌共振（守卫1 之后评估；跳过守卫1，保留守卫2+供给）----
+    # F-3.5（2026-08-08）：流动性闸门禁升级——liquidity_filtered 的品（在售量过低）任何升级族都不得恢复 buy
     panic_fam = SIGNAL_FAMILY_BY_KEY["panic_resonance"]
-    if fd.action in ("watch", "avoid") and panic_fam.trigger(F):
+    if fd.action in ("watch", "avoid") and not fd.liquidity_filtered and panic_fam.trigger(F):
         _apply_buy(fd, panic_fam, F)
     elif fd.action == "buy":
         # ---- P0-7b：周期吸筹需大盘深跌共振；D方案深度回调低吸例外 ----
@@ -1529,7 +1530,7 @@ def decide_fusion_signal(
     # K-2（2026-08-06，预研 k2_guard_prestudy.json）：deep_value 叠加 supply_expansion 闸门，
     # 剔除供给扩张 91 信号后 14d +3.50→+5.58 / 30d +12.21→+16.68，前后半段一致；
     # supply_accum/panic_easing 不叠加（结构与通用守卫冲突/期望反降）。
-    if fd.action in ("watch", "avoid"):
+    if fd.action in ("watch", "avoid") and not fd.liquidity_filtered:
         for fam in _POST_FAMILIES:
             if fam.trigger(F):
                 _apply_buy(fd, fam, F)
@@ -1657,6 +1658,7 @@ def run_item_analysis(
         event_risk_discount=event_risk_coefficient(),
         prices=prices,
         sentiment_score=sentiment_score,
+        supply_depth=vol_total,
     )
 
     # ==================== 统一大脑阶段3：统一决策核心 ====================

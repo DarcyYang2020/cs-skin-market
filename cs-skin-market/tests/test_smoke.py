@@ -2224,6 +2224,58 @@ def t_resolve_item_reuse():
         conn.close()
 check("F-3 resolve_item DB 复用不触发采集", t_resolve_item_reuse)
 
+# ---- F-3.5 流动性深度闸门 (2026-08-08) ----
+print('[F-3.5: 流动性闸门 supply_depth]')
+
+def t_liquidity_depth_gate():
+    """F-3.5: 最新在售量 0<supply_depth<15 时 buy 降级 watch（结构性无流动性，如渐变斑纹在售 13）；
+    在售量充足时不受影响。"""
+    import types
+    from pipeline.trend_health import compute_fusion_decision
+    th = types.SimpleNamespace(raw_score=80, score=80, deduction_sources=[])
+    # 低在售：buy -> watch + liquidity_depth_gate
+    fd = compute_fusion_decision(10, th, liquidity_score=63, zscore_90d=-1.0,
+                                 market_cycle="consolidation", sentiment_score=50.0,
+                                 supply_depth=13)
+    assert fd.action == "watch", fd.action
+    assert fd.liquidity_filtered is True
+    assert "liquidity_depth_gate" in fd.deduction_sources
+    # 充足在售：buy 保持
+    fd2 = compute_fusion_decision(10, th, liquidity_score=63, zscore_90d=-1.0,
+                                  market_cycle="consolidation", sentiment_score=50.0,
+                                  supply_depth=80)
+    assert fd2.action == "buy", fd2.action
+    assert fd2.liquidity_filtered is False
+    # 无数据（supply_depth=0）：不误伤
+    fd3 = compute_fusion_decision(10, th, liquidity_score=63, zscore_90d=-1.0,
+                                  market_cycle="consolidation", sentiment_score=50.0,
+                                  supply_depth=0)
+    assert fd3.action == "buy", fd3.action
+
+check("F-3.5 流动性深度闸门 buy 降级", t_liquidity_depth_gate)
+
+
+def t_liquidity_gate_e2e():
+    """F-3.5 端到端：渐变斑纹（在售 13，avg7≈12）整链分析最终不得为 buy——
+    决策层闸门 + 升级族禁升级（supply_contraction 不再把 watch 升回 buy）。"""
+    from webapp.analysis_service import db_kline_fresh, item_from_db
+    from pipeline import item_analysis as ia
+    fresh = db_kline_fresh(1323, "M4A4 | 渐变斑纹 (崭新出厂)", max_stale_days=14)
+    assert fresh is not None, "渐变斑纹 K 线缺失"
+    it = item_from_db(fresh, 1323)
+    prices = [k.close for k in it.kline_90d if k.close and k.close > 0]
+    supply = [k.in_sale_count for k in it.kline_90d]
+    an = ia.run_item_analysis(name=it.name, prices=prices, supply_hist=supply or None,
+                              order_book=None, index_change_7d=0, market_cycle="bear",
+                              market_th_score=37, market_30d_change=-6.7, market_drop21=0,
+                              survive_count=0)
+    fd = an.fusion_decision
+    assert fd.get("action") != "buy", fd.get("action")
+    assert fd.get("liquidity_filtered") is True
+
+check("F-3.5 渐变斑纹端到端禁 buy", t_liquidity_gate_e2e)
+
+
 print(f'=== Results: {passed} passed, {failed} failed, {skipped} skipped ===')
 if failures:
     print()
