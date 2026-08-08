@@ -1359,7 +1359,7 @@ async def api_scan_history_detail(scan_id: str):
 
 
 # ---- 执行记录 (P0-2, 2026-08-04): 按建议执行 + 14/30天自动复盘 ----
-EXEC_ACTIONS = ("buy", "add", "reduce", "sell")
+EXEC_ACTIONS = ("buy", "add", "reduce", "sell", "hold")  # F-1.2: 观望也可记录（仅记账不同步持仓）
 
 
 def _settle_expired_executions(conn, today=None):

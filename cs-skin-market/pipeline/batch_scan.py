@@ -597,11 +597,13 @@ def _action_badge(pa):
 
 
 def _exec_btn(name, pa, price):
-    """建议动作 -> 执行按钮（build 卡片里的小按钮，带 data-* 供前端弹窗）。"""
+    """建议动作 -> 执行按钮（build 卡片里的小按钮，带 data-* 供前端弹窗）。
+
+    F-1.2 (2026-08-08): 观望类建议也出按钮（默认 hold），允许记录与建议相反的
+    实际操作（如建议观望但实际建仓）；动作在弹窗内可改。
+    """
     act = (pa or {}).get("action") or ""
-    ea = _EXEC_ACTION_MAP.get(act)
-    if not ea:
-        return ""
+    ea = _EXEC_ACTION_MAP.get(act, "hold")
     return ('<button type="button" class="btn btn-accent btn-sm exec-btn" '
             'data-name="{n}" data-action="{a}" data-signal="{s}" data-price="{p:.2f}" '
             'onclick="openExecModal(this)">💼 按建议执行</button>').format(

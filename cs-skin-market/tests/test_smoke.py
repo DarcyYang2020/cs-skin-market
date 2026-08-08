@@ -943,7 +943,7 @@ def t_exec_btn_display():
     assert 'data-action="buy"' in _exec_btn('x', {'action': '可分批建仓'}, 1.0)
     assert 'data-action="reduce"' in _exec_btn('x', {'action': '建议止盈减仓'}, 1.0)
     assert 'data-action="sell"' in _exec_btn('x', {'action': '趋势走弱，考虑止损'}, 1.0)
-    assert _exec_btn('x', {'action': '持有观察'}, 1.0) == ''
+    assert 'data-action="hold"' in _exec_btn('x', {'action': '持有观察'}, 1.0)  # F-1.2: 观望也可记录（默认 hold，可改）
 check('batch scan exec button maps actionable advice only', t_exec_btn_display)
 
 
