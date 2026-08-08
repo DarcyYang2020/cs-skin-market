@@ -1,5 +1,5 @@
 {
- "generated": "2026-08-08",
+ "generated": "2026-08-09",
  "engine_version": "v2-I13",
  "frozen_at": "2026-08-07",
  "oos_revalidate_after": "2027-04-25",
@@ -14,9 +14,9 @@
   },
   "B": {
    "label": "冻结后新数据积累",
-   "value_days": 1,
+   "value_days": 2,
    "threshold_days": 260,
-   "progress_pct": 0.4,
+   "progress_pct": 0.8,
    "target_date": "2027-04-25",
    "status": "积累中",
    "note": "自冻结起点 2026-08-07 起累计新数据；满 260 天（约 2027-04-25）即真 OOS 复验点"

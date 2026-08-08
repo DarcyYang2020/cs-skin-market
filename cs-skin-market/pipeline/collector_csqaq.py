@@ -711,17 +711,25 @@ async def fetch_current_data_via_browser():
 
 
 async def fetch_kline_90d(good_id: int):
-    """Async: Get 90-day K-line data."""
+    """Async: Get 90-day K-line data.
+
+    F-3.6 (2026-08-08): 串品锚校验——捕获多个 chart + info/good，用悠悠锚（DOM 价 + yyyp_sell_num）
+    挑选/校验 chart（价格偏差>20% 或在售量>30% 判串品）；可疑重试一轮，仍可疑返回空
+    （调用方不落库，保留库内旧数据）。修复黑龙纹身类每日采集写入错 chart 的问题。
+    """
     pw, browser = await _get_browser()
     page = await browser.new_page()
-    captured = {'chart': None}
+    captured = {'charts': [], 'detail': None}
     try:
         async def on_response(response):
             url = response.url
             try:
                 if "info/chart" in url and response.ok:
                     body = await response.text()
-                    captured["chart"] = body
+                    if len(captured['charts']) < 4:
+                        captured['charts'].append(body)
+                if "info/good?id=" in url and response.ok:
+                    captured["detail"] = await response.text()
             except Exception:
                 pass
         async def modify_chart(route, request):
@@ -738,18 +746,80 @@ async def fetch_kline_90d(good_id: int):
                 await route.continue_()
         page.on('response', on_response)
         await page.route('**/info/chart**', modify_chart)
-        try:
-            await page.goto(f'{CSQAQ_WEB}/goods/{good_id}', wait_until='domcontentloaded', timeout=15000)
-        except Exception as _ge:
-            _csq_log.warning(f"fetch_kline_90d goto goods/{good_id} failed: {_ge}")
-        await _wait_chart(page, captured)
-        ohlc, raw = [], []
-        if captured['chart']:
-            data = json.loads(captured['chart'])
-            if data.get('code') == 200 and data.get('data'):
-                cd = data['data']
-                ohlc = _chart_to_daily_ohlc(cd)
-                raw = _chart_to_raw(cd)
+
+        async def _capture_once():
+            nonlocal captured
+            captured = {'charts': [], 'detail': None}
+            try:
+                await page.goto(f'{CSQAQ_WEB}/goods/{good_id}', wait_until='domcontentloaded', timeout=15000)
+            except Exception as _ge:
+                _csq_log.warning(f"fetch_kline_90d goto goods/{good_id} failed: {_ge}")
+            await _wait_chart(page, captured, key='charts')
+
+        async def _anchor():
+            """悠悠锚（DOM 价 + info/good yyyp_sell_num）。"""
+            _ap, _as = 0, 0
+            try:
+                yyyp_price = await page.evaluate(
+                    "() => { const el = document.querySelector('.ant-statistic-content-value'); if (el) return el.innerText.trim(); return ''; }")
+                if yyyp_price:
+                    _pd = float(yyyp_price.replace(',', '').replace('¥', '').replace('\u00a5', ''))
+                    if _pd > 0:
+                        _ap = _pd
+            except Exception:
+                pass
+            if captured.get('detail'):
+                try:
+                    dd = json.loads(captured['detail'])
+                    gi = ((dd.get('data') or {}).get('goods_info')) or {}
+                    _as = int(gi.get('yyyp_sell_num', 0) or 0)
+                except Exception:
+                    pass
+            return _ap, _as
+
+        def _suspect(ohlc, anchor_price, anchor_sell):
+            """chart 最新价/在售 vs 悠悠锚 偏差超限判串品（与 _kline_matches_anchor 同口径）。"""
+            if not ohlc:
+                return False
+            closes = [b.close for b in ohlc if getattr(b, "close", 0) or 0]
+            if not closes:
+                return False
+            last = closes[-1]
+            last_sale = 0
+            for b in reversed(ohlc):
+                if getattr(b, "in_sale_count", 0) or 0:
+                    last_sale = b.in_sale_count
+                    break
+            if anchor_price > 0 and last > 0 and abs(last / anchor_price - 1) > 0.20:
+                return True
+            if anchor_sell > 0 and last_sale > 0 and abs(last_sale / anchor_sell - 1) > 0.30:
+                return True
+            return False
+
+        def _extract_ohlc():
+            _best = _pick_best_chart(captured.get('charts') or [], anchor_price, anchor_sell)
+            if not _best:
+                return [], []
+            try:
+                cd = json.loads(_best)
+                if cd.get('code') == 200 and cd.get('data'):
+                    return _chart_to_daily_ohlc(cd['data']), _chart_to_raw(cd['data'])
+            except Exception:
+                pass
+            return [], []
+
+        await _capture_once()
+        anchor_price, anchor_sell = await _anchor()
+        ohlc, raw = _extract_ohlc()
+        if ohlc and _suspect(ohlc, anchor_price, anchor_sell):
+            _last_close = ohlc[-1].close if ohlc else 0
+            _csq_log.warning(f"fetch_kline_90d good={good_id}: chart 与悠悠锚不符(最新价{_last_close} vs 锚{anchor_price}) → 重试一轮")
+            await _capture_once()
+            anchor_price, anchor_sell = await _anchor()
+            ohlc, raw = _extract_ohlc()
+            if ohlc and _suspect(ohlc, anchor_price, anchor_sell):
+                _csq_log.warning(f"fetch_kline_90d good={good_id}: 重试后仍与悠悠锚不符 → 返回空，保留库内旧数据")
+                return [], []
 
         # Retry with Buff (platform=1) / C5GAME (platform=3) if chart still empty
         for fb_platform, fb_name in ((1, "Buff"), (3, "C5GAME")):
@@ -757,12 +827,12 @@ async def fetch_kline_90d(good_id: int):
                 break
             _csq_log.info(f"fetch_kline_90d: empty from platform=2, retry platform={fb_platform} ({fb_name}) good_id={good_id}")
             try:
-                captured['chart'] = None
+                captured['charts'] = []
                 await page.route('**/info/chart**', lambda r, req, p=fb_platform: _modify_chart_route(r, req, platform=p))
                 await page.goto(f'{CSQAQ_WEB}/goods/{good_id}', wait_until='domcontentloaded', timeout=15000)
-                await _wait_chart(page, captured)
-                if captured['chart']:
-                    data2 = json.loads(captured['chart'])
+                await _wait_chart(page, captured, key='charts')
+                if captured['charts']:
+                    data2 = json.loads(captured['charts'][0])
                     if data2.get('code') == 200 and data2.get('data'):
                         cd2 = data2['data']
                         ohlc = _chart_to_daily_ohlc(cd2)
@@ -774,7 +844,6 @@ async def fetch_kline_90d(good_id: int):
         return ohlc, raw
     finally:
         await page.close()
-
 
 async def fetch_simple_kline(good_id: int, max_time_ms: int):
     """深度历史 K 线（simple/chartAll，2026-08-04 实测）。
