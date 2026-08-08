@@ -67,6 +67,18 @@
 </div>
 {% endif %}
 
+{# ====== 一键执行（F-1, 2026-08-08）：按建议记录执行，复用共享 exec-modal ====== #}
+{% if name and fusion_decision and fusion_decision.action %}
+<div style="display:flex;justify-content:flex-end;margin:-4px 0 12px;">
+  <button type="button" class="btn btn-accent btn-sm exec-btn"
+          data-name="{{ name|e }}"
+          data-action="{{ {'buy':'buy','watch':'buy','reduce':'reduce','sell':'sell','avoid':'sell'}.get(fusion_decision.action, 'buy') }}"
+          data-signal="{{ fusion_decision.action_label|e }}"
+          data-price="{{ "%.2f"|format(price_rmb or 0) }}"
+          onclick="openExecModal(this)">💼 按建议记录执行</button>
+</div>
+{% endif %}
+
 {# ====== 关键指标条 ====== #}
 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px;">
   <div class="card" style="padding:10px;text-align:center;">

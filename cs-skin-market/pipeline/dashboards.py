@@ -91,6 +91,43 @@ def data_progress(conn):
     }
 
 
+def execution_review(conn):
+    """执行复盘对照（F-2, 2026-08-08）：真实执行 vs 纸面信号统计，纯展示层只读。
+
+    real 口径：executions 表已结算记录（pnl 由 _settle_expired_executions 按收盘价回填，扣 2% 双边成本）；
+    slippage = exec_price / advice_price - 1（advice_price 来自报告建议价）。
+    paper 口径：signal_tracking 生产 buy 信号回填（net14/net30，扣 2% 与回放同口径），见 tracking_summary。
+    """
+    from . import signal_tracking
+    rows = conn.execute(
+        "SELECT exec_price, advice_price, pnl_14, pnl_30 FROM executions").fetchall()
+
+    def _win(vals):
+        vals = [v for v in vals if v is not None]
+        if not vals:
+            return {"n": 0, "win": None, "avg": None}
+        return {"n": len(vals),
+                "win": round(100.0 * sum(1 for v in vals if v > 0) / len(vals), 1),
+                "avg": round(sum(vals) / len(vals), 2)}
+
+    p14 = [r["pnl_14"] for r in rows]
+    p30 = [r["pnl_30"] for r in rows]
+    merged = [(r["pnl_14"] if r["pnl_14"] is not None else r["pnl_30"]) for r in rows]
+    slips = []
+    for r in rows:
+        if r["advice_price"] and r["exec_price"] and r["advice_price"] > 0:
+            slips.append((r["exec_price"] / r["advice_price"] - 1) * 100)
+    real = {
+        "n": len(rows),
+        "n_settled": sum(1 for v in merged if v is not None),
+        "pnl14": _win(p14),
+        "pnl30": _win(p30),
+        "merged": _win(merged),
+        "slippage": {"n": len(slips), "avg": round(sum(slips) / len(slips), 2) if slips else None},
+    }
+    return {"real": real, "paper": signal_tracking.tracking_summary(conn)}
+
+
 def portfolio_dashboard(conn):
     """组合仓位仪表：持仓分布 + 最近扫描的并发建议仓位占用（P2 口径 Σposition_limit vs 0.8 上限）。"""
     assets = 0.0

@@ -2068,6 +2068,63 @@ check('大盘 401 后 bind 重试成功', t_market_401_rebind_retry)
 
 
 
+
+
+print('[F-1/F-2: 一键执行录入 + 执行复盘对照 (2026-08-08)]')
+def t_report_exec_btn():
+    """F-1: 单品报告渲染含「按建议记录执行」按钮（决策动作默认映射 buy/reduce/sell）。"""
+    from webapp.main import templates
+    def _render(action, label="已到买点"):
+        return templates.get_template("partials/analysis.html").render(
+            name="测试|AK", price_rmb=55.5,
+            fusion_decision={"action": action, "action_label": label})
+    h = _render("buy")
+    assert "按建议记录执行" in h, h[:500]
+    assert 'data-action="buy"' in h and 'data-name="测试|AK"' in h, h[:500]
+    assert 'data-price="55.50"' in h, h[:500]
+    assert 'data-action="reduce"' in _render("reduce")
+    assert 'data-action="sell"' in _render("sell")
+    assert 'data-action="buy"' in _render("watch")
+    assert 'data-action="sell"' in _render("avoid")
+    h2 = templates.get_template("partials/analysis.html").render(name="X", price_rmb=1.0)
+    assert "按建议记录执行" not in h2  # 无决策不显示
+check("F-1 单品报告按建议执行按钮渲染", t_report_exec_btn)
+
+def t_exec_review():
+    """F-2: 执行复盘对照聚合（真实 vs 纸面）口径。"""
+    from pipeline import db, dashboards
+    conn = db.get_conn()
+    eids = []
+    try:
+        r0 = dashboards.execution_review(conn)["real"]  # 基线（库内可能已有执行记录，用增量断言）
+        e1 = db.add_execution(conn, 0, "__smoke_review_a__", "buy", "2026-07-01", 100.0, 1,
+                              advice_signal="x", advice_price=95.0)
+        e2 = db.add_execution(conn, 0, "__smoke_review_b__", "buy", "2026-07-01", 100.0, 1)
+        eids += [e1, e2]
+        db.settle_execution(conn, e1, settle_14=110.0, pnl_14=8.0, settle_30=105.0, pnl_30=3.0)
+        db.settle_execution(conn, e2, settle_30=90.0, pnl_30=-10.0)
+        d = dashboards.execution_review(conn)
+        r = d["real"]
+        assert r["n"] == r0["n"] + 2 and r["n_settled"] == r0["n_settled"] + 2, (r, r0)
+        assert r["pnl14"]["n"] == r0["pnl14"]["n"] + 1, (r, r0)
+        assert r["pnl30"]["n"] == r0["pnl30"]["n"] + 2, (r, r0)
+        assert r["slippage"]["n"] == r0["slippage"]["n"] + 1, (r, r0)
+        if r0["pnl14"]["n"] == 0:
+            assert r["pnl14"]["win"] == 100.0 and r["pnl14"]["avg"] == 8.0, r["pnl14"]
+        if r0["pnl30"]["n"] == 0:
+            assert r["pnl30"]["win"] == 50.0 and r["pnl30"]["avg"] == -3.5, r["pnl30"]
+        if r0["slippage"]["n"] == 0:
+            assert abs(r["slippage"]["avg"] - round((100.0 / 95.0 - 1) * 100, 2)) < 1e-6, r["slippage"]
+        assert "paper" in d and d["paper"]["n_total"] >= 0, d.keys()
+    finally:
+        for eid in eids:
+            try:
+                db.delete_execution(conn, eid)
+            except Exception:
+                pass
+        conn.close()
+check("F-2 执行复盘对照聚合口径", t_exec_review)
+
 print(f'=== Results: {passed} passed, {failed} failed, {skipped} skipped ===')
 if failures:
     print()

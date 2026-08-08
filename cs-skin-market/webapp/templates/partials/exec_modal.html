@@ -1,0 +1,105 @@
+<!-- Exec Modal (共享, F-1 2026-08-08): 按建议执行——单品报告/批量扫描/自选页共用 -->
+<div class="modal-overlay" id="exec-modal" style="display:none;">
+  <div class="modal">
+    <h3 id="exec-modal-title">💼 按建议执行</h3>
+    <div class="form-group">
+      <label>物品名称</label>
+      <input type="text" id="exec-name" class="form-input" placeholder="输入物品名称" list="exec-name-options" style="background:var(--bg-input);">
+      <datalist id="exec-name-options"></datalist>
+    </div>
+    <div class="row-flex" style="gap:12px;">
+      <div class="form-group" style="flex:1;">
+        <label>动作</label>
+        <select id="exec-action" class="form-select">
+          <option value="buy">🟢 建仓</option>
+          <option value="add">➕ 补仓</option>
+          <option value="reduce">🔻 减仓</option>
+          <option value="sell">🔴 清仓/止损</option>
+        </select>
+      </div>
+      <div class="form-group" style="flex:1;">
+        <label>建议日期</label>
+        <input type="date" id="exec-date" class="form-input">
+      </div>
+    </div>
+    <div class="row-flex" style="gap:12px;">
+      <div class="form-group" style="flex:1;">
+        <label>成交价 (¥) <span class="muted">*</span></label>
+        <input type="number" id="exec-price" class="form-input" step="0.01" min="0" required placeholder="例如：120.00">
+      </div>
+      <div class="form-group" style="flex:1;">
+        <label>数量 <span class="muted">*</span></label>
+        <input type="number" id="exec-qty" class="form-input" min="1" step="1" value="1">
+      </div>
+    </div>
+    <div id="exec-advice-price" style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;display:none;"></div>
+    <div id="exec-signal" style="font-size:12px;color:var(--text-muted);margin-bottom:12px;"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-outline" onclick="closeModal('exec-modal')">取消</button>
+      <button type="button" class="btn btn-primary" onclick="submitExec()">确认执行</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function openExecModal(btn) {
+  var nameEl = document.getElementById('exec-name');
+  nameEl.value = btn.getAttribute('data-name') || '';
+  nameEl.readOnly = true;
+  document.getElementById('exec-modal-title').textContent = '💼 按建议执行';
+  document.getElementById('exec-action').value = btn.getAttribute('data-action') || 'buy';
+  document.getElementById('exec-signal').textContent = btn.getAttribute('data-signal') || '';
+  var advRaw = btn.getAttribute('data-price') || '';
+  var advVal = advRaw ? Number(advRaw) : null;
+  var apEl = document.getElementById('exec-advice-price');
+  if (advVal && advVal > 0) { apEl.style.display = 'block'; apEl.textContent = '建议价 ¥' + advVal.toFixed(2) + '（成交价与之对比统计滑点）'; }
+  else { apEl.style.display = 'none'; }
+  window._execAdvicePrice = advVal;
+  document.getElementById('exec-price').value = advRaw;
+  document.getElementById('exec-qty').value = 1;
+  document.getElementById('exec-date').value = new Date().toISOString().slice(0, 10);
+  openModal('exec-modal');
+}
+function submitExec() {
+  var name = document.getElementById('exec-name').value.trim();
+  var price = parseFloat(document.getElementById('exec-price').value);
+  if (!name) { showToast('请填写物品名称', 'error'); return; }
+  if (!(price > 0)) {
+    // 参考价兜底：成交价留空时带出 price_history 锚定收盘价（悠悠定价锚），填入后提示确认，不自动写库
+    var d2 = document.getElementById('exec-date').value || new Date().toISOString().slice(0, 10);
+    fetch('/api/watchlist/executions/ref-price?name=' + encodeURIComponent(name) + '&date=' + encodeURIComponent(d2))
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.ok) {
+          document.getElementById('exec-price').value = d.price;
+          showToast('已带出参考价 ¥' + d.price + '（' + String(d.date).slice(0, 10) + ' 锚定收盘），请确认后再次点击执行', 'info');
+        } else {
+          showToast(d.error || '未找到参考价，请手动输入成交价', 'error');
+        }
+      });
+    return;
+  }
+  var body = {
+    name: name,
+    action: document.getElementById('exec-action').value,
+    advice_date: document.getElementById('exec-date').value,
+    exec_price: price,
+    qty: parseInt(document.getElementById('exec-qty').value, 10) || 1,
+    advice_signal: document.getElementById('exec-signal').textContent,
+    advice_price: window._execAdvicePrice
+  };
+  fetch('/api/watchlist/executions', {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)})
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.ok) {
+      closeModal('exec-modal');
+      showToast(d.warning ? ('⚠️ ' + d.warning) : '✅ 已记录执行并同步持仓');
+      if (typeof loadExecReview === 'function') { loadExecReview(); }
+      if (typeof loadExecutions === 'function') {
+        if (d.warning) { loadExecutions(); } else { location.reload(); }
+      }
+    }
+    else { showToast('❌ ' + (d.error || '记录失败'), 'error'); }
+  });
+}
+</script>

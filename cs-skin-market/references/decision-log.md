@@ -1529,3 +1529,16 @@ vs 池内等权 +509.75%/-54.12% vs 大盘 -4.02%；引擎边际价值在回撤�
 **学到的新思路**：① 「执行流水」断点是摩擦与可见性而非表结构——建表后 1 条记录都没有，反馈闭环必须
 「录入零摩擦 + 收益对照可见」才会被使用；② 第一性分析要核对已落地资产，避免把已有能力当缺口重复规划；
 ③ 从纸面回测到真实执行净值的桥是分析器与投资系统的分水岭。
+
+## P0 F-1 一键执行录入 + F-2 执行复盘对照卡（2026-08-08，展示层+数据层）
+**背景**：第一性原理分析（见 first-principles-gap.md）确认最大断点是「建议→真实成交→回报」飞轮未转（executions 表/API 已存在但仅 1 条手动记录）。用户「开始」后落地 P0 第一批。
+**F-1 一键执行录入**：
+- exec-modal 共享化：从 watchlist.html 迁出 modal 标记 + openExecModal/submitExec 到 `partials/exec_modal.html`，base.html 全站引入（search/discover/watchlist/replay/checkup/monitor 全部可用）；watchlist 本地副本去重（净删 2 函数 + 1953 字符标记）。
+- submitExec 增加非自选页守卫：loadExecutions 仅在存在时调用（自选页行为不变：warning 刷新列表、成功整页刷新同步持仓）；成功后触发 loadExecReview 刷新对照卡。
+- 单品报告（partials/analysis.html）决策条下加「💼 按建议记录执行」按钮：data-name / data-action（buy→buy、reduce→reduce、sell→sell、avoid→sell、watch→buy，弹窗内可改）/ data-signal（action_label）/ data-price（当前价，弹窗预填）。
+**F-2 执行复盘对照卡**：
+- `pipeline/dashboards.execution_review(conn)`：真实口径——executions 已结算 pnl14/pnl30/合并（pnl14 优先）+ 滑点（advice_price→exec_price，仅 advice_price>0）；纸面口径——signal_tracking.tracking_summary（net14/net30 扣 2%）。
+- GET /api/executions/review：先 `_settle_expired_executions` 再统计，保证对照卡与列表同新鲜度。
+- watchlist「执行记录与复盘」区下方新增对照卡：两行（真实执行 / 纸面信号）×（样本 / 14日 / 30日 / 成本滑点），样本≥30 笔时即可回答「按建议做到底赚不赚」。
+**验证**：冒烟 75/0/6（新增 t_report_exec_btn 模板渲染、t_exec_review 基线差值口径）；六页面渲染 200 含共享 modal；真库 API 闭环（POST 记录 → review n=2/滑点 -0.06% → DELETE 恢复 n=1）；ref-price 822.5（钴蓝禁锢，悠悠锚口径）。
+**学到的新思路**：① 「零摩擦」的工程落点是共享基础设施而非页面复制——exec-modal 移到 base 一次接入，所有页面自动获得能力；② 聚合测试对真库用「基线差值」断言，避免测试残留数据造成误红；③ 断言浮点要 round 到产品展示精度（avg 2 位），否则 round(5.2631,2)=5.26 vs 5.2631 恒不相等。

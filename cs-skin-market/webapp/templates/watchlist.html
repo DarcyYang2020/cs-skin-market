@@ -206,6 +206,16 @@
   <div id="exec-empty" style="padding:20px;text-align:center;color:var(--text-muted);display:none;">暂无执行记录：点上方「📝 手动录入」或批量扫描结果里「💼 按建议执行」开始记账，14/30 天后自动复盘</div>
 </div>
 
+<!-- 执行复盘对照 (F-2, 2026-08-08): 真实执行 vs 纸面信号 -->
+<div class="card" id="exec-review-card" style="display:none;margin-top:12px;">
+  <div class="card-header" style="justify-content:space-between;">
+    <span class="card-title">📊 执行复盘对照 · 真实 vs 纸面</span>
+    <span style="font-size:11px;color:var(--text-muted);">真实=executions 已结算（净收益扣 2%）；纸面=signal_tracking 生产信号（net 扣 2%）</span>
+  </div>
+  <div id="exec-review-body" style="padding:10px 14px;"></div>
+</div>
+
+
 <!-- Pagination -->
 {% if pagination and pagination.total_pages > 1 %}
 <div class="pagination" id="wl-pagination">
@@ -333,50 +343,6 @@
     </form>
   </div>
 </div>
-
-<!-- Exec Modal (P0-2, 2026-08-04): 按建议执行 -->
-<div class="modal-overlay" id="exec-modal" style="display:none;">
-  <div class="modal">
-    <h3 id="exec-modal-title">💼 按建议执行</h3>
-    <div class="form-group">
-      <label>物品名称</label>
-      <input type="text" id="exec-name" class="form-input" placeholder="输入物品名称" list="exec-name-options" style="background:var(--bg-input);">
-      <datalist id="exec-name-options"></datalist>
-    </div>
-    <div class="row-flex" style="gap:12px;">
-      <div class="form-group" style="flex:1;">
-        <label>动作</label>
-        <select id="exec-action" class="form-select">
-          <option value="buy">🟢 建仓</option>
-          <option value="add">➕ 补仓</option>
-          <option value="reduce">🔻 减仓</option>
-          <option value="sell">🔴 清仓/止损</option>
-        </select>
-      </div>
-      <div class="form-group" style="flex:1;">
-        <label>建议日期</label>
-        <input type="date" id="exec-date" class="form-input">
-      </div>
-    </div>
-    <div class="row-flex" style="gap:12px;">
-      <div class="form-group" style="flex:1;">
-        <label>成交价 (¥) <span class="muted">*</span></label>
-        <input type="number" id="exec-price" class="form-input" step="0.01" min="0" required placeholder="例如：120.00">
-      </div>
-      <div class="form-group" style="flex:1;">
-        <label>数量 <span class="muted">*</span></label>
-        <input type="number" id="exec-qty" class="form-input" min="1" step="1" value="1">
-      </div>
-    </div>
-    <div id="exec-advice-price" style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;display:none;"></div>
-    <div id="exec-signal" style="font-size:12px;color:var(--text-muted);margin-bottom:12px;"></div>
-    <div class="modal-actions">
-      <button type="button" class="btn btn-outline" onclick="closeModal('exec-modal')">取消</button>
-      <button type="button" class="btn btn-primary" onclick="submitExec()">确认执行</button>
-    </div>
-  </div>
-</div>
-
 
 <!-- 批量扫描结果 -->
 <div class="batch-scan-section" id="batch-scan-section" style="display:none;">
@@ -825,24 +791,6 @@ function buildExecNameOptions() {
     dl.appendChild(o);
   });
 }
-function openExecModal(btn) {
-  var nameEl = document.getElementById('exec-name');
-  nameEl.value = btn.getAttribute('data-name') || '';
-  nameEl.readOnly = true;
-  document.getElementById('exec-modal-title').textContent = '💼 按建议执行';
-  document.getElementById('exec-action').value = btn.getAttribute('data-action') || 'buy';
-  document.getElementById('exec-signal').textContent = btn.getAttribute('data-signal') || '';
-  var advRaw = btn.getAttribute('data-price') || '';
-  var advVal = advRaw ? Number(advRaw) : null;
-  var apEl = document.getElementById('exec-advice-price');
-  if (advVal && advVal > 0) { apEl.style.display = 'block'; apEl.textContent = '建议价 ¥' + advVal.toFixed(2) + '（成交价与之对比统计滑点）'; }
-  else { apEl.style.display = 'none'; }
-  window._execAdvicePrice = advVal;
-  document.getElementById('exec-price').value = advRaw;
-  document.getElementById('exec-qty').value = 1;
-  document.getElementById('exec-date').value = new Date().toISOString().slice(0, 10);
-  openModal('exec-modal');
-}
 function openExecManual() {
   var nameEl = document.getElementById('exec-name');
   nameEl.value = '';
@@ -858,47 +806,6 @@ function openExecManual() {
   document.getElementById('exec-date').value = new Date().toISOString().slice(0, 10);
   openModal('exec-modal');
   nameEl.focus();
-}
-function submitExec() {
-  var name = document.getElementById('exec-name').value.trim();
-  var price = parseFloat(document.getElementById('exec-price').value);
-  if (!name) { showToast('请填写物品名称', 'error'); return; }
-  if (!(price > 0)) {
-    // P1 执行闭环参考价（2026-08-06）：成交价留空时带出 price_history 锚定收盘价（悠悠定价锚），
-    // 填入后提示用户确认，不自动写库（持仓均价仍以用户确认的 exec_price 为准）。
-    var d2 = document.getElementById('exec-date').value || new Date().toISOString().slice(0, 10);
-    fetch('/api/watchlist/executions/ref-price?name=' + encodeURIComponent(name) + '&date=' + encodeURIComponent(d2))
-      .then(function(r) { return r.json(); })
-      .then(function(d) {
-        if (d.ok) {
-          document.getElementById('exec-price').value = d.price;
-          showToast('已带出参考价 ¥' + d.price + '（' + String(d.date).slice(0, 10) + ' 锚定收盘），请确认后再次点击执行', 'info');
-        } else {
-          showToast(d.error || '未找到参考价，请手动输入成交价', 'error');
-        }
-      });
-    return;
-  }
-  var body = {
-    name: name,
-    action: document.getElementById('exec-action').value,
-    advice_date: document.getElementById('exec-date').value,
-    exec_price: price,
-    qty: parseInt(document.getElementById('exec-qty').value, 10) || 1,
-    advice_signal: document.getElementById('exec-signal').textContent,
-    advice_price: window._execAdvicePrice
-  };
-  fetch('/api/watchlist/executions', {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)})
-  .then(function(r) { return r.json(); })
-  .then(function(d) {
-    if (d.ok) {
-      closeModal('exec-modal');
-      showToast(d.warning ? ('⚠️ ' + d.warning) : '✅ 已记录执行并同步持仓');
-      if (d.warning) { loadExecutions(); }
-      else { location.reload(); }
-    }
-    else { showToast('❌ ' + (d.error || '记录失败'), 'error'); }
-  });
 }
 function deleteExec(eid) {
   if (!confirm('删除这条执行记录？')) return;
@@ -957,7 +864,49 @@ function loadExecutions() {
     }).join('');
   });
 }
+loadExecReview();
 loadExecutions();
+
+
+
+function loadExecReview() {
+  fetch('/api/executions/review')
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    var card = document.getElementById('exec-review-card');
+    if (!card || !d.ok) return;
+    var body = document.getElementById('exec-review-body');
+    if (!body) return;
+    var rl = d.real || {}, pp = d.paper || {};
+    function pnlCell(st) {
+      if (!st || !st.n) return '<span style="color:var(--text-muted);">--</span>';
+      var c = st.avg >= 0 ? 'var(--green)' : 'var(--red)';
+      return '<b style="color:' + c + ';">' + (st.avg >= 0 ? '+' : '') + st.avg.toFixed(1) + '%</b> <span style="color:var(--text-muted);font-size:11px;">(胜率 ' + st.win + '% · n=' + st.n + ')</span>';
+    }
+    var slip = (rl.slippage && rl.slippage.n) ? ((rl.slippage.avg >= 0 ? '+' : '') + rl.slippage.avg.toFixed(2) + '%') : '--';
+    var rows = [
+      ['真实执行', 'n=' + (rl.n || 0) + ' · 已结算 ' + (rl.n_settled || 0), pnlCell(rl.pnl14), pnlCell(rl.pnl30), '平均滑点 ' + slip],
+      ['纸面信号', 'n=' + (pp.n_total || 0) + ' · 已回填14 ' + (pp.n_filled14 || 0), pnlCell(pp.net14), pnlCell(pp.net30), 'net 扣2%']
+    ];
+    var html = '<table style="width:100%;border-collapse:collapse;font-size:13px;">' +
+      '<thead><tr style="color:var(--text-muted);font-size:11px;text-align:left;">' +
+      '<th style="padding:4px 8px;">口径</th><th style="padding:4px 8px;">样本</th>' +
+      '<th style="padding:4px 8px;">14日</th><th style="padding:4px 8px;">30日</th>' +
+      '<th style="padding:4px 8px;">成本/滑点</th></tr></thead><tbody>';
+    rows.forEach(function(rw) {
+      html += '<tr style="border-top:1px solid var(--border);">' + rw.map(function(c, i) {
+        return '<td style="padding:6px 8px;' + (i === 0 ? 'font-weight:700;' : '') + '">' + c + '</td>';
+      }).join('') + '</tr>';
+    });
+    html += '</tbody></table>';
+    html += '<div style="margin-top:8px;font-size:11px;color:var(--text-muted);line-height:1.6;">' +
+      '真实=executions 已结算（净收益扣 2% 双边成本）；纸面=signal_tracking 生产 buy 信号按真实价格回填（net 扣 2%，与回放同口径）。' +
+      '真实样本 ≥30 笔时，两者对照即可回答「按建议做到底赚不赚」；滑点=成交价/建议价-1，滑点中位数 ≥1.5% 时优先 F-4 成本建模。</div>';
+    body.innerHTML = html;
+    card.style.display = 'block';
+  })
+  .catch(function() {});
+}
 
 
 // ---- 组合仓位仪表 (P0-4, 2026-08-04) ----

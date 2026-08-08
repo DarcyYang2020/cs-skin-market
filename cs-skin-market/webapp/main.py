@@ -1385,6 +1385,18 @@ async def api_executions():
         conn.close()
 
 
+
+@app.get("/api/executions/review")
+async def api_executions_review():
+    """执行复盘对照（F-2, 2026-08-08）：真实执行 vs 纸面信号统计。"""
+    from pipeline import dashboards
+    conn = db.get_conn()
+    try:
+        _settle_expired_executions(conn)
+        return {"ok": True, **dashboards.execution_review(conn)}
+    finally:
+        conn.close()
+
 @app.get("/api/watchlist/executions/ref-price")
 async def api_execution_ref_price(name: str = "", date: str = ""):
     """执行记录参考价（P1 执行闭环，2026-08-06）：按名称+日期带出 price_history 锚定收盘价（悠悠定价锚）。
