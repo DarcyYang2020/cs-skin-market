@@ -212,6 +212,9 @@ def main():
     ap.add_argument("--kline", action="store_true", help="兼容保留：每日已自动全量刷新 K 线")
     ap.add_argument("--force-weekly", action="store_true", help="强制本周执行周度任务（全市场快照+大户集中度）")
     args = ap.parse_args()
+    from pipeline.pool_log import append_pool_log
+    _health = None
+    _kline_ok = 0
     log("=== 每日采集开始 ===")
     collect_bind_ip()
     collect_market_index()
@@ -233,7 +236,8 @@ def main():
                 log(f"大户集中度快照任务异常: {e}")
         # P3 (2026-08-07 去量)：每日全量刷新 90 日 K 线（全品价格+在售量日更，补齐非自选品停更缺口）
         try:
-            await collect_kline_all()
+            nonlocal _kline_ok
+            _kline_ok = await collect_kline_all()
         except Exception as e:
             log(f"K线任务异常: {e}")
     # 活跃池淘汰 (F-3.1, 2026-08-08): K线刷新后评估流动性，淘汰品退出每日采集（数据保留）
@@ -253,9 +257,35 @@ def main():
     try:
         from run_health_monitor import run_monitor
         res = run_monitor()
+        _health = res
         log(f"数据健康: status={res['status']} FAIL={res['fail_count']}（已写入 health_checks）")
     except Exception as e:
         log(f"数据健康检查异常（不中断采集）: {e}")
+    # 池维护台账 (F-3.2, 2026-08-08): 每日采集收尾写一行，260 品完整链路留痕
+    try:
+        from pipeline import db as _db
+        _c = _db.get_conn()
+        _pool_size = _c.execute("SELECT COUNT(*) FROM items WHERE good_id>0").fetchone()[0]
+        _active = _c.execute(
+            "SELECT COUNT(*) FROM items WHERE good_id>0 AND (in_watchlist=1 OR holding=1 OR notes IS NULL "
+            "OR (notes NOT LIKE '%存世量过低%' AND notes NOT LIKE '%活跃池淘汰%'))").fetchone()[0]
+        _pruned = _c.execute("SELECT COUNT(*) FROM items WHERE notes LIKE '%活跃池淘汰%'").fetchone()[0]
+        _new = _c.execute(
+            "SELECT COUNT(*) FROM items WHERE good_id>0 AND date(created_at)=date('now','localtime')").fetchone()[0]
+        _c.close()
+        append_pool_log({
+            "type": "daily",
+            "date": datetime.now(TZ_BJ).strftime("%Y-%m-%d"),
+            "pool_size": _pool_size,
+            "active_pool": _active,
+            "pruned": _pruned,
+            "kline_ok": _kline_ok,
+            "new_items_today": _new,
+            "health": (_health or {}).get("status"),
+            "health_fail": (_health or {}).get("fail_count"),
+        })
+    except Exception as e:
+        log(f"池维护台账异常（不中断采集）: {e}")
     # J-2 三通道监测刷新 (2026-08-07): 重跑 j2_channel_monitor.py 更新 data/j2_channel_status.json（B 通道天数每日变化）
     try:
         import subprocess, sys as _sys

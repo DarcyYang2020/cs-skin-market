@@ -2151,6 +2151,28 @@ async def _run_discover_scan_all_task(task_id: str):
         pass
 
 
+    # 池维护台账 (F-3.2, 2026-08-08): discover 扫描完成留痕（数据积累后评估是否增量更新）
+    try:
+        from pipeline.pool_log import append_pool_log
+        from pipeline import db as _db
+        _pc = _db.get_conn()
+        _pool_now = _pc.execute("SELECT COUNT(*) FROM items WHERE good_id>0").fetchone()[0]
+        _pc.close()
+        _res = _discover_progress[task_id].get('results') or []
+        append_pool_log({
+            "type": "discover",
+            "task_id": task_id,
+            "candidates": len(capped),
+            "ok": sum(1 for _x in _res if not _x.get('error')),
+            "error": sum(1 for _x in _res if _x.get('error')),
+            "skipped": _discover_progress[task_id].get('skipped', 0),
+            "market_th": _discover_progress[task_id].get('market_th'),
+            "pool_size_now": _pool_now,
+        })
+    except Exception:
+        pass
+
+
 def _settle_discover_items(items, scan_time):
     """\u4ece price_history \u7ed3\u7b97\u5feb\u7167\u54c1\u7684 14/30d \u6536\u76ca\uff08\u626b\u63cf\u65e5\u540e\u7b2c 14/30 \u4e2a\u4ea4\u6613\u65e5 vs \u626b\u63cf\u65e5\u4ef7\uff09\u3002\u7eaf\u5c55\u793a\u5c42\u3002"""
     from datetime import datetime as _dt

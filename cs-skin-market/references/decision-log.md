@@ -1602,3 +1602,18 @@ vs 池内等权 +509.75%/-54.12% vs 大盘 -4.02%；引擎边际价值在回撤�
 - `webapp/main.py` discover 排除集合追加「notes LIKE '%活跃池淘汰%'」，淘汰品不会被下一轮扩池捞回。
 **阈值依据**：库内 190 品规模下 7 天平均在售量 <10 共 6 品（SSG 08 青苔虚线/玛雅之梦 1.0、AWP CMYK 1.3、格洛克 地下水 2.0、法玛斯 对比涂装 2.9、MP7 地下水 5.7），均为非自选、几乎无成交价值；<10 为「几乎无活跃度」的保守线，不误伤正常品。
 **首轮执行**：标记 7 品（第三轮扩容新增 MP9 干旱季节 1 品也落入），正常采集池 166 品；淘汰品仍在库，随时可加回自选复活。
+
+
+## F-3.2 260 品存量维护 + 链路台账（2026-08-08，采集/数据层，不增量）
+**背景**：用户「一定要把这 260 数据维护好，收敛后定期去更新，完整链路要记录好；不用增量更新，就存量更新即可；数据积累到一定程度之后，通过评估再看需不需要增量更新」。
+**结论**：不做增量扩池（不自动触发 discover）；收敛后只做存量维护（每日 K 线刷新已有）+ 链路留痕 + 增量评估决策点。
+**落地**：
+- 新增 `pipeline/pool_log.py`：池维护台账 `data/pool_maintenance_log.jsonl`（一行一条 JSON，追加不清理）。
+  - type=daily：每日采集收尾写 pool_size / active_pool / pruned / kline_ok / new_items_today / health。
+  - type=prune：prune_inactive 淘汰执行留痕。
+  - type=discover：discover 扫描完成写 candidates / ok / error / skipped / market_th / pool_size_now。
+- `run_daily_collect.py`：main() 捕获 K 线成功数与健康检查结果，收尾写台账行（异常不中断采集）。
+- `webapp/main.py`：`_run_discover_scan_all_task` 收尾写 discover 台账行。
+- 新增 `references/pool-maintenance.md`：完整链路手册（口径/链路图/调度表/台账字段/淘汰恢复/增量评估/故障 SOP）。
+**增量评估决策点**（数据积累后人工判断，不做自动增量）：① 活跃池萎缩（pruned 占比 >20%）；② 连续 3 次 discover ok 新品骤降；③ active_pool 近 4 天 K 线覆盖率 <95%；④ 新武器/新收藏品上线。评估通过才手动扩池。
+**验证**：py_compile 通过；冒烟全绿；台账首条基线（daily）由下次每日采集写入，discover 行由当前第三轮扫描完成时写入。
