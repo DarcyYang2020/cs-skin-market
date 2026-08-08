@@ -851,10 +851,43 @@ async def api_watchlist_report(request: Request, item_id: int):
         conn.close()
 
 
-# ---- Discover report (existing report, no re-analysis) ----
-@app.get("/api/discover/report")
-async def api_discover_report(request: Request, name: str = Query(...)):
-    """Return saved report by item name without re-running analysis."""
+
+# ---- Report view (批量扫描/自选「报告」弹窗统一入口, 2026-08-09) ----
+@app.get("/api/items/report-view")
+async def api_item_report_view(request: Request, name: str = Query(...)):
+    """报告弹窗统一入口：DB 复用重建完整分析页（不重新采集），持仓品带补仓/止损双路径卡片。
+
+    F-3.7 (2026-08-09)：此前批量扫描/自选「报告」只显示已存 markdown 快照，无持仓上下文，
+    看不到「持仓浮亏 · 补仓/止损双路径」卡片；改为优先用 DB 新鲜 K 线（≤3天，F-3 采集复用口径）
+    重建 analysis.html（与「分析」按钮同口径）；数据不新鲜或无历史时回退已存快照报告。
+    """
+    try:
+        from webapp.analysis_service import db_kline_fresh, item_from_db, KLINE_FRESH_BATCH
+        fresh = db_kline_fresh(None, name, max_stale_days=KLINE_FRESH_BATCH)
+        if fresh and len(fresh.get("bars") or []) >= 14:
+            conn_g = db.get_conn()
+            try:
+                _row = conn_g.execute(
+                    "SELECT good_id FROM items WHERE id=?", (fresh["item_id"],)).fetchone()
+            finally:
+                conn_g.close()
+            good_id = (_row["good_id"] if _row and _row["good_id"] else 0) or 0
+            it = item_from_db(fresh, good_id)
+            b = await analyze_fresh(it, good_id, fresh["db_name"], db_item_id=fresh["item_id"],
+                                    apply_anchor=False, allow_single_price=True)
+            ctx = build_analysis_ctx(b["analysis"], b["kline_stale_days"], b["kline_stale_date"],
+                                     holding_ctx=b.get("holding_ctx"),
+                                     market_30d_change=b.get("market_30d_change"),
+                                     market_th=b.get("market_th"), sentiment=b.get("sentiment", 50.0))
+            return templates.TemplateResponse(request, "partials/analysis.html", ctx)
+        return await _saved_report_response(name)
+    except Exception as _rv_e:
+        _web_log.warning(f"report-view rebuild failed {name}: {_rv_e}")
+        return await _saved_report_response(name)
+
+
+async def _saved_report_response(name: str):
+    """已存报告兜底：analysis_results → snapshots → 空态提示（原 /api/discover/report 逻辑）。"""
     conn = db.get_conn()
     try:
         row = conn.execute(
@@ -881,6 +914,12 @@ async def api_discover_report(request: Request, name: str = Query(...)):
         )
     finally:
         conn.close()
+
+# ---- Discover report (existing report, no re-analysis) ----
+@app.get("/api/discover/report")
+async def api_discover_report(request: Request, name: str = Query(...)):
+    """Return saved report by item name without re-running analysis."""
+    return await _saved_report_response(name)
 
 
 def _render_report_html(report_md, date, grade, total_score):

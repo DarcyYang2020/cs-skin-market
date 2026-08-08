@@ -595,7 +595,7 @@ function showItemReport(name) {
   if (!body) { showToast("弹窗组件缺失，请刷新页面后重试", "error"); return; }
   body.innerHTML = '<div style="text-align:center;padding:40px;"><div class="spinner" style="margin:0 auto 16px;width:32px;height:32px;"></div><p style="color:var(--text-muted);font-size:14px;">正在加载分析报告...</p></div>';
   openModal("analysis-modal");
-  fetch("/api/discover/report?name=" + encodeURIComponent(name))
+  fetch("/api/items/report-view?name=" + encodeURIComponent(name))
     .then(function(r) { return r.text(); })
     .then(function(html) { body.innerHTML = html; })
     .catch(function() { body.innerHTML = '<div class="card" style="padding:24px;text-align:center;color:var(--red);">报告加载失败，请稍后重试</div>'; });
