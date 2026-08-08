@@ -2072,7 +2072,7 @@ check('大盘 401 后 bind 重试成功', t_market_401_rebind_retry)
 
 print('[F-1/F-2: 一键执行录入 + 执行复盘对照 (2026-08-08)]')
 def t_report_exec_btn():
-    """F-1: 单品报告渲染含「按建议记录执行」按钮（决策动作默认映射 buy/reduce/sell）。"""
+    """F-1: 单品报告渲染含「按建议记录执行」按钮（决策动作默认映射 buy/hold/reduce/sell，watch 类信号→观望）。"""
     from webapp.main import templates
     def _render(action, label="已到买点"):
         return templates.get_template("partials/analysis.html").render(
@@ -2084,7 +2084,7 @@ def t_report_exec_btn():
     assert 'data-price="55.50"' in h, h[:500]
     assert 'data-action="reduce"' in _render("reduce")
     assert 'data-action="sell"' in _render("sell")
-    assert 'data-action="buy"' in _render("watch")
+    assert 'data-action="hold"' in _render("watch")  # F-1.1: 回调中·关注/筑底中·观察 -> 观望，不再硬映射建仓
     assert 'data-action="sell"' in _render("avoid")
     h2 = templates.get_template("partials/analysis.html").render(name="X", price_rmb=1.0)
     assert "按建议记录执行" not in h2  # 无决策不显示

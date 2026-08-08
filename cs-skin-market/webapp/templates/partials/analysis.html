@@ -69,10 +69,15 @@
 
 {# ====== 一键执行（F-1, 2026-08-08）：按建议记录执行，复用共享 exec-modal ====== #}
 {% if name and fusion_decision and fusion_decision.action %}
-<div style="display:flex;justify-content:flex-end;margin:-4px 0 12px;">
+<div style="display:flex;justify-content:flex-end;align-items:center;gap:10px;margin:-4px 0 12px;">
+  <span style="font-size:12px;color:var(--text-muted);">建议动作：
+    <b style="color:{% if fusion_decision.action == 'buy' %}var(--green){% elif fusion_decision.action in ('sell','avoid','reduce') %}var(--red){% else %}var(--text-secondary){% endif %};">
+      {{ {'buy':'建仓','oversold_buy':'建仓','watch':'观望','hold':'观望','reduce':'减仓','sell':'清仓/止损','avoid':'清仓/止损'}.get(fusion_decision.action, '观望') }}
+    </b>
+  </span>
   <button type="button" class="btn btn-accent btn-sm exec-btn"
           data-name="{{ name|e }}"
-          data-action="{{ {'buy':'buy','watch':'buy','reduce':'reduce','sell':'sell','avoid':'sell'}.get(fusion_decision.action, 'buy') }}"
+          data-action="{{ {'buy':'buy','oversold_buy':'buy','watch':'hold','hold':'hold','reduce':'reduce','sell':'sell','avoid':'sell'}.get(fusion_decision.action, 'hold') }}"
           data-signal="{{ fusion_decision.action_label|e }}"
           data-price="{{ "%.2f"|format(price_rmb or 0) }}"
           onclick="openExecModal(this)">💼 按建议记录执行</button>

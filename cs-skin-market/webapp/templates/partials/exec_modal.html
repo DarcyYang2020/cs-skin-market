@@ -15,6 +15,7 @@
           <option value="add">➕ 补仓</option>
           <option value="reduce">🔻 减仓</option>
           <option value="sell">🔴 清仓/止损</option>
+          <option value="hold">⏸️ 观望（不操作）</option>
         </select>
       </div>
       <div class="form-group" style="flex:1;">
@@ -42,13 +43,16 @@
 </div>
 
 <script>
+var _EXEC_ACTION_LABELS = {buy:'建仓', add:'补仓', reduce:'减仓', sell:'清仓/止损', hold:'观望'};
 function openExecModal(btn) {
   var nameEl = document.getElementById('exec-name');
   nameEl.value = btn.getAttribute('data-name') || '';
   nameEl.readOnly = true;
   document.getElementById('exec-modal-title').textContent = '💼 按建议执行';
-  document.getElementById('exec-action').value = btn.getAttribute('data-action') || 'buy';
-  document.getElementById('exec-signal').textContent = btn.getAttribute('data-signal') || '';
+  var ea = btn.getAttribute('data-action') || 'hold';
+  document.getElementById('exec-action').value = ea;
+  var sig = btn.getAttribute('data-signal') || '';
+  document.getElementById('exec-signal').textContent = sig ? ('信号：' + sig + ' → 建议动作：' + (_EXEC_ACTION_LABELS[ea] || '观望') + '（可按实际情况修改）') : '';
   var advRaw = btn.getAttribute('data-price') || '';
   var advVal = advRaw ? Number(advRaw) : null;
   var apEl = document.getElementById('exec-advice-price');

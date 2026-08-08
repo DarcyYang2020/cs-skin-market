@@ -564,6 +564,36 @@ _EXEC_ACTION_MAP = {
     "大幅盈利，部分止盈": "reduce",
     "趋势走弱，考虑止损": "sell",
 }
+# 信号动作统一映射（F-1.1, 2026-08-08）：单品报告 / 批量扫描 / exec-modal 共用。
+# watch/hold 类信号（回调中·关注、筑底中·观察、恐慌退潮·关注等）默认「观望」，不再硬映射建仓。
+FUSION_TO_EXEC = {
+    "buy": "buy", "oversold_buy": "buy",
+    "watch": "hold", "hold": "hold",
+    "reduce": "reduce",
+    "sell": "sell", "avoid": "sell",
+}
+EXEC_ACTION_LABELS = {"buy": "建仓", "add": "补仓", "reduce": "减仓",
+                      "sell": "清仓/止损", "hold": "观望"}
+_EXEC_BADGE_COLOR = {"buy": "var(--green)", "add": "var(--green)", "hold": "var(--text-muted)",
+                     "reduce": "var(--yellow)", "sell": "var(--red)"}
+# 批量扫描建议文案 -> 展示动作徽章（观望类也明确显示，不再只有无按钮的困惑）
+_ACTION_BADGE = {
+    "可分批建仓": "🟢 建仓", "可分批补仓": "🟢 补仓",
+    "建议止盈减仓": "🔻 减仓", "大幅盈利，部分止盈": "🔻 减仓",
+    "趋势走弱，考虑止损": "🔴 清仓/止损",
+    "观望等待机会": "⏸️ 观望", "暂不建议入场": "⏸️ 观望",
+    "继续持有观望": "⏸️ 观望", "持有观察": "⏸️ 观望",
+    "禁止补仓": "⛔ 禁补", "暂缓补仓": "⏸️ 暂缓补仓",
+}
+
+
+def _action_badge(pa):
+    """建议动作徽章：action 文案 -> 统一动作词；未识别一律显示观望。"""
+    act = (pa or {}).get("action") or ""
+    badge = _ACTION_BADGE.get(act, "⏸️ 观望")
+    ea = _EXEC_ACTION_MAP.get(act, "hold")
+    return '<span style="font-size:12px;font-weight:700;color:%s;">%s</span>' % (_EXEC_BADGE_COLOR.get(ea, "var(--text-muted)"), badge)
+
 
 
 def _exec_btn(name, pa, price):
@@ -690,7 +720,7 @@ def build_scan_html(results, total, market_ctx=None, now_str="", name_link=None,
             h.append('<td class="' + pnl_c + '">' + "%.1f" % pnl_pct + "%</td>")
             h.append('<td><span class="badge badge-' + g + '">' + _esc(str(r.get("grade", "?"))) + "</span></td>")
             h.append("<td>" + _bd_cell(r.get("buy_distance")) + "</td>")
-            h.append('<td><span style="font-size:12px;font-weight:600;color:var(--accent);">' + _esc(pa.get("action", "")) + "</span><br><span style=\"font-size:11px;color:var(--text-muted);\">" + _esc(pa.get("suggest", "")) + "</span><br><span style=\"font-size:11px;color:var(--accent);\">" + _esc(pa.get("hold_guidance", "") or "") + "</span>" + _exec_btn(r["name"], pa, r["price_rmb"]) + "</td></tr>")
+            h.append('<td>' + _action_badge(pa) + "<br><span style=\"font-size:11px;color:var(--text-muted);\">" + _esc(pa.get("suggest", "")) + "</span>" + _exec_btn(r["name"], pa, r["price_rmb"]) + "</td></tr>")
         h.append("</tbody></table></div></div>")
     # 关注列表（非持仓）
     if unheld:
@@ -703,7 +733,7 @@ def build_scan_html(results, total, market_ctx=None, now_str="", name_link=None,
             h.append('<td><span class="badge badge-' + g + '">' + _esc(str(r.get("grade", "?"))) + "</span></td>")
             h.append('<td style="font-size:12px;">' + _esc(str(r.get("valuation_tier", "?"))) + '<br><span style="color:var(--text-muted);">pct=' + "%.1f" % r.get("percentile_90d", 50) + "%</span></td>")
             h.append("<td>" + _bd_cell(r.get("buy_distance")) + "</td>")
-            h.append('<td><span style="font-size:12px;font-weight:600;color:var(--accent);">' + _esc(pa.get("action", "")) + "</span><br><span style=\"font-size:11px;color:var(--text-muted);\">" + _esc(pa.get("suggest", "")) + "</span>" + _exec_btn(r["name"], pa, r["price_rmb"]) + "</td></tr>")
+            h.append('<td>' + _action_badge(pa) + "<br><span style=\"font-size:11px;color:var(--text-muted);\">" + _esc(pa.get("suggest", "")) + "</span>" + _exec_btn(r["name"], pa, r["price_rmb"]) + "</td></tr>")
         h.append("</tbody></table></div></div>")
     # 失败
     if errors:
