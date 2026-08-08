@@ -1787,6 +1787,20 @@ async def _run_discover_task(task_id: str, items: list):
                     _web_log.warning(f"Discover kline 串品防护 {exact_name}: 重取与 DB 回退均失败 -> 跳过")
                     skipped += 1
                     return "skip", "串品防护跳过"
+            # F-3 扩池落库 (2026-08-08): 网络采集的 K 线立即写入 price_history（无论预筛是否通过），
+            # 让新品开始积累 14 天历史；DB 复用（from_db=True）的品已在库，跳过
+            if daily_bars and not getattr(item, "from_db", False):
+                try:
+                    conn_p = db.get_conn()
+                    try:
+                        _pid = db.upsert_item(conn_p, name=exact_name, good_id=good_id,
+                                              yyyp_id=getattr(item, "yyyp_id", "") or "")
+                        db.save_price_history_batch(conn_p, _pid, daily_bars)
+                        conn_p.commit()
+                    finally:
+                        conn_p.close()
+                except Exception as _pe:
+                    _web_log.warning(f"Discover persist {exact_name} failed: {_pe}")
             prices = [k.close for k in daily_bars if k.close > 0] if daily_bars else [price_rmb]
 
             # P0-2: 轻量预筛 - K线不足14天直接跳过(节省采集+分析耗时)
@@ -2072,10 +2086,21 @@ async def _run_discover_scan_all_task(task_id: str):
         key = name.split(" |")[0] if "|" in name else "unknown"
         by_type[key].append((gid, name, price))
     # P0-2 (2026-08): 每类扫6个(原3), 总量上限40(原24) 提升覆盖
+    # F-3 扩池 (2026-08-08): 每类 20 个、总量 120；排除已在库且新鲜的品，名额给库外新品
     capped = []
     for wt_items in by_type.values():
-        capped.extend(wt_items[:6])
-    capped = capped[:40]
+        capped.extend(wt_items[:20])
+    capped = capped[:120]
+    fresh_gids = set()
+    conn_f = db.get_conn()
+    try:
+        for _r in conn_f.execute(
+            "SELECT i.good_id FROM items i JOIN price_history p ON p.item_id=i.id "
+            "WHERE i.good_id>0 GROUP BY i.id HAVING MAX(p.date)>=date('now','-3 day')").fetchall():
+            fresh_gids.add(_r["good_id"])
+    finally:
+        conn_f.close()
+    capped = [x for x in capped if x[0] not in fresh_gids]
 
     _discover_progress[task_id]["total"] = len(capped)
     _discover_progress[task_id]["current"] = 0

@@ -1551,3 +1551,9 @@ vs 池内等权 +509.75%/-54.12% vs 大盘 -4.02%；引擎边际价值在回撤�
 - 失败重试一轮：discover 首轮失败/error 的品轮尾统一重试（复用优先，DB 新鲜的秒过）；进度落盘：每品 `_persist_discover_progress` 写 progress json，重启可查进度，完成即删；/api/items/discover-progress 加磁盘兜底。
 **验证**：冒烟 77/0/6（新增 t_kline_fresh——插入 91 行断言返回 90 条 + stale 过期判定；t_resolve_item_reuse——mock fetch_item_detail 抛错验证 DB 新鲜不触发网络采集）；/ /watchlist /discover-progress 渲染 200；服务器重启加载新代码。
 **教训**：① 测试断言必须对齐数据源真实口径——get_item_history 按 date DESC LIMIT 90 取最近 90 条，91 行只返回 90 条；把最新行改到已存在日期会触发 (item_id,date) 唯一约束，正确做法是删除最近 10 天行让最新自然变为 stale=10；② 超大函数整体替换前先确认函数边界与相邻依赖——重构 _run_discover_task 时误删紧随其后的 _render_discover_html，已恢复。
+
+**F-3 扩池执行（2026-08-08 晚，第二轮扫描验证）**：
+- 修复扩池两个死结：① discover 网络采集不写 price_history → 预筛跳过的品永远无法积累历史、反复重采；改为 `_analyze_one` 里网络采集（from_db=False）立即 upsert_item + save_price_history_batch（INSERT OR REPLACE 幂等），无论预筛是否通过。
+- ② 候选池被硬截断（每类 6、总量 40）且不含库外品；改为每类 20、总量 120，并排除已在库且 3 天内新鲜的品（名额给库外新品）。
+- 执行结果：第二轮 total=31（160 候选排除已库后）；items 110→136（+26），price_history +2,368 行（31 品各补 90 日历史，csQAQ chart 一次给全）；8 品立即通过预筛上榜（AK-47 翡翠细条纹 A 7.7 / 沙漠之鹰 深红之网 7.1 等，大盘 TH=39 偏弱）；被预筛跳过的品也积累今天历史，下次重扫走 DB 复用。
+- 教训：F-3「不重复采集」只是扩池的基础设施——真正的扩池还要解决「采集不落库 → 新品无法积累」与「候选池截断」两个死结；csQAQ chart API 一次性返回 90 日历史，新品入库即有完整 K 线，无需等待 14 天积累。
