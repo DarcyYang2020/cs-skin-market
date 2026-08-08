@@ -1328,11 +1328,16 @@ def _prog_window(x, lo, hi, lo_zero, hi_zero):
 def compute_buy_proximity(F):
     """距最近 buy 信号族的达标度(0~100) + 缺口提示。纯展示，不参与决策。
 
-    返回 {"score": int, "nearest": str, "gaps": [str, ...]}；
-    缺数据的条件按不达标计 0（不产生缺口提示）；数据不足半数的族不参与评估。
+    返回 {"score": int, "nearest": str, "gaps": [str, ...], "zero_reason": str}；
+    缺数据的条件按不达标计 0（不产生缺口提示）；数据不足半数的族不参与评估；
+    score==0 时 zero_reason 说明清零原因（数据不足 / 各路径均有硬缺口）。
     """
-    def _note(v, fmt, need):
-        return None if v is None else (fmt.format(v) + "→" + need)
+    def _note(v, label, fmt, need, hint=""):
+        """缺口文案：{label}：{当前值}（需 {need}）{hint}；数据缺失返回 None。"""
+        if v is None:
+            return None
+        text = "{}：{}（需 {}）".format(label, fmt.format(v), need)
+        return text + hint if hint else text
 
     def _fam(key, label, conds):
         vals = [p for _, p, _n in conds if p is not None]
@@ -1359,41 +1364,41 @@ def compute_buy_proximity(F):
     ts = min(100, max(0, (th if th is not None else 50) + (_s - 50) / 50 * 3))
     z_gate = {"bear": 0, "consolidation": 0, "accumulation": 0.5, "markup": 1.0, "distribution": -0.5}.get(F.get("market_cycle"), 0)
     base = _fam("base", "低估区建仓", [
-        ("低估分位", _prog_low(pct, 30, 45), _note(pct, "分位 {:.0f}%", "≤30%")),
-        ("趋势TH", _prog_high(ts, 70, 50), _note(ts, "TH {:.0f}", "≥70")),
-        ("Z闸门", _prog_low(z, z_gate, z_gate + 1.0), _note(z, "Z {:.2f}", "≤{:.1f}".format(z_gate))),
+        ("低估分位", _prog_low(pct, 30, 45), _note(pct, "位置分位", "{:.0f}%", "≤30%", "，越低越便宜")),
+        ("趋势TH", _prog_high(ts, 70, 50), _note(ts, "趋势分", "{:.0f}", "≥70")),
+        ("Z闸门", _prog_low(z, z_gate, z_gate + 1.0), _note(z, "估值Z", "{:.2f}", "≤{:.1f}".format(z_gate))),
     ])
 
     # 恐慌共振
     panic = _fam("panic", "恐慌共振", [
-        ("微型TH", _prog_high(F.get("micro_th"), 60, 45), _note(F.get("micro_th"), "microTH {:.0f}", "≥60")),
-        ("恐慌情绪", _prog_high(sent, 75, 55), _note(sent, "情绪 {:.0f}", "≥75")),
+        ("微型TH", _prog_high(F.get("micro_th"), 60, 45), _note(F.get("micro_th"), "恐慌度(微型TH)", "{:.0f}", "≥60")),
+        ("恐慌情绪", _prog_high(sent, 75, 55), _note(sent, "市场情绪", "{:.0f}", "≥75")),
         ("价格下限", _prog_high(current, 15, 10), None),
-        ("超跌Z窗口", _prog_window(z, -2.2, -1.5, -3.0, -0.5), _note(z, "Z {:.2f}", "需-2.2~-1.5")),
-        ("21日深跌", _prog_low(drop21, -18, -8), _note(drop21, "大盘21日 {:.1f}%", "≤-18%")),
-        ("90日分位", _prog_low(pct, 15, 30), _note(pct, "分位 {:.0f}%", "≤15%")),
+        ("超跌Z窗口", _prog_window(z, -2.2, -1.5, -3.0, -0.5), _note(z, "估值Z", "{:.2f}", "需-2.2~-1.5")),
+        ("21日深跌", _prog_low(drop21, -18, -8), _note(drop21, "大盘21日", "{:.1f}%", "≤-18%")),
+        ("90日分位", _prog_low(pct, 15, 30), _note(pct, "位置分位", "{:.0f}%", "≤15%")),
         ("7日去重", dedup, None),
     ])
 
     # 深值·大盘企稳
     deep = _fam("deep", "深值企稳", [
-        ("深值分位", _prog_low(pct, 20, 35), _note(pct, "分位 {:.0f}%", "≤20%")),
-        ("深值Z", _prog_low(z, -0.5, 0.5), _note(z, "Z {:.2f}", "≤-0.5")),
-        ("单品TH", _prog_high(th, 35, 20), _note(th, "TH {:.0f}", "≥35")),
-        ("大盘TH", _prog_high(mth, 40, 30), _note(mth, "大盘TH {:.0f}", "≥40")),
+        ("深值分位", _prog_low(pct, 20, 35), _note(pct, "位置分位", "{:.0f}%", "≤20%")),
+        ("深值Z", _prog_low(z, -0.5, 0.5), _note(z, "估值Z", "{:.2f}", "≤-0.5")),
+        ("单品TH", _prog_high(th, 35, 20), _note(th, "单品趋势分", "{:.0f}", "≥35")),
+        ("大盘TH", _prog_high(mth, 40, 30), _note(mth, "大盘趋势分", "{:.0f}", "≥40")),
         ("大盘30日", 1.0 if mchg30 is None else _prog_low(mchg30, -3, 3),
-         None if mchg30 is None else _note(mchg30, "大盘30日 {:.1f}%", "≤-3%")),
-        ("情绪区间", _prog_range(sent, 40, 65, 25, 80), _note(sent, "情绪 {:.0f}", "40~65")),
-        ("21日企稳", _prog_high(drop21, -5, -15), _note(drop21, "大盘21日 {:.1f}%", "≥-5%")),
+         None if mchg30 is None else _note(mchg30, "大盘30日", "{:.1f}%", "≤-3%")),
+        ("情绪区间", _prog_range(sent, 40, 65, 25, 80), _note(sent, "市场情绪", "{:.0f}", "40~65")),
+        ("21日企稳", _prog_high(drop21, -5, -15), _note(drop21, "大盘21日", "{:.1f}%", "≥-5%")),
         ("7日去重", dedup, None),
     ])
 
     # 恐慌退潮
     easing = _fam("easing", "恐慌退潮", [
-        ("深值分位", _prog_low(pct, 20, 35), _note(pct, "分位 {:.0f}%", "≤20%")),
-        ("深值Z", _prog_low(z, -1, 0), _note(z, "Z {:.2f}", "≤-1")),
-        ("退潮情绪", _prog_range(sent, 55, 80, 35, 100), _note(sent, "情绪 {:.0f}", "55~80")),
-        ("大盘深跌", _prog_low(mchg30, -15, -5), _note(mchg30, "大盘30日 {:.1f}%", "≤-15%")),
+        ("深值分位", _prog_low(pct, 20, 35), _note(pct, "位置分位", "{:.0f}%", "≤20%")),
+        ("深值Z", _prog_low(z, -1, 0), _note(z, "估值Z", "{:.2f}", "≤-1")),
+        ("退潮情绪", _prog_range(sent, 55, 80, 35, 100), _note(sent, "市场情绪", "{:.0f}", "55~80")),
+        ("大盘深跌", _prog_low(mchg30, -15, -5), _note(mchg30, "大盘30日", "{:.1f}%", "≤-15%")),
         ("止跌确认", 1.0 if F.get("stopped") else 0.0, None),
         ("7日去重", dedup, None),
     ])
@@ -1408,8 +1413,8 @@ def compute_buy_proximity(F):
             ("存世量", 1.0 if not (0 < F.get("survive", 0) < 3000) else 0.0, None),
             ("30日供给", 1.0 if (s30 is not None and s30 > 0) else 0.0, None),
             ("供给收缩", _prog_low(ratio, 0.85, 1.0),
-             None if ratio is None else "供给 s7/s30 {:.2f}→≤0.85".format(ratio)),
-            ("价格平稳", _prog_abs(chg7, 3, 6), _note(chg7, "7日价变 {:+.1f}%", "|≤3%|")),
+             None if ratio is None else "供给收缩：7日/30日在售量 {:.2f}（需 ≤0.85，收缩15%+才达标）".format(ratio)),
+            ("价格平稳", _prog_abs(chg7, 3, 6), _note(chg7, "7日价变", "{:+.1f}%", "|≤3%|", "，需价格平稳")),
             ("大盘共振", 1.0 if not (sent is not None and sent < 40 and mth is not None and mth < 45) else 0.0, None),
             ("7日去重", dedup, None),
         ])
@@ -1419,25 +1424,36 @@ def compute_buy_proximity(F):
     low3 = min(prices[-3:]) if len(prices) >= 3 else None
     no_new_low = 1.0 if (low2 is not None and low3 is not None and low2 > low3) else 0.0
     oversold = _fam("oversold", "超跌反弹", [
-        ("超跌分位", _prog_low(pct, 15, 30), _note(pct, "分位 {:.0f}%", "≤15%")),
-        ("超跌Z", _prog_low(z, -2.0, -1.0), _note(z, "Z {:.2f}", "≤-2.0")),
+        ("超跌分位", _prog_low(pct, 15, 30), _note(pct, "位置分位", "{:.0f}%", "≤15%")),
+        ("超跌Z", _prog_low(z, -2.0, -1.0), _note(z, "估值Z", "{:.2f}", "≤-2.0")),
         ("不再创新低", no_new_low, None),
-        ("3日转涨", _prog_high(chg3d, 0, -3), _note(chg3d, "3日 {:+.1f}%", ">0")),
+        ("3日转涨", _prog_high(chg3d, 0, -3), _note(chg3d, "3日价变", "{:+.1f}%", ">0", "，需转涨")),
     ])
 
     fams = [f for f in (base, panic, deep, easing, supply, oversold) if f]
     if not fams:
-        return {"score": 0, "nearest": "—", "gaps": []}
+        return {"score": 0, "nearest": "—", "gaps": [], "zero_reason": "数据不足，无法评估买点路径"}
     best = max(fams, key=lambda f: (f["score"], -_FAM_PRIORITY[f["key"]]))
     if best["score"] <= 0:
-        return {"score": 0, "nearest": "—", "gaps": []}
+        _ZERO_HINT = {"7日去重": "7日内已买过", "止跌确认": "仍未见止跌",
+                      "不再创新低": "仍在创新低", "价格下限": "价格未达下限",
+                      "存世量": "存世量过低"}
+        _cnt = {}
+        for _f in fams:
+            for _desc, _p, _n in _f["conds"]:
+                if _p == 0:
+                    _cnt[_desc] = _cnt.get(_desc, 0) + 1
+        _top = sorted(_cnt.items(), key=lambda kv: -kv[1])[:2]
+        _parts = [d + ("（" + _ZERO_HINT.get(d, "") + "）" if _ZERO_HINT.get(d) else "") for d, _c in _top]
+        return {"score": 0, "nearest": "—", "gaps": [],
+                "zero_reason": "各买点路径均有硬缺口：" + "、".join(_parts) + "；暂无接近路径"}
     gaps = []
     for _desc, p, note in sorted(best["conds"], key=lambda c: (c[1] if c[1] is not None else 1.0)):
         if p is not None and 0 < p < 1 and note:
             gaps.append(note)
         if len(gaps) >= 2:
             break
-    return {"score": int(round(best["score"] * 100)), "nearest": best["label"], "gaps": gaps}
+    return {"score": int(round(best["score"] * 100)), "nearest": best["label"], "gaps": gaps, "zero_reason": ""}
 
 def decide_fusion_signal(
     fd, *, position, cycle, th, value, prices, current, n, name,

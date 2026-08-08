@@ -142,7 +142,7 @@
               {% if s.get('fusion_action') %}| {{ s.get('fusion_action','') }}{% endif %}
               {% set prox = s.get('proximity') %}
               {% if s.get('fusion_action') == 'buy' %}<br><span style="font-weight:700;color:var(--green);">🟢 买点已触发</span>
-              {% elif prox %}<br><span style="font-weight:700;color:{% if prox.score >= 60 %}var(--green){% elif prox.score >= 35 %}var(--yellow){% else %}var(--text-muted){% endif %};">🎯 {{ prox.nearest }} {{ prox.score }}%</span>{% endif %}
+              {% elif prox %}<br><span style="font-weight:700;color:{% if prox.score >= 60 %}var(--green){% elif prox.score >= 35 %}var(--yellow){% else %}var(--text-muted){% endif %};">{% if prox.score > 0 %}🎯 {{ prox.nearest }} {{ prox.score }}%{% else %}暂无接近路径{% endif %}</span>{% endif %}
               {% if item.latest_signal %}
               <br><span style="font-size:11px;color:var(--text-secondary);">📡 {{ item.latest_signal.signal_date }} · 入场 ¥{{ "%.2f"|format(item.latest_signal.entry_price) }}{% if item.latest_signal.ret_vs_entry is not none %} <span style="{% if item.latest_signal.ret_vs_entry >= 0 %}color:var(--green);{% else %}color:var(--red);{% endif %}">至今 {{ "%+.1f"|format(item.latest_signal.ret_vs_entry) }}%</span>{% endif %}</span>
               {% endif %}

@@ -46,8 +46,13 @@
   {% if fusion_decision.action != 'buy' and fusion_decision.proximity %}
   <div style="padding:6px 14px 10px;font-size:12px;color:var(--text-secondary);border-top:1px dashed var(--border);margin-top:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
     <span>距买点最近信号：<b style="color:var(--text-primary);">{{ fusion_decision.proximity.nearest }}</b></span>
+    {% if fusion_decision.proximity.score > 0 %}
     <span style="font-weight:800;color:{% if fusion_decision.proximity.score >= 60 %}var(--green){% elif fusion_decision.proximity.score >= 35 %}var(--yellow){% else %}var(--red){% endif %};">{{ fusion_decision.proximity.score }}%</span>
+    <span style="font-size:11px;color:var(--text-muted);">（该路径各条件综合达标度，非买入概率）</span>
     {% if fusion_decision.proximity.gaps %}<span style="color:var(--text-muted);">还差：{{ fusion_decision.proximity.gaps|join(" · ") }}</span>{% endif %}
+    {% else %}
+    <span style="color:var(--text-muted);">{{ fusion_decision.proximity.zero_reason or "暂无接近路径" }}</span>
+    {% endif %}
   </div>
   {% endif %}
   {% if fusion_decision.trace %}
