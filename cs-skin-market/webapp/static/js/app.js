@@ -78,6 +78,32 @@ function showToast(message, type) {
   }, 2500);
 }
 
+// ---- Add to watchlist (F-3.16, 2026-08-09)：全站共享，仅用户主动点击加入 ----
+// 服务端渲染按钮（discover top10）直接 onclick="addToWatchlist('name', this)"；
+// 分析报告页用 data-name + getAttribute 传入（避免名称内引号转义问题）。
+function addToWatchlist(name, btn) {
+  name = String(name || "").trim();
+  if (!name) { showToast("缺少饰品名称", "error"); return; }
+  if (btn) btn.disabled = true;
+  var fd = new FormData();
+  fd.append("name", name);
+  fd.append("holding", "0");
+  fd.append("avg_cost", "0");
+  fd.append("quantity", "0");
+  fetch("/api/watchlist/add", {method:"POST", body: fd})
+    .then(function(r) { return r.text(); })
+    .then(function(t) {
+      if (String(t).trim() === "OK") {
+        if (btn) { btn.disabled = true; btn.innerHTML = "\u2713 \u5df2\u81ea\u9009"; btn.title = "\u5df2\u5728\u81ea\u9009"; }
+        showToast("\u2705 \u5df2\u6dfb\u52a0\u5230\u81ea\u9009: " + name);
+      } else {
+        if (btn) btn.disabled = false;
+        showToast("\u6dfb\u52a0\u5931\u8d25: " + (t || "\u672a\u77e5\u9519\u8bef"), "error");
+      }
+    })
+    .catch(function() { if (btn) btn.disabled = false; showToast("\u8bf7\u6c42\u5931\u8d25", "error"); });
+}
+
 // ---- Hide analysis overlays on htmx complete ----
 document.addEventListener('htmx:afterRequest', function(evt) {
   var overlay = document.getElementById('analysis-overlay-full');

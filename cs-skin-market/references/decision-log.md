@@ -1850,3 +1850,15 @@ vs 池内等权 +509.75%/-54.12% vs 大盘 -4.02%；引擎边际价值在回撤�
 - top10 表格操作列：非自选渲染「➕ 加入自选」；已在自选渲染「✓ 已自选」禁用态（`_render_discover_html` 查询 `in_watchlist`）；点击成功后按钮置为「✓ 已自选」。
 **约束**：纯展示层 + 历史数据保留策略调整；未触碰引擎评分/决策参数与 PARAM_FREEZE。
 **验证**：冒烟 84 passed / 6 skipped；渲染单测验证两种按钮状态；py_compile 通过。
+
+## F-3.16 自选加入路径收敛：只允许用户主动加入（2026-08-09，展示层+数据写入策略）
+**背景**：用户要求「控制自选的加入路径，只允许用户主动去加入，不要各种扫描之后就加入」。此前方案A（2026-08-09）在 search/单品分析时自动 `in_watchlist=1`，导致搜索过就出现在关注列表（曾出现拉美西斯之触异常入自选的反馈）。
+**结论**：
+- 全库排查后确认自动加入来源仅一处：`analyze_fresh(auto_watchlist=True)`（search/analyze/watchlist 分析三条路径共用）。
+- 批量扫描（`in_watchlist=None`）与 discover 扩池（`in_watchlist=None`）本就不写关注状态，无需改动。
+**落地**：
+- `analyze_fresh` 默认 `auto_watchlist=True → False`：搜索/分析/报告一律不再自动加入自选；`upsert_item` 传 `None` 保持「新建=0、已存在=保留原值」。
+- 用户主动入口保留：自选页「＋ 添加自选」弹窗、discover top10「➕ 加入自选」；新增单品分析报告头部「➕ 加入自选」按钮（非自选品才显示，`build_analysis_ctx` 新增 `in_watchlist` 标记）。
+- `addToWatchlist` JS 从 discover.html 提升至全站共享 `static/js/app.js`（分析报告在搜索/自选/批量扫描弹窗多页面渲染，按钮全局可用）。
+**约束**：仅展示层 + 数据写入策略；未触碰引擎评分/决策参数与 PARAM_FREEZE。
+**验证**：冒烟 84 passed / 6 skipped；ctx 单测验证非自选=False 显示按钮、自选后=True 隐藏；py_compile 通过。

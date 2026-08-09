@@ -99,25 +99,6 @@ function loadDiscoverHistory() {
 
 function refreshDiscover() { startScan(); }
 
-function addToWatchlist(name, btn) {
-  var formData = new FormData();
-  formData.append("name", name);
-  formData.append("holding", "0");
-  formData.append("avg_cost", "0");
-  formData.append("quantity", "0");
-  fetch("/api/watchlist/add", {method:"POST", body: formData})
-  .then(function(r) { return r.text(); })
-  .then(function(html) {
-    if (String(html).trim() === "OK") {
-      if (btn) { btn.disabled = true; btn.innerHTML = "\u2713 \u5df2\u81ea\u9009"; btn.title = "\u5df2\u5728\u81ea\u9009"; }
-      showToast("✅ 已添加到自选: " + name);
-    } else {
-      showToast("添加失败: " + (html || "未知错误"), "error");
-    }
-  })
-  .catch(function() { showToast("请求失败", "error"); });
-}
-
 function startScan() {
   var mainBtn = document.getElementById("btn-main-scan");
   var progress = document.getElementById("discover-progress");

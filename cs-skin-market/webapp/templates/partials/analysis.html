@@ -6,9 +6,14 @@
 {% else %}
 {# ====== 物品名称 ====== #}
 {% if name %}
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
   <span style="font-size:20px;font-weight:800;color:var(--text-primary);">{{ name }}</span>
-  {% if price_rmb %}<span style="font-size:14px;color:var(--text-muted);">当前价 ¥{{ "%.2f"|format(price_rmb) }}</span>{% endif %}
+  <div style="display:flex;align-items:center;gap:10px;">
+    {% if price_rmb %}<span style="font-size:14px;color:var(--text-muted);">当前价 ¥{{ "%.2f"|format(price_rmb) }}</span>{% endif %}
+    {% if in_watchlist is defined and not in_watchlist %}
+    <button class="btn btn-xs btn-outline" data-name="{{ name }}" onclick="addToWatchlist(this.getAttribute('data-name'), this)" title="加入自选监控">➕ 加入自选</button>
+    {% endif %}
+  </div>
 </div>
 {% endif %}
 {% if kline_stale_days is defined and kline_stale_days is not none %}

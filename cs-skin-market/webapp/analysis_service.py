@@ -397,7 +397,7 @@ def save_analysis_result(analysis, kline_stale_days=None, kline_stale_date=""):
 async def analyze_fresh(item, good_id, exact_name, *, db_item_id=None, apply_anchor=True,
                         hard_error_no_kline=False,
                         allow_single_price=False,
-                        auto_watchlist=True):
+                        auto_watchlist=False):
     """单品分析统一核心：大盘上下文 + K线兜底/锚价校正 + 引擎分析 + 落库 + 快照 + 报告。
 
     参数：
@@ -408,7 +408,7 @@ async def analyze_fresh(item, good_id, exact_name, *, db_item_id=None, apply_anc
       apply_anchor    是否应用锚价校正（search/analyze=True；watchlist 沿用历史行为=False）
       hard_error_no_kline  K 线获取失败时抛 AnalysisAbort（search 路径；其他路径降级用锚价单点）
       allow_single_price K 线为空时降级用单点锚价分析（watchlist 历史行为；search/analyze 传空保持原样）
-      auto_watchlist   分析后是否自动加入自选（2026-08-09 方案A：search/单品分析=True；查看报告=False，不污染关注列表）
+      auto_watchlist   分析后是否自动加入自选（2026-08-09 F-3.16：默认=False，只允许用户主动加入；扫描/分析一律不自动加入，入口为 /api/watchlist/add）
     返回 bundle dict；失败抛 AnalysisAbort（msg 为用户可见文案）。
     """
     idx = await asyncio.to_thread(collector.fetch_market_index)
@@ -697,6 +697,17 @@ def build_analysis_ctx(analysis, kline_stale_days=None, kline_stale_date="",
         "sources": _src_labels,
     }
     supply = _supply_display(getattr(analysis, "supply_analysis", None), getattr(analysis, "position", None))
+    # F-3.16：仅用户主动加入自选——报告页按 in_watchlist 状态展示「加入自选」按钮
+    _in_wl = False
+    try:
+        _conn_wl = db.get_conn()
+        try:
+            _rw_wl = _conn_wl.execute("SELECT in_watchlist FROM items WHERE name=?", (analysis.name,)).fetchone()
+            _in_wl = bool(_rw_wl and _rw_wl["in_watchlist"])
+        finally:
+            _conn_wl.close()
+    except Exception:
+        pass
     return {
         "name": analysis.name,
         "price_rmb": analysis.price_rmb,
@@ -718,4 +729,5 @@ def build_analysis_ctx(analysis, kline_stale_days=None, kline_stale_date="",
         "holding_advice": holding_advice,
         "holding_action": holding_action,
         "analysis_time": datetime.now(TZ_BJ).strftime("%Y-%m-%d %H:%M"),
+        "in_watchlist": _in_wl,
     }
