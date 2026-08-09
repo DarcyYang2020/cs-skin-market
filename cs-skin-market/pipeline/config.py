@@ -174,29 +174,40 @@ POSITION_CAP_SINGLE = 0.30          # 单票敞口提示阈值: (持仓市值+�
 #   references/sync_expectancy_config.py 同步，勿手改）。
 # 冻结起点: 2026-08-07（去量 v2 回放 370 信号定稿）。样本外复验窗口: 积累 ~260 天新数据
 #   （约 2027-04-25 起，覆盖完整牛熊循环样本）后做真 OOS 复验。
-# 复验触发（J-2 三通道，2026-08-07 修订，满足任一即启动全参数重验）:
-#   A) 独立恐慌市场事件 ≥3（自然积累，不阻塞；当前 2 个）;
-#   B) ~260 天新数据积累完成（约 2027-04-25）;
-#   C) 胜率监测: buy 连续 2 月 14d<70% 或月度 14d<80%/30d<55%。
+# 参数治理（2026-08-10 解除冻结期：不再有"冻结禁令"，J-2 监测数据照常收集）。
+# 背景：2026-08-07 定稿的 PARAM_FREEZE（冻结至 2027-04-25）于 2026-08-10 解除；
+# 引擎参数迭代纪律改为：回测先行 + 三件套记录（信号数/胜率/期望增量）+ 文档同步 + 参数台账。
+# J-2 三通道监测（A 恐慌事件 / B v2 样本积累 / C 胜率）照常收集，作为样本完整性与胜率健康度
+# 提示项，不再是"禁止调参"的闸门；触发后走重拟合评估（回测先行 + A2 三件套）。
 # 监测: python references/j2_channel_monitor.py -> data/j2_channel_status.json（dashboard 展示）。
-# 冻结期内: 禁止以回放数据为依据调整冻结集内参数; 仅允许新增独立数据观察项 / 新信号族研究
-#   （新族须过 A2 三件套: walk-forward + 聚类 + 置换检验，且不得改动冻结集）。
-PARAM_FREEZE = {
-    "frozen_at": "2026-08-07",
-    "frozen_set": ["去量引擎 v2（I-13）全参数", "组合层 cap0.8", "单票敞口提示 30%", "ITEM_EXPECTANCY_STATS 展示口径", "proximity 深跌确认口径（TH≥70 虚构达标线废弃，2026-08-09；信息层：监控 near_buy / 自选排序读取，不参与 action 决策）", "守卫1 大盘走弱拦截（A/B 重放证实正优化，2026-08-09）"],
-    "oos_revalidate_after": "2027-04-25",
-    "triggers": ["A 独立恐慌市场事件≥3（当前 2，自然积累）", "B 新数据≥260 天（约 2027-04-25）", "C 胜率监测: buy 连续 2 月 14d<70% 或月度 14d<80%/30d<55%"],
-    "frozen_period_note": "冻结期内禁止以回放数据为依据调参；仅允许新增独立数据观察项 / 新信号族研究（A2 三件套）",
-    "frozen_amendments": ["2026-08-09 第一性原理+回测复核（369 信号，data/item_backtest_full_2025.json）：低估区 TH 为反向信号，原 proximity 阈值 TH≥70 在样本内 0 达成，系虚构达标线，已废弃；引擎 action 判定未改（proximity 不参与守卫/信号族/买点，TH 实际工作区间 2-69，deep 阈值 ≥35 / panic 触发均 th<35），但 proximity 被监控 near_buy（score≥60）与自选页排序读取，三区口径属信息层行为变更。守卫1 market_weak（market_th<45 且 mchg30<0 禁买）经 A/B 重放（95 品同窗口 335 信号：豁免后 +29 信号全负贡献，win 70.4→66.4 / avg14 15.17→13.61 全面变差）证实为正优化，保留并纳入冻结。buy_distance TH_REF=55 三区口径（<35 黄金坑 / 35-54 摩擦带 / ≥55 趋势确认）为对照标准。"],
+PARAM_REGIME = {
+    "monitor_start": "2026-08-07",        # v2 引擎起点（B 通道样本积累天数基准，非冻结起点）
+    "sample_target_days": 260,            # B 通道样本积累目标（约 2027-04-25 覆盖完整牛熊循环）
+    "param_history": [
+        "去量引擎 v2（I-13）全参数", "组合层 cap0.8", "单票敞口提示 30%",
+        "ITEM_EXPECTANCY_STATS 展示口径",
+        "proximity 深跌确认口径（TH≥70 虚构达标线废弃，2026-08-09；信息层：监控 near_buy / 自选排序读取，不参与 action 决策）",
+        "守卫1 大盘走弱拦截（A/B 重放证实正优化，2026-08-09）",
+    ],
+    "monitors": [
+        "A 独立恐慌市场事件≥3（当前 2，自然积累）",
+        "B v2 样本积累≥260 天（约 2027-04-25）",
+        "C 胜率监测: buy 连续 2 月 14d<70% 或月度 14d<80%/30d<55%",
+    ],
+    "iteration_note": "参数迭代纪律：回测先行 + 三件套记录（信号数/胜率/期望增量）+ 文档同步；新信号族须过 A2 三件套（walk-forward + 聚类 + 置换检验）",
+    "amendments": [
+        "2026-08-09 第一性原理+回测复核（369 信号，data/item_backtest_full_2025.json）：低估区 TH 为反向信号，原 proximity 阈值 TH≥70 在样本内 0 达成，系虚构达标线，已废弃；引擎 action 判定未改（proximity 不参与守卫/信号族/买点，TH 实际工作区间 2-69，deep 阈值 ≥35 / panic 触发均 th<35），但 proximity 被监控 near_buy（score≥60）与自选页排序读取，三区口径属信息层行为变更。守卫1 market_weak（market_th<45 且 mchg30<0 禁买）经 A/B 重放（95 品同窗口 335 信号：豁免后 +29 信号全负贡献，win 70.4→66.4 / avg14 15.17→13.61 全面变差）证实为正优化，保留并纳入参数台账。buy_distance TH_REF=55 三区口径（<35 黄金坑 / 35-54 摩擦带 / ≥55 趋势确认）为对照标准。",
+    ],
 }
+
 
 
 # ---- J-2 重拟合触发阈值（单一事实源，Phase 0 单源化）----
 # references/j2_channel_monitor.py 运行时从本字典读取，禁止在 monitor 内硬编码；
-# 改阈值须同步更新 PARAM_FREEZE["triggers"] 文案，并重跑 monitor 刷新 data/j2_channel_status.json。
+# 改阈值须同步更新 PARAM_REGIME["monitors"] 文案，并重跑 monitor 刷新 data/j2_channel_status.json。
 J2_THRESHOLDS = {
     "a_events": 3,       # A 通道: 独立恐慌市场事件数
-    "b_days": 260,       # B 通道: 冻结后新数据积累天数
+    "b_days": 260,       # B 通道: v2 引擎样本积累天数
     "c14_month": 80.0,   # C 通道: 月度 14d 胜率阈值(%)
     "c30_month": 55.0,   # C 通道: 月度 30d 胜率阈值(%)
     "c14_2m": 70.0,      # C 通道: 连续 2 月 14d 胜率阈值(%)
@@ -205,4 +216,4 @@ J2_THRESHOLDS = {
 # ---- 引擎参数版本（Phase 0 版本化）----
 # signal_tracking 记录每条生产信号时的引擎版本；重拟合发布新参数时 bump，
 # 使新旧引擎产生的实盘信号可区分、可分别统计。
-ENGINE_VERSION = "v2-I13"  # 对应 PARAM_FREEZE.frozen_set 首项: 去量引擎 v2（I-13）全参数
+ENGINE_VERSION = "v2-I13"  # 对应 PARAM_REGIME.param_history 首项: 去量引擎 v2（I-13）全参数

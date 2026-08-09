@@ -117,7 +117,7 @@ discover 扩池（手动）→ 候选入库（items + 90日K线，立即落库�
 6. **重新分析**：修复品重跑 `/api/items/analyze` 刷新 `analysis_results`，持仓/自选页面即时生效。
 
 ### 回放联动（数据修复后必做）
-数据层变更会改变回放产物，必须按序重跑（PARAM_FREEZE 允许「回放同源，改产物必须重跑同步」）：
+数据层变更会改变回放产物，必须按序重跑（「回放同源，改产物必须重跑同步」纪律）：
 1. **构建混合回放库**：`data/replay_hybrid.db` = 修复后现库 + 历史备份（`market.db.bak-p0-*`）补 2025-01-01 起 price_history 与 market_index（2026-08-09：插入 21292 + 631 行，共 65106 行）。
 2. **重跑回放**：`$env:CS_MODEL_DB=<混合库绝对路径>; python references/run_item_backtest_full.py`（约 10 分钟，96 品，runner 已归档至 `references/scripts-archive/`，加载路径脚本内已兼容）。
 3. **校验**：信号数应接近 370；受影响信号 entry ≈ DB 同日价；偏差 >15% 条数（2026-08-09：24 → 0）。
@@ -141,5 +141,5 @@ discover 扩池（手动）→ 候选入库（items + 90日K线，立即落库�
 - 回放联动后：369 信号 entry 与 DB 同日价偏差 >15% 由 24 条 → 0 条。
 
 ### 约束
-- 只动数据层/展示层/文档；评分与决策参数属 PARAM_FREEZE（至 2027-04-25），审计一律不碰。
+- 只动数据层/展示层/文档；评分与决策参数改动须回测先行 + 三件套记录 + 文档同步（2026-08-10 起无冻结禁令）。
 - 回放产物变更后必须重跑 sync（`t_expectancy_sync` / `t_replay_snapshot` 硬校验防漂移）。

@@ -1687,13 +1687,14 @@ def t_benchmark():
     assert full['strategy']['max_drawdown_pct'] > full['pool_buy_hold']['max_drawdown_pct'], '策略回撤应小于池内等权持有'
 check('基准对照 JSON 内部一致性', t_benchmark)
 
-def t_param_freeze():
-    from pipeline.config import PARAM_FREEZE
-    assert PARAM_FREEZE['frozen_at'] == '2026-08-07', '冻结起点日期漂移'
-    assert any('去量引擎' in s for s in PARAM_FREEZE['frozen_set']), '冻结集缺少去量引擎 v2'
-    assert PARAM_FREEZE['oos_revalidate_after'] > '2027-01-01', 'OOS 复验窗口过近'
-    assert len(PARAM_FREEZE['triggers']) >= 3, '复验触发条件缺失'
-check('参数冻结条款 (OOS 纪律) 存在且完整', t_param_freeze)
+def t_param_regime():
+    from pipeline.config import PARAM_REGIME
+    assert PARAM_REGIME['monitor_start'] == '2026-08-07', 'v2 引擎起点日期漂移'
+    assert any('去量引擎' in s for s in PARAM_REGIME['param_history']), '参数台账缺少去量引擎 v2'
+    assert PARAM_REGIME['sample_target_days'] >= 260, '样本积累目标过近'
+    assert len(PARAM_REGIME['monitors']) >= 3, '监测触发条件缺失'
+    assert 'frozen_at' not in PARAM_REGIME and 'oos_revalidate_after' not in PARAM_REGIME, '冻结期字段残留'
+check('参数治理台账存在且完整（2026-08-10 解除冻结期）', t_param_regime)
 
 def t_j2_channel_status():
     import json as _J
@@ -1706,7 +1707,7 @@ def t_j2_channel_status():
     ch = d['channels']
     for k in ('A', 'B', 'C'):
         assert k in ch, f'J-2 通道 {k} 缺失'
-    from pipeline.config import PARAM_FREEZE, J2_THRESHOLDS, ENGINE_VERSION
+    from pipeline.config import PARAM_REGIME, J2_THRESHOLDS, ENGINE_VERSION
     assert ch['A']['threshold'] == J2_THRESHOLDS['a_events'], 'A 通道阈值与 config 不同源'
     assert ch['B']['threshold_days'] == J2_THRESHOLDS['b_days'], 'B 通道阈值与 config 不同源'
     assert ch['B']['target_date'] > '2027-01-01', 'B 通道复验点异常'
@@ -1722,12 +1723,12 @@ def t_j2_channel_status():
     assert isinstance(ch['C']['monthly'], list) and ch['C']['monthly'], 'C 通道月度数据缺失'
     ev = _J.loads((base / 'data' / 'signal_event_counts.json').read_text(encoding='utf-8'))
     assert ch['A']['value'] == ev['display_keys']['panic']['events'], 'A 通道事件数与事件计数不同源'
-    from pipeline.config import PARAM_FREEZE
-    frozen = date.fromisoformat(PARAM_FREEZE['frozen_at'])
-    days = max(0, (date.today() - frozen).days)
-    assert ch['B']['value_days'] == days, 'B 通道天数与冻结起点不一致'
+    from pipeline.config import PARAM_REGIME
+    ms = date.fromisoformat(PARAM_REGIME['monitor_start'])
+    days = max(0, (date.today() - ms).days)
+    assert ch['B']['value_days'] == days, 'B 通道天数与 v2 起点不一致'
     assert d['overall']['triggered'] in (True, False), '总体触发标记缺失'
-check('J-2 三通道监测 JSON 完整且与冻结条款同源', t_j2_channel_status)
+check('J-2 三通道监测 JSON 完整且与参数治理同源', t_j2_channel_status)
 
 def t_signal_tracking():
     import sqlite3
@@ -1843,7 +1844,7 @@ def t_progress_schema():
     assert set(d['families']) >= {'generated', 'window', 'total_signals', 'display_keys'}
     j2 = d['j2']
     assert j2 is not None, 'j2 状态缺失'
-    assert set(j2) == {'generated', 'frozen_at', 'oos_revalidate_after', 'engine_version', 'channels', 'overall'}, (
+    assert set(j2) == {'generated', 'monitor_start', 'sample_target_days', 'engine_version', 'channels', 'overall'}, (
         f'j2 字段漂移: {sorted(j2)}')
     assert set(j2['channels']) == {'A', 'B', 'C'}
     assert set(j2['channels']['A']) == {'label', 'value', 'threshold', 'progress_pct', 'status', 'note'}
@@ -1861,8 +1862,8 @@ def t_refit_pipeline():
     import json as _J, sys as _sys
     _sys.path.insert(0, os.path.join(TEST_DIR, '..', 'references'))
     import refit_pipeline as _rp
-    rep = _rp.compute(mode='simulate', frozen_at=_rp.PARAM_FREEZE['frozen_at'])
-    assert set(rep) == {'generated', 'engine_version', 'mode', 'frozen_at', 'replay_generated',
+    rep = _rp.compute(mode='simulate', monitor_start=_rp.PARAM_REGIME['monitor_start'])
+    assert set(rep) == {'generated', 'engine_version', 'mode', 'monitor_start', 'replay_generated',
                         'input', 'walk_forward', 'cluster', 'permutation', 'gate', 'action'}, sorted(rep)
     wf = rep['walk_forward']
     assert wf['train'] is not None and wf['test'] is not None, wf

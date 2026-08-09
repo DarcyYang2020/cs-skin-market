@@ -33,7 +33,7 @@ cs-skin-market/
 
 | 文件 | 功能 |
 |---|---|
-| `config.py` | 全局配置中心：评分权重、阈值（含 PARAM_FREEZE 冻结条款 / J2_THRESHOLDS / ENGINE_VERSION 引擎版本号）、路径 |
+| `config.py` | 全局配置中心：评分权重、阈值（含 PARAM_REGIME 参数台账 / J2_THRESHOLDS / ENGINE_VERSION 引擎版本号）、路径 |
 | `db.py` | SQLite 存储：全表 CRUD + schema 版本化（schema_version 表 + SCHEMA_VERSION） |
 
 ### 数据采集层
@@ -101,7 +101,7 @@ cs-skin-market/
 
 - `decision-log.md` — 关键决策历史（去量/扩池/补仓止损等全部决策）；`iteration-roadmap.md` — 迭代方案（版本历史 + 状态追踪）
 - `project-principles.md` — 项目三原则 + 数据先行/风控上线标准/J-2 复验条款
-- `engine-unified.md` — 统一大脑架构（信号族注册制 + 期望条件表 + 参数冻结）
+- `engine-unified.md` — 统一大脑架构（信号族注册制 + 期望条件表 + 参数治理）
 - `data-layer.md` — **数据层手册**（数据源/采集链路/每日任务/表结构/维护/故障 SOP，唯一权威）
 - `pool-maintenance.md` — 260 品池专项维护（淘汰/台账/增量评估决策点）
 - `stop-loss-strategy.md` — 补仓/止损矩阵（F-3.7，第一性原理 + 回测 + 维护条款）

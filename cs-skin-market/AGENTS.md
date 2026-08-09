@@ -17,12 +17,14 @@
 
 配套：每次回测自动生成快照 `data/item_backtest_YYYYMMDD.json`（保留 365 天），用于因子衰减监控与回归对比。
 
-### 参数冻结 + 基准对照 + 期望统计单一事实源（2026-08-07 定稿）
+### 参数治理 + 基准对照 + 期望统计单一事实源（2026-08-10 解除冻结期）
 
-- **参数冻结**：`config.PARAM_FREEZE` 冻结去量引擎 v2（I-13）全参数、组合层 cap0.8、单票敞口提示 30%、
-  `ITEM_EXPECTANCY_STATS` 展示口径；~260 天新数据（约 2027-04-25）后真 OOS 复验；复验触发（J-2 三通道，
-  任一满足）= A 独立恐慌事件≥3（当前 2）/ B 260 天数据 / C buy 连续 2 月 14d<70% 或月度 14d<80%/30d<55%；
-  监测 `python references/j2_channel_monitor.py` → `data/j2_channel_status.json`（dashboard 展示）。冻结期内禁止以回放数据为依据调参。
+- **参数治理**：`config.PARAM_REGIME` 维护参数台账（去量引擎 v2（I-13）全参数、组合层 cap0.8、单票敞口提示 30%、
+  `ITEM_EXPECTANCY_STATS` 展示口径、proximity 深跌确认、守卫1 大盘走弱拦截）。2026-08-07 定稿的冻结期概念已于
+  2026-08-10 解除；参数迭代纪律 = 回测先行 + 三件套记录（信号数/胜率/期望增量）+ 文档同步；新信号族须过 A2 三件套。
+  J-2 三通道监测照常收集（A 独立恐慌事件≥3（当前 2）/ B v2 样本积累 260 天（约 2027-04-25）/
+  C buy 连续 2 月 14d<70% 或月度 14d<80%/30d<55%），作为样本完整性与胜率健康度提示项；
+  监测 `python references/j2_channel_monitor.py` → `data/j2_channel_status.json`（dashboard 展示）。
 - **期望统计单一事实源**：`data/item_backtest_full_2025.json`（回放产物）→
   `python references/sync_expectancy_config.py` 自动同步 `config.ITEM_EXPECTANCY_STATS` +
   `data/signal_event_counts.json`；`t_expectancy_sync` 全字段硬校验防漂移（改回放不重跑同步即测试失败）。
@@ -302,7 +304,7 @@ cs-skin-market/
   data/market.db         -- SQLite 数据库
   data/item_backtest_full_2025.json -- 标准回放基准（去量 v2，370 信号）
   pipeline/
-    config.py            -- 配置（TOKEN/BASE_URL/权重/PARAM_FREEZE/J2_THRESHOLDS/ENGINE_VERSION）
+    config.py            -- 配置（TOKEN/BASE_URL/权重/PARAM_REGIME/J2_THRESHOLDS/ENGINE_VERSION）
     collector.py         -- csQAQ HTTP 采集（大盘指数/品类/搜索）
     collector_csqaq.py   -- csQAQ Playwright 采集（单品搜索/详情/K线/fetch_history_deep 深历史）
     collector_snapshot.py -- 全市场快照采集（get_page_list 翻页，存 market_snapshot，每周一）

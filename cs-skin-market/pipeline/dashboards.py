@@ -22,8 +22,8 @@ def _snapshot_days(conn, table, col):
 
 
 def _j2_status():
-    """J-2 重拟合三通道（2026-08-07 修订）：读 data/j2_channel_status.json（j2_channel_monitor.py 生成）。
-    返回 {channels, overall, frozen_at, oos_revalidate_after}；文件缺失/损坏返回 None（进度卡隐藏该区块）。
+    """J-2 三通道监测（2026-08-10 解除冻结期）：读 data/j2_channel_status.json（j2_channel_monitor.py 生成）。
+    返回 {channels, overall, monitor_start, sample_target_days}；文件缺失/损坏返回 None（进度卡隐藏该区块）。
     """
     try:
         return json.loads(_J2_STATUS.read_text(encoding="utf-8"))

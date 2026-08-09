@@ -26,7 +26,7 @@ discover 扩池（手动触发，13 武器全量）
       ├ 健康检查 run_health_monitor（写 health_checks）
       ├ J-2 三通道监测刷新
       └ 池台账写一行（data/pool_maintenance_log.jsonl）
-  → 评分/决策/回测消费 price_history（冻结参数不触碰）
+  → 评分/决策/回测消费 price_history（引擎参数不触碰）
 ```
 
 ## 3. 调度时间表（Windows 计划任务）

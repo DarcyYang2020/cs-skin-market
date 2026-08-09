@@ -18,7 +18,7 @@
         <span style="color:var(--yellow);">🟡 {{ ch.status }}</span>
       {% endif %}
       <span style="font-size:12px;color:var(--text-muted);">{{ ch.trigger_state }}</span>
-      <span style="font-size:11px;color:var(--text-secondary);margin-left:auto;">引擎 {{ j2.engine_version }} · 冻结于 {{ j2.frozen_at }} · OOS 复验约 {{ j2.oos_revalidate_after }}</span>
+      <span style="font-size:11px;color:var(--text-secondary);margin-left:auto;">引擎 {{ j2.engine_version }} · v2 起点 {{ j2.monitor_start }} · 样本目标 {{ j2.sample_target_days }} 天</span>
     </div>
 
     {% if ch.replay_alert and ch.replay_alert.triggered %}

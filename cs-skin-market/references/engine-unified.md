@@ -234,7 +234,7 @@ train 估计「族×状态桶」net14 期望表（6 格 n>=3），test 段应用
 - **验证**：test_smoke 59/59（网络桩离线）；回放数据 data/item_backtest_full_2025.json（2026-08-06 12:43 版）。
 ---
 
-## 六、基准对照 + 期望统计单一事实源 + 参数冻结（2026-08-07）
+## 六、基准对照 + 期望统计单一事实源 + 参数治理（2026-08-10 解除冻结期）
 
 ### 6.1 基准对照（references/benchmark_compare.py → data/benchmark_compare.json）
 
@@ -256,8 +256,9 @@ train 估计「族×状态桶」net14 期望表（6 格 n>=3），test 段应用
 `config.ITEM_EXPECTANCY_STATS`（n/events/win14/avg14/ci14/win30/avg30，win30 为 n30 口径）与
 `data/signal_event_counts.json`；`tests/test_smoke.py::t_expectancy_sync` 全字段硬校验，改回放不重跑同步即失败。
 
-### 6.3 参数冻结条款（⑤）
+### 6.3 参数治理（⑤，2026-08-10 解除冻结期）
 
-`config.PARAM_FREEZE`：冻结去量引擎 v2（I-13）全参数 + 组合层 cap0.8 + 单票敞口提示 30% + 期望统计口径；
-~260 天新数据（约 2027-04-25）后真 OOS 复验；触发 = 260 天数据 / buy 连续 2 月 14d 胜率 <70% / 月度检查
-（14d>=80%、30d>=55%）则不动；`t_param_freeze` 测试防条款被删。
+`config.PARAM_REGIME`：参数台账（去量引擎 v2（I-13）全参数 + 组合层 cap0.8 + 单票敞口提示 30% + 期望统计口径
++ proximity 深跌确认 + 守卫1）；J-2 三通道监测（A 恐慌事件≥3 / B v2 样本积累 260 天（约 2027-04-25）/
+C 胜率监测）数据照常收集，作为样本完整性与胜率健康度提示项；参数迭代纪律 = 回测先行 + 三件套记录
+（信号数/胜率/期望增量）+ 文档同步，新信号族须过 A2 三件套；`t_param_regime` 测试防台账被删。

@@ -1898,3 +1898,20 @@ vs 池内等权 +509.75%/-54.12% vs 大盘 -4.02%；引擎边际价值在回撤�
 - `item_analysis.py` proximity 基础族「趋势TH ≥70」→「深跌确认」（th<35 黄金坑 / 35-54 摩擦带 / ≥55 趋势确认，与 buy_distance TH_REF=55 对齐）；口径澄清：proximity 不参与引擎 action 判定（守卫/信号族/买点均不读它），buy/观望/止损结果不变；但它并非纯 UI——被监控 near_buy（score≥60 触发）与自选页排序读取，本次三区口径属信息层行为变更（监控事件与排序随之更新）。
 - `config.py` 死代码常量 TH_STRONG/NEUTRAL/WEAK 对齐 THRESHOLDS 字典（55/35/20）；PARAM_FREEZE 追加冻结项与 amendments。
 - 实验开关 `CS_ENGINE_NO_MARKET_WEAK=1` 保留用于复现 A/B（默认行为不变）；实验产物 `data/_exp_baseline.json` / `data/_exp_no_market_weak.json` 归档。
+
+
+## 解除参数冻结期：PARAM_FREEZE → PARAM_REGIME 参数治理台账（2026-08-10，政策变更）
+
+**背景**：用户决定剔除冻结期概念——2026-08-07 定稿的 PARAM_FREEZE（冻结至 2027-04-25，冻结期内禁止以回放数据调参）不再适用；J-2 三通道监测数据照常收集，作为样本完整性与胜率健康度提示项，而非「禁止调参」的闸门。
+
+**落地**：
+- `config.py`：`PARAM_FREEZE` → `PARAM_REGIME`（参数治理台账：monitor_start / sample_target_days / param_history / monitors / iteration_note / amendments）；移除 oos_revalidate_after / frozen_period_note（禁令）；J2_THRESHOLDS 注释同步「v2 引擎样本积累」。
+- `references/j2_channel_monitor.py`：B 通道改「v2 引擎样本积累」（自 2026-08-07 v2 起点，target_date = 起点+260 天计算）；输出字段 frozen_at/oos_revalidate_after → monitor_start/sample_target_days；overall 语义改为「提示项，非禁止调参闸门」；`data/j2_channel_status.json` 重跑更新。
+- `references/refit_pipeline.py`：frozen_at → monitor_start（CLI --monitor-start）；`data/refit_pipeline_report.json` 重跑（simulate 369 信号，gate.passed=True）。
+- `tests/test_smoke.py`：t_param_freeze → t_param_regime（断言 monitor_start 正确、台账含去量引擎、无冻结字段残留）；J-2 / refit / progress schema 结构契约同步。
+- 展示层：dashboard.html / checkup.html / analysis.html「参数冻结」文案 → 「参数治理 + J-2 监测」；webapp/main.py 徽章字段 frozen_at/oos_revalidate_after → monitor_start/sample_target_days。
+- 文档：AGENTS.md（根/子）「参数冻结条款」→「参数治理（2026-08-10 解除冻结期）」；project-principles / engine-unified / backtest-methodology / data-layer / PROJECT_STRUCTURE / first-principles-gap / bid-data-accumulation / position-building-strategy / stop-loss-strategy / pool-maintenance 同步活跃纪律表述；iteration-roadmap「冻结期后议」→「待数据评估后议」并追加状态项。
+
+**纪律（替代冻结禁令）**：参数迭代 = 回测先行 + 三件套记录（信号数/胜率/期望增量）+ 文档同步；新信号族须过 A2 三件套（walk-forward + 聚类 + 置换检验）。
+
+**验证**：冒烟 84 passed / 0 failed / 6 skipped（skip 联网用例）。

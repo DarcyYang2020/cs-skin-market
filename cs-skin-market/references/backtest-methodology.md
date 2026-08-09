@@ -14,12 +14,12 @@
 
 ### references/refit_pipeline.py（Phase 3 重拟合流水线）
 
-重拟合流水线：加载 buy 信号明细（默认读 signal_tracking 冻结后新增信号，--simulate 用回放演练），运行上述三个检验，生成 data/refit_pipeline_report.json（含 gate.passed 达标判定与动作建议）并打印摘要。
+重拟合流水线：加载 buy 信号明细（默认读 signal_tracking v2 起点（2026-08-07）后新增信号，--simulate 用回放演练），运行上述三个检验，生成 data/refit_pipeline_report.json（含 gate.passed 达标判定与动作建议）并打印摘要。
 
 ```bash
 cd cs-skin-market
 python references/refit_pipeline.py --simulate      # 演练（370 信号回放）
-python references/refit_pipeline.py                    # 冻结后新增信号（生产）
+python references/refit_pipeline.py                    # v2 起点后新增信号（生产）
 ```
 
 ## 当前 buy 信号结论摘要（2026-08-05 生成）

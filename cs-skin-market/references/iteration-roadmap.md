@@ -53,7 +53,7 @@
       F-2 组合仪表盘「执行复盘对照卡」（真实累计 pnl 扣 2% / 平均滑点 / 14-30 胜率 vs signal_tracking 纸面对照）；
       F-3 discover 全量重扫扩池（csQAQ 限流约 25-40 分钟）。
     - **P1（收益可信，研究层）**：F-4 成本建模进回测（价差+手续费+流动性冲击，in_sale_count 估冲击，cost_sensitivity.py 扩展）；
-      F-5 组合模拟器（资金分配/相关性/再平衡，cap0.8 升级候选，冻结期后议是否进引擎）。
+      F-5 组合模拟器（资金分配/相关性/再平衡，cap0.8 升级候选，待数据评估后议是否进引擎）。
     - **P2（体验前瞻）**：F-6 事件驱动提示（Major/开箱/新箱，I-12 对齐）；F-7 钉钉卡片一键执行/移动端（二次确认+幂等）。
   - 验证：纯文档层（first-principles-gap.md + 映射表 F-1~F-7 + decision-log 补录）；无代码改动，冒烟保持 73/0/6。
   - 学到的新思路：① 「执行流水」的断点不是表结构而是摩擦与可见性——建表后 1 条记录都没有，反馈闭环必须
@@ -153,7 +153,7 @@
 - **v29（2026-08-07）**：Phase 3 重拟合流水线 + Phase 4 工程化落地——用户「继续 Phase 3 和 Phase 4」：
   - **Phase 3（REFIT-1）**：新增 
 eferences/refit_pipeline.py → data/refit_pipeline_report.json（A2 三件套：walk-forward 70/30 切分 + 信号聚类 + 符号置换 p 值），
-    默认读 signal_tracking 冻结后新增信号（signal_date >= frozen_at）、--simulate 用 370 信号演练（train 69.4% / test 75.5% / p=0.001 / 达标，证明流水线可用）；
+    默认读 signal_tracking v2 起点后新增信号（signal_date >= monitor_start）、--simulate 用 370 信号演练（train 69.4% / test 75.5% / p=0.001 / 达标，证明流水线可用）；
     J-2 overall.trigger_action 挂载「重拟合流水线已挂载」说明，触发后动作链闭环（J-2 触发 → 跑 refit_pipeline → 人工确认 → bump ENGINE_VERSION 复位）。
   - **Phase 4（工程化，零数据依赖可并行）**：每日备份（run_daily_collect 收尾调 backup_db → data/backup/ 保留 14 份）；批量扫描进度落盘
     （data/scan_progress_{id}.json，重启后仍可查询，写点全接 _persist / 读点磁盘兜底 / 过期同步删盘）；schema 版本化（schema_version 表 +
@@ -265,7 +265,7 @@ eferences/refit_pipeline.py → data/refit_pipeline_report.json（A2 三件套�
 | 16 | 同上 | **F-2** 组合仪表盘执行复盘对照卡（真实 pnl/滑点/胜率 vs 纸面） | P0（第一性） | 无（数据现成） | **完成（2026-08-08，/api/executions/review + watchlist 对照卡）** |
 | 16 | 同上：发现机会依赖人工选品，覆盖 26/104 | **F-3** discover 全量重扫扩池 | P0（第一性） | csQAQ 限流 | **完成（2026-08-08，复用优先 + 扩池落地，items 110→136）** |
 | 16 | 同上：回测统一扣 2%，无价差/流动性冲击 | **F-4** 成本建模进回测（价差+手续费+冲击，in_sale_count 估） | P1（第一性） | 执行数据积累 | 待做 |
-| 16 | 同上：cap0.8 只是并发上限，无资金分配/相关性/再平衡 | **F-5** 组合模拟器（研究层，冻结期后议是否进引擎） | P1（第一性） | 执行数据积累 | 待做 |
+| 16 | 同上：cap0.8 只是并发上限，无资金分配/相关性/再平衡 | **F-5** 组合模拟器（研究层，待数据评估后议是否进引擎） | P1（第一性） | 执行数据积累 | 待做 |
 | 16 | 同上：事件驱动缺失（I-12 已暂缓） | **F-6** 事件驱动提示（Major/开箱/新箱，非决策） | P2（第一性） | — | 待做（观察项） |
 | 16 | 同上：推送已打通，执行可移动化 | **F-7** 钉钉卡片一键执行/移动端（二次确认+幂等） | P2（第一性） | 资金安全设计 | 待做 |
 
@@ -299,6 +299,7 @@ eferences/refit_pipeline.py → data/refit_pipeline_report.json（A2 三件套�
 - Phase 3/4（REFIT-1 重拟合流水线 + 工程化）：**完成（2026-08-07）**——refit_pipeline.py 挂载 A2 三件套（walk-forward/聚类/置换 p 值），
   simulate 演练 train 69.4%/test 75.5%/p=0.001/达标；每日备份/扫描进度落盘/schema 版本化/CI 离线全落地；J-2 trigger_action 动作链闭环。
 - 其余（K-1）：待做（第二批剩余，依赖 J-2 B/C 通道：≥260 天新数据或胜率监测触发）。
+- 参数冻结期解除：**完成（2026-08-10）**——`PARAM_FREEZE` → `PARAM_REGIME` 参数治理台账，J-2 三通道监测照常收集（提示项，非禁止调参闸门）；参数迭代纪律 = 回测先行 + 三件套记录 + 文档同步；详见 decision-log「解除参数冻结期」。
 - I-12 开箱量因子观察项：**待做（低优先级）**——预研结论暂缓（2026-08-06），详见 decision-log「P2 开箱量因子预研」。
 - F-1 一键执行录入 / F-2 执行复盘对照卡：**完成（2026-08-08）**——共享 exec-modal 全站接入 + 报告页一键按钮；/api/executions/review + watchlist 真实 vs 纸面对照卡。
 - F-1.1 信号→动作统一映射：**完成（2026-08-08）**——watch 类信号→观望（不再硬映射建仓），单品报告建议动作徽章 + 批量扫描动作徽章 + exec-modal 观望选项。
@@ -308,7 +309,7 @@ eferences/refit_pipeline.py → data/refit_pipeline_report.json（A2 三件套�
 - F-3.2 存量维护 + 链路台账：**完成（2026-08-08）**——不做增量扩池，收敛后存量更新（每日 18:00 K 线刷新已有）；新增 `pipeline/pool_log.py` 台账（daily/prune/discover 三类留痕，data/pool_maintenance_log.jsonl）+ `references/pool-maintenance.md` 完整链路手册；增量评估决策点 4 条（活跃池萎缩/新品骤降/K 线新鲜度/市场结构），数据积累后人工评估再决定是否扩池。
 - F-3.3 文档分层：**完成（2026-08-08）**——数据层独立成册 `references/data-layer.md`（数据源/采集链路/调度表/更新维护/表结构/质量规则/故障 SOP，唯一权威）；根与子 AGENTS.md、PROJECT_STRUCTURE.md 数据章节压缩为引用，修正 PROJECT_STRUCTURE 过时运维口径（21:30→18:00）。
 - F-3.4 discover 从池内跑：**完成（2026-08-08）**——默认 pool 模式扫池内活跃品（DB 复用零采集），search 扩池路径保留；扫描 181 品 / 70 通过 / 2 buy，见 v46。
-- F-4 成本建模进回测 / F-5 组合模拟器：**待做（P1，研究层）**——冻结期后议是否进引擎。
+- F-4 成本建模进回测 / F-5 组合模拟器：**待做（P1，研究层）**——待数据评估后议是否进引擎。
 - F-6 事件驱动提示 / F-7 钉钉卡片一键执行：**待做（P2，体验层）**。
 - F-3.5 高分品模块治理：**完成（2026-08-08）**——磨损过滤（仅崭新出厂）+ 流动性闸门（supply_depth<15 降级 buy），非 FN 品标记淘汰，见 decision-log。
 - F-3.6 价格串品治理：**完成（2026-08-09）**——fetch_kline_90d 悠悠锚校验 + 82 品体检修正 7 品错价，见 decision-log。

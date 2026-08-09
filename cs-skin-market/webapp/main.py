@@ -225,7 +225,7 @@ async def page_dashboard(request: Request):
     _ms_r = market_snapshot()
     _regime_label, _regime_cls, _regime_strategy = market_regime(
         _ms_r.get("sentiment"), _ms_r.get("chg30"), _ms_r.get("th"))
-    # ---- 引擎状态徽章（J-2 冻结监测，纯展示；读 j2_channel_status.json）----
+    # ---- 引擎状态徽章（J-2 监测，纯展示；读 j2_channel_status.json）----
     _engine_status = None
     _j2 = _j2_status()
     if _j2:
@@ -236,8 +236,8 @@ async def page_dashboard(request: Request):
             _flagged = [mm for mm in _monthly if mm.get("flags")]
             _engine_status = {
                 "engine_version": _j2.get("engine_version", ""),
-                "frozen_at": _j2.get("frozen_at", ""),
-                "oos_revalidate_after": _j2.get("oos_revalidate_after", ""),
+                "monitor_start": _j2.get("monitor_start", ""),
+                "sample_target_days": _j2.get("sample_target_days", ""),
                 "a_value": (_ch.get("A") or {}).get("value"),
                 "a_threshold": (_ch.get("A") or {}).get("threshold"),
                 "a_status": (_ch.get("A") or {}).get("status"),

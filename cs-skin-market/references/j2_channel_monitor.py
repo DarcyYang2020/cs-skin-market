@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
-"""J-2 重拟合三通道监测（2026-08-07 J-2 修订落地，展示层）。
+"""J-2 三通道监测（2026-08-10 解除冻结期：监测数据照常收集，不再作为禁止调参闸门）。
 
 读 item_backtest_full_2025.json（370 信号）+ signal_event_counts.json（事件计数），
-计算三通道状态：
+计算三通道状态（样本完整性/胜率健康度提示项）：
   A. 独立恐慌市场事件 >=3（自然积累，不阻塞）
-  B. 冻结后新数据累计 >=260 天（约 2027-04-25，与 PARAM_FREEZE.oos_revalidate_after 一致）
+  B. v2 引擎样本积累 >=260 天（自 2026-08-07 v2 引擎起点，约 2027-04-25 覆盖完整牛熊循环）
   C. 胜率监测：buy 连续 2 月 14d<70% 或月度 14d<80%/30d<55%
 输出 data/j2_channel_status.json，dashboard 数据积累进度卡渲染。
 口径注意：C 通道当前为「去量 v2 370 信号回放」近似（生产实盘信号跟踪尚未建立）；
@@ -14,7 +14,7 @@ import io
 import json
 import sys
 from collections import defaultdict
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 BASE = Path(__file__).resolve().parent.parent
@@ -25,12 +25,12 @@ OUT = BASE / "data" / "j2_channel_status.json"
 CLUSTER_GAP = 4  # 同簇定义：距上一保留信号 <4 天则跳过（±3 天簇，与 j1_event_counts 一致）
 
 # ---- 阈值单一事实源 (Phase 0 单源化): 全部从 pipeline.config 读取，禁止本地硬编码 ----
-# 改阈值须同步 PARAM_FREEZE["triggers"] 文案，并重跑本脚本刷新 data/j2_channel_status.json
+# 改阈值须同步 PARAM_REGIME["monitors"] 文案，并重跑本脚本刷新 data/j2_channel_status.json
 sys.path.insert(0, str(BASE))
-from pipeline.config import PARAM_FREEZE, J2_THRESHOLDS, ENGINE_VERSION
+from pipeline.config import PARAM_REGIME, J2_THRESHOLDS, ENGINE_VERSION
 
-FROZEN_AT = PARAM_FREEZE["frozen_at"]
-OOS_AFTER = PARAM_FREEZE["oos_revalidate_after"]
+MONITOR_START = PARAM_REGIME["monitor_start"]
+SAMPLE_TARGET_DAYS = PARAM_REGIME["sample_target_days"]
 A_THRESHOLD = J2_THRESHOLDS["a_events"]
 B_THRESHOLD_DAYS = J2_THRESHOLDS["b_days"]
 C14_MONTH = J2_THRESHOLDS["c14_month"]
@@ -159,8 +159,9 @@ def compute():
     a_pct = round(100.0 * panic_events / A_THRESHOLD, 1)
 
     today = date.today()
-    frozen = date.fromisoformat(FROZEN_AT)
-    days = max(0, (today - frozen).days)
+    monitor_start = date.fromisoformat(MONITOR_START)
+    days = max(0, (today - monitor_start).days)
+    target_date = (monitor_start + timedelta(days=SAMPLE_TARGET_DAYS)).isoformat()
     b_pct = round(100.0 * days / B_THRESHOLD_DAYS, 1)
 
     c = _channel_c(sigs)
@@ -175,12 +176,12 @@ def compute():
             "note": "事件不可控，自然积累不阻塞；当前 2025-10 五合一 / 2026-05 恐慌深跌 2 个独立事件",
         },
         "B": {
-            "label": "冻结后新数据积累",
+            "label": "v2 引擎样本积累",
             "value_days": days, "threshold_days": B_THRESHOLD_DAYS,
-            "progress_pct": b_pct, "target_date": OOS_AFTER,
+            "progress_pct": b_pct, "target_date": target_date,
             "status": "已达标" if days >= B_THRESHOLD_DAYS else "积累中",
-            "note": "自冻结起点 " + FROZEN_AT + " 起累计新数据；满 " + str(B_THRESHOLD_DAYS) +
-                    " 天（约 " + OOS_AFTER + "）即真 OOS 复验点",
+            "note": "自 v2 引擎起点 " + MONITOR_START + " 起累计新数据；满 " + str(B_THRESHOLD_DAYS) +
+                    " 天（约 " + target_date + "）即样本完整性观察点",
         },
         "C": {
             "label": "胜率监测（回放告警 + 实盘判定分离，Phase 2b）",
@@ -209,7 +210,7 @@ def compute():
             "trigger_state": "待启动重拟合流水线" if (c["two_month_flags"] or any(r["flags"] for r in c["monthly"])) else "监测中",
             "note": "回放口径：去量 v2 370 信号，月度 n>=10 判定，去簇(±3天) n>=10 判定，5 月恐慌单事件簇退出集中在 6 月须按事件簇纪律复核；"
                     "生产实盘口径：signal_tracking 表（buy 信号 14/30 交易日后按真实价格回填，net 扣 2%），回填满 20 条后实盘胜率纳入判定；"
-                    "回放告警仅提示复核，正式重拟合触发以冻结条款 C 通道为准，触发后动作见 overall.trigger_action",
+                    "回放告警仅提示复核，正式重拟合评估以 C 通道监测为准，触发后动作见 overall.trigger_action",
         },
     }
 
@@ -217,18 +218,18 @@ def compute():
     return {
         "generated": today.isoformat(),
         "engine_version": ENGINE_VERSION,
-        "frozen_at": FROZEN_AT,
-        "oos_revalidate_after": OOS_AFTER,
+        "monitor_start": MONITOR_START,
+        "sample_target_days": SAMPLE_TARGET_DAYS,
         "channels": channels,
         "overall": {
             "triggered": bool(triggered),
             "triggered_channels": triggered,
-            "note": "J-2 三通道任一满足即解锁重拟合：A 事件>=3 / B 新数据>=260 天 / C 胜率监测触发",
-            "trigger_action": "触发后动作（Phase 3 自动化）：1) 冻结当前参数版本(ENGINE_VERSION bump 前禁止发布新信号口径)；"
-                              "2) 以冻结后新增数据重跑新旧引擎对比；3) A2 三件套(walk-forward+聚类+置换检验)验证；"
-                              "4) 人工确认后发布新参数版本并复位监测；"
-                              "重拟合流水线已挂载（Phase 3）：python references/refit_pipeline.py，"
-                              "输出 data/refit_pipeline_report.json（--simulate 演练 / 默认冻结后新增信号）",
+            "note": "J-2 三通道监测（提示项，非禁止调参闸门）：A 事件>=3 / B v2 样本>=260 天 / C 胜率告警",
+            "trigger_action": "触发后动作（重拟合评估）：1) 记录当前参数版本(ENGINE_VERSION)基线；"
+                              "2) 以新增数据重跑新旧引擎对比；3) A2 三件套(walk-forward+聚类+置换检验)验证；"
+                              "4) 人工确认后发布新参数版本并 bump ENGINE_VERSION；"
+                              "重拟合流水线已挂载：python references/refit_pipeline.py，"
+                              "输出 data/refit_pipeline_report.json（--simulate 演练 / 默认自 v2 起点后新增信号）",
         },
     }
 

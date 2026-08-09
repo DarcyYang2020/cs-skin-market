@@ -127,7 +127,7 @@ async def collect_kline_all() -> int:
 def prune_inactive(min_avg_sale: int = 10, days: int = 7) -> int:
     """活跃池淘汰（F-3.1, 2026-08-08）：非自选/非持仓品最近 days 天平均在售量 < min_avg_sale，
     标记 notes「活跃池淘汰:在售量过低」，退出每日采集（数据保留；加回自选即恢复采集）。
-    纯数据层标记，不触碰冻结参数。"""
+    纯数据层标记，不触碰引擎参数。"""
     from pipeline import db
     conn = db.get_conn()
     try:
@@ -302,7 +302,7 @@ def main():
         log(f"信号跟踪回填: 更新 {_sig['updated']} 条, 累计 {_s['n_total']} 信号 / 已回填14d {_s['n_filled14']} / 30d {_s['n_filled30']}")
     except Exception as e:
         log(f"信号跟踪回填异常（不中断采集）: {e}")
-    # M1 监控模式 (2026-08-08): 自选品异动事件生成 + 日报 (纯提醒层, 只读引擎输出, 不触碰冻结参数)
+    # M1 监控模式 (2026-08-08): 自选品异动事件生成 + 日报 (纯提醒层, 只读引擎输出, 不触碰引擎参数)
     # 2026-08-08 采集提前至 18:00: 收尾仅生成事件+日报, 推送由独立任务 run_night_push.py 在 21:30 执行
     try:
         from pipeline.monitor import run_daily_monitor

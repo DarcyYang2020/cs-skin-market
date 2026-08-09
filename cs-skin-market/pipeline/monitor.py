@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """M1 监控模式（2026-08-08）：每日自选品异动事件生成 + 归档。
 
-纯提醒/展示层：只读引擎输出（run_item_analysis 不落库），不产生新信号、不触碰冻结参数。
+纯提醒/展示层：只读引擎输出（run_item_analysis 不落库），不产生新信号、不触碰引擎参数。
 事件规则（8 类）：买点接近 / 破位止损 / 决策翻转 / 供给突变 / 价格异动 / 大盘状态切换 / 持仓到期 / 新 buy 信号。
 消费链：run_daily_collect 收尾自动跑（当日采集后数据已最新）；Web /monitor 展示；M2 接入钉钉推送。
 """
@@ -17,7 +17,7 @@ from pipeline.config import TZ_BJ
 
 MD_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "monitor_daily.md")
 
-# 事件规则阈值（纯提醒层，人工确认不回测拟合；冻结纪律内）
+# 事件规则阈值（纯提醒层，人工确认不回测拟合；参数治理纪律内）
 NEAR_BUY_MIN = 60      # 买点接近度 >= 60 且非 buy
 STOP_LOSS_PCT = 0.75   # 现价 <= 成本 * 0.75
 SUPPLY_SHIFT_7D = (-20, 30)  # 在售量 7 日变化超出区间

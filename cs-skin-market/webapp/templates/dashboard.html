@@ -7,12 +7,12 @@
 {% include "partials/index_analysis.html" %}
 </div>
 
-<!-- 引擎状态 (J-2 冻结监测, 纯展示) -->
+<!-- 引擎状态 (J-2 监测, 纯展示) -->
 {% if engine_status %}
 <div class="card" style="margin-top:12px;">
   <div class="card-header">
     <span class="card-title">⚙️ 引擎状态 · {{ engine_status.engine_version }}</span>
-    <span style="font-size:12px;color:var(--text-muted);margin-left:auto;">参数冻结 {{ engine_status.frozen_at }} → {{ engine_status.oos_revalidate_after }}</span>
+    <span style="font-size:12px;color:var(--text-muted);margin-left:auto;">v2 引擎起点 {{ engine_status.monitor_start }} · 样本目标 {{ engine_status.sample_target_days }} 天</span>
     <button class="btn btn-outline btn-sm" onclick="createBackup()" style="margin-left:8px;">💾 备份数据</button>
     <span id="backup-msg" style="font-size:11px;color:var(--text-muted);"></span>
   </div>
@@ -162,7 +162,7 @@ fetch("/api/data/progress")
       + '<table style="width:100%;font-size:12px;"><tbody>' + famRows.map(function(r) {
         return '<tr><td style="width:130px;color:var(--text-muted);padding:2px 0;">' + r[0] + '</td><td style="padding:2px 0;">' + r[1] + '</td></tr>';
       }).join("") + '</tbody></table>'
-      // ---- J-2 重拟合三通道 (2026-08-07 修订): A 独立恐慌事件 / B 冻结后新数据 / C 胜率监测 ----
+      // ---- J-2 三通道监测: A 独立恐慌事件 / B v2 样本积累 / C 胜率监测 ----
       var j2 = d.j2;
       if (j2 && j2.channels) {
         var ch = j2.channels;
@@ -204,7 +204,7 @@ fetch("/api/data/progress")
           + '<div style="color:var(--text-muted);font-size:12px;margin-bottom:4px;">重拟合触发（J-2 三通道，' + _dpFmt(j2.generated) + ' 口径）</div>'
           + '<table style="width:100%;font-size:12px;"><tbody>'
           + '<tr><td style="width:130px;color:var(--text-muted);padding:2px 0;">A 独立恐慌事件</td><td style="padding:2px 0;">' + ch.A.value + '/' + ch.A.threshold + ' · ' + _pctBar(ch.A.progress_pct) + ' · ' + _cBadge(ch.A.status) + '</td></tr>'
-          + '<tr><td style="width:130px;color:var(--text-muted);padding:2px 0;">B 冻结后新数据</td><td style="padding:2px 0;">' + ch.B.value_days + '/' + ch.B.threshold_days + ' 天 · ' + _pctBar(ch.B.progress_pct) + ' · ' + _cBadge(ch.B.status) + ' · 约 ' + ch.B.target_date + ' 复验</td></tr>'
+          + '<tr><td style="width:130px;color:var(--text-muted);padding:2px 0;">B v2 样本积累</td><td style="padding:2px 0;">' + ch.B.value_days + '/' + ch.B.threshold_days + ' 天 · ' + _pctBar(ch.B.progress_pct) + ' · ' + _cBadge(ch.B.status) + ' · 约 ' + ch.B.target_date + ' 观察点</td></tr>'
           + '<tr><td style="width:130px;color:var(--text-muted);padding:2px 0;">C 胜率监测</td><td style="padding:2px 0;">' + cText + ' · ' + _cBadge(ch.C.status) + _cTrigText(ch.C) + (cFlags.length ? ' <span style="color:var(--red);">' + cFlags.join('；') + '</span>' : '') + '</td></tr>'
           + '<tr><td style="width:130px;color:var(--text-muted);padding:2px 0;">C 生产实盘</td><td style="padding:2px 0;">' + _prodText(ch.C) + _cGateText(ch.C) + '</td></tr>'
           + '</tbody></table>'

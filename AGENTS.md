@@ -74,12 +74,13 @@ CS 饰品市场投资分析工具。FastAPI Web 应用，从 csQAQ 采集大盘/
 2. B 通道: 积累完整牛熊循环（~260天新数据，约 2027-04-25）
 3. C 通道: buy信号连续2月14d胜率<70% 或月度 14d<80%/30d<55%
 
-### 参数冻结条款（OOS 纪律，2026-08-07 定稿）
+### 参数治理（2026-08-10 解除冻结期）
 
-去量引擎 v2（I-13）、组合层 cap0.8、单票敞口提示 30% 与 `ITEM_EXPECTANCY_STATS` 展示口径已冻结
-（见 `pipeline/config.py` 的 `PARAM_FREEZE`，测试 `t_param_freeze` 防删）。冻结期约 260 天
-（至 2027-04-25 前后，覆盖完整牛熊循环样本）后做真 OOS 复验；复验触发（J-2 三通道）= A 独立恐慌事件≥3 / B 260 天数据 /
-C buy 连续 2 月 14d<70% 或月度 14d<80%、30d<55%；监测见 data/j2_channel_status.json。
+引擎参数不再有冻结禁令：`pipeline/config.py` 的 `PARAM_REGIME` 维护参数台账（去量引擎 v2（I-13）全参数、组合层 cap0.8、
+单票敞口提示 30%、`ITEM_EXPECTANCY_STATS` 展示口径、proximity 深跌确认、守卫1 大盘走弱拦截）。参数迭代纪律 =
+回测先行 + 三件套记录（信号数/胜率/期望增量）+ 文档同步；新信号族须过 A2 三件套（walk-forward + 聚类 + 置换检验）。
+J-2 三通道监测数据照常收集（A 独立恐慌事件≥3 / B v2 样本积累 260 天（约 2027-04-25）/ C buy 连续 2 月 14d<70%
+或月度 14d<80%、30d<55%），作为样本完整性与胜率健康度提示项；监测见 data/j2_channel_status.json。
 
 **期望统计单一事实源**：`data/item_backtest_full_2025.json`（回放产物）→
 `python references/sync_expectancy_config.py` 自动同步 `config.ITEM_EXPECTANCY_STATS` 与进度卡 J-3

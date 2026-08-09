@@ -1,8 +1,8 @@
 {
- "generated": "2026-08-09",
+ "generated": "2026-08-10",
  "engine_version": "v2-I13",
- "frozen_at": "2026-08-07",
- "oos_revalidate_after": "2027-04-25",
+ "monitor_start": "2026-08-07",
+ "sample_target_days": 260,
  "channels": {
   "A": {
    "label": "独立恐慌市场事件",
@@ -13,13 +13,13 @@
    "note": "事件不可控，自然积累不阻塞；当前 2025-10 五合一 / 2026-05 恐慌深跌 2 个独立事件"
   },
   "B": {
-   "label": "冻结后新数据积累",
-   "value_days": 2,
+   "label": "v2 引擎样本积累",
+   "value_days": 3,
    "threshold_days": 260,
-   "progress_pct": 0.8,
-   "target_date": "2027-04-25",
+   "progress_pct": 1.2,
+   "target_date": "2027-04-24",
    "status": "积累中",
-   "note": "自冻结起点 2026-08-07 起累计新数据；满 260 天（约 2027-04-25）即真 OOS 复验点"
+   "note": "自 v2 引擎起点 2026-08-07 起累计新数据；满 260 天（约 2027-04-24）即样本完整性观察点"
   },
   "C": {
    "label": "胜率监测（回放告警 + 实盘判定分离，Phase 2b）",
@@ -132,58 +132,58 @@
     },
     {
      "month": "2026-02",
-     "n": 136,
-     "win14": 74.3,
-     "win30": 77.9,
+     "n": 135,
+     "win14": 74.1,
+     "win30": 78.5,
      "dedup_n": 7,
      "dedup_win14": 85.7,
      "dedup_win30": 100.0,
      "flags": [
-      "14d 74.3% < 80%"
+      "14d 74.1% < 80%"
      ]
     },
     {
      "month": "2026-03",
-     "n": 25,
-     "win14": 76.0,
-     "win30": 52.0,
+     "n": 26,
+     "win14": 76.9,
+     "win30": 50.0,
      "dedup_n": 3,
      "dedup_win14": 33.3,
      "dedup_win30": 33.3,
      "flags": [
-      "14d 76.0% < 80%",
-      "30d 52.0% < 55%"
-     ]
-    },
-    {
-     "month": "2026-05",
-     "n": 92,
-     "win14": 92.4,
-     "win30": 80.4,
-     "dedup_n": 4,
-     "dedup_win14": 75.0,
-     "dedup_win30": 100.0,
-     "flags": []
-    },
-    {
-     "month": "2026-06",
-     "n": 30,
-     "win14": 76.7,
-     "win30": 50.0,
-     "dedup_n": 4,
-     "dedup_win14": 75.0,
-     "dedup_win30": 100.0,
-     "flags": [
-      "14d 76.7% < 80%",
+      "14d 76.9% < 80%",
       "30d 50.0% < 55%"
      ]
     },
     {
+     "month": "2026-05",
+     "n": 94,
+     "win14": 92.6,
+     "win30": 77.7,
+     "dedup_n": 3,
+     "dedup_win14": 66.7,
+     "dedup_win30": 66.7,
+     "flags": []
+    },
+    {
+     "month": "2026-06",
+     "n": 26,
+     "win14": 76.9,
+     "win30": 42.3,
+     "dedup_n": 3,
+     "dedup_win14": 66.7,
+     "dedup_win30": 33.3,
+     "flags": [
+      "14d 76.9% < 80%",
+      "30d 42.3% < 55%"
+     ]
+    },
+    {
      "month": "2026-07",
-     "n": 4,
-     "win14": 0.0,
+     "n": 5,
+     "win14": 20.0,
      "win30": null,
-     "dedup_n": 1,
+     "dedup_n": 3,
      "dedup_win14": 0.0,
      "dedup_win30": null,
      "flags": []
@@ -204,7 +204,7 @@
     "note": "回放口径告警（信息级提示，非正式重拟合触发）"
    },
    "production": {
-    "n_total": 0,
+    "n_total": 1,
     "n_filled14": 0,
     "n_filled30": 0,
     "net14": {
@@ -217,8 +217,8 @@
      "win": null,
      "avg": null
     },
-    "earliest_open": null,
-    "latest": null
+    "earliest_open": "2026-08-09",
+    "latest": "2026-08-09"
    },
    "production_gate": {
     "min_filled14": 20,
@@ -228,7 +228,7 @@
    "production_triggered": false,
    "status": "已触发",
    "trigger_state": "待启动重拟合流水线",
-   "note": "回放口径：去量 v2 370 信号，月度 n>=10 判定，去簇(±3天) n>=10 判定，5 月恐慌单事件簇退出集中在 6 月须按事件簇纪律复核；生产实盘口径：signal_tracking 表（buy 信号 14/30 交易日后按真实价格回填，net 扣 2%），回填满 20 条后实盘胜率纳入判定；回放告警仅提示复核，正式重拟合触发以冻结条款 C 通道为准，触发后动作见 overall.trigger_action"
+   "note": "回放口径：去量 v2 370 信号，月度 n>=10 判定，去簇(±3天) n>=10 判定，5 月恐慌单事件簇退出集中在 6 月须按事件簇纪律复核；生产实盘口径：signal_tracking 表（buy 信号 14/30 交易日后按真实价格回填，net 扣 2%），回填满 20 条后实盘胜率纳入判定；回放告警仅提示复核，正式重拟合评估以 C 通道监测为准，触发后动作见 overall.trigger_action"
   }
  },
  "overall": {
@@ -236,7 +236,7 @@
   "triggered_channels": [
    "C"
   ],
-  "note": "J-2 三通道任一满足即解锁重拟合：A 事件>=3 / B 新数据>=260 天 / C 胜率监测触发",
-  "trigger_action": "触发后动作（Phase 3 自动化）：1) 冻结当前参数版本(ENGINE_VERSION bump 前禁止发布新信号口径)；2) 以冻结后新增数据重跑新旧引擎对比；3) A2 三件套(walk-forward+聚类+置换检验)验证；4) 人工确认后发布新参数版本并复位监测；重拟合流水线已挂载（Phase 3）：python references/refit_pipeline.py，输出 data/refit_pipeline_report.json（--simulate 演练 / 默认冻结后新增信号）"
+  "note": "J-2 三通道监测（提示项，非禁止调参闸门）：A 事件>=3 / B v2 样本>=260 天 / C 胜率告警",
+  "trigger_action": "触发后动作（重拟合评估）：1) 记录当前参数版本(ENGINE_VERSION)基线；2) 以新增数据重跑新旧引擎对比；3) A2 三件套(walk-forward+聚类+置换检验)验证；4) 人工确认后发布新参数版本并 bump ENGINE_VERSION；重拟合流水线已挂载：python references/refit_pipeline.py，输出 data/refit_pipeline_report.json（--simulate 演练 / 默认自 v2 起点后新增信号）"
  }
 }

@@ -25,7 +25,7 @@ from pathlib import Path
 BASE = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BASE))
 
-from pipeline.config import ENGINE_VERSION, PARAM_FREEZE, J2_THRESHOLDS
+from pipeline.config import ENGINE_VERSION, PARAM_REGIME, J2_THRESHOLDS
 from pipeline.backtest_methodology import (
     walk_forward_split,
     permutation_baseline,
@@ -46,8 +46,8 @@ def _load(path):
         return json.load(f)
 
 
-def _load_production_signals(frozen_at):
-    """生产模式：signal_tracking 表中 signal_date >= frozen_at 的 buy 信号。"""
+def _load_production_signals(monitor_start):
+    """生产模式：signal_tracking 表中 signal_date >= monitor_start 的 buy 信号。"""
     dbp = BASE / "data" / "market.db"
     if not dbp.exists():
         return []
@@ -57,7 +57,7 @@ def _load_production_signals(frozen_at):
             "SELECT signal_date, action, action_label, entry_price, engine_version, "
             "       fwd14, fwd30, net14, net30 "
             "FROM signal_tracking WHERE signal_date >= ? ORDER BY signal_date",
-            (frozen_at,),
+            (monitor_start,),
         ).fetchall()
     finally:
         conn.close()
@@ -71,14 +71,14 @@ def _load_production_signals(frozen_at):
     ]
 
 
-def compute(mode="production", frozen_at=None):
-    frozen_at = frozen_at or PARAM_FREEZE["frozen_at"]
+def compute(mode="production", monitor_start=None):
+    monitor_start = monitor_start or PARAM_REGIME["monitor_start"]
     if mode == "simulate":
         d = _load(REPLAY)
         sigs = d["signals"]
         replay_generated = d.get("generated")
     else:
-        sigs = _load_production_signals(frozen_at)
+        sigs = _load_production_signals(monitor_start)
         replay_generated = None
     records = []
     for s in sigs:
@@ -121,7 +121,7 @@ def compute(mode="production", frozen_at=None):
         "generated": date.today().isoformat(),
         "engine_version": ENGINE_VERSION,
         "mode": mode,
-        "frozen_at": frozen_at,
+        "monitor_start": monitor_start,
         "replay_generated": replay_generated,
         "input": {"signals": len(records), "with_ret": sum(1 for r in records if r["ret"] is not None)},
         "walk_forward": wf,
@@ -139,16 +139,16 @@ def compute(mode="production", frozen_at=None):
 def main():
     ap = argparse.ArgumentParser(description="Phase 3 重拟合流水线")
     ap.add_argument("--simulate", action="store_true", help="用现有回放信号演练流水线")
-    ap.add_argument("--frozen-at", default=None, help="冻结日期 YYYY-MM-DD（默认取 config.PARAM_FREEZE）")
+    ap.add_argument("--monitor-start", default=None, help="v2 引擎起点 YYYY-MM-DD（默认取 config.PARAM_REGIME）")
     ap.add_argument("--out", default=str(OUT))
     args = ap.parse_args()
     mode = "simulate" if args.simulate else "production"
-    rep = compute(mode=mode, frozen_at=args.frozen_at)
+    rep = compute(mode=mode, monitor_start=args.monitor_start)
     with io.open(args.out, "w", encoding="utf-8", newline="\n") as f:
         json.dump(rep, f, ensure_ascii=False, indent=1)
     g = rep["gate"]
     wf = rep["walk_forward"]
-    print("refit pipeline: mode=%s signals=%d frozen_at=%s" % (mode, rep["input"]["signals"], rep["frozen_at"]))
+    print("refit pipeline: mode=%s signals=%d monitor_start=%s" % (mode, rep["input"]["signals"], rep["monitor_start"]))
     print("  walk-forward valid=%s train_wr=%s test_wr=%s p_value=%s" % (
         g["valid"],
         (wf.get("train") or {}).get("win_rate"),
