@@ -94,34 +94,34 @@ EVENT_CALENDAR = [
 
 ITEM_EXPECTANCY_STATS = {
     # 口径：自动生成（references/sync_expectancy_config.py），勿手改；改回放产物后必须重跑同步。
-    # 数据源：data/item_backtest_full_2025.json（去量引擎 v2（I-13 大盘 chg30>=3 深值禁买）回放 369 信号，net 已扣 2% 双边成本）。
+    # 数据源：data/item_backtest_full_2025.json（去量引擎 v2（I-13 大盘 chg30>=3 深值禁买）回放 332 信号，net 已扣 2% 双边成本）。
     # events = ±3 天去簇独立事件数（J-1 口径，backtest_methodology.signal_cluster_report window=3）。
     # 展示键按单品报告 action_label 匹配：含「恐慌」→panic / 含「深值」→deep_value / 其余→accumulate。
     # win30/avg30 为 n30 口径（含 net30 信号的子集）；ci14 = Wilson 95%% 区间。
     # 历史备注：panic 旧 n=21 为 2026-08-02 强信号层切片；accumulate 旧 n=16 为短窗口切片；deep_value 旧 154 为 I-13 前，均已废弃。
-    # 恐慌族：恐慌退潮(49) + 恐慌共振(45) 全量（自动生成）
+    # 恐慌族：恐慌退潮(49) + 恐慌共振(44) 全量（自动生成）
     "panic": {
         "label": "恐慌族",
-        "n": 94,
-        "events": 2,
-        "win14": 90.4, "avg14": 30.13, "ci14_lo": 82.8, "ci14_hi": 94.9,
-        "win30": 75.5, "avg30": 22.52,  # n30=94
+        "n": 93,
+        "events": 1,
+        "win14": 90.3, "avg14": 29.51, "ci14_lo": 82.6, "ci14_hi": 94.8,
+        "win30": 75.3, "avg30": 21.48,  # n30=93
     },
-    # 深值企稳：深值企稳(55) 全量（自动生成）
+    # 深值企稳：深值企稳(27) 全量（自动生成）
     "deep_value": {
         "label": "深值企稳",
-        "n": 55,
-        "events": 9,
-        "win14": 78.2, "avg14": 15.34, "ci14_lo": 65.6, "ci14_hi": 87.1,
-        "win30": 80.8, "avg30": 52.39,  # n30=52
+        "n": 27,
+        "events": 6,
+        "win14": 63.0, "avg14": 11.55, "ci14_lo": 44.2, "ci14_hi": 78.5,
+        "win30": 63.6, "avg30": 51.51,  # n30=22
     },
-    # 吸筹族：供给收缩吸筹(162) + 基础分批(31) + 深度回调低吸(27) 全量（自动生成）
+    # 吸筹族：供给收缩吸筹(157) + 深度回调低吸(34) + 基础分批(21) 全量（自动生成）
     "accumulate": {
         "label": "吸筹族",
-        "n": 220,
-        "events": 25,
-        "win14": 62.7, "avg14": 10.51, "ci14_lo": 56.2, "ci14_hi": 68.8,
-        "win30": 66.5, "avg30": 21.18,  # n30=218
+        "n": 212,
+        "events": 13,
+        "win14": 61.8, "avg14": 9.63, "ci14_lo": 55.1, "ci14_hi": 68.1,
+        "win30": 63.8, "avg30": 20.03,  # n30=210
     },
 }
 # ============================================================
@@ -188,6 +188,7 @@ PARAM_REGIME = {
         "ITEM_EXPECTANCY_STATS 展示口径",
         "proximity 深跌确认口径（TH≥70 虚构达标线废弃，2026-08-09；信息层：监控 near_buy / 自选排序读取，不参与 action 决策）",
         "守卫1 大盘走弱拦截（A/B 重放证实正优化，2026-08-09）",
+        "四项审计落地（周期权重反转 / panic 分级仓位修复 / 概率去 z 化 / 供给降仓证伪，2026-08-10）",
     ],
     "monitors": [
         "A 独立恐慌市场事件≥3（当前 2，自然积累）",
@@ -197,6 +198,7 @@ PARAM_REGIME = {
     "iteration_note": "参数迭代纪律：回测先行 + 三件套记录（信号数/胜率/期望增量）+ 文档同步；新信号族须过 A2 三件套（walk-forward + 聚类 + 置换检验）",
     "amendments": [
         "2026-08-09 第一性原理+回测复核（369 信号，data/item_backtest_full_2025.json）：低估区 TH 为反向信号，原 proximity 阈值 TH≥70 在样本内 0 达成，系虚构达标线，已废弃；引擎 action 判定未改（proximity 不参与守卫/信号族/买点，TH 实际工作区间 2-69，deep 阈值 ≥35 / panic 触发均 th<35），但 proximity 被监控 near_buy（score≥60）与自选页排序读取，三区口径属信息层行为变更。守卫1 market_weak（market_th<45 且 mchg30<0 禁买）经 A/B 重放（95 品同窗口 335 信号：豁免后 +29 信号全负贡献，win 70.4→66.4 / avg14 15.17→13.61 全面变差）证实为正优化，保留并纳入参数台账。buy_distance TH_REF=55 三区口径（<35 黄金坑 / 35-54 摩擦带 / ≥55 趋势确认）为对照标准。",
+        "2026-08-10 四项审计落地（基线改为 365 天窗口：price_history 按保留策略仅存 2025-08-10 起，旧 2025-01-01 基线不可复现；新基线 332 信号等权口径与旧引擎 365d 完全一致 win14 69.9%/+15.36）：① 周期权重反转（consolidation 2.5 > accumulation 2.0 > markup 1.2，原吸筹>拉升>洗盘）——365d 回放洗盘期最优（win14 82.2%/+18.9、win30 +30.6），吸筹期（MA7>MA30 已启动）win30 +15.8 平庸、拉升期（追高）win14 63% 最差；② panic_resonance 跳过分级仓位（保持 fam.limit=0.30）——修复分级覆盖族级参数的架构 bug（panic 低 TH 使 th_boost 负值推高 value，换档即错配降仓），反事实 panic 0.30→0.20 使 wavg14 19.03→21.71 即 -2.68；③ 概率去 z 化——base_up 改由波动率 regime 主导（stable 65 / normal 55 / volatile 48 / high_volatile 42，TH<30→50），消除与位置 40% 的双计权，Z 仅保留展示口径；④ 供给收缩族维持 limit=0.10——组合模拟证伪降仓（降 0.05 致组合 -12.9pp，最大族被砍半）。加权验证：旧→v3 wavg14 19.71→20.48 / wwin14 72.9→74.4、wavg30 22.07→23.27 / wwin30 64.0→65.8；组合模拟 旧 +86.03%/-13.36% → v3 +83.65%/-13.05%（±2pp 噪音，回撤改善）。中间版废弃：v1（甜点区映射错配 panic，wavg30 20.09 劣化）、v2（supply 0.05 组合 -12.9pp）。实验产物归档 data/_exp_old_engine_365d.json / _exp_new_engine_365d.json / _exp_new_engine_v2_365d.json / _exp_v3_365d.json / _exp_v3_benchmark.json。",
     ],
 }
 

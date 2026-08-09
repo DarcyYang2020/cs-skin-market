@@ -1774,8 +1774,9 @@ def t_cost_sensitivity():
     be = d['breakeven_cost_pct']
     assert be['14d'] > 10 and be['30d'] > 15, f'盈亏平衡成本异常: {be}'
     r2 = next(r for r in d['rows'] if r['cost_pct'] == 2.0)
-    assert r2['14d_all']['win_pct'] == 71.1, f'2% 14d 胜率漂移: {r2["14d_all"]["win_pct"]}'
-    assert abs(r2['14d_all']['avg'] - 16.7) < 0.01, f'2% 14d 期望漂移: {r2["14d_all"]["avg"]}'
+    # 2026-08-10 回放基线窗口变更（369→332 信号，365 天窗口）后更新硬编码口径
+    assert r2['14d_all']['win_pct'] == 69.9, f'2% 14d 胜率漂移: {r2["14d_all"]["win_pct"]}'
+    assert abs(r2['14d_all']['avg'] - 15.36) < 0.01, f'2% 14d 期望漂移: {r2["14d_all"]["avg"]}'
 check('成本敏感性: 盈亏平衡>10% 且 2% 基准行与回放一致', t_cost_sensitivity)
 
 def t_portfolio_backtest():

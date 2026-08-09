@@ -193,9 +193,9 @@ def main():
                 "权益曲线未部署资金按现金计，首信号日前无仓位故 full/active 同区间）；strategy_nocap_ref=同模拟去掉 cap 上限"
                 "（仅信息参考，实盘不采用，回撤 -61% 不可行）；pool_buy_hold=策略池 95 品等权买入持有"
                 "（price_history.price_rmb 前向填充，2025 低价品暴涨主导，未计一次性 2% 成本）；"
-                "market_index=大盘指数同期（高价品权重，2025-10 五合一崩盘 maxDD -58%）。全量 370 信号（2025-02-12~2026-07-12）。"
+                "market_index=大盘指数同期（高价品权重，2025-10 五合一崩盘 maxDD -58%）。全量 332 信号（2025-08-10~2026-08-05，365 天窗口）。"
                 "结论参照：策略相对大盘大幅超额，但绝对收益低于池内等权买入持有——引擎的边际价值在风险控制"
-                "（maxDD -9.4% vs 池 -54% / 指数 -58%），非裸多收益。",
+                "（maxDD -13.05% vs 池 -55.59% / 指数 -58.21%），非裸多收益。",
         "replay": {"signals": len(sigs), "pool": args.get("pool"), "start": args.get("start"), "end": args.get("end")},
         "windows": windows,
         "signal_stats": {"n14": len(n14), "win14_pct": round(100.0 * wins / len(n14), 1),

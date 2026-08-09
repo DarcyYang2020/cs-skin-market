@@ -1,11 +1,15 @@
 # -*- coding: utf-8 -*-
-"""统一大脑研究 · 阶段1a：全窗口引擎回放（2025-01-01 起，池A=98老品）。
+"""统一大脑研究 · 阶段1a：全窗口引擎回放（2026-08-10 起基线窗口=可用全量数据）。
 
 只读回放当前真实引擎（run_item_backtest.backtest_item），输出到
-data/item_backtest_full_2025.json——当前标准回放（旧官方 88 基准 item_backtest_latest.json 已于 2026-08-07 删除）。
+data/item_backtest_full_2025.json——当前标准回放。
 
-池 A：price_history 首日 <= 2025-01-10 的品（2025-01-01 起有完整数据，98 品）。
-warmup=30（与 item-sample-plan 单品回测口径一致），start=2025-01-01，end=2026-08-05。
+基线窗口说明（2026-08-10）：price_history 按 365 天保留策略清理后，2025-08-10 前
+数据已不可复现（旧基线 2025-01-01 起 369 信号仅 40 条在前窗口，统计几乎一致：
+win14 79.0% vs 78.9%），故基线改为「可用全量窗口」= price_history 最早日 2025-08-10 起。
+
+池 A：price_history 首日 <= 2025-08-10 的品（98 品）。
+warmup=30（与 item-sample-plan 单品回测口径一致），start=2025-08-10，end=2026-08-05。
 """
 import sys, io, json
 from datetime import datetime
@@ -31,12 +35,12 @@ def pool_a_items():
     rows = conn.execute(
         """SELECT i.id, i.name, MIN(p.date) first_date
            FROM items i JOIN price_history p ON p.item_id = i.id
-           GROUP BY i.id HAVING first_date <= '2025-01-10'""").fetchall()
+           GROUP BY i.id HAVING first_date <= '2025-08-10'""").fetchall()
     conn.close()
     return {r["id"]: r["name"] for r in rows if r["name"] not in rib.EXCLUDED_ITEMS}
 
 def main():
-    START, END, WARMUP = "2025-01-01", "2026-08-05", 30
+    START, END, WARMUP = "2025-08-10", "2026-08-05", 30
     rib.patch_sentiment(50.0)
     market_ctx = build_market_context(START, end=END)
     print("market ctx dates:", len(market_ctx), flush=True)
@@ -53,7 +57,7 @@ def main():
                   f"elapsed={str(datetime.now()-t0)[:8]}", flush=True)
     sigs_out = [s for r in results for s in r.get("signals", []) if s.get("fwd14") is not None]
     rows, agg = rib.summarize(results)
-    out = {"args": {"start": START, "end": END, "warmup": WARMUP, "pool": "A(98老品)"},
+    out = {"args": {"start": START, "end": END, "warmup": WARMUP, "pool": "A(98老品,365天窗口)"},
            "generated": datetime.now().strftime("%Y-%m-%d %H:%M"),
            "aggregate": agg, "per_item": rows, "signals": sigs_out}
     with open("data/item_backtest_full_2025.json", "w", encoding="utf-8") as f:

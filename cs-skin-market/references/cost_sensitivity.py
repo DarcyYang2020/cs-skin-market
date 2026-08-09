@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """成本敏感性分析（Phase 1a，2026-08-07）。
 
-读 data/item_backtest_full_2025.json（370 信号），对 fwd14/fwd30 施加不同双边成本
+读 data/item_backtest_full_2025.json（365d 窗口 332 信号），对 fwd14/fwd30 施加不同双边成本
 （1%/2%/3%/5%），重算全样本与去簇口径的胜率/期望，并求 avg 归零（盈亏平衡）成本。
 
 结论（供决策，不修改引擎口径）:
@@ -60,7 +60,7 @@ def main():
             "30d_all": _agg(f30, c),
         })
     out = {
-        "meta": "成本敏感性(Phase 1a): 对回放 370 信号 fwd 收益施加双边成本重算。结论: 2% 口径保守, 盈亏平衡远超真实费率, 维持 2% 口径。",
+        "meta": "成本敏感性(Phase 1a): 对回放 365d 窗口 332 信号 fwd 收益施加双边成本重算。结论: 2% 口径保守, 盈亏平衡远超真实费率, 维持 2% 口径。",
         "fwd14_dist": {
             "n": len(f14), "mean": round(sum(f14) / len(f14), 2),
             "median": round(sorted(f14)[len(f14) // 2], 2),

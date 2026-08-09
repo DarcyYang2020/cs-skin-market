@@ -514,15 +514,30 @@ def analyze_probability(prices, trend_score=None, whale_prob=0, cycle_phase="unk
     std = statistics.stdev(window) if len(window) >= 3 else 1.0
     z = (current - mean) / std if std > 0 else 0
 
-    # Base probability: Z < -2 -> 70% up bias, Z > +2 -> 70% down bias
-    base_up = 50.0 - z * 10.0
-    base_up = max(15, min(85, base_up))
+    # 2026-08-10 去 z 化（消除与位置 40% 的双计权）：base_up 改由波动率 regime 主导
+    rets = []
+    for i in range(1, len(window)):
+        if window[i-1] > 0:
+            rets.append(abs(window[i] / window[i-1] - 1) * 100)
+    avg_vol = sum(rets) / len(rets) if rets else 1
+    if avg_vol > 5:
+        prob.volatility_regime = "high_volatile"
+    elif avg_vol > 2.5:
+        prob.volatility_regime = "volatile"
+    elif avg_vol < 0.8:
+        prob.volatility_regime = "stable"
+    else:
+        prob.volatility_regime = "normal"
 
-    # Decay with trend_score: if TH < 30, up probability cut in half
+    # Base probability: 低波动趋势延续性好 -> up bias 高；高波动不确定性大 -> 中性偏弱
+    base_up = {"stable": 65.0, "normal": 55.0, "volatile": 48.0, "high_volatile": 42.0}.get(
+        prob.volatility_regime, 55.0)
+
+    # Decay with trend_score: if TH < 30, up probability pulled toward 50
     if trend_score is not None and trend_score < 30:
-        base_up = base_up * 0.5 + (100 - base_up) * 0.5  # pull toward 50
+        base_up = 50.0
 
-    # Expected return based on Z-score mean reversion
+    # Expected return based on Z-score mean reversion (展示口径，不参与 value 计权)
     exp_ret = -z * 3.0  # rough: Z=-2 -> +6% expected return
 
     # Timeframe adjustments
@@ -541,21 +556,6 @@ def analyze_probability(prices, trend_score=None, whale_prob=0, cycle_phase="unk
     prob.expected_return_3d  = round(exp_ret * 0.3, 2)
     prob.expected_return_7d  = round(exp_ret * 0.6, 2)
     prob.expected_return_30d = round(exp_ret, 2)
-
-    # Volatility regime
-    rets = []
-    for i in range(1, len(window)):
-        if window[i-1] > 0:
-            rets.append(abs(window[i] / window[i-1] - 1) * 100)
-    avg_vol = sum(rets) / len(rets) if rets else 1
-    if avg_vol > 5:
-        prob.volatility_regime = "high_volatile"
-    elif avg_vol > 2.5:
-        prob.volatility_regime = "volatile"
-    elif avg_vol < 0.8:
-        prob.volatility_regime = "stable"
-    else:
-        prob.volatility_regime = "normal"
 
     # Key levels
     # --- Multi-feature probability correction ---
@@ -621,12 +621,15 @@ def compute_value_score(position, cycle, liquidity, probability):
         pos_score = 0.5
     val.breakdown["position"] = round(pos_score, 1)
 
-    # Cycle score (25%): accumulation > markup > consolidation > distribution
-    if cycle.phase == "accumulation":
+    # Cycle score (25%): consolidation > accumulation > markup > distribution
+    # 2026-08-10 反转依据（回放 369 buy 信号）：洗盘期 win14 82.2%/+18.9、win30 +30.6 最优；
+    # 吸筹期（MA7>MA30 已启动）win30 +15.8 平庸、拉升期（追高）win14 63% 最差。
+    # 第一性原理：CS 饰品「洗盘期」=低位横盘潜伏区，评分应奖励潜伏期而非已启动/追高段。
+    if cycle.phase == "consolidation":
         cyc_score = 2.5
-    elif cycle.phase == "markup":
+    elif cycle.phase == "accumulation":
         cyc_score = 2.0
-    elif cycle.phase == "consolidation":
+    elif cycle.phase == "markup":
         cyc_score = 1.2
     elif cycle.phase == "distribution":
         cyc_score = 0.5
@@ -1045,7 +1048,7 @@ SIGNAL_FAMILIES = (
         key="supply_accum",
         label="🟢 供给收缩·启动前吸筹·分批建仓",
         priority=30,
-        limit=0.10,
+        limit=0.10,  # 2026-08-10 组合验证后维持 0.10：14d 期望 +9.4 弱于整体，但降仓致组合收益 -12.9pp（最大族被砍半），回测先行证伪降仓
         trigger=lambda F: (
             len(F["supply_hist"]) >= 30 and len(F["prices"]) >= 8
             and not (F["survive"] > 0 and F["survive"] < 3000)
@@ -1509,8 +1512,12 @@ def decide_fusion_signal(
     # ---- 守卫2（微型TH/求购/Z门/大盘出货/连买抑制；buy/hold/watch 均评估）----
     _apply_guards(fd, F, _GUARD2)
 
-    # ---- 分级仓位（基础/恐慌族：价值分 + 情绪修正；后置族固定仓位覆盖）----
-    if fd.action in ("buy", "hold"):
+    # ---- 分级仓位（基础族：价值分 + 情绪修正；后置族固定仓位覆盖）----
+    # 2026-08-10：panic_resonance 升级族跳过分级（保持 fam.limit=0.30）——修复分级仓位覆盖
+    # 族级参数的问题：panic 低 TH 使 th_boost 负值把分级 value 推高，旧分档下恰好顶格、
+    # 换档即被错配降仓，而回放 369/365d 均显示 panic 14d 最强（win14 93.6%/+30.1），
+    # 仓位应由族级参数决定（反事实：panic 0.30→0.20 使 wavg14 19.03→21.71 即 -2.68）。
+    if fd.action in ("buy", "hold") and "panic_resonance_upgrade" not in fd.deduction_sources:
         pl_score = value.score
         if sentiment_score >= 75:
             pl_score += 2.0
@@ -1526,7 +1533,7 @@ def decide_fusion_signal(
             fd.position_limit = 0.05
         else:
             fd.position_limit = 0.0
-    else:
+    elif fd.action not in ("buy", "hold"):
         fd.position_limit = 0.0
 
     # ---- 供给扩张过滤（基础/恐慌/深跌低吸；D方案豁免）----

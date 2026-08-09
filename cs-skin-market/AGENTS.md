@@ -29,8 +29,8 @@
   `python references/sync_expectancy_config.py` 自动同步 `config.ITEM_EXPECTANCY_STATS` +
   `data/signal_event_counts.json`；`t_expectancy_sync` 全字段硬校验防漂移（改回放不重跑同步即测试失败）。
 - **基准对照**：`python references/benchmark_compare.py` → `data/benchmark_compare.json`
-  （策略 cap0.8 vs 池内等权买入持有 vs 大盘指数，full/active 双窗口）。2026-08-07 结论：策略 +193.30%/-9.39%
-  大幅跑赢大盘 -4.02%，但低于池内等权 +509.75%/-54.12% —— 引擎边际价值在风险控制（maxDD 9.4% vs 54~58%）。
+  （策略 cap0.8 vs 池内等权买入持有 vs 大盘指数，full/active 双窗口）。2026-08-10 结论（365d 窗口，332 信号）：策略 +83.65%/-13.05%
+  大幅跑赢大盘 -24.20%/-58.21%，但低于池内等权 +252.31%/-55.59% —— 引擎边际价值在风险控制（maxDD 13.05% vs 55~58%）。
 
 
 ## 数据来源与采集
@@ -54,7 +54,7 @@ run_item_analysis(name, prices, volumes, supply_hist, order_book, index_change_7
 | 估值定位 | _analyze_position | 90日百分位 + Z-score + 标签（低估/合理/高估/泡沫） |
 | 周期判定 | _analyze_cycle | 四阶段：吸筹/拉升/出货/洗盘，含持仓时间计数 |
 | 流动性评估 | score_liquidity | 二维 0-100：在售深度(50%) + 价格稳定(50%)（2026-08-07 去量重写，原成交量维度移除） |
-| 涨跌概率 | analyze_probability | 均值回归 + 波动率分类 + 3/7/14日预测 |
+| 涨跌概率 | analyze_probability | 波动率 regime 主导 + 3/7/14日预测（2026-08-10 去 z 化） |
 | 投资价值 | compute_value_score | 1-10 分 + S/A/B/C 评级 |
 | 庄盘识别 | analyze_whale | 四因子：价格异常 + 供给控盘 + 量价关系 + 波动率 |
 | 趋势健康度 | compute_trend_health (trend_health.py) | 五维 0-100：持续性/陡度/均线结构/供给×价格配合/异常缺口（2026-08-07 去量） |
@@ -302,7 +302,7 @@ cs-skin-market/
   notify_alert.py        -- 告警/监控推送（钉钉，.env NOTIFY_WEBHOOK_URL；M2 监控日报复用）
   references/scripts-archive/ -- 历史回测/回填脚本归档（run_backtest/run_item_backtest/run_item_9grid/run_item_exit/run_portfolio/run_backfill_history，2026-08-08 归档；当前回测统一走 references/refit_pipeline.py）
   data/market.db         -- SQLite 数据库
-  data/item_backtest_full_2025.json -- 标准回放基准（去量 v2，370 信号）
+  data/item_backtest_full_2025.json -- 标准回放基准（去量 v2，365d 窗口 332 信号）
   pipeline/
     config.py            -- 配置（TOKEN/BASE_URL/权重/PARAM_REGIME/J2_THRESHOLDS/ENGINE_VERSION）
     collector.py         -- csQAQ HTTP 采集（大盘指数/品类/搜索）

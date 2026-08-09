@@ -1915,3 +1915,27 @@ vs 池内等权 +509.75%/-54.12% vs 大盘 -4.02%；引擎边际价值在回撤�
 **纪律（替代冻结禁令）**：参数迭代 = 回测先行 + 三件套记录（信号数/胜率/期望增量）+ 文档同步；新信号族须过 A2 三件套（walk-forward + 聚类 + 置换检验）。
 
 **验证**：冒烟 84 passed / 0 failed / 6 skipped（skip 联网用例）。
+
+## 四项审计落地：周期权重反转 / panic 分级仓位修复 / 概率去 z 化 / 供给降仓证伪（2026-08-10，引擎决策）
+
+**背景**：评估指标体系第一性原理审计（六维评分权重 / 估值分位 / 供给分析 / 评级切分 / 绩效口径 / 持仓管理）给出四项可疑项，本条目为审计落地——回测先行，证伪项不落地。
+
+**基线变更（回放窗口 365 天）**：price_history 按 365 天保留策略仅存 2025-08-10 起，旧基线（2025-01-01 起 369 信号）不可复现；基线改为「可用全量窗口」（98 品，2025-08-10~2026-08-05），332 信号，等权口径与旧引擎 365d 完全一致（win14 69.9% / avg14 +15.36）。`run_item_backtest_full.py` 基线同步更新。
+
+**① 周期权重反转**：`compute_value_score` 周期分 吸筹 2.5 > 拉升 2.0 > 洗盘 1.2 → **洗盘 2.5 > 吸筹 2.0 > 拉升 1.2**。依据（365d 回放）：洗盘期最优（win14 82.2%/+18.9、win30 +30.6）；吸筹期（MA7>MA30 已启动）win30 +15.8 平庸；拉升期（追高）win14 63% 最差。第一性原理：CS 饰品「洗盘期」=低位横盘潜伏区，评分应奖励潜伏期而非已启动/追高段。
+
+**② panic 分级仓位修复**：`panic_resonance` 升级族跳过分级仓位（保持 `fam.limit=0.30`）——修复分级仓位覆盖族级参数的架构 bug：panic 低 TH 使 th_boost 负值把分级 value 推高，旧分档下恰好顶格、换档即被错配降仓；回放 panic 族 14d 最强（win14 93.6%/+30.1），仓位应由族级参数决定（反事实：panic 0.30→0.20 使 wavg14 19.03→21.71，即 -2.68）。基础族恢复旧分档（≥8.5→0.30 / ≥7→0.20 / ≥5→0.12）。
+
+**③ 概率去 z 化**：`analyze_probability` 的 `base_up` 由「Z 均值回归 50±10z」改为波动率 regime 主导（stable 65 / normal 55 / volatile 48 / high_volatile 42，TH<30→50）——消除与位置 40% 的双计权（位置因子已按 90 日分位给低估值高权重，概率再按 z 计权等价双重下注）；Z 仅保留展示口径（expected_return / prob_range / key levels）。
+
+**④ 供给收缩降仓证伪（未落地）**：审计候选「supply_accum 0.10→0.05」，组合模拟证伪——降仓后组合收益 -12.9pp（最大族被砍半，负向显著），维持 `limit=0.10`（14d 期望 +9.4 弱于整体属族内特性，应由仓位纪律而非降仓解决）。
+
+**A/B 验证（365d 同窗口，95 品；实验产物 data/_exp_*.json 归档）**：
+- 等权：旧引擎 = v3 完全一致（win14 69.9% / avg14 +15.36，332 信号）。
+- 加权：旧 → v3：wavg14 19.71→20.48 / wwin14 72.9→74.4（+1.5pp）；wavg30 22.07→23.27 / wwin30 64.0→65.8（+1.8pp）。
+- 组合模拟：旧 +86.03%/-13.36% → v3 +83.65%/-13.05%（±2pp 噪音范围，maxDD 改善）；cap0.8 calmar 10.1 / sharpe 2.47。
+- 中间版废弃：v1（甜点区映射错配 panic，wavg30 20.09 劣化）、v2（supply 0.05 组合 -12.9pp）。
+
+**落地**：`item_analysis.py`（①周期分值 / ②分级仓位跳过分级 / ③概率 base_up / ④supply 注释维持 0.10）；`references/run_item_backtest_full.py`（基线 365 天窗口）；产物重跑 `item_backtest_full_2025.json` / `benchmark_compare.json` / `signal_event_counts.json` / `j2_channel_status.json` / `portfolio_backtest.json` / `cost_sensitivity.json` / `tests/snapshots/replay_v2.json`；`tests/test_smoke.py` t_cost_sensitivity 硬编码口径更新（71.1/16.7 → 69.9/15.36）；`config.PARAM_REGIME` 台账追加本条；实验产物 `_exp_old_engine_365d.json` / `_exp_new_engine_365d.json` / `_exp_new_engine_v2_365d.json` / `_exp_v3_365d.json` / `_exp_v3_benchmark.json` 归档。
+
+**验证**：冒烟 84 passed / 0 failed / 6 skipped（skip 联网用例）。

@@ -131,7 +131,7 @@ cs-skin-market/
 | 文件 | 说明 |
 |---|---|
 | `market.db` | SQLite 主库（gitignore） |
-| `item_backtest_full_2025.json` | **标准回放基准**（去量 v2，370 信号） |
+| `item_backtest_full_2025.json` | **标准回放基准**（去量 v2，365d 窗口 332 信号） |
 | `item_backtest_full_2025.baseline450.`json / `.devol_v1.`json | 去量演进对比存档（旧引擎产物，仅存证） |
 | `j2_channel_status.json` / `refit_pipeline_report.json` / `portfolio_backtest.json` 等 | 研究产物 |
 | `backup/` | 每日 DB 备份（保留 14 份，gitignore） |
