@@ -92,3 +92,54 @@ discover 扩池（手动）→ 候选入库（items + 90日K线，立即落库�
 - **服务器重启中断扫描**: discover 进度落盘（data/discover_progress_*.json），重触发按「已库 3 天新鲜品」自动跳过已完成。
 - **计划任务失败**: 排查顺序 —— 台账 JSONL（做了什么）→ data/daily_collect.log（采集详情）→ health_checks 表（数据体检）。
 - **数据不一致**: 以本手册为准；发现 AGENTS.md / PROJECT_STRUCTURE.md 与新口径冲突时修正对应文档并在此追加记录。
+
+## 8. 数据审计方案（全库核查 SOP）
+
+> 适用：怀疑价格/在售量历史段被污染（串品、脏段）时，对数据层做全量核查与修复。
+> 首次执行：2026-08-09（188 品逐品实拉），结论与修复清单见 `decision-log.md`「全库数据审计 + 混合回放重跑」。
+
+### 触发场景
+- 分析报告/信号复盘收益与实盘明显不符（如「至今收益」与回放 `fwd_series` 末端价对不上）。
+- 每日采集后部分品价格整段偏离（8/8 曾因 DOM 价选择器失效 → price_rmb=0 → 串品 chart 误入，8/9 起采集器已有锚兜底）。
+- 回放产物中 entry 与 DB 同日价偏差 >15% 的条数增多。
+
+### 审计步骤（逐品实拉）
+1. **快照备份**：先备份 `data/market.db`（复制为 `market.db.bak-<日期>`），保证修复全程可回滚。
+2. **逐品实拉**：对全部 items 逐个用纯悠悠 platform=2 锚（info/good 的 yyyp_sell_price + yyyp_sell_num）重取真实 chart90（91 天 close + in_sale），与 `price_history` 逐日对齐，计算整段 medP/medS 偏差。
+   - 首轮抓取空（EMPTY）→ 重试一轮（复用浏览器会话）；仍空（低流动性/页面异常）保留 DB 原值待人工复核。
+3. **判定分类**：
+   - OK：与实时 chart 一致（2026-08-09：147/188）。
+   - FIXED：DB 整段明显偏离实拉值 → 判定脏段，回填。
+   - 串品：价格整段高 27-43% + 在售量错 92-22900%（8/8 火卫一事件特征），需同时查采集器根因。
+   - SALE 偏差：sale 端差 30-80% 属平台流动/表达差异，**非数据错误**，不修复。
+4. **回填**：`UPDATE price_history` 仅改 price_rmb + in_sale_count，保留 volume/created_at；原值备份 `data/_batch_repair_backup.json`。
+5. **根因修复**：补齐采集器兜底（8/9：DOM 价失效时回退 info/good `yyyp_sell_price`，见 `collector_csqaq.py`），防再次串品。
+6. **重新分析**：修复品重跑 `/api/items/analyze` 刷新 `analysis_results`，持仓/自选页面即时生效。
+
+### 回放联动（数据修复后必做）
+数据层变更会改变回放产物，必须按序重跑（PARAM_FREEZE 允许「回放同源，改产物必须重跑同步」）：
+1. **构建混合回放库**：`data/replay_hybrid.db` = 修复后现库 + 历史备份（`market.db.bak-p0-*`）补 2025-01-01 起 price_history 与 market_index（2026-08-09：插入 21292 + 631 行，共 65106 行）。
+2. **重跑回放**：`$env:CS_MODEL_DB=<混合库绝对路径>; python references/run_item_backtest_full.py`（约 10 分钟，96 品，runner 已归档至 `references/scripts-archive/`，加载路径脚本内已兼容）。
+3. **校验**：信号数应接近 370；受影响信号 entry ≈ DB 同日价；偏差 >15% 条数（2026-08-09：24 → 0）。
+4. **同步**：`python references/sync_expectancy_config.py`（config.ITEM_EXPECTANCY_STATS + signal_event_counts + J-3）→ `python references/sync_replay_snapshot.py`（回放快照）。
+5. **验证**：冒烟测试全绿（2026-08-09：84 passed / 6 skipped）。
+
+### 审计证据留存
+| 文件 | 内容 |
+|---|---|
+| `data/_audit_repair_sweep.jsonl` | 188 品主扫（OK/EMPTY/FIXED 状态 + 偏差段数） |
+| `data/_audit_repair_retry.jsonl` | 首轮空品重试结果 |
+| `data/_audit_chart_sweep.jsonl` | 逐品 chart 抓取明细 |
+| `data/_audit_anchor_sweep.jsonl` / `_audit_anchor_issues.json` | 锚点校验明细 / 问题清单 |
+| `data/_batch_repair_backup.json` / `_awp_ph_backup.json` | 8/8 批量回填原值备份 |
+| `data/item_backtest_full_2025.json.bak-preaudit-20260809` | 审计前回放产物备份（对比用） |
+
+### 2026-08-09 实例结果（速览）
+- 188 品：147 OK / 34 重试后 OK2 / 1 仍空（法玛斯 对比涂装，低流动性淘汰品）。
+- 7 品实修复：MP9 气密(86 段)、加利尔 蓝钛(87 段)、MP7 地下水(66 段)、USP 守护者(4 段)、USP 地狱门票(17 段)、沙漠之鹰 青铜装饰(14 段)、AK 精英之作崭新出厂(1 段)。
+- 无 SAP/整体性错误；气密 5-6 月脏段（350-385）回真实 200-300 档。
+- 回放联动后：369 信号 entry 与 DB 同日价偏差 >15% 由 24 条 → 0 条。
+
+### 约束
+- 只动数据层/展示层/文档；评分与决策参数属 PARAM_FREEZE（至 2027-04-25），审计一律不碰。
+- 回放产物变更后必须重跑 sync（`t_expectancy_sync` / `t_replay_snapshot` 硬校验防漂移）。
