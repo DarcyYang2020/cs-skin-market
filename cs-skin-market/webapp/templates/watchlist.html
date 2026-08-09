@@ -100,6 +100,11 @@
 
 <!-- Watchlist Table -->
 <div class="card" style="padding:0;" id="wl-card">
+  <div id="wl-batch-bar" style="display:none;padding:8px 14px;border-bottom:1px solid var(--border);align-items:center;gap:10px;flex-wrap:wrap;">
+    <span style="font-size:13px;">已选 <b id="wl-batch-count" style="color:var(--accent);">0</b> 项</span>
+    <button type="button" class="btn btn-accent btn-sm" onclick="batchScanSelectedFromTable()">📊 批量扫描已选</button>
+    <button type="button" class="btn btn-danger btn-sm" onclick="batchDeleteSelected()">🗑 批量删除</button>
+  </div>
   <div class="table-wrap">
     <table id="wl-table">
       <thead>
@@ -118,7 +123,7 @@
       <tbody id="wl-tbody">
         {% for item in items %}
         <tr id="wl-row-{{ item.id }}" class="wl-row" data-id="{{ item.id }}" data-name="{{ item.name|e }}" data-price="{{ item.latest_price or 0 }}" data-grade="{{ item.latest_grade or 'Z' }}" data-holding="{{ item.holding or 0 }}" data-created="{{ item.created_at or '' }}">
-          <td><input type="checkbox" class="wl-checkbox" value="{{ item.id }}"></td>
+          <td><input type="checkbox" class="wl-checkbox" value="{{ item.id }}" onchange="updateWlBatchBar()"></td>
           <td><strong>{{ item.name }}</strong></td>
           <td><span>{% if item.holding %}✅{% else %}⬜{% endif %}</span></td>
           <td>
@@ -410,11 +415,29 @@ function sortWatchlist(by) {
 }
 
 // ---- 搜索：防抖后服务端搜索（刷新后 ?q= 保留输入）----
+// 2026-08-09 IME 修复：中文拼音输入组合期间（compositionstart~end）不触发搜索，避免拼音没打完就跳转
 var wlSearchTimer = null;
+var wlComposing = false;
+function wlComposingStart() {
+  wlComposing = true;
+  if (wlSearchTimer) { clearTimeout(wlSearchTimer); wlSearchTimer = null; }
+}
+function wlComposingEnd() {
+  wlComposing = false;
+  debounceWatchlistSearch();
+}
 function debounceWatchlistSearch() {
+  if (wlComposing) return;
   if (wlSearchTimer) clearTimeout(wlSearchTimer);
   wlSearchTimer = setTimeout(function() { window.location.href = buildWatchlistUrl(1); }, 400);
 }
+// composition 事件必须用 addEventListener 绑定：oncompositionstart/end 不是标准事件处理程序属性，Chrome 不触发内联写法
+(function() {
+  var el = document.getElementById('wl-search-input');
+  if (!el) return;
+  el.addEventListener('compositionstart', wlComposingStart);
+  el.addEventListener('compositionend', wlComposingEnd);
+})();
 
 // ---- 分页 ----
 function goPage(p) { window.location.href = buildWatchlistUrl(p); }
@@ -519,9 +542,41 @@ document.addEventListener('htmx:afterRequest', function(evt) {
   if (wl) wl.style.display = 'none';
 });
 
-// ---- Checkbox: toggle all ----
-function toggleAllCheckboxes(master) {
-  document.querySelectorAll('.wl-checkbox').forEach(function(cb) { var r=cb.closest('.wl-row');if(r&&r.style.display!=='none'){cb.checked=master.checked;} });
+// ---- Watchlist 行复选框批量操作（2026-08-10）：勾选后出现批量条，支持批量扫描/批量删除
+// toggleAllCheckboxes 统一在 app.js 维护（defer 后执行会覆盖本页定义，故不在此重复声明）----
+function getSelectedWlIds() {
+  return Array.prototype.map.call(document.querySelectorAll('.wl-checkbox:checked'), function(cb) { return Number(cb.value); });
+}
+function updateWlBatchBar() {
+  var bar = document.getElementById('wl-batch-bar');
+  var cbs = document.querySelectorAll('.wl-checkbox');
+  var checked = Array.prototype.filter.call(cbs, function(cb) { return cb.checked; });
+  var master = document.querySelector('#wl-table thead input[type=checkbox]');
+  if (master) {
+    master.checked = checked.length > 0 && checked.length === cbs.length;
+    master.indeterminate = checked.length > 0 && checked.length < cbs.length;
+  }
+  if (!bar) return;
+  var n = checked.length;
+  bar.style.display = n ? 'flex' : 'none';
+  var cnt = document.getElementById('wl-batch-count');
+  if (cnt) cnt.textContent = n;
+}
+function batchScanSelectedFromTable() {
+  var ids = getSelectedWlIds();
+  if (!ids.length) { showToast('请先勾选要扫描的物品', 'error'); return; }
+  batchScanSelectedIds(ids);
+}
+function batchDeleteSelected() {
+  var ids = getSelectedWlIds();
+  if (!ids.length) { showToast('请先勾选要删除的物品', 'error'); return; }
+  if (!confirm('确认删除选中的 ' + ids.length + ' 个物品？该操作不可恢复。')) return;
+  var done = 0;
+  ids.forEach(function(id) {
+    fetch('/api/watchlist/' + id, { method: 'DELETE' })
+      .then(function() { done++; if (done === ids.length) location.reload(); })
+      .catch(function() { done++; if (done === ids.length) location.reload(); });
+  });
 }
 
 // ---- Batch scan: modal multi-select ----

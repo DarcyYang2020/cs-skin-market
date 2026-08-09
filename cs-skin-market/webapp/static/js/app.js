@@ -113,8 +113,14 @@ document.addEventListener('htmx:afterRequest', function(evt) {
 });
 
 // ---- Checkbox Select All ----
+// 2026-08-10：加入行过滤（跳过隐藏行）+ 联动持仓管理批量操作条；防御性调用避免无批量条页面报错
 function toggleAllCheckboxes(source) {
-  document.querySelectorAll('.wl-checkbox').forEach(function(cb) { cb.checked = source.checked; });
+  document.querySelectorAll('.wl-checkbox').forEach(function(cb) {
+    var r = cb.closest ? cb.closest('.wl-row') : null;
+    if (r && r.style && r.style.display !== 'none') cb.checked = source.checked;
+    else if (!r) cb.checked = source.checked;
+  });
+  if (typeof window.updateWlBatchBar === 'function') window.updateWlBatchBar();
 }
 
 // ---- Auto-close flash messages ----
