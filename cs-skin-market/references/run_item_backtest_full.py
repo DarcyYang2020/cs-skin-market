@@ -9,10 +9,17 @@ warmup=30（与 item-sample-plan 单品回测口径一致），start=2025-01-01�
 """
 import sys, io, json
 from datetime import datetime
+from pathlib import Path
 sys.path.insert(0, ".")
 import importlib.util
 
-spec = importlib.util.spec_from_file_location("rib", "run_item_backtest.py")
+# 2026-08-09：run_item_backtest.py 已归档至 references/scripts-archive/
+_ARCHIVED_RUNNER = Path(__file__).resolve().parent / "scripts-archive" / "run_item_backtest.py"
+_RUNNER_CANDIDATES = [_ARCHIVED_RUNNER, Path("run_item_backtest.py")]
+_RUNNER = next((p for p in _RUNNER_CANDIDATES if p.exists()), None)
+if _RUNNER is None:
+    raise FileNotFoundError("run_item_backtest.py not found (looked in scripts-archive and cwd)")
+spec = importlib.util.spec_from_file_location("rib", str(_RUNNER))
 rib = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(rib)
 

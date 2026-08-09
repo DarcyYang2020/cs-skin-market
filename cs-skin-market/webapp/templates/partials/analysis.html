@@ -139,6 +139,7 @@
         {% if sp.sell_action %}
         <br>参考卖出价（现价）¥{{ "%.2f"|format(sp.exec_price or price_rmb or 0) }}
         {% if sp.stop_price %}<br><span style="color:var(--text-muted);">90日支撑 ¥{{ "%.2f"|format(sp.stop_price) }}（挂单参考，非成交参考）</span>{% endif %}
+        {% if sp.sold_recent %}<br><span style="color:var(--text-muted);">已执行止损 {{ sp.sold_recent }}/{{ sp.total_ref }} 件（{{ "%.0f"|format(sp.sold_pct) }}%）</span>{% endif %}
         <br>建议卖出 {{ sp.sell_qty }} 件（{{ sp.ratio_pct }}%）
         {% endif %}
       </div>

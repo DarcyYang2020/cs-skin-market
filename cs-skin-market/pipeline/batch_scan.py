@@ -126,9 +126,13 @@ def _topup_price_plan(avg_cost, qty, current_price, analysis):
     return None, None, None, suggest
 
 
-def _stop_loss_plan(avg_cost, qty, current_price, analysis, market_30d_change=None):
+def _stop_loss_plan(avg_cost, qty, current_price, analysis, market_30d_change=None, sold_recent=0):
     """止损评估矩阵（F-3.7，2026-08-09，纯展示层，数据见 data/stop_loss_backtest.json）。
 
+    F-3.14 (2026-08-09) 已执行止损感知（sold_recent = 近30天累计卖出件数）：
+    - 「减半止损」以原始量（当前剩余+已卖出）的 50% 为目标上限，已卖出部分扣除，
+      不再按当前剩余量的一半重复建议（用户已分批止损后不再「永远减半」）；
+    - 已减半（≥50%）后：单品 TH<30（趋势仍恶化）→ 残余升级全止损；否则转观察/不止损。
     触发线：浮亏≥成本线 -15% 触发评估（非直接止损）。状态判定优先级：
       1) 供给扩张（单品在售量30日>+5%）：全止损——结构性派发无反弹预期（60d 深套 41%→1%）
       2) 恐慌深跌（大盘30日≤-15%）：不止损→转补仓评估（60d +1.4% / 90d +7.6%，V型底指纹）
@@ -150,14 +154,20 @@ def _stop_loss_plan(avg_cost, qty, current_price, analysis, market_30d_change=No
     else:
         s30 = float(getattr(supply, "supply_change_30d", 0) or 0)
     m = market_30d_change
+    sold_recent = max(0, int(sold_recent or 0))
+    total_ref = qty + sold_recent  # 原始参考量 = 当前剩余 + 近30天已卖出
+    sold_pct = (sold_recent / total_ref * 100) if total_ref > 0 else 0.0
+    _th = getattr(analysis, "trend_health", None) or {}
+    th_score = _th.get("score", 50) if isinstance(_th, dict) else getattr(_th, "score", 50)
     low90 = float(getattr(analysis.position, "low_90d", 0) or 0)
     support = low90 if low90 > 0 else current_price
     stop_price = round(min(support, current_price), 2)
 
     if s30 > 5:
         state, action = "供给扩张", "全止损"
+        _sold_note = f"（已执行止损 {sold_recent}/{total_ref} 件）" if sold_recent else ""
         reason = (f"在售量30日扩张{s30:+.0f}%（>5%），结构性派发、无反弹预期；"
-                  f"回测60d深套率41%→全止损后降至1%")
+                  f"回测60d深套率41%→全止损后降至1%{_sold_note}")
         sell_action, ratio_pct, sell_qty = "sell", 100, qty
         evidence = "60d 深套 41%→1%，派发结构无反弹预期"
     elif m is not None and m <= -15:
@@ -167,11 +177,29 @@ def _stop_loss_plan(avg_cost, qty, current_price, analysis, market_30d_change=No
         sell_action, ratio_pct, sell_qty = None, 0, 0
         evidence = "60d +1.4% / 90d +7.6%，V型底 win87% 佐证"
     elif m is not None and -15 < m <= -5:
-        state, action = "阴跌中继", "减半止损"
-        reason = (f"大盘30日{m:.1f}%（-15%~-5%）阴跌中继，易继续阴跌；"
-                  f"回测60d深套率17.6%→减半后3.4%，全损过激（-21.1%）取折中")
-        sell_action, ratio_pct, sell_qty = "reduce", 50, max(1, qty // 2)
-        evidence = "60d 深套 17.6%→3.4%；均-16.3%（全损-21.1/扛单-11.6 折中）"
+        if sold_pct < 50:
+            state, action = "阴跌中继", "减半止损"
+            _target = int(total_ref * 0.5 + 0.5)  # 减半目标 = 原始量50%（四舍五入）
+            sell_qty = max(1, min(qty, _target - sold_recent))
+            sell_action, ratio_pct = "reduce", round(sell_qty / qty * 100)
+            _sold_txt = (f"；已执行止损 {sold_recent}/{total_ref} 件（{sold_pct:.0f}%），"
+                         f"本次补足减半差量 {sell_qty} 件") if sold_recent else ""
+            reason = (f"大盘30日{m:.1f}%（-15%~-5%）阴跌中继，易继续阴跌；"
+                      f"回测60d深套率17.6%→减半后3.4%，全损过激（-21.1%）取折中{_sold_txt}")
+            evidence = (f"60d 深套 17.6%→3.4%；距减半线还差 {max(0, _target - sold_recent)} 件"
+                        if sold_recent else "60d 深套 17.6%→3.4%；均-16.3%（全损-21.1/扛单-11.6 折中）")
+        elif th_score < 30:
+            state, action = "阴跌中继·已减半", "残余升级全止损"
+            reason = (f"大盘30日{m:.1f}%阴跌中继，已执行减半止损（{sold_pct:.0f}%）且单品TH={th_score}<30 持续恶化；"
+                      f"剩余 {qty} 件为风险残余，升级清仓")
+            sell_action, ratio_pct, sell_qty = "sell", 100, qty
+            evidence = f"已减半 {sold_pct:.0f}%，TH={th_score}<30 恶化，残余全清"
+        else:
+            state, action = "阴跌中继·已减半", "观察，不再减半"
+            reason = (f"大盘30日{m:.1f}%阴跌中继，但已执行减半止损（{sold_pct:.0f}%），"
+                      f"剩余 {qty} 件不再重复减半；观察企稳或跌破关键支撑再评估")
+            sell_action, ratio_pct, sell_qty = None, 0, 0
+            evidence = f"已减半 {sold_pct:.0f}%，剩余观察；TH={th_score}"
     elif m is not None and m > 5:
         state, action = "大盘上涨段", "不止损"
         reason = (f"大盘30日{m:+.1f}%（>+5%）上涨段，持仓随大盘修复概率高；"
@@ -193,10 +221,11 @@ def _stop_loss_plan(avg_cost, qty, current_price, analysis, market_30d_change=No
         "ratio_pct": ratio_pct, "sell_action": sell_action, "sell_qty": sell_qty,
         "eval_line": "浮亏≥-15% 触发评估（非直接止损）",
         "evidence": evidence,
+        "sold_recent": sold_recent, "total_ref": total_ref, "sold_pct": round(sold_pct, 1),
     }
 
 
-def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th=None, sentiment_score=50.0, market_30d_change=None, total_assets=0.0):
+def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th=None, sentiment_score=50.0, market_30d_change=None, total_assets=0.0, sold_recent=0):
     """Generate personalized portfolio advice based on cost basis and current position.
     sentiment_score: contrarian 0-100 (0=extreme greed, 100=extreme fear), default neutral.
     补仓分层阈值来自全量日记录回放(2026-08-04, 2025-11-02~2026-07-13, warmup=60, 只读引擎):
@@ -298,7 +327,7 @@ def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th
     _fusion = getattr(analysis, "fusion_decision", {}) or {}
     _fusion_act = _fusion.get("action", "") if isinstance(_fusion, dict) else ""
     # F-3.7 止损评估矩阵（纯展示层，回测 data/stop_loss_backtest.json）：浮亏≥-15% 触发评估
-    _sp = _stop_loss_plan(avg_cost, qty, current_price, analysis, market_30d_change)
+    _sp = _stop_loss_plan(avg_cost, qty, current_price, analysis, market_30d_change, sold_recent)
     if _sp:
         advice["stop_plan"] = _sp
 
@@ -853,6 +882,7 @@ def build_scan_html(results, total, market_ctx=None, now_str="", name_link=None,
                 _sp_line = ('<br><span style="font-size:10px;color:var(--text-secondary);">🛑 止损评估：'
                             + _esc(str(_sp.get("state", ""))) + " · " + _esc(str(_sp.get("action", "")))
                             + (' · 参考(现价) ¥%.2f' % float(_sp.get("exec_price") or 0) if _sp.get("sell_action") else "")
+                            + (' · 已损%d/%d' % (int(_sp["sold_recent"]), int(_sp["total_ref"])) if _sp.get("sold_recent") else "")
                             + (' · 卖出%s件' % int(_sp["sell_qty"]) if _sp.get("sell_action") else "")
                             + '</span>')
             h.append('<td>' + _action_badge(pa) + "<br><span style=\"font-size:11px;color:var(--text-muted);\">" + _esc(pa.get("suggest", "")) + "</span>" + _sp_line + _exec_btn(r["name"], pa, r["price_rmb"]) + "</td></tr>")

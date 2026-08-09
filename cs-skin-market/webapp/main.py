@@ -1184,7 +1184,13 @@ async def _scan_item(row, idx, ms, market_th_score, sentiment_score, total_asset
         # 报告价格锚定悠悠有品 DOM 价（chart fallback 价只补 K 线不参与定价）
         if getattr(item, "price_rmb", 0) and item.price_rmb > 0:
             analysis.price_rmb = item.price_rmb
-        pa = _portfolio_advice(holding, avg_cost, qty, item.price_rmb, analysis, market_th=market_th_score, sentiment_score=sentiment_score, market_30d_change=ms["chg30"], total_assets=total_assets)
+        # F-3.14 已执行止损感知：近30天卖出件数传入持仓建议（减半止损以原始量50%为目标，不重复建议）
+        conn_sold = db.get_conn()
+        try:
+            _sold_recent = db.sold_qty_recent(conn_sold, item_id)
+        finally:
+            conn_sold.close()
+        pa = _portfolio_advice(holding, avg_cost, qty, item.price_rmb, analysis, market_th=market_th_score, sentiment_score=sentiment_score, market_30d_change=ms["chg30"], total_assets=total_assets, sold_recent=_sold_recent)
         _fd_lim = (getattr(analysis, "fusion_decision", {}) or {}).get("position_limit", 0) or 0
         result = dict(
             name=exact_name, holding=holding, avg_cost=avg_cost, qty=qty,

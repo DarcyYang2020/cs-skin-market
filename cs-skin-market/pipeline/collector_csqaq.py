@@ -503,6 +503,15 @@ async def _fetch_item_detail_once(good_id: int):
                 _dd0 = json.loads(captured['detail'])
                 _gi0 = ((_dd0.get('data') or {}).get('goods_info')) or {}
                 item.sell_num_yyyp = int(_gi0.get('yyyp_sell_num', 0) or 0)
+                # 2026-08-09 锚兜底：DOM 价选择器失效（页面改版/加载时序）时，
+                # 回退 info/good 的 yyyp_sell_price，避免 chart 挑选无价格锚（防串品 chart 误入）。
+                if not item.price_rmb:
+                    try:
+                        _ysp0 = float(_gi0.get('yyyp_sell_price') or 0)
+                        if _ysp0 > 0:
+                            item.price_rmb = _ysp0
+                    except (TypeError, ValueError):
+                        pass
             except Exception:
                 pass
         _best_chart = _pick_best_chart(captured.get('charts') or [], item.price_rmb, item.sell_num_yyyp)

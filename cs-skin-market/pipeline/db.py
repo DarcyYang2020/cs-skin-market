@@ -805,6 +805,19 @@ def list_executions(conn):
     return [dict(r) for r in conn.execute("SELECT * FROM executions ORDER BY id DESC")]
 
 
+def sold_qty_recent(conn, item_id, days=30):
+    """近 N 天累计卖出件数（sell/reduce，按 advice_date）——供止损矩阵识别「已执行止损」（F-3.14）。
+
+    纯数据层：不改任何信号/引擎；口径与 realized_pnl_total 一致（只看卖单）。
+    """
+    cutoff = (datetime.now(TZ_BJ) - timedelta(days=days)).strftime("%Y-%m-%d")
+    row = conn.execute(
+        "SELECT COALESCE(SUM(qty), 0) AS n FROM executions "
+        "WHERE item_id=? AND action IN ('sell','reduce') AND advice_date >= ?",
+        (item_id, cutoff)).fetchone()
+    return int(row["n"] or 0)
+
+
 def realized_pnl_total(conn):
     """累计已实现盈亏（2026-08-09）：sell/reduce 实际卖出 = (成交价 - 操作前持仓成本) x 数量。
 

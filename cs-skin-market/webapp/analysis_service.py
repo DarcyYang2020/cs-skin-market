@@ -534,7 +534,7 @@ async def analyze_fresh(item, good_id, exact_name, *, db_item_id=None, apply_anc
                 "SELECT holding, avg_cost, quantity FROM items WHERE id=?", (use_id,)).fetchone()
             if _hr and _hr["holding"] and (_hr["avg_cost"] or 0) > 0:
                 _holding_ctx = {"holding": 1, "avg_cost": float(_hr["avg_cost"] or 0),
-                                "qty": int(_hr["quantity"] or 1)}
+                                "qty": int(_hr["quantity"] or 1), "item_id": int(use_id or 0)}
         finally:
             conn_h.close()
     except Exception:
@@ -640,11 +640,22 @@ def build_analysis_ctx(analysis, kline_stale_days=None, kline_stale_date="",
     if holding_ctx and holding_ctx.get("holding"):
         try:
             from pipeline.batch_scan import _portfolio_advice
+            _sold_recent = 0
+            _iid = holding_ctx.get("item_id")
+            if _iid:
+                try:
+                    _conn_s = db.get_conn()
+                    try:
+                        _sold_recent = db.sold_qty_recent(_conn_s, int(_iid))
+                    finally:
+                        _conn_s.close()
+                except Exception:
+                    _sold_recent = 0
             holding_advice = _portfolio_advice(
                 True, float(holding_ctx.get("avg_cost") or 0), int(holding_ctx.get("qty") or 1),
                 analysis.price_rmb or 0, analysis,
                 market_th=market_th, sentiment_score=sentiment,
-                market_30d_change=market_30d_change, total_assets=0.0)
+                market_30d_change=market_30d_change, total_assets=0.0, sold_recent=_sold_recent)
         except Exception as _he:
             _log.warning(f"holding advice failed {analysis.name}: {_he}")
     # F-3.13 (2026-08-09) 持仓品「建议动作」以持仓风控矩阵为准（止损/补仓/止盈优先于入场信号），

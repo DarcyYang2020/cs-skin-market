@@ -2431,6 +2431,16 @@ def t_f37_stop_loss():
                           market_th=50, sentiment_score=60, market_30d_change=0.0)
     assert a['action'] == '禁止补仓', a['action']
     assert a['stop_plan']['state'] == '供给扩张'
+    # F-3.14 已执行止损感知：减半以原始量50%为目标（扣除已卖出），不按剩余量一半重复建议
+    sp = _stop_loss_plan(100.0, 42, 80.0, mk(th=45), market_30d_change=-8.0, sold_recent=15)
+    assert sp['sell_action'] == 'reduce' and sp['sell_qty'] == 14, sp  # 57*50%=28.5→29，29-15=14
+    assert sp['total_ref'] == 57 and sp['sold_pct'] == 26.3, sp
+    # 已减半(>=50%) + 趋势尚可 -> 观察，不再减半
+    sp = _stop_loss_plan(100.0, 20, 80.0, mk(th=45), market_30d_change=-8.0, sold_recent=25)
+    assert sp['sell_action'] is None and '观察' in sp['action'], sp
+    # 已减半 + TH<30 -> 残余升级全止损
+    sp = _stop_loss_plan(100.0, 20, 80.0, mk(th=25), market_30d_change=-8.0, sold_recent=25)
+    assert sp['sell_action'] == 'sell' and sp['sell_qty'] == 20, sp
 check('F-3.7 补仓倒金字塔 + 止损评估矩阵', t_f37_stop_loss)
 
 print('[F-3.13: 持仓品建议动作与卡片上下文 (2026-08-09)]')

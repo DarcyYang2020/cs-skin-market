@@ -1779,3 +1779,60 @@ vs 池内等权 +509.75%/-54.12% vs 大盘 -4.02%；引擎边际价值在回撤�
 - tests/test_smoke.py：t_f37 补 exec_price 断言；新增 t_f313_holding_action（供给扩张→建议动作=清仓/止损；浮亏<10% 仍出 holding_advice）。
 **约束**：全部为展示层/文档层/测试改动，未触碰引擎信号与 PARAM_FREEZE（止损矩阵阈值、补仓节奏均为既有回测参数）。
 **验证**：冒烟全绿；py_compile 全过。
+## 数据修复：AWP | 火卫一 价格错乱（2026-08-09，采集器锚兜底加固）
+**背景**：用户反馈「AWP | 火卫一 (崭新出厂)」报告价格有误。核实时 csQAQ 悠悠锚价 63.89 / chart 最新价 64.0 / 在售 1401（good_id=279），而 DB 与报告却是 98.36 / 382。
+**根因**：
+- price_history 2026-05-11~08-09 共 90 天价格+在售量全错（价高 20-70%、在售低 50-90%），另有零星坏点（2025-09-14 DB 45.34 vs 真 55.0、2026-05-09 DB 62.92 vs 真 39.8）。
+- 链路：collector_csqaq.py `_fetch_item_detail_once` 第一处悠悠锚 DOM（`.ant-statistic-content-value`）抓不到值 → item.price_rmb=0 → `_pick_best_chart` 无价格锚选中串品 chart → `_kline_matches_anchor`（L392）因 price_rmb=0 跳过价格校验 → 错误数据入库；第二处页尾定锚虽有 detail 兜底，但选 chart 已错。
+**结论**：
+- 数据回填：chart90（91 天 close+in_sale）覆盖 + deep 修正 221 点 + 删除 365 天窗口外误插行，保留策略起点 2025-08-09；核对关键点：08-09=64.0/1401、08-03=64.89/1250、07-11=112.4/1317、06-08=123.0/371、05-09=39.8/397、2025-09-14=55.0/556。
+- 采集器加固：`_fetch_item_detail_once` 第一定锚段解析 `captured['detail']` 时若 item.price_rmb 仍为 0，回退 `_gi0.get('yyyp_sell_price')` 作悠悠锚（DOM 选择器失效时兜底，防串品 chart 误入）。
+**落地**：pipeline/collector_csqaq.py 定锚回退补丁；data/_awp_ph_backup.json 保留原 366 行数据作安全网；重新分析后报告当前价 ¥64.00（新快照/analysis_results 均落库 64.0）。
+**约束**：仅数据修复 + 采集锚兜底，未触碰评分/决策参数与 PARAM_FREEZE。
+**验证**：GET /api/watchlist/2/analyze 返回当前价 ¥64.00；pyflakes 全过；冒烟 90 passed。
+
+## F-3.14 止损建议加入「已执行止损」感知——不再永远减半（2026-08-09，持仓管理/展示层）
+**背景**：用户反馈「蓝色层压板已经分批止损了，但还是建议我减半止损」。数据证实：原始 57 件已减仓 2 笔（14 件 + 1 件 = 26%），剩余 42 件，系统仍按「当前剩余量的一半」建议卖出 21 件——止损矩阵无状态，导致「永远减半」的重复建议。
+**结论**：止损矩阵增加「已执行止损」感知（sold_recent = 近30天 executions 中 sell/reduce 累计件数），纯建议层、不动回测矩阵参数：
+- 阴跌中继「减半止损」以原始量（当前剩余 + 已卖出）的 50% 为目标上限，已卖出部分扣除——蓝色层压板由「卖出 21 件」改为「卖出 14 件（补足减半差量）」；
+- 已减半（已卖出 ≥ 原始量 50%）后：单品 TH<30（趋势仍恶化）→ 残余升级全止损（用户已拍板）；否则转「观察，不再减半」。
+- 供给扩张仍全止损（剩余全部），恐慌深跌/大盘上涨段/中性不止损逻辑不变。
+**落地**：
+- pipeline/db.py：新增 sold_qty_recent(conn, item_id, days=30)（近30天 sell/reduce 累计件数）。
+- pipeline/batch_scan.py：_stop_loss_plan 新增 sold_recent 参数 + 已止损状态机（补足差量/升级全止损/观察），返回增加 sold_recent/total_ref/sold_pct；_portfolio_advice 透传 sold_recent。
+- webapp/main.py：_scan_item 查 executions 传入 sold_recent（批量扫描同口径）。
+- webapp/analysis_service.py：holding_ctx 增加 item_id，build_analysis_ctx 查 sold_qty_recent 传入（单品分析/报告重建同口径）。
+- 展示层：analysis.html 止损路径新增「已执行止损 x/y 件（z%）」；批量扫描表格止损行新增「已损 x/y」。
+- tests/test_smoke.py：t_f37 增补三种场景断言（补足差量 14 件 / 已减半观察 / 已减半+TH<30 升级全止损）。
+**约束**：纯建议层/数据层/展示层改动；止损矩阵五状态、触发线 -15%、减半 50% 目标均为既有回测口径，未改引擎信号与 PARAM_FREEZE。
+**验证**：冒烟全绿（84 passed / 0 failed / 6 skipped）；蓝色层压板真实场景复算：阴跌中继 -8%、已止损 15/57（26%）→ 建议卖出 14 件（原 21 件）；py_compile 全过。
+## 数据修复：批量价格串品/在售量错乱（2026-08-09，48 品回填）
+**背景**：AWP | 火卫一 修复后用户反馈「有一些品价格跟火卫一一样差距太大」。对全部 188 个 items 做浏览器锚校验扫描（并发 5，复用 csQAQ chart 捕获 + 悠悠锚双锚点），并与 DB price_history 逐日对齐算整段偏差（medP/medS）。
+**结论**：
+- 确认 17 个 PRICE 串品品（DB 价格整段高 27-43%，在售量错 92-22900%）：#32 迷人眼(持仓)、#37 全球攻势(自选)、#34/#35/#51/#59/#62/#80/#81/#85/#88/#95/#91/#307/#999114/#999132/#999137。
+- 确认 31 个 SALE 在售量错乱品（价格序列对，DB 在售量系统性低/高 30-500%）：#3/#18/#19/#27/#29/#38/#40/#41/#57/#65/#69/#82/#90/#99/#106/#306/#999007/#999058/#999061/#5/#30/#305/#999081/#999118/#999120/#999131/#999133/#999138/#999185/#999078/#999056（含 5 个自选持仓品 #5/#18/#19/#29/#30）。
+- 根因与火卫一同源：采集时 DOM 悠悠锚选择器失效 → price_rmb=0 → _pick_best_chart 无锚选串品 chart（此前 _kline_matches_anchor 因 price=0 跳过校验）；SALE 类另见 chart num_data 与 DB 落库口径系统性偏差。
+- 无效 good：#39 法玛斯对比涂装 good=744 连续多次抓不到（页面异常），保留 DB 原值待人工复核；good=1002/#46 等为偶发抓取失败，重扫后确认正常。
+**落地**：
+- 真实 chart90（91 天 close+in_sale）覆盖 48 品共 4368 行 price_history（UPDATE 仅价格+在售量，保留 volume/created_at），原数据备份 data/_batch_repair_backup.json（48 品）。
+- 全部 48 品重新分析刷新报告（/api/items/analyze），snapshots/analysis_results 落库真实价格；自选/持仓品页面即时生效。
+- 顺带清理 repo 根 25 个历史遗留 _audit_*.py 调试脚本（UTF-8 BOM 导致 encoding 冒烟测试失败）。
+**约束**：仅数据回填 + 临时脚本清理，未触碰引擎评分/决策参数与 PARAM_FREEZE；采集器锚兜底补丁（2026-08-09 火卫一修复）已覆盖 price_rmb=0 场景，防再次串品。
+**验证**：修复后 48 品 medP/medS 全部 =0.0；冒烟 90 passed；pyflakes 全过。
+
+
+## 全库数据审计 + 混合回放重跑（2026-08-09，188 品逐品实拉）
+**背景**：用户反馈信号复盘「至今收益明显与实际不符」（如 AK-47 皇后 6/21 信号 entry ¥1543.5 → 最新价 ¥2321.29 = +50.4%）。初步核验发现 370 条回放信号中 24 条 entry 与 DB 偏差 >15%，集中在 2026-05-22~06-21 恐慌窗口；批准 A 方案（重跑回放）前要求全库彻底检查。
+**结论**：
+- 188 品逐品实拉（纯悠悠 platform=2 + 锚校验 + 逐日对齐）：147 OK；35 品首轮抓取空重试后 34 OK2、1 仍空（法玛斯 对比涂装，低流动性淘汰品）；7 品实修复（USP 守护者 4 段 / 加利尔 蓝钛 87 段 / MP9 气密 86 段 / USP 地狱门票 17 段 / 沙漠之鹰 青铜装饰 14 段 / MP7 地下水 66 段 / AK 精英之作崭新出厂 1 段）。
+- 无 SAP/整体性错误；15 品 SALE 端偏差 30-80% 属平台流动/表达差异，非数据错误。
+- 8/8 采集污染（皇后、CMYK、气密等）经 8/9 每日采集（F-3.6 修复）已纠正大部分；气密 5-6 月段（库内 350-385 脏段）由本轮修复回 200-300 档；死寂空间 5/25=444 为真实值（回放旧 entry 798.01 才是脏值）。
+- 用户反馈根因：皇后 6/21 entry ¥1543.5 为真实记录价，8/8 污染段把最新价写成 ¥2321.29；修复后最新价 ¥1400 → 至今收益 ≈ -9%，与回放 fwd_series 末端一致。
+- 重跑后 369 条信号 entry 与 DB 同日价偏差 >15% 的由 24 条 → 0 条。
+**落地**：
+- 修复回填 price_history（数据层），原库备份 data/market.db.bak-preaudit-20260809；审计证据留存 data/_audit_repair_sweep.jsonl / _audit_repair_retry.jsonl / _audit_chart_sweep.jsonl 等。
+- 构建混合回放库 data/replay_hybrid.db（现库修复后 + market.db.bak-p0-20260808 补 2025-01-01~08-08 历史 21292 行 + market_index 补 631 行，共 65106 行）。
+- 修补 references/run_item_backtest_full.py 加载路径（run_item_backtest.py 已归档至 references/scripts-archive/），用混合库重跑：96 品、369 条信号（原 370，数据对齐后个别信号日期 ±1 天）。
+- 重跑期望统计同步 references/sync_expectancy_config.py（config.ITEM_EXPECTANCY_STATS + data/signal_event_counts.json + J-3 卡）+ 回放快照 references/sync_replay_snapshot.py（win14 263→266、win14_pct 71.1→72.1）。
+**约束**：仅数据层/展示层/文档改动；未触碰引擎评分/决策参数与 PARAM_FREEZE；回放产物变更走「回放同源，改产物必须重跑同步」允许路径。
+**验证**：冒烟全绿（84 passed / 0 failed / 6 skipped）；气密 5-6 月段与 API 实锚一致、MP9 气密 5/22 信号 entry 234.0 = DB 同日价；369 信号 entry 偏差 >15% = 0；信号复盘页重启后展示修复值。

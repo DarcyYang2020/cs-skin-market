@@ -1,26 +1,26 @@
 {
- "generated": "2026-08-07",
+ "generated": "2026-08-09",
  "window": 3,
- "total_signals": 370,
+ "total_signals": 369,
  "note": "去量引擎 v2 回放同源（item_backtest_full_2025.json）；事件簇数=±3天去簇；细族按 action_label 关键词，展示键按「恐慌/深值」匹配（与 config.ITEM_EXPECTANCY_STATS 同口径，config 由 sync_expectancy_config.py 同步生成）",
  "source": "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\item_backtest_full_2025.json",
  "panic_resonance": {
-  "signals": 46,
+  "signals": 45,
   "events": 2,
   "unique_dates": 7,
-  "max_cluster_share": 0.9783,
+  "max_cluster_share": 0.9778,
   "date_range": [
    "2025-10-24",
    "2026-05-27"
   ],
   "win14": 100.0,
-  "avg14": 46.24,
-  "win30": 78.3,
-  "avg30": 37.77,
+  "avg14": 45.3,
+  "win30": 73.3,
+  "avg30": 35.39,
   "match": "恐慌共振"
  },
  "panic_easing": {
-  "signals": 46,
+  "signals": 49,
   "events": 1,
   "unique_dates": 3,
   "max_cluster_share": 1.0,
@@ -28,123 +28,123 @@
    "2026-05-28",
    "2026-05-31"
   ],
-  "win14": 82.6,
-  "avg14": 18.25,
-  "win30": 78.3,
-  "avg30": 13.18,
+  "win14": 81.6,
+  "avg14": 16.2,
+  "win30": 77.6,
+  "avg30": 10.7,
   "match": "恐慌退潮"
  },
  "deep_value": {
-  "signals": 56,
+  "signals": 55,
   "events": 9,
   "unique_dates": 30,
-  "max_cluster_share": 0.25,
+  "max_cluster_share": 0.2545,
   "date_range": [
    "2025-06-03",
    "2026-07-12"
   ],
-  "win14": 75.0,
-  "avg14": 14.85,
+  "win14": 78.2,
+  "avg14": 15.34,
   "win30": 80.8,
   "avg30": 52.39,
   "match": "深值"
  },
  "supply_accum": {
-  "signals": 166,
-  "events": 14,
-  "unique_dates": 47,
-  "max_cluster_share": 0.8735,
+  "signals": 162,
+  "events": 15,
+  "unique_dates": 45,
+  "max_cluster_share": 0.8889,
   "date_range": [
    "2025-09-06",
-   "2026-06-15"
+   "2026-07-22"
   ],
-  "win14": 63.3,
-  "avg14": 10.73,
-  "win30": 71.7,
-  "avg30": 24.17,
+  "win14": 63.6,
+  "avg14": 10.12,
+  "win30": 71.2,
+  "avg30": 24.53,
   "match": "供给收缩"
  },
  "deep_dip": {
-  "signals": 26,
+  "signals": 27,
   "events": 4,
-  "unique_dates": 9,
-  "max_cluster_share": 0.8846,
+  "unique_dates": 8,
+  "max_cluster_share": 0.8889,
   "date_range": [
    "2025-05-10",
    "2026-06-21"
   ],
-  "win14": 61.5,
-  "avg14": 14.69,
-  "win30": 50.0,
-  "avg30": 12.21,
+  "win14": 63.0,
+  "avg14": 16.82,
+  "win30": 48.1,
+  "avg30": 14.92,
   "match": "深度回调"
  },
  "base": {
-  "signals": 30,
+  "signals": 31,
   "events": 15,
   "unique_dates": 24,
-  "max_cluster_share": 0.3667,
+  "max_cluster_share": 0.3871,
   "date_range": [
    "2025-02-12",
    "2026-06-12"
   ],
-  "win14": 53.3,
-  "avg14": 7.22,
-  "win30": 60.0,
-  "avg30": 10.56,
+  "win14": 58.1,
+  "avg14": 7.05,
+  "win30": 58.1,
+  "avg30": 9.35,
   "match": "其余(基础分批)"
  },
  "display_keys": {
   "panic": {
-   "signals": 92,
+   "signals": 94,
    "events": 2,
    "unique_dates": 10,
-   "max_cluster_share": 0.9891,
+   "max_cluster_share": 0.9894,
    "date_range": [
     "2025-10-24",
     "2026-05-31"
    ],
-   "n": 92,
-   "win14": 91.3,
-   "avg14": 32.24,
-   "ci14_lo": 83.8,
-   "ci14_hi": 95.5,
-   "win30": 78.3,
-   "avg30": 25.47
+   "n": 94,
+   "win14": 90.4,
+   "avg14": 30.13,
+   "ci14_lo": 82.8,
+   "ci14_hi": 94.9,
+   "win30": 75.5,
+   "avg30": 22.52
   },
   "deep_value": {
-   "signals": 56,
+   "signals": 55,
    "events": 9,
    "unique_dates": 30,
-   "max_cluster_share": 0.25,
+   "max_cluster_share": 0.2545,
    "date_range": [
     "2025-06-03",
     "2026-07-12"
    ],
-   "n": 56,
-   "win14": 75.0,
-   "avg14": 14.85,
-   "ci14_lo": 62.3,
-   "ci14_hi": 84.5,
+   "n": 55,
+   "win14": 78.2,
+   "avg14": 15.34,
+   "ci14_lo": 65.6,
+   "ci14_hi": 87.1,
    "win30": 80.8,
    "avg30": 52.39
   },
   "accumulate": {
-   "signals": 222,
-   "events": 23,
-   "unique_dates": 71,
-   "max_cluster_share": 0.7117,
+   "signals": 220,
+   "events": 25,
+   "unique_dates": 68,
+   "max_cluster_share": 0.7182,
    "date_range": [
     "2025-02-12",
-    "2026-06-21"
+    "2026-07-22"
    ],
-   "n": 222,
-   "win14": 61.7,
-   "avg14": 10.72,
-   "ci14_lo": 55.2,
-   "ci14_hi": 67.9,
-   "win30": 67.6,
-   "avg30": 20.93
+   "n": 220,
+   "win14": 62.7,
+   "avg14": 10.51,
+   "ci14_lo": 56.2,
+   "ci14_hi": 68.8,
+   "win30": 66.5,
+   "avg30": 21.18
   }
  }
 }
