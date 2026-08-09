@@ -56,7 +56,7 @@ discover 扩池（手动）→ 候选入库（items + 90日K线，立即落库�
 - **健康检查**: `run_health_monitor.py` 随每日采集收尾执行，写 `health_checks`；`notify_alert.py --monitor` 在 FAIL 时推送告警。
 - **DB 备份**: `backup_db.py`（SQLite online backup → `data/backup/market_YYYYMMDD_HHMMSS.db`，保留 14 份）。
 - **J-2 监测**: 每日刷新 `data/j2_channel_status.json`（B 通道天数）。
-- **保留策略**: price_history / snapshots / market_index 365 天；scan_*.md 90 天；debug 7 天；台账与备份按各自规则。
+- **保留策略（2026-08-09 落地，`pipeline/db.py:run_retention_cleanup`）**: price_history / snapshots / market_index / monitor_events 365 天；scan_*.md 旧报告 90 天；进度文件（scan_progress_*/discover_progress_*）7 天；scan_history JSON 保留最近 30 份；monitor_rank_snapshot 为研究型积累不清理。清理由批量扫描收尾与每日任务自动执行（含 VACUUM）；台账与备份按各自规则。
 
 ## 5. 数据库表（market.db）
 
@@ -74,6 +74,7 @@ discover 扩池（手动）→ 候选入库（items + 90日K线，立即落库�
 | executions | 执行记录+复盘（F-1/F-2） | item_id, action, advice_date, exec_price, settle_14/30, pnl_14/30 |
 | signal_tracking | 生产 buy 信号跟踪（J-2 C 通道） | signal_date, entry_price, engine_version, fwd14/30, net14/30 |
 | health_checks | 数据源健康检查 | date, status, checks_json |
+| analysis_results | 分析报告缓存（单品/批量扫描共用，按 name 覆盖） | name, price_rmb, grade, trend_dir, trend_score, report_html |
 | backtest_results | 回测结果 | strategy, sharpe_ratio, max_drawdown_pct |
 | settings | 配置键值对 | key, value |
 | schema_version | schema 版本记录 | version, applied_at |

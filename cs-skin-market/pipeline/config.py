@@ -4,17 +4,21 @@ v4: csqaq.com Playwright data source.
 """
 
 import os
+from datetime import timedelta, timezone
 from pathlib import Path
+
+TZ_BJ = timezone(timedelta(hours=8))  # 北京时间（全项目唯一时区定义）
+
 
 # ---- Paths ----
 ROOT_DIR = Path(__file__).resolve().parent.parent  # cs-skin-market/
 DATA_DIR = ROOT_DIR / "data"
-# ?????? CS_MODEL_DB ???????/???????? data/market.db
+# 环境变量 CS_MODEL_DB 可覆盖 DB 路径，默认 data/market.db
 DB_PATH = Path(os.environ.get("CS_MODEL_DB", str(DATA_DIR / "market.db")))
 
 # ---- csQAQ API ----
 CSQAQ_BASE = "https://api.csqaq.com/api/v1"
-# ?????? CSQAQ_API_TOKEN ????? token ????/???????
+# CSQAQ_API_TOKEN 环境变量优先，缺省用内置 token
 API_TOKEN = os.environ.get("CSQAQ_API_TOKEN", "RMYAF1H7O8O4N1Q2B6J0F1F2")
 API_RATE_LIMIT = 1.1  # seconds between calls (1 req/sec)
 
@@ -157,10 +161,6 @@ PORTFOLIO_CAP_CONCURRENT = 0.8
 #   单票10% 硬上限二次证伪 (cap0.8+单票10%: 全量 193.30→139.72 / 子集 97.88→82.09) -> 维持只提示。
 PORTFOLIO_DRAWDOWN_BREAKER = 0.10   # 组合权益自峰值回撤阈值(监控: 信号质量劣化预警, 非操作熔断)
 POSITION_CAP_SINGLE = 0.30          # 单票敞口提示阈值: (持仓市值+建议补仓)/总资产
-
-
-# ---- Transaction fees ----
-FEE_RATE = 0.01         # 悠悠 1% 手续费
 
 
 # ---- Category-specific thresholds (simplified P0) ----

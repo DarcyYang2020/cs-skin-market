@@ -1,4 +1,5 @@
 """Batch scan, discover high-score items, and portfolio advice."""
+import html
 import logging
 
 from .buy_distance import tranche_plan_text
@@ -134,7 +135,8 @@ def _stop_loss_plan(avg_cost, qty, current_price, analysis, market_30d_change=No
       3) 阴跌中继（-15%~-5%）：减半止损（60d 深套 17.6%→3.4%，全损过激的折中）
       4) 大盘上涨段（>+5%）：不止损（90d 扛+29% vs 损-21.6%，修正旧草案）
       5) 中性（-5%~+5% / 大盘数据缺失）：不止损（90d +51%，控制仓位为主）
-    止损执行价 = min(90日关键支撑, 触发日价)，挂单限时避免市价砸穿。
+    执行参考价 = 触发日现价（成交按市场价记录，滑点口径=成交价÷现价-1）；
+    stop_price = 90日关键支撑，仅作挂单参考（避免市价砸穿），不作为成交参考价。
     返回 dict 或 None（未触发评估线）。不改任何引擎信号。
     """
     if avg_cost <= 0 or current_price <= 0:
@@ -186,7 +188,8 @@ def _stop_loss_plan(avg_cost, qty, current_price, analysis, market_30d_change=No
     return {
         "state": state, "action": action, "reason": reason,
         "pnl_pct": round(pnl_pct, 1),
-        "stop_price": stop_price if sell_action else None,
+        "exec_price": current_price,  # 执行参考=现价（成交按市场价，滑点口径基准）
+        "stop_price": stop_price if sell_action else None,  # 90日支撑，仅挂单参考
         "ratio_pct": ratio_pct, "sell_action": sell_action, "sell_qty": sell_qty,
         "eval_line": "浮亏≥-15% 触发评估（非直接止损）",
         "evidence": evidence,
@@ -213,6 +216,7 @@ def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th
             label = label.replace(_em, "")
         action_map = {
             "buy": "可分批建仓",
+            "oversold_buy": "可分批建仓",
             "watch": "观望等待机会",
             "hold": "持有观察",
             "reduce": "暂不建议入场",
@@ -220,7 +224,7 @@ def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th
             "avoid": "暂不建议入场",
         }
         action = action_map.get(fusion_action, "观望等待机会")
-        risk = "low" if fusion_action == "buy" else ("high" if fusion_action in ("sell", "avoid", "reduce") else "medium")
+        risk = "low" if fusion_action in ("buy", "oversold_buy") else ("high" if fusion_action in ("sell", "avoid", "reduce") else "medium")
         detail = fusion.get("action_detail") or ""
         reason = label or "以报告决策为准"
         if label and detail and detail not in label:
@@ -231,7 +235,7 @@ def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th
         _th_obj = analysis.trend_health or {}
         _th = _th_obj.get("score", 50) if isinstance(_th_obj, dict) else getattr(_th_obj, "score", 50)
         _gd = signal_guidance(fusion.get("action_label", ""), (getattr(analysis, "price_zones", None) or {}).get("expectancy"), fusion_action)
-        if fusion_action == "buy":
+        if fusion_action in ("buy", "oversold_buy"):
             _suggest = "已到建仓区，可分批建仓：" + tranche_plan_text()
             _pz = getattr(analysis, "price_zones", None) or {}
             _entry = _pz.get("entry") or {}
@@ -303,10 +307,12 @@ def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th
         advice["action"] = "建议止盈减仓"
         advice["reason"] = f"盈利{pnl_pct:.0f}%且趋势转弱"
         advice["suggest"] = f"可卖出{max(1, qty//2)}件锁定利润"
+        advice["reduce_qty"] = max(1, qty // 2)
     elif pnl_pct > 50:
         advice["action"] = "大幅盈利，部分止盈"
         advice["reason"] = f"盈利{pnl_pct:.0f}%，建议卖出1/3~1/2"
         advice["suggest"] = f"可卖出{max(1, qty//3)}~{max(1, qty//2)}件"
+        advice["reduce_qty"] = max(1, qty // 3)
     elif pnl_pct < -10:
         # ---- 浮亏持仓：补仓/止损分级（数据验证，见函数docstring）----
         pct = getattr(analysis.position, "percentile_90d", 50)
@@ -659,8 +665,7 @@ def extract_signals(results):
 
 def _esc(s):
     """HTML 转义（展示层防注入）。"""
-    return (str(s or "").replace("&", "&amp;").replace("<", "&lt;")
-            .replace(">", "&gt;").replace('"', "&quot;"))
+    return html.escape(str(s or ""), quote=True)
 
 # ---- 按建议执行 (P0-2, 2026-08-04): 展示层记账入口, 不改任何信号 ----
 _EXEC_ACTION_MAP = {
@@ -726,7 +731,7 @@ def _exec_btn(name, pa, price):
                      'data-name="{n}" data-action="{a}" data-signal="{s}" data-price="{p:.2f}" data-qty="{q}" '
                      'onclick="openExecModal(this)">{l}</button>').format(
             n=_esc(name), a=_sa, s=_esc("止损评估·" + str(sp.get("state", ""))),
-            p=float(sp.get("stop_price") or price or 0), q=int(sp.get("sell_qty") or 1), l=_label))
+            p=float(sp.get("exec_price") or price or 0), q=int(sp.get("sell_qty") or 1), l=_label))
     return " ".join(btns) if btns else ""
 
 
@@ -847,7 +852,7 @@ def build_scan_html(results, total, market_ctx=None, now_str="", name_link=None,
             if _sp:
                 _sp_line = ('<br><span style="font-size:10px;color:var(--text-secondary);">🛑 止损评估：'
                             + _esc(str(_sp.get("state", ""))) + " · " + _esc(str(_sp.get("action", "")))
-                            + (' · 参考 ¥%.2f' % float(_sp["stop_price"]) if _sp.get("stop_price") else "")
+                            + (' · 参考(现价) ¥%.2f' % float(_sp.get("exec_price") or 0) if _sp.get("sell_action") else "")
                             + (' · 卖出%s件' % int(_sp["sell_qty"]) if _sp.get("sell_action") else "")
                             + '</span>')
             h.append('<td>' + _action_badge(pa) + "<br><span style=\"font-size:11px;color:var(--text-muted);\">" + _esc(pa.get("suggest", "")) + "</span>" + _sp_line + _exec_btn(r["name"], pa, r["price_rmb"]) + "</td></tr>")

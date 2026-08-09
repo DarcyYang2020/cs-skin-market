@@ -1682,3 +1682,100 @@ vs 池内等权 +509.75%/-54.12% vs 大盘 -4.02%；引擎边际价值在回撤�
 - `tests/test_smoke.py`：大盘分析断言改为 result 不含 buy_distance。
 **保留**：fusion_decision.proximity（决策栏「距买点最近信号」相似度，用户要求的信号程度显示）；`compute_buy_distance` 计算保留，供批量扫描排序/信号提取/距买点列使用（batch_scan 功能未动）；watchlist 买点接近角标读 proximity，不受影响。
 **验证**：冒烟全绿。
+
+
+## 数据层清理：去除无参考意义数据（2026-08-09，数据层/展示层）
+**背景**：用户「除去系统中没有参考意义的各项数据，检查下系统」。
+**审计结论**：
+- settings 表 114 -> 37 key：63 个 `uu_vol_*` + 11 个 `stdt_vol_*`（2026-08-07 去量前真实成交量缓存，无任何代码消费）+ 3 个 `cached_*`（cached_index_analysis/cached_sectors/cached_sub_indices，无代码读写，板块展示已下线）。
+- items.steam_name / items.rarity：189 行恒空；upsert 从不写、引擎逻辑不消费（稀有度走采集时 item_meta，supply.py 用 rarity_name），main.py:773 仅 SELECT 未用 -> 删列（SQLite 3.39 DROP COLUMN 幂等迁移）。
+- oob_price / oob_grade：analysis_service.py 恒空历史遗留字段 + analysis.html 恒空渲染 -> 删除。
+- market_th.py 大盘 MarketTrendHealth：volume_divergence/bubble_breadth 四字段 + 两个 discount 参数恒默认 1.0（去量后无调用方传非默认）-> 删除。
+- sectors_card.html：板块资金流卡片模板无任何页面 include -> 删除文件 + AGENTS.md/docs 引用。
+- 保留：backtest_results 空表（已标注废弃，兼容历史库）；signal_tracking 空表（J-2 C 通道基础设施）；snapshots.score_volume（DB 兼容字段）；price_history.volume_day（历史归档保留，不再采集）。
+**顺手修复**：analysis_results.trend_dir 键名 bug——save_analysis_result 读 `th["trend_direction"]`，而 trend_health_summary 输出键是 `direction`，导致 65 条记录趋势列恒空（前端永远显示 ➖），改为 `th["direction"]`。
+**验证**：迁移幂等（重跑无副作用）；py_compile 全绿；settings 死 key 清零；items 表已无删列。
+
+
+## F-3.9 执行记录编辑 + 删除/编辑持仓回滚（2026-08-09，执行记录/持仓管理）
+**背景**：用户「执行记录与复盘模块缺乏数据编辑功能，用户有可能填错」；「确保编辑（增、删、改）数据后持仓数量、总资产等同步修改——已止损应计算亏损多少；删除数据资产应回填」。
+**结论**：executions 是流水、持仓是状态，增量式同步无法回滚。引入「prev 快照 + 分段重放」：
+- executions 表新增 prev_holding/prev_quantity/prev_avg_cost/prev_total_bought（操作前持仓快照，幂等迁移）。
+- 新增记录时写当前持仓快照；删除/编辑该条时，从其 prev 快照开始重放其后所有记录（重放中同步刷新后续记录的 prev，保证链条一致），最终状态写回 items。旧记录（2026-08-09 前）按 (item_id,id) 降序从当前持仓逆向重放回填——兼容「手动设置持仓后再记账」的存量数据，不破坏手动基线。
+- 编辑会清空已结算的 14/30 复盘（日期/价格/数量变化后原结算失效，等待重新到期结算）。
+**落地**：
+- `pipeline/db.py`：`_apply_exec`（纯函数重放）/ `_write_position` / `_replay_after` / `_rebuild_item`（prev 缺失兜底）/ `add_execution` 写快照 / `delete_execution` 回滚 / `update_execution` 编辑+重放；`apply_execution_to_position` 复用纯函数。
+- `webapp/main.py`：新增 `PUT /api/watchlist/executions/{eid}`（编辑，校验同新增）；DELETE 返回回滚信息。
+- `watchlist.html`：执行记录行加「✏️ 编辑」（复用 exec-modal，回填原值）；删除确认提示将回滚持仓/资产，删除后整页刷新恢复汇总；新增「该笔盈亏」列（减仓/清仓 = (成交价 - 操作前持仓成本) x 数量，直接回答止损亏多少）；操作列加宽。
+- `tests/test_smoke.py`：新增 t_exec_edit_delete_rollback（prev 链 + 编辑重放 + 删除回滚 + 快照刷新）。
+**验证**：功能测试 14 项全过（含旧数据逆向回填：AWP 56→53、沙鹰 57→43 回滚正确）；冒烟 81 全绿。持仓数量/均价/累计买入随编辑删除一致回滚，持仓市值/盈亏汇总随页面刷新恢复。
+
+
+## F-3.10 已实现盈亏同步至总资产 + 滑点口径说明（2026-08-09，持仓管理/执行记录）
+**背景**：用户「盈亏还未同步至总资产」——此前汇总条「持仓总资产」直接显示用户填写的静态值，卖出/止损的已实现盈亏完全未进入任何统计；同时执行记录「滑点」列无解释。
+**结论**：
+- 总资产 = 期初本金 + 已实现盈亏 + 浮动盈亏；总盈亏 = 已实现 + 浮动（持仓市值 − 持仓成本）。
+- 已实现盈亏口径与 exec 表「该笔盈亏」列一致：(成交价 − 操作前持仓成本) × 数量，仅统计 sell/reduce；在请求时从 executions 重算，编辑/删除执行记录后天然幂等，无需持久化同步。
+- 持仓比例分母仍为期初本金（不随盈亏漂移），避免仓位提示失真；「设置总资产」更名「设置期初本金」避免语义混淆。
+**落地**：
+- `pipeline/db.py`：`realized_pnl_total(conn)`。
+- `webapp/main.py`：page_watchlist 计算 floating_pnl / realized_pnl / net_assets，模板透传。
+- `watchlist.html`：汇总条改为「总资产(含已实现) / 持仓市值 / 持仓比例 / 总盈亏(已实现+浮动)」四卡 + 期初本金副标题；设置弹窗改名并加说明；滑点/该笔盈亏表头加 title 提示；表下加滑点口径说明。
+- `tests/test_smoke.py`：新增 t_realized_pnl。
+**验证**：冒烟全绿。真实数据两条减仓 → 已实现 −¥356（AWP −69、沙鹰 −287）正确计入总资产/总盈亏。
+
+
+## F-3.11 分析/扫描与关注解耦（方案A，2026-08-09，关注列表）
+**背景**：用户发现关注列表冒出「格洛克 18 型 | 拉美西斯之触 (久经沙场)」（id=999010，2026-08-08 14:19 入库）。排查根因：`analyze_fresh`（analysis_service.py）对所有被分析物品无条件 `in_watchlist=1`，而 discover 扩池后从发现页「查看报告」走 `api_item_report_view` → `analyze_fresh` 也会自动入自选——扫描/查看报告都在污染关注列表。
+**结论**（方案A）：把「分析」与「关注」解耦——只有 搜索 / 单品分析 / 手动添加 才自动入自选；discover 扫描、批量扫描、查看已存报告 不再改变关注状态。
+**落地**：
+- `pipeline/db.py`：`upsert_item` 的 `in_watchlist` 默认改 `None` = 保留原关注状态（新建=0、已存在=保留），显式 1/0 才设置/取消；同时消除 discover 落库默认 0 误删已关注品的隐患。
+- `webapp/analysis_service.py`：`analyze_fresh` 新增 `auto_watchlist=True` 参数，upsert 时 `in_watchlist=(1 if auto_watchlist else None)`。
+- `webapp/main.py`：`api_item_report_view` 传 `auto_watchlist=False`；discover 落库显式 `in_watchlist=None`。批量扫描只处理用户勾选的关注品，不改其关注状态。
+- 数据清理：999010（久经沙场）置为未关注（保留价格/快照数据，可随时重新关注）。
+**验证**：冒烟全绿（新增 t_upsert_watchlist_preserve 验证 None=保留语义）；py_compile 全过。
+
+
+## F-3.12 移除组合仪表并发建议仓位 + watchlist 信号中心（2026-08-09，展示层精简）
+**背景**：用户反馈组合仓位仪表「并发建议仓位（建仓/补仓 Σ）: 0% / 上限 80%」在无扫描/无建仓信号时恒为 0%，无参考价值；批量扫描结果模块的「🔔 信号中心」卡与扫描结果面板重复。另发现组合仪表混入测试遗留数据 TEST-临时饰品-0814。
+**结论**：
+- 组合仪表只保留持仓分布 + 最近扫描时间；`dashboards.portfolio_dashboard` 不再读 batch_scan_latest.json 的 results/position_limit（删 demand/cap/utilization/over_cap），watchlist 删除 pd-concurrent 行与进度条。batch_scan.py 扫描面板的超限预警（仅超限时显示）保留——它是信号扎堆风控提示，与仪表常驻显示不同。
+- watchlist 信号中心卡整体移除（HTML + sigColor/updateScanBadge/renderSignalCenter JS + 批量扫描按钮信号角标 + 历史下拉「｜N 信号」后缀）；`/api/watchlist/scan-history` 只返回归档列表（去掉 latest_signals/signals_count），历史下拉回看保留。
+- 数据清理：删除 items id=999011 TEST-临时饰品-0814（无任何关联表数据，纯测试遗留）。
+**落地**：watchlist.html / pipeline/dashboards.py / webapp/main.py / tests/test_smoke.py（t_portfolio_dash 断言改为 scan.time）。
+**验证**：冒烟全绿；页面渲染无残留引用。
+
+
+## F-3.12 建仓策略第一性原理定稿 + 建仓口径一致性修正（2026-08-09，策略文档/展示层）
+**背景**：用户确认「通过第一性原理分析 CS 饰品市场建仓思路」，并要求检查系统现有建仓口径是否一致、不一致则修改。
+**结论**：建仓 = 在正期望信号上用「轻仓试探 → 分批确认 → 严格敞口上限」建仓，用状态化止损保底，用复盘飞轮校准。系统回测证明风控（cap0.8）贡献主要价值，信号只负责「在正确的大盘环境里买便宜货」。
+**落地**：
+- 新文档 `references/position-building-strategy.md`（v1.0）：定价三要素 + 回测锚点表 + 建仓四问 + 操作清单 + 口径对照 + 维护条款。
+- 口径修正：
+  - `buy_distance.py` 方案 C：总仓位 60% 标注为「回测节奏权重」，执行按单票总敞口≤30%（POSITION_CAP_SINGLE）等比缩放（每份≈5%）；tranche_plan_text 追加口径说明。
+  - `batch_scan.py` 非持仓建议：oversold_buy 补入 action_map（可分批建仓）+ risk/suggest 分支与 buy 同口径（此前落为「观望」，与单品报告「建仓」不一致）。
+  - `analysis.html` 决策条：buy/oversold_buy 显示「建议仓位 ≤族级 position_limit% · 首仓轻仓试探，单票总敞口≤30%」。
+  - `item_analysis.py` 三处族 detail 分批文案追加「（单票敞口≤30%缩放）」。
+  - `trading-strategies.md`：「重仓→满仓」修正为「加至目标仓（单票≤30%）」，并标注以新文档为准。
+**约束**：全部为展示层/文档层改动，未触碰 PARAM_FREEZE（族级仓位、cap0.8、单票 30% 阈值均未改）；方案 C 权重为回测产出，等比缩放不改变其相对结论。
+**验证**：冒烟全绿（更新 t_advice/tranche 断言 + 新增 oversold_buy 建仓口径断言）；py_compile 全过。
+
+## F-3.13 持仓建议卡片三修：全部持仓展示 / 建议动作一致 / 止损参考=现价（2026-08-09，展示层）
+**背景**：用户反馈三个问题——① 单点持仓品的分析报告看不到「补仓/止损双路径」卡片；② 卡片给出止损而决策条「建议动作」却是观望，口径不一致；③ 执行与复盘滑点失真：以「沙漠之鹰 | 蓝色层压板 (崭新出厂)」为例，止损路径参考卖出价 ¥21.9（90日支撑），但实际止损按现价 ¥39.9 成交，滑点虚高 +82%。
+**根因**：
+- ① 卡片模板仅浮亏≥10% 时渲染，浮亏小于 10% 或浮盈持仓完全不显示；且自选页「📄 报告」按钮走已存 markdown 快照（api_watchlist_report），没有持仓上下文，与批量扫描弹窗（report-view 重建）不同口径。
+- ② 决策条「建议动作」只读引擎 fusion_decision（入场信号），与持仓风控矩阵（_stop_loss_plan/_portfolio_advice）各说各话。
+- ③ stop_plan.stop_price = min(90日支撑, 现价) 是挂单理论价，却被当作成交参考价/建议价，滑点口径（成交价÷建议价−1）失真。
+**结论**：
+- 持仓品一律渲染「持仓建议」卡片（浮亏/浮盈均可）；自选「报告」按钮与批量扫描弹窗统一走 _report_view_rebuild（DB 新鲜 K 线重建 analysis.html，回退已存快照）。
+- 持仓品「建议动作」以持仓风控矩阵为准：止损(sell/reduce) > 可分批补仓(add) > 止盈减仓(reduce) > 观望，并标注「持仓风控优先」，与卡片一致。
+- 止损执行参考价 = 现价（滑点口径基准），90日支撑降级为「挂单参考（非成交参考）」展示。
+**落地**：
+- pipeline/batch_scan.py：_stop_loss_plan 新增 exec_price=current_price，docstring 更新（执行参考=现价，stop_price 仅挂单参考）；_portfolio_advice 止盈分支新增 reduce_qty；_exec_btn 与批量扫描表格止损按钮/行改 exec_price。
+- webapp/analysis_service.py：build_analysis_ctx 新增 holding_action（持仓风控优先的动作覆盖，纯展示）。
+- webapp/templates/partials/analysis.html：决策条支持 holding_action 覆盖（补仓/止损/止盈按钮预填价格数量）；卡片改为所有持仓显示，左列「📋 持仓建议」（补仓/止盈按钮），右列「🛑 止损评估」（参考卖出价=现价 + 90日支撑挂单参考）。
+- webapp/main.py：抽出 _report_view_rebuild(request, name)；api_watchlist_report 改走重建（带持仓卡片），失败回退已存快照。
+- references/stop-loss-strategy.md：三.5 执行价口径更新。
+- tests/test_smoke.py：t_f37 补 exec_price 断言；新增 t_f313_holding_action（供给扩张→建议动作=清仓/止损；浮亏<10% 仍出 holding_advice）。
+**约束**：全部为展示层/文档层/测试改动，未触碰引擎信号与 PARAM_FREEZE（止损矩阵阈值、补仓节奏均为既有回测参数）。
+**验证**：冒烟全绿；py_compile 全过。

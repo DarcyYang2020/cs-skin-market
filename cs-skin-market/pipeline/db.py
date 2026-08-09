@@ -10,14 +10,13 @@ Tables: items, price_history, market_index, snapshots, positions, backtest_resul
 
 
 import sqlite3
+import time
 
-from datetime import datetime, timezone, timedelta
-
-
-from .config import DB_PATH, DATA_DIR
+from datetime import datetime, timedelta
 
 
-TZ_BJ = timezone(timedelta(hours=8))
+from .config import DB_PATH, DATA_DIR, TZ_BJ
+
 
 SCHEMA_VERSION = 1  # Phase 4 schema 版本化：新增表/列时 bump（当前无存量迁移，直接建表）
 
@@ -71,15 +70,11 @@ def _init_schema(conn: sqlite3.Connection) -> None:
 
         in_watchlist INTEGER DEFAULT 0,
 
-        steam_name TEXT,
-
         weapon TEXT,
 
         skin TEXT,
 
         wear TEXT,
-
-        rarity TEXT,
 
         source TEXT,
 
@@ -92,9 +87,13 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         souvenir INTEGER DEFAULT 0,
 
         notes TEXT,
+
         holding INTEGER DEFAULT 0,
+
         avg_cost REAL DEFAULT 0,
+
         quantity INTEGER DEFAULT 0,
+
         total_bought REAL DEFAULT 0,
 
         created_at TEXT DEFAULT (datetime('now','localtime')),
@@ -102,11 +101,8 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         updated_at TEXT DEFAULT (datetime('now','localtime')))""")
 
     # Migrate: add good_id if missing
-
     try:
-
         conn.execute("ALTER TABLE items ADD COLUMN good_id INTEGER DEFAULT 0")
-
     except sqlite3.OperationalError:
         pass  # column already exists
 
@@ -116,8 +112,7 @@ def _init_schema(conn: sqlite3.Connection) -> None:
     except sqlite3.OperationalError:
         pass  # column already exists
 
-    # Migrate: add holding/avg_cost/quantity if missing (??????? webapp ??????
-    # 2026-08-05 ??? schema?????/????????)
+    # Migrate: add holding/avg_cost/quantity if missing
     for _col, _defn in (("holding", "INTEGER DEFAULT 0"),
                         ("avg_cost", "REAL DEFAULT 0"),
                         ("quantity", "INTEGER DEFAULT 0")):
@@ -126,8 +121,7 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         except sqlite3.OperationalError:
             pass  # column already exists
 
-    # Migrate: add total_bought (累计买入金额, 2026-08-05) if missing
-    # 语义: 只增不减的累计买入成本(不含卖出); 历史持仓按 avg_cost*quantity 回填(幂等, 只补 0/NULL)
+    # Migrate: add total_bought (cumulative buy cost, 2026-08-05) if missing
     try:
         conn.execute("ALTER TABLE items ADD COLUMN total_bought REAL DEFAULT 0")
     except sqlite3.OperationalError:
@@ -136,8 +130,24 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         conn.execute("UPDATE items SET total_bought = ROUND(avg_cost * quantity, 2) "
                      "WHERE holding = 1 AND quantity > 0 AND (total_bought IS NULL OR total_bought = 0)")
     except sqlite3.OperationalError:
-        pass  # ??????????????????????
+        pass  # concurrent lock / missing column
 
+    # 2026-08-09 data cleanup: items.steam_name/rarity always empty, never consumed (analysis uses fresh item_meta); drop columns
+    for _drop_col in ("steam_name", "rarity"):
+        try:
+            _cols_now = [r[1] for r in conn.execute("PRAGMA table_info(items)").fetchall()]
+            if _drop_col in _cols_now:
+                conn.execute("ALTER TABLE items DROP COLUMN " + _drop_col)
+        except sqlite3.OperationalError:
+            pass  # column missing / lock conflict
+
+    # 2026-08-09 data cleanup: settings dead keys (pre-devolume volume caches uu_vol_*/stdt_vol_* + unread cached_*)
+    # settings table created later; new DB has no table yet -> guard
+    try:
+        conn.execute("DELETE FROM settings WHERE key LIKE 'uu_vol_%' OR key LIKE 'stdt_vol_%' "
+                     "OR key IN ('cached_index_analysis', 'cached_sectors', 'cached_sub_indices')")
+    except sqlite3.OperationalError:
+        pass  # fresh DB: settings table not created yet
 
     conn.execute("""CREATE TABLE IF NOT EXISTS market_index (
 
@@ -321,12 +331,54 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         settle_30 REAL,
         pnl_14 REAL,
         pnl_30 REAL,
+        prev_holding INTEGER,
+        prev_quantity INTEGER,
+        prev_avg_cost REAL,
+        prev_total_bought REAL,
         created_at TEXT DEFAULT (datetime('now','localtime')))""")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_executions_date ON executions(advice_date)")
     # 滑点统计(2026-08-06): 旧库惰性补 advice_price 列
     _exec_cols = [r[1] for r in conn.execute("PRAGMA table_info(executions)").fetchall()]  # 索引访问兼容无 row_factory 连接
     if "advice_price" not in _exec_cols:
         conn.execute("ALTER TABLE executions ADD COLUMN advice_price REAL")
+
+    # 2026-08-09 执行记录编辑/回滚: 每条记录存操作前持仓快照(prev_*), 删除/编辑后从此状态分段重放
+    for _pc in ("prev_holding INTEGER", "prev_quantity INTEGER", "prev_avg_cost REAL", "prev_total_bought REAL"):
+        try:
+            conn.execute("ALTER TABLE executions ADD COLUMN " + _pc)
+        except sqlite3.OperationalError:
+            pass  # column already exists
+    # 旧记录回填 prev: 按 (item_id, id) 降序从当前持仓逆向重放（2026-08-09 前无快照）
+    # 逆向保证 prev 与物品实际持仓一致，兼容「手动设置持仓后再记账」的存量数据
+    try:
+        _old_items = conn.execute(
+            "SELECT DISTINCT item_id FROM executions WHERE prev_quantity IS NULL AND item_id > 0").fetchall()
+        for _it in _old_items:
+            _iid = _it[0]
+            _row = conn.execute(
+                "SELECT holding, avg_cost, quantity, total_bought FROM items WHERE id=?", (_iid,)).fetchone()
+            if not _row:
+                continue
+            _h, _q, _a, _t = (int(_row["holding"] or 0), int(_row["quantity"] or 0),
+                              float(_row["avg_cost"] or 0), float(_row["total_bought"] or 0))
+            _olds = conn.execute(
+                "SELECT id, action, exec_price, qty FROM executions "
+                "WHERE item_id=? AND prev_quantity IS NULL ORDER BY id DESC", (_iid,)).fetchall()
+            for _r in _olds:
+                _qty = int(_r["qty"] or 0)
+                _price = float(_r["exec_price"] or 0)
+                if _r["action"] in ("buy", "add"):
+                    _q = max(0, _q - _qty)
+                    _t = max(0.0, _t - _price * _qty)
+                    _a = round(_t / _q, 2) if _q > 0 else 0.0
+                    _h = 1 if _q > 0 else 0
+                elif _r["action"] in ("reduce", "sell"):
+                    _q = _q + _qty
+                    _h = 1 if _q > 0 else 0
+                conn.execute("UPDATE executions SET prev_holding=?, prev_quantity=?, prev_avg_cost=?, prev_total_bought=? WHERE id=?",
+                             (_h, _q, _a, _t, _r["id"]))
+    except sqlite3.OperationalError:
+        pass  # 新库无旧记录/并发锁冲突
 
     # 全市场快照(2026-08-04): 每日 get_page_list 拉全市场价格/在售数快照, 样本扩容
     conn.execute("""CREATE TABLE IF NOT EXISTS market_snapshot (
@@ -390,6 +442,16 @@ def _init_schema(conn: sqlite3.Connection) -> None:
     except sqlite3.OperationalError:
         pass  # column already exists
     conn.execute("CREATE INDEX IF NOT EXISTS idx_signal_tracking_date ON signal_tracking(signal_date)")
+    # ???????????/???????? name ???2026-08-09 P1.2 ????????????? /api/analysis/results 500?
+    conn.execute("""CREATE TABLE IF NOT EXISTS analysis_results (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        price_rmb REAL,
+        grade TEXT,
+        trend_dir TEXT,
+        trend_score REAL,
+        report_html TEXT,
+        created_at TEXT DEFAULT (datetime('now','localtime')))""")
 
     # M1 监控模式 (2026-08-08): 每日自选品异动事件归档(纯提醒层, 只读引擎输出)
     conn.execute("""CREATE TABLE IF NOT EXISTS monitor_events (
@@ -452,12 +514,14 @@ def _init_schema(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
-def upsert_item(conn, name, steam_name="", weapon="", skin="", wear="",
-                rarity="", source="", is_discontinued=0, discontinued_years=0,
-                stat_trak=0, souvenir=0, notes="", in_watchlist=0, good_id=0, yyyp_id="") -> int:
+def upsert_item(conn, name, weapon="", skin="", wear="",
+                source="", is_discontinued=0, discontinued_years=0,
+                stat_trak=0, souvenir=0, notes="", in_watchlist=None, good_id=0, yyyp_id="") -> int:
     # 2026-08-06 复发修复：按精确 name 匹配会漏掉仅差半角/全角空格的变体（USP消音版 vs USP 消音版，
     # 同 good_id 重复条目两次被 health 检出：id=162 已删、id=209 再犯）。
     # 统一在唯一入口归一匹配：命中则复用原行并保留规范名，分析/搜索/自选三条路径一并覆盖。
+    # 2026-08-09 方案A：in_watchlist=None（默认）不改变关注状态——新建=0、已存在=保留原值；
+    # 显式传 1/0 才设置/取消关注，分析、扫描类路径传 None 避免误加/误删自选。
     cur = conn.execute(
         "SELECT id, in_watchlist FROM items "
         "WHERE REPLACE(REPLACE(name,' ',''),'\u3000','') = ?",
@@ -466,19 +530,20 @@ def upsert_item(conn, name, steam_name="", weapon="", skin="", wear="",
     if row is None:
         cur = conn.execute("SELECT id, in_watchlist FROM items WHERE name = ?", (name,))
         row = cur.fetchone()
+    wl = in_watchlist if in_watchlist is not None else (int(row["in_watchlist"] or 0) if row else 0)
     now = _now()
     if row:
-        conn.execute("""UPDATE items SET steam_name=?,weapon=?,skin=?,wear=?,rarity=?,
+        conn.execute("""UPDATE items SET weapon=?,skin=?,wear=?,
                      source=?,is_discontinued=?,discontinued_years=?,stat_trak=?,
                      souvenir=?,notes=?,in_watchlist=?,good_id=?,yyyp_id=?,updated_at=? WHERE id=?""",
-                     (steam_name, weapon, skin, wear, rarity, source, is_discontinued,
-                      discontinued_years, stat_trak, souvenir, notes, in_watchlist, good_id, yyyp_id, now, row["id"]))
+                     (weapon, skin, wear, source, is_discontinued,
+                      discontinued_years, stat_trak, souvenir, notes, wl, good_id, yyyp_id, now, row["id"]))
         return row["id"]
-    cur = conn.execute("""INSERT INTO items (name,steam_name,weapon,skin,wear,rarity,
+    cur = conn.execute("""INSERT INTO items (name,weapon,skin,wear,
                        source,is_discontinued,discontinued_years,stat_trak,souvenir,notes,in_watchlist,good_id,yyyp_id,created_at,updated_at)
-                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                       (name, steam_name, weapon, skin, wear, rarity, source, is_discontinued,
-                        discontinued_years, stat_trak, souvenir, notes, in_watchlist, good_id, yyyp_id, now, now))
+                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                       (name, weapon, skin, wear, source, is_discontinued,
+                        discontinued_years, stat_trak, souvenir, notes, wl, good_id, yyyp_id, now, now))
     return cur.lastrowid
 
 
@@ -542,8 +607,7 @@ def save_monitor_events(conn, date, events):
 
 def list_monitor_events(conn, days=7):
     """近 N 天监控事件，日期倒序。"""
-    from datetime import datetime, timezone, timedelta
-    cutoff = (datetime.now(timezone(timedelta(hours=8))) - timedelta(days=days)).strftime("%Y-%m-%d")
+    cutoff = (datetime.now(TZ_BJ) - timedelta(days=days)).strftime("%Y-%m-%d")
     rows = conn.execute(
         "SELECT date, item_id, item_name, event_type, level, detail, dedup_key FROM monitor_events "
         "WHERE date >= ? ORDER BY date DESC, id DESC", (cutoff,),
@@ -652,18 +716,108 @@ def get_latest_snapshot_report(conn, item_id):
 # ---- Executions (P0-2, 2026-08-04) ----
 
 
+def _apply_exec(holding, quantity, avg_cost, total_bought, action, exec_price, qty):
+    """按单条执行记录重放持仓状态（纯函数；新增/编辑/删除重放共用）。
+
+    返回 (holding, quantity, avg_cost, total_bought)。
+    - buy/add: 数量+=qty, 均价=(旧均价*旧数量+成交价*qty)/新数量, total_bought+=成交价*qty, holding=1
+    - reduce/sell: 数量-=qty(不为负), 均价/总买入不变; 清仓后 holding=0
+    """
+    holding = int(holding or 0)
+    quantity = int(quantity or 0)
+    avg_cost = float(avg_cost or 0)
+    total_bought = float(total_bought or 0)
+    qty = max(0, int(qty or 0))
+    if qty <= 0 or exec_price is None or float(exec_price or 0) <= 0:
+        return (holding, quantity, avg_cost, total_bought)
+    exec_price = float(exec_price)
+    if action in ("buy", "add"):
+        new_qty = quantity + qty
+        new_avg = round((avg_cost * quantity + exec_price * qty) / new_qty, 2) if new_qty > 0 else round(exec_price, 2)
+        new_total = round(total_bought + exec_price * qty, 2)
+        return (1, new_qty, new_avg, new_total)
+    if action in ("reduce", "sell"):
+        new_qty = max(0, quantity - qty)
+        return (1 if new_qty > 0 else 0, new_qty, avg_cost, total_bought)
+    return (holding, quantity, avg_cost, total_bought)
+
+
+def _write_position(conn, item_id, state):
+    """将重放后的持仓状态写回 items（state=(holding, quantity, avg_cost, total_bought)）。"""
+    conn.execute("UPDATE items SET holding=?, avg_cost=?, quantity=?, total_bought=?, "
+                 "updated_at=datetime('now','localtime') WHERE id=?",
+                 (state[0], state[2], state[1], state[3], item_id))
+    conn.commit()
+    return {"holding": state[0], "quantity": state[1], "avg_cost": state[2], "total_bought": state[3]}
+
+
+def _replay_after(conn, item_id, start_id, base_state):
+    """分段重放：从 base_state（start_id 操作前的快照）开始，重放该品 id > start_id 的记录。
+
+    重放中同步刷新后续记录的 prev 快照，保证链条一致；最终状态写回 items。
+    """
+    state = tuple(base_state)
+    rows = conn.execute(
+        "SELECT id, action, exec_price, qty FROM executions "
+        "WHERE item_id=? AND id>? ORDER BY id", (item_id, start_id)).fetchall()
+    for r in rows:
+        conn.execute("UPDATE executions SET prev_holding=?, prev_quantity=?, prev_avg_cost=?, prev_total_bought=? WHERE id=?",
+                     (state[0], state[1], state[2], state[3], r["id"]))
+        state = _apply_exec(*state, r["action"], float(r["exec_price"] or 0), int(r["qty"] or 0))
+    return _write_position(conn, item_id, state)
+
+
+def _rebuild_item(conn, item_id):
+    """兜底重建：prev 快照缺失时从零重放该品全部执行记录（2026-08-09 前旧记录迁移回填失败时使用）。"""
+    state = (0, 0, 0.0, 0.0)
+    rows = conn.execute(
+        "SELECT id, action, exec_price, qty FROM executions WHERE item_id=? ORDER BY id", (item_id,)).fetchall()
+    for r in rows:
+        conn.execute("UPDATE executions SET prev_holding=?, prev_quantity=?, prev_avg_cost=?, prev_total_bought=? WHERE id=?",
+                     (state[0], state[1], state[2], state[3], r["id"]))
+        state = _apply_exec(*state, r["action"], float(r["exec_price"] or 0), int(r["qty"] or 0))
+    return _write_position(conn, item_id, state)
+
+
 def add_execution(conn, item_id, name, action, advice_date, exec_price, qty=1, advice_signal="", advice_price=None):
-    """新增执行记录（按建议执行：建仓/补仓/减仓/清仓）。"""
+    """新增执行记录（按建议执行：建仓/补仓/减仓/清仓）。
+
+    2026-08-09: 记录操作前持仓快照(prev_*)，删除/编辑该条时可从此状态分段重放回滚持仓/资产。
+    """
+    prev = (0, 0, 0.0, 0.0)
+    if item_id > 0:
+        row = conn.execute(
+            "SELECT holding, avg_cost, quantity, total_bought FROM items WHERE id=?", (item_id,)).fetchone()
+        if row:
+            prev = (int(row["holding"] or 0), int(row["quantity"] or 0),
+                    float(row["avg_cost"] or 0), float(row["total_bought"] or 0))
     cur = conn.execute(
-        "INSERT INTO executions (item_id, name, action, advice_date, advice_signal, advice_price, exec_price, qty) "
-        "VALUES (?,?,?,?,?,?,?,?)",
-        (item_id, name, action, advice_date, advice_signal, advice_price, exec_price, qty))
+        "INSERT INTO executions (item_id, name, action, advice_date, advice_signal, advice_price, exec_price, qty, "
+        "prev_holding, prev_quantity, prev_avg_cost, prev_total_bought) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+        (item_id, name, action, advice_date, advice_signal, advice_price, exec_price, qty,
+         prev[0], prev[1], prev[2], prev[3]))
     conn.commit()
     return cur.lastrowid
 
 
 def list_executions(conn):
     return [dict(r) for r in conn.execute("SELECT * FROM executions ORDER BY id DESC")]
+
+
+def realized_pnl_total(conn):
+    """累计已实现盈亏（2026-08-09）：sell/reduce 实际卖出 = (成交价 - 操作前持仓成本) x 数量。
+
+    与 exec 表「该笔盈亏」列同口径；在请求时直接从 executions 重算，
+    编辑/删除执行记录后天然幂等，无需额外同步。
+    """
+    total = 0.0
+    for r in conn.execute(
+            "SELECT exec_price, qty, prev_avg_cost FROM executions "
+            "WHERE action IN ('sell','reduce') AND prev_avg_cost IS NOT NULL"):
+        if r["exec_price"] and r["qty"] and r["prev_avg_cost"] is not None:
+            total += (float(r["exec_price"]) - float(r["prev_avg_cost"])) * int(r["qty"])
+    return round(total, 2)
 
 
 def apply_execution_to_position(conn, item_id, action, exec_price, qty):
@@ -679,33 +833,61 @@ def apply_execution_to_position(conn, item_id, action, exec_price, qty):
         "SELECT holding, avg_cost, quantity, total_bought FROM items WHERE id=?", (item_id,)).fetchone()
     if not row:
         return None
-    avg_cost = float(row["avg_cost"] or 0)
-    quantity = int(row["quantity"] or 0)
-    total_bought = float(row["total_bought"] or 0)
-    if action in ("buy", "add"):
-        new_qty = quantity + qty
-        new_avg = round((avg_cost * quantity + exec_price * qty) / new_qty, 2) if new_qty > 0 else round(exec_price, 2)
-        new_total = round(total_bought + exec_price * qty, 2)
-        conn.execute("UPDATE items SET holding=1, avg_cost=?, quantity=?, total_bought=?, "
-                     "updated_at=datetime('now','localtime') WHERE id=?",
-                     (new_avg, new_qty, new_total, item_id))
-        ret = {"holding": 1, "quantity": new_qty, "avg_cost": new_avg, "total_bought": new_total}
-    elif action in ("reduce", "sell"):
-        new_qty = max(0, quantity - qty)
-        conn.execute("UPDATE items SET quantity=?, holding=?, "
-                     "updated_at=datetime('now','localtime') WHERE id=?",
-                     (new_qty, 1 if new_qty > 0 else 0, item_id))
-        ret = {"holding": 1 if new_qty > 0 else 0, "quantity": new_qty,
-               "avg_cost": avg_cost, "total_bought": total_bought}
-    else:
+    state = _apply_exec(row["holding"], row["quantity"], row["avg_cost"], row["total_bought"],
+                        action, exec_price, qty)
+    return _write_position(conn, item_id, state)
+
+
+def _exec_prev_state(row):
+    """从 executions 行提取 prev 快照；快照缺失(旧数据)返回 None。"""
+    if row["prev_quantity"] is None:
         return None
-    conn.commit()
-    return ret
+    return (int(row["prev_holding"] or 0), int(row["prev_quantity"] or 0),
+            float(row["prev_avg_cost"] or 0), float(row["prev_total_bought"] or 0))
 
 
 def delete_execution(conn, eid):
+    """删除执行记录（2026-08-09）：同步回滚持仓/资产——从该条操作前快照分段重放其后记录。"""
+    row = conn.execute(
+        "SELECT item_id, prev_holding, prev_quantity, prev_avg_cost, prev_total_bought FROM executions WHERE id=?",
+        (eid,)).fetchone()
+    if not row:
+        return None
     conn.execute("DELETE FROM executions WHERE id=?", (eid,))
     conn.commit()
+    item_id = int(row["item_id"] or 0)
+    if item_id <= 0:
+        return {"warning": "该记录未关联系统物品，仅删除记录，未同步持仓"}
+    base = _exec_prev_state(row)
+    if base is None:
+        return _rebuild_item(conn, item_id)
+    return _replay_after(conn, item_id, eid, base)
+
+
+def update_execution(conn, eid, action, advice_date, exec_price, qty, advice_signal="", advice_price=None):
+    """编辑执行记录（2026-08-09）：更新字段后从该条 prev 快照分段重放后续记录，同步持仓/资产。
+
+    编辑会清空已结算的 14/30 复盘（日期/价格/数量变化后原结算失效，等待重新到期结算）。
+    """
+    row = conn.execute(
+        "SELECT item_id, prev_holding, prev_quantity, prev_avg_cost, prev_total_bought FROM executions WHERE id=?",
+        (eid,)).fetchone()
+    if not row:
+        return None
+    conn.execute(
+        "UPDATE executions SET action=?, advice_date=?, advice_signal=?, advice_price=?, exec_price=?, qty=?, "
+        "settle_14=NULL, settle_30=NULL, pnl_14=NULL, pnl_30=NULL WHERE id=?",
+        (action, advice_date, advice_signal, advice_price, exec_price, qty, eid))
+    conn.commit()
+    item_id = int(row["item_id"] or 0)
+    if item_id <= 0:
+        return {"warning": "该记录未关联系统物品，仅更新记录，未同步持仓"}
+    base = _exec_prev_state(row)
+    if base is None:
+        return _rebuild_item(conn, item_id)
+    # 先应用本条更新后的新效果，再分段重放其后记录（删除路径 base 已是操作前状态，无需这一步）
+    new_state = _apply_exec(*base, action, exec_price, qty)
+    return _replay_after(conn, item_id, eid, new_state)
 
 
 def settle_execution(conn, eid, settle_14=None, settle_30=None, pnl_14=None, pnl_30=None):
@@ -795,4 +977,74 @@ def item_history_start(conn, item_id):
 
 
 # ---- Cleanup ----
+
+
+# 数据保留策略（2026-08-09 落地，口径见 references/data-layer.md）：
+#   price_history / snapshots / market_index / monitor_events 保留 365 天；
+#   scan_progress_*.json / discover_progress_*.json 等进度文件 7 天；scan_*.md 旧报告 90 天；
+#   monitor_rank_snapshot 为研究型数据积累（大户集中度），不清理。
+# 调用点：批量扫描收尾（webapp/main.py）与每日任务收尾（run_daily_collect.py）。
+# 纯运维动作，不触碰引擎参数；单表失败隔离，不影响其他表。
+_RETENTION_TABLE_DAYS = {
+    "price_history": 365,
+    "snapshots": 365,   # date 为 YYYY-MM-DD HH:MM:SS，按日期部分比较
+    "market_index": 365,
+    "monitor_events": 365,
+}
+_PROGRESS_FILE_GLOBS = ("scan_progress_*.json", "discover_progress_*.json")
+_PROGRESS_FILE_DAYS = 7
+_SCAN_MD_DAYS = 90
+
+
+def run_retention_cleanup(conn=None, vacuum: bool = True) -> dict:
+    """数据保留清理：删除超期历史行 + 过期进度/报告文件，可选 VACUUM。
+
+    Returns {deleted: {table: n}, files: n, vacuum: bool}；任何异常按项隔离。
+    """
+    stats = {"deleted": {}, "files": 0, "vacuum": False}
+    _conn = conn or get_conn()
+    try:
+        for _table, _days in _RETENTION_TABLE_DAYS.items():
+            try:
+                _cutoff = (datetime.now(TZ_BJ) - timedelta(days=_days)).strftime("%Y-%m-%d")
+                # snapshots.date 含时间部分，统一截断到日期比较（其余表纯日期不受影响）
+                _cur = _conn.execute(
+                    f"DELETE FROM {_table} WHERE substr(date,1,10) < ?", (_cutoff,))
+                _n = getattr(_cur, "rowcount", 0)
+                if _n:
+                    stats["deleted"][_table] = _n
+            except Exception:
+                pass
+        _conn.commit()
+    finally:
+        if conn is None:
+            _conn.close()
+    _cutoff_ts = time.time() - _PROGRESS_FILE_DAYS * 86400
+    for _glob in _PROGRESS_FILE_GLOBS:
+        for _f in DATA_DIR.glob(_glob):
+            try:
+                if _f.stat().st_mtime < _cutoff_ts:
+                    _f.unlink()
+                    stats["files"] += 1
+            except Exception:
+                pass
+    try:
+        _md_cutoff_ts = time.time() - _SCAN_MD_DAYS * 86400
+        for _f in DATA_DIR.glob("scan_*.md"):
+            if _f.stat().st_mtime < _md_cutoff_ts:
+                _f.unlink()
+                stats["files"] += 1
+    except Exception:
+        pass
+    if vacuum:
+        try:
+            _vc = get_conn()
+            try:
+                _vc.execute("VACUUM")
+            finally:
+                _vc.close()
+            stats["vacuum"] = True
+        except Exception:
+            pass
+    return stats
 

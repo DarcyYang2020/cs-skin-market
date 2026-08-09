@@ -9,9 +9,9 @@
 """
 import json
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 
-TZ_BJ = timezone(timedelta(hours=8))
+from .config import TZ_BJ
 POOL_LOG_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "data", "pool_maintenance_log.jsonl",

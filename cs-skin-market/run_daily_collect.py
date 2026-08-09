@@ -8,14 +8,14 @@
 
 用法: python run_daily_collect.py [--force-weekly]
 """
-import sys, io, os, asyncio, json
-from datetime import datetime, timezone, timedelta
+import sys, io, os, asyncio
+from datetime import datetime
 
 if sys.stdout is sys.__stdout__:
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-TZ_BJ = timezone(timedelta(hours=8))
+from pipeline.config import TZ_BJ
 LOG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "daily_collect.log")
 
 
@@ -310,6 +310,14 @@ def main():
         log(f"监控事件: 生成 {_mon['generated']} / 新增 {_mon['saved']} 条 (大盘 {_mon['bucket']}, 分析 {_mon['analyzed']} 品, 推送延至21:30)")
     except Exception as e:
         log(f"监控事件生成异常（不中断采集）: {e}")
+
+    # 数据保留清理（365/90/7 天 + VACUUM，口径 references/data-layer.md）
+    try:
+        from pipeline.db import run_retention_cleanup
+        _rc = run_retention_cleanup(vacuum=True)
+        log(f"数据保留清理: deleted={_rc['deleted']} files={_rc['files']} vacuum={_rc['vacuum']}")
+    except Exception as e:
+        log(f"数据保留清理异常（不中断采集）: {e}")
     # 每日备份 (Phase 4): SQLite online backup -> data/backup/, 保留最近 14 份
     try:
         from backup_db import backup as _daily_backup

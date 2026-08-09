@@ -4,12 +4,10 @@ import json
 from pathlib import Path
 from statistics import median
 
-from .config import PORTFOLIO_CAP_CONCURRENT
 
 _SCAN_CACHE = Path(__file__).resolve().parent.parent / "data" / "batch_scan_latest.json"
 _SIGNAL_EVENTS = Path(__file__).resolve().parent.parent / "data" / "signal_event_counts.json"
 _J2_STATUS = Path(__file__).resolve().parent.parent / "data" / "j2_channel_status.json"
-_ADD_ACTIONS = ("\u53ef\u5206\u6279\u5efa\u4ed3", "\u53ef\u5206\u6279\u8865\u4ed3")  # 可分批建仓/可分批补仓
 
 
 def _snapshot_days(conn, table, col):
@@ -129,7 +127,7 @@ def execution_review(conn):
 
 
 def portfolio_dashboard(conn):
-    """组合仓位仪表：持仓分布 + 最近扫描的并发建议仓位占用（P2 口径 Σposition_limit vs 0.8 上限）。"""
+    """组合仓位仪表：持仓分布（持仓市值/仓位比例/集中度 + 最近扫描时间）。"""
     assets = 0.0
     row = conn.execute("SELECT value FROM settings WHERE key='total_assets'").fetchone()
     try:
@@ -148,17 +146,11 @@ def portfolio_dashboard(conn):
     vals.sort(key=lambda v: v["value"], reverse=True)
     holding_value = sum(v["value"] for v in vals)
     ratio = round(100.0 * holding_value / assets, 1) if assets > 0 else 0.0
-    scan = {"time": None, "demand": 0.0, "cap": PORTFOLIO_CAP_CONCURRENT,
-            "utilization": 0.0, "over_cap": False}
+    scan = {"time": None}
     if _SCAN_CACHE.exists():
         try:
             d = json.loads(_SCAN_CACHE.read_text(encoding="utf-8"))
             scan["time"] = d.get("time")
-            demand = sum(float(r.get("position_limit") or 0) for r in d.get("results", [])
-                         if (r.get("portfolio_advice") or {}).get("action") in _ADD_ACTIONS)
-            scan["demand"] = round(demand, 3)
-            scan["utilization"] = round(100.0 * demand / PORTFOLIO_CAP_CONCURRENT, 1)
-            scan["over_cap"] = demand > PORTFOLIO_CAP_CONCURRENT + 1e-9
         except Exception:
             pass
     max_single = round(100.0 * vals[0]["value"] / holding_value, 1) if vals and holding_value > 0 else 0.0

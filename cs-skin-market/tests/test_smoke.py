@@ -366,6 +366,11 @@ def t_advice():
     a = _portfolio_advice(False, 0, 0, 80.0, mk(pct=15, z=-1.2, th=60, fusion='buy', price_zones={'entry': {'low': 60.0, 'high': 75.0}}))
     assert a['action'] == '可分批建仓', a['action']
     assert '首仓10%' in a['suggest'] and '跌10%加20%' in a['suggest'] and '跌15%加30%' in a['suggest'], a['suggest']
+    assert '单票总敞口≤30%' in a['suggest'], a['suggest']
+    # 非持仓 oversold_buy（超跌反弹例外，防御兼容）：与 buy 同口径 → 可分批建仓
+    a = _portfolio_advice(False, 0, 0, 80.0, mk(pct=15, z=-1.2, th=60, fusion='oversold_buy', price_zones={'entry': {'low': 60.0, 'high': 75.0}}))
+    assert a['action'] == '可分批建仓', a['action']
+    assert '首仓10%' in a['suggest'], a['suggest']
 check('portfolio advice 补仓分级 works', t_advice)
 
 def t_p08_deep_value_tranche():
@@ -550,7 +555,7 @@ def t_batch_scan_display():
     assert s["target_price"] == 106.6 and s["gap_pct"] == 4.0 and s["bar_pct"] == 20.0, s
     assert summarize_buy_distance(None) is None
     assert summarize_buy_distance({}) is None
-    assert tranche_plan_text() == '首仓10% → 跌10%加20% → 跌15%加30%', tranche_plan_text()
+    assert tranche_plan_text() == '首仓10% → 跌10%加20% → 跌15%加30%（节奏参考·回测权重；单票总敞口≤30%，批次金额按上限缩放）', tranche_plan_text()
     # 排序(2026-08-04): 统一按距买点 gap 升序（最接近买点在前）——持仓不再按浮亏排
     held = [dict(holding=1, avg_cost=100.0, price_rmb=130.0, name="赚", buy_distance={"gap_pct": 3.0}),
             dict(holding=1, avg_cost=100.0, price_rmb=70.0, name="亏", buy_distance={"gap_pct": 8.0})]
@@ -971,15 +976,13 @@ def t_portfolio_dash():
         assert isinstance(d['holdings'], list)
         assert 0.0 <= d['position_ratio'] <= 100.0
         assert d['max_single'] >= 0.0 and d['top3'] >= 0.0
-        s = d['scan']
-        assert s['cap'] > 0 and s['demand'] >= 0.0
-        assert isinstance(s['over_cap'], bool)
+        assert isinstance(d.get('scan'), dict) and 'time' in d['scan']
         # holdings 按市值降序
         vals = [h['value'] for h in d['holdings']]
         assert vals == sorted(vals, reverse=True), vals
     finally:
         conn.close()
-check('portfolio_dashboard reports holdings and concurrent cap', t_portfolio_dash)
+check('portfolio_dashboard reports holdings and scan time', t_portfolio_dash)
 
 
 print('[DB: 全市场快照 + 历史回填 (2026-08-04)]')
@@ -1104,6 +1107,116 @@ def t_exec_sync_position():
 check('execution syncs position (avg cost/qty/total bought)', t_exec_sync_position)
 
 
+def t_exec_edit_delete_rollback():
+    # 2026-08-09 执行记录编辑/删除回滚：prev 快照 + 分段重放，持仓数量/均价/累计买入保持一致
+    from pipeline import db
+    conn = db.get_conn()
+    TEST = "__TEST_EXEC_EDIT_DEL__"
+    try:
+        conn.execute("DELETE FROM items WHERE name=?", (TEST,))
+        conn.execute("DELETE FROM executions WHERE name=?", (TEST,))
+        conn.commit()
+        iid = db.upsert_item(conn, TEST, in_watchlist=1)
+        # 建仓 2x100 -> 补仓 1x120 -> 减仓 1x150
+        e1 = db.add_execution(conn, iid, TEST, "buy", "2026-08-01", 100.0, 2)
+        db.apply_execution_to_position(conn, iid, "buy", 100.0, 2)
+        e2 = db.add_execution(conn, iid, TEST, "add", "2026-08-03", 120.0, 1)
+        db.apply_execution_to_position(conn, iid, "add", 120.0, 1)
+        e3 = db.add_execution(conn, iid, TEST, "reduce", "2026-08-05", 150.0, 1)
+        db.apply_execution_to_position(conn, iid, "reduce", 150.0, 1)
+        row = conn.execute("SELECT holding, avg_cost, quantity, total_bought FROM items WHERE id=?", (iid,)).fetchone()
+        assert row["quantity"] == 2 and abs(row["avg_cost"] - 106.67) < 0.01, dict(row)
+        # prev 快照链：e2 前是 e1 后状态、e3 前是 e2 后状态
+        rows = conn.execute("SELECT id, prev_quantity, prev_avg_cost FROM executions WHERE item_id=? ORDER BY id", (iid,)).fetchall()
+        assert rows[0]["prev_quantity"] == 0
+        assert rows[1]["prev_quantity"] == 2 and rows[1]["prev_avg_cost"] == 100
+        assert rows[2]["prev_quantity"] == 3 and abs(rows[2]["prev_avg_cost"] - 106.67) < 0.01
+        # 编辑 e3 reduce -> buy 160x1：从 e3 前状态重放 -> qty=4 avg=120 total=480
+        db.update_execution(conn, e3, "buy", "2026-08-05", 160.0, 1)
+        row = conn.execute("SELECT holding, avg_cost, quantity, total_bought FROM items WHERE id=?", (iid,)).fetchone()
+        assert row["quantity"] == 4 and row["avg_cost"] == 120 and row["total_bought"] == 480, dict(row)
+        # 删除中间 e2(add120)：回滚到 e1 后 + 重放 e3(buy160) -> qty=3 avg=120 total=360
+        db.delete_execution(conn, e2)
+        row = conn.execute("SELECT holding, avg_cost, quantity, total_bought FROM items WHERE id=?", (iid,)).fetchone()
+        assert row["quantity"] == 3 and row["avg_cost"] == 120 and row["total_bought"] == 360, dict(row)
+        # 删除 e1(buy100)：从零重放只剩 e3(buy160) -> qty=1 avg=160 total=160
+        db.delete_execution(conn, e1)
+        row = conn.execute("SELECT holding, avg_cost, quantity, total_bought FROM items WHERE id=?", (iid,)).fetchone()
+        assert row["quantity"] == 1 and row["avg_cost"] == 160 and row["total_bought"] == 160, dict(row)
+        # 删除后 prev 链仍一致（后续记录快照随重放刷新）
+        rows = conn.execute("SELECT prev_quantity FROM executions WHERE item_id=? AND prev_quantity IS NOT NULL", (iid,)).fetchall()
+        assert rows and rows[0]["prev_quantity"] == 0, rows
+    finally:
+        conn.execute("DELETE FROM items WHERE name=?", (TEST,))
+        conn.execute("DELETE FROM executions WHERE name=?", (TEST,))
+        conn.commit()
+        conn.close()
+check('execution edit/delete rollback (prev snapshot + replay)', t_exec_edit_delete_rollback)
+
+
+def t_realized_pnl():
+    # 2026-08-09 已实现盈亏：sell/reduce 实际卖出 = (成交价 - 操作前持仓成本) x 数量，编辑/删除后同步变化
+    from pipeline import db
+    conn = db.get_conn()
+    TEST = "__TEST_REALIZED_PNL__"
+    try:
+        conn.execute("DELETE FROM items WHERE name=?", (TEST,))
+        conn.execute("DELETE FROM executions WHERE name=?", (TEST,))
+        conn.commit()
+        base = db.realized_pnl_total(conn)
+        iid = db.upsert_item(conn, TEST, in_watchlist=1)
+        e1 = db.add_execution(conn, iid, TEST, "buy", "2026-08-01", 100.0, 2)
+        db.apply_execution_to_position(conn, iid, "buy", 100.0, 2)
+        # 减仓 1x150：已实现 +50
+        e2 = db.add_execution(conn, iid, TEST, "reduce", "2026-08-05", 150.0, 1)
+        db.apply_execution_to_position(conn, iid, "reduce", 150.0, 1)
+        assert abs(db.realized_pnl_total(conn) - (base + 50.0)) < 1e-6
+        # 编辑为减仓 1x80：已实现 -20
+        db.update_execution(conn, e2, "reduce", "2026-08-05", 80.0, 1)
+        assert abs(db.realized_pnl_total(conn) - (base - 20.0)) < 1e-6
+        # 清仓卖出剩余 1x120：prev_avg_cost 100 -> +20
+        e3 = db.add_execution(conn, iid, TEST, "sell", "2026-08-07", 120.0, 1)
+        db.apply_execution_to_position(conn, iid, "sell", 120.0, 1)
+        assert abs(db.realized_pnl_total(conn) - base) < 1e-6
+        # 删除卖出：已实现回到 -20
+        db.delete_execution(conn, e3)
+        assert abs(db.realized_pnl_total(conn) - (base - 20.0)) < 1e-6
+    finally:
+        conn.execute("DELETE FROM items WHERE name=?", (TEST,))
+        conn.execute("DELETE FROM executions WHERE name=?", (TEST,))
+        conn.commit()
+        conn.close()
+check('realized pnl = (exec - prev cost) x qty, follows edit/delete', t_realized_pnl)
+
+
+def t_upsert_watchlist_preserve():
+    # 2026-08-09 方案A：分析/扫描不改变关注状态——upsert in_watchlist=None 新建=0、已存在=保留原值
+    from pipeline import db
+    conn = db.get_conn()
+    TEST = "__TEST_WL_PRESERVE__"
+    try:
+        conn.execute("DELETE FROM items WHERE name=?", (TEST,))
+        conn.commit()
+        iid = db.upsert_item(conn, TEST, good_id=999999009, in_watchlist=None)
+        assert conn.execute("SELECT in_watchlist FROM items WHERE id=?", (iid,)).fetchone()[0] == 0
+        # 再次扫描/分析（None）不改变关注状态
+        db.upsert_item(conn, TEST, good_id=999999009, in_watchlist=None)
+        assert conn.execute("SELECT in_watchlist FROM items WHERE id=?", (iid,)).fetchone()[0] == 0
+        # 手动加入自选后，后续扫描/分析保留 1（不误删）
+        db.upsert_item(conn, TEST, good_id=999999009, in_watchlist=1)
+        assert conn.execute("SELECT in_watchlist FROM items WHERE id=?", (iid,)).fetchone()[0] == 1
+        db.upsert_item(conn, TEST, good_id=999999009, in_watchlist=None)
+        assert conn.execute("SELECT in_watchlist FROM items WHERE id=?", (iid,)).fetchone()[0] == 1
+        # 显式取消关注仍可用
+        db.upsert_item(conn, TEST, good_id=999999009, in_watchlist=0)
+        assert conn.execute("SELECT in_watchlist FROM items WHERE id=?", (iid,)).fetchone()[0] == 0
+    finally:
+        conn.execute("DELETE FROM items WHERE name=?", (TEST,))
+        conn.commit()
+        conn.close()
+check('upsert in_watchlist=None preserves watchlist status (方案A)', t_upsert_watchlist_preserve)
+
+
 def t_upsert_space_dedup():
     # 回归防复发 (2026-08-06): USP 守护者空格变体重复条目两次被 health 检出（id=162 删、id=209 再犯）。
     # upsert_item 必须按「忽略半角/全角空格」归一匹配，命中复用原行并保留规范名。
@@ -1197,7 +1310,7 @@ check('repo text files encoding health', t_encoding)
 
 
 def t_buy_distance_plain():
-    # ??? summary ???(2026-08-05): ?? pct30/z-1.5 ??, ???/????; stage ?????
+    # summary 口径（2026-08-05）：不再含 pct30/z-1.5 旧字段，按 chart K 线口径出场景/目标/距离；stage=bottom
     from pipeline.buy_distance import compute_buy_distance
     prices = [200 - i for i in range(90)]
     class _P:
@@ -1207,10 +1320,10 @@ def t_buy_distance_plain():
     assert bd and bd["scenario"] == "bottom", bd
     s = bd["summary"]
     assert "pct30" not in s and "z-1.5" not in s, s
-    assert "\u4f4e\u4f30" in s, s  # ????
+    assert "\u4f4e\u4f30" in s, s  # 含低估字样
     assert bd["stage"] in (2, 3), bd
     assert bd["pct_ok"] is True and bd["th_ok"] is False, bd
-check('buy_distance summary ???+stage', t_buy_distance_plain)
+check('buy_distance summary 口径+stage', t_buy_distance_plain)
 
 
 def t_action_level_sort():
@@ -1239,30 +1352,30 @@ def t_action_level_sort():
 
 
 def t_proximity_sort():
-    # ???????(2026-08-05): ????????, ????????
+    # proximity 排序（2026-08-05）：下跌寻底按已过低估/超跌线条数分层，条数越多越接近，层内按剩余距离升序
     from pipeline.batch_scan import _proximity_key
     def mk(gap, pct_gap=5.6, z_gap=1.12, th_gap=29.0, scenario="bottom"):
         return {"buy_distance": {"gap_pct": gap, "scenario": scenario,
                                  "pct_gap": pct_gap, "z_gap": z_gap, "th_gap": th_gap}}
-    a = mk(1.0)                                  # ???????(?????)
-    b = mk(1.7, pct_gap=0.0, z_gap=0.11)         # ????, ??? 0.11
-    c = mk(5.7, pct_gap=0.0, z_gap=0.0)          # ????+??
+    a = mk(1.0)                                  # 未过低估/超跌线（pct_gap=5.6, z_gap=1.12），层内按估值差
+    b = mk(1.7, pct_gap=0.0, z_gap=0.11)         # 已过估值线，超跌还差 0.11
+    c = mk(5.7, pct_gap=0.0, z_gap=0.0)          # 估值+超跌双达标（层内最高）
     ka, kb, kc = _proximity_key(a), _proximity_key(b), _proximity_key(c)
     assert kc < kb < ka, (ka, kb, kc)
 check('batch_scan 信号层级排序 (2026-08-07)', t_action_level_sort)
-check('batch_scan ???????', t_proximity_sort)
+check('batch_scan 买点接近度排序（2026-08-05）', t_proximity_sort)
 
 
 def t_bd_cell_badges():
-    # ??????????(2026-08-05): ???? ?, ????? ? X
+    # 条件达标徽标（2026-08-05）：已过线标 ✓，未过线不标 X
     from pipeline.batch_scan import _bd_cell
     bd = {"scenario": "bottom", "gap_pct": 1.7, "bar_pct": 8,
           "scenario_label": "\u4e0b\u8dcc\u5bfb\u5e95", "target_price": 100.0,
           "pct_gap": 0.0, "z_gap": 0.11, "th_gap": 29.0}
     html = _bd_cell(bd)
-    assert "\u2713" in html, html  # ???? ?
-    assert "\u5dee" in html, html  # ??? ? X
-check('batch_scan ??????????', t_bd_cell_badges)
+    assert "\u2713" in html, html  # 已达标显示 ✓
+    assert "\u5dee" in html, html  # 未达标显示「还差 x%」
+check('batch_scan 距买点单元格徽标（2026-08-05）', t_bd_cell_badges)
 
 
 def t_cluster_report():
@@ -2278,6 +2391,7 @@ def t_f37_stop_loss():
             risk_level='D',
             price_zones=price_zones,
             supply_analysis={'supply_change_30d': s30},
+            aux=None, liquidity=None, probability=None, whale=None, data_quality=None,
         )
     # 未触发：浮亏<15% 无止损评估
     assert _stop_loss_plan(100.0, 10, 90.0, mk()) is None
@@ -2298,9 +2412,10 @@ def t_f37_stop_loss():
     # 中性 -> 不止损
     sp = _stop_loss_plan(100.0, 10, 80.0, mk(), market_30d_change=0.0)
     assert sp['state'] == '中性' and sp['sell_action'] is None
-    # 止损参考价 = min(90日支撑, 现价)
+    # stop_price = min(90日支撑, 现价) 仅挂单参考；exec_price = 现价（执行参考/滑点口径）
     sp = _stop_loss_plan(100.0, 10, 80.0, mk(s30=8.0, low90=70.0), market_30d_change=0.0)
     assert sp['stop_price'] == 70.0, sp['stop_price']
+    assert sp['exec_price'] == 80.0, sp['exec_price']
     # 持仓建议：浮亏-20% 挂 stop_plan；补仓批量为 3:2:1
     a = _portfolio_advice(True, 100.0, 10, 80.0, mk(pct=15, z=-1.2, th=45, fusion='buy',
                           price_zones={'entry': {'low': 60.0, 'high': 75.0}, 'current': 80.0}),
@@ -2317,6 +2432,81 @@ def t_f37_stop_loss():
     assert a['action'] == '禁止补仓', a['action']
     assert a['stop_plan']['state'] == '供给扩张'
 check('F-3.7 补仓倒金字塔 + 止损评估矩阵', t_f37_stop_loss)
+
+print('[F-3.13: 持仓品建议动作与卡片上下文 (2026-08-09)]')
+def t_f313_holding_action():
+    from webapp.analysis_service import build_analysis_ctx
+    from types import SimpleNamespace
+    def mk(pct=15.0, z=-1.2, th=45, s30=8.0, low90=60.0, fusion='watch', price=None):
+        pos = SimpleNamespace(percentile_90d=pct, zscore_90d=z, low_90d=low90)
+        return SimpleNamespace(
+            name='测试品 (崭新出厂)', price_rmb=price or 80.0, position=pos,
+            trend_health={'score': th}, cycle=SimpleNamespace(phase='consolidation'),
+            fusion_decision={'action': fusion, 'action_label': '观望'},
+            value=SimpleNamespace(score=5.0, grade='C'), risk_level='D',
+            price_zones={'entry': {'low': 60.0, 'high': 75.0}, 'current': 80.0},
+            supply_analysis={'supply_change_30d': s30},
+            aux=None, liquidity=None, probability=None, whale=None, data_quality=None,
+        )
+    # 场景1：浮亏-20% + 供给扩张 -> 止损路径 sell；建议动作覆盖为 清仓/止损（非引擎观望）
+    ctx = build_analysis_ctx(mk(s30=8.0), holding_ctx={'holding': 1, 'avg_cost': 100.0, 'qty': 10},
+                             market_30d_change=0.0, market_th=50, sentiment=60.0)
+    ha = ctx['holding_action']
+    assert ha['action'] == 'sell' and ha['label'] == '清仓/止损', ha
+    assert ctx['holding_advice']['stop_plan']['exec_price'] == 80.0
+    # 场景2：浮亏-5%（未达评估线）-> 无 stop_plan，但 holding_advice 仍在（模板据此一律渲染卡片）
+    ctx2 = build_analysis_ctx(mk(s30=0.0, price=95.0), holding_ctx={'holding': 1, 'avg_cost': 100.0, 'qty': 10},
+                              market_30d_change=0.0, market_th=50, sentiment=60.0)
+    assert ctx2['holding_advice'] is not None
+    assert not (ctx2['holding_advice'].get('stop_plan') or {})
+    assert ctx2['holding_action']['action'] == 'hold'
+check('F-3.13 持仓品建议动作与卡片上下文', t_f313_holding_action)
+
+print('[P1.2: Web readonly API smoke (2026-08-09)]')
+def t_http_api_smoke():
+    """P1.2: FastAPI TestClient smoke - readonly pages/APIs on empty temp DB (no network)."""
+    import shutil, tempfile
+    from pathlib import Path
+    from fastapi.testclient import TestClient
+    from pipeline import db
+    from webapp.main import app
+
+    tmp = tempfile.mkdtemp(prefix="smoke_api_")
+    orig_path = db.DB_PATH
+    try:
+        db.DB_PATH = Path(tmp) / "api_smoke.db"
+        db._SCHEMA_INIT_PATHS.clear()
+        client = TestClient(app, raise_server_exceptions=True)
+
+        for url, marker in [
+            ("/", "dashboard-content"),
+            ("/watchlist", "wl-table"),
+            ("/checkup", "J-2"),
+            ("/monitor", "M1"),
+        ]:
+            r = client.get(url)
+            assert r.status_code == 200, (url, r.status_code)
+            assert marker in r.text, (url, marker)
+
+        r = client.get("/api/analysis/results")
+        assert r.status_code == 200, r.status_code
+
+        r = client.get("/api/signals/replay")
+        assert r.status_code == 200, r.status_code
+        assert isinstance(r.json(), dict), r.text[:200]
+
+        r = client.get("/api/backup/list")
+        assert r.status_code == 200, r.status_code
+        assert "files" in r.json(), r.text[:200]
+
+        r = client.get("/api/portfolio/dashboard")
+        assert r.status_code == 200, r.status_code
+        assert r.json().get("ok") is True, r.text[:200]
+    finally:
+        db.DB_PATH = orig_path
+        db._SCHEMA_INIT_PATHS.clear()
+        shutil.rmtree(tmp, ignore_errors=True)
+check('P1.2 web readonly API smoke', t_http_api_smoke)
 
 print(f'=== Results: {passed} passed, {failed} failed, {skipped} skipped ===')
 if failures:

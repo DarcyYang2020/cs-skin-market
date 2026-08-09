@@ -85,7 +85,7 @@ CS饰品投资分析系统，提供大盘分析、单品分析、持仓管理三
 - db.backfill_price_missing 仅补缺失日期，不覆盖已有 volume_day/in_sale_count
 ### dashboards.py — 仪表盘数据（P0-3/P0-4）
 - data_progress() -> 数据积累进度：大盘指数/K线覆盖度/在售量覆盖（含 90 天目标剩余自然日）
-- portfolio_dashboard() -> 组合仓位：持仓分布/仓位比例/集中度 + 并发建议仓位占用（读 batch_scan_latest.json）
+- portfolio_dashboard() -> 组合仓位：持仓分布/仓位比例/集中度 + 最近扫描时间（读 batch_scan_latest.json 的 time；并发建议仓位占用 2026-08-09 移除）
 - 纯展示层，不触碰信号引擎
 
 ### config.py — 配置与评分权重
@@ -112,7 +112,7 @@ CS饰品投资分析系统，提供大盘分析、单品分析、持仓管理三
 - 批量扫描：POST /api/watchlist/batch-scan-selected（勾选物品批量分析）
 - 报告查询：GET /api/watchlist/{id}/report（读取最新快照）
 - 持仓管理 CRUD：添加/编辑/删除自选、设置总资产
-- 信号中心/历史：GET /api/watchlist/scan-history[٭{scan_id}]（归档列表与详情）
+- 批量扫描历史：GET /api/watchlist/scan-history[٭{scan_id}]（归档列表与详情）
 - 执行记录：GET/POST /api/watchlist/executions、DELETE /api/watchlist/executions/{eid}（GET 时自动结算到期记录）
 - 仪表盘：GET /api/data/progress、GET /api/portfolio/dashboard
 
@@ -130,7 +130,6 @@ CS饰品投资分析系统，提供大盘分析、单品分析、持仓管理三
 - partials/dashboard_refresh.html — 大盘刷新局部更新
 - partials/index_analysis.html — 大盘分析面板
 - partials/index_card.html — 大盘指数卡片
-- partials/sectors_card.html — 板块资金流卡片
 
 ### 静态资源
 - static/css/style.css — 全局样式（浅色主题+深色侧栏+响应式）

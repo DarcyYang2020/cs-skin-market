@@ -6,11 +6,7 @@
 快照含悠悠锚价(yyyp_sell_price) + 在售数(yyyp_sell_num)，仅当前快照，无历史。
 """
 import asyncio, json, logging
-from datetime import timezone, timedelta
-
 from .collector_csqaq import _get_browser, CSQAQ_WEB, _csq_log
-
-TZ_BJ = timezone(timedelta(hours=8))
 _log = logging.getLogger(__name__)
 DEFAULT_PAGE_SIZE = 200
 DEFAULT_MAX_PAGES = 25  # 25 页 × 200 = 5000 品（/detail 默认按热度排序，取最热池）

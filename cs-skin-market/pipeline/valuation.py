@@ -23,24 +23,7 @@ class ValuationResult:
     label: str = "fair"   # cheap / fair / expensive / no_data
 
 
-def calc_percentile(prices, current):
-    """Percentile rank: what % of historical prices are below current.
-    Returns 0-100, where 0=at absolute low, 100=at absolute high."""
-    if not prices or current <= 0:
-        return 50.0
-    below = sum(1 for p in prices if p < current)
-    return round(below / len(prices) * 100, 1)
-
-
-def calc_zscore(prices, current):
-    """MAD-based Z-score (unified with index_analysis)."""
-    if len(prices) < 2 or current <= 0:
-        return 0.0
-    med = statistics.median(prices)
-    mad = statistics.median([abs(v - med) for v in prices])
-    if mad == 0:
-        return 0.0
-    return round((current - med) / (mad * 1.4826), 2)
+from .index_analysis import _percentile as calc_percentile, _zscore as calc_zscore
 
 
 def get_valuation_from_prices(prices):

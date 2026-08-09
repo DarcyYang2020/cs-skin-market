@@ -16,6 +16,6 @@ if __name__ == '__main__':
     print("Starting CS-Market server on http://127.0.0.1:8000")
     print(f"Python: {sys.executable}")
     print(f"Project: {_project_root}")
-    # 2026-08-09 ?????? pipeline/webapp ????????????????
-    # ??? watchfiles???? .py ?????????????
+    # 2026-08-09 优化：reload 模式下 pipeline/webapp 代码变更自动重载生效
+    # watchfiles 监听 .py 变更触发重载，无需手动重启
     uvicorn.run('webapp.main:app', host='127.0.0.1', port=8000, log_level='info', reload=True)

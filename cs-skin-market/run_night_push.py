@@ -7,14 +7,14 @@
 
 用法: python run_night_push.py
 """
-import sys, io, os, json
-from datetime import datetime, timezone, timedelta
+import sys, io, os
+from datetime import datetime
 
 if sys.stdout is sys.__stdout__:
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-TZ_BJ = timezone(timedelta(hours=8))
+from pipeline.config import TZ_BJ
 LOG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "night_push.log")
 
 

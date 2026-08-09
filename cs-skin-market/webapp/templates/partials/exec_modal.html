@@ -43,7 +43,9 @@
 
 <script>
 var _EXEC_ACTION_LABELS = {buy:'建仓', add:'补仓', reduce:'减仓', sell:'清仓/止损', hold:'观望'};
+var _execEditId = null;
 function openExecModal(btn) {
+  _execEditId = null;
   var nameEl = document.getElementById('exec-name');
   nameEl.value = btn.getAttribute('data-name') || '';
   nameEl.readOnly = true;
@@ -67,7 +69,9 @@ function openExecModal(btn) {
 function submitExec() {
   var name = document.getElementById('exec-name').value.trim();
   var price = parseFloat(document.getElementById('exec-price').value);
+  var date = document.getElementById('exec-date').value;
   if (!name) { showToast('请填写物品名称', 'error'); return; }
+  if (_execEditId && !date) { showToast('请选择日期', 'error'); return; }
   if (!(price > 0)) {
     // 参考价兜底：成交价留空时带出 price_history 锚定收盘价（悠悠定价锚），填入后提示确认，不自动写库
     var d2 = document.getElementById('exec-date').value || new Date().toISOString().slice(0, 10);
@@ -86,24 +90,27 @@ function submitExec() {
   var body = {
     name: name,
     action: document.getElementById('exec-action').value,
-    advice_date: document.getElementById('exec-date').value,
+    advice_date: date,
     exec_price: price,
     qty: parseInt(document.getElementById('exec-qty').value, 10) || 1,
     advice_signal: document.getElementById('exec-signal').textContent,
     advice_price: window._execAdvicePrice
   };
-  fetch('/api/watchlist/executions', {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)})
+  var url = _execEditId ? ('/api/watchlist/executions/' + _execEditId) : '/api/watchlist/executions';
+  var method = _execEditId ? "PUT" : "POST";
+  fetch(url, {method: method, headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)})
   .then(function(r) { return r.json(); })
   .then(function(d) {
     if (d.ok) {
       closeModal('exec-modal');
-      showToast(d.warning ? ('⚠️ ' + d.warning) : '✅ 已记录执行并同步持仓');
+      var wasEdit = !!_execEditId;
+      _execEditId = null;
+      var msg = wasEdit ? '✅ 已更新执行记录并重算持仓/资产' : '✅ 已记录执行并同步持仓';
+      showToast(d.warning ? ('⚠️ ' + d.warning) : msg);
       if (typeof loadExecReview === 'function') { loadExecReview(); }
-      if (typeof loadExecutions === 'function') {
-        if (d.warning) { loadExecutions(); } else { location.reload(); }
-      }
+      if (typeof loadExecutions === 'function') { location.reload(); }
     }
-    else { showToast('❌ ' + (d.error || '记录失败'), 'error'); }
+    else { showToast('❌ ' + (d.error || '操作失败'), 'error'); }
   });
 }
 </script>

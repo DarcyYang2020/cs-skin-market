@@ -1,12 +1,12 @@
 """CS-Market Web App - FastAPI application."""
 
-import sys, io, asyncio, json, re, traceback, copy, time
+import sys, io, asyncio, json, re, traceback, time
 if getattr(sys.stdout, "encoding", "").lower().replace("-", "") != "utf8":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 if getattr(sys.stderr, "encoding", "").lower().replace("-", "") != "utf8":
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
-from datetime import datetime, timezone, timedelta
+from datetime import datetime
 from pathlib import Path
 from fastapi import FastAPI, Request, Form, Query
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
@@ -15,20 +15,23 @@ from fastapi.templating import Jinja2Templates
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import logging
-from pipeline import db, collector, index_analysis, item_analysis
+from pipeline import db, collector, index_analysis
 from pipeline import collector_csqaq
+from pipeline.config import TZ_BJ
+from pipeline.dashboards import _j2_status
 from webapp.analysis_service import (
     AnalysisAbort, analyze_fresh, build_analysis_ctx,
     resolve_item, KLINE_FRESH_SINGLE, KLINE_FRESH_BATCH, KLINE_FRESH_DISCOVER,
     anchor_override, kline_db_fallback, kline_price_sane,
     market_snapshot, recent_buy_dates, save_analysis_result, save_item_snapshot,
+    _today_str,
 )
 
 _web_log = logging.getLogger("webapp")
 
 # In-memory analysis cache
 _analysis_cache = {}
-_ANALYSIS_CACHE_MAX = 200  # ????????????????????
+_ANALYSIS_CACHE_MAX = 200  # 分析缓存上限 200 条（TTL 1800s）
 
 def _cached_analysis(item_id, compute_fn):
     import time as _time
@@ -50,7 +53,6 @@ app = FastAPI(title="CS-Market")
 BASE_DIR = Path(__file__).resolve().parent
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
-TZ_BJ = timezone(timedelta(hours=8))
 
 
 def _ae(msg: str) -> str:
@@ -59,12 +61,6 @@ def _ae(msg: str) -> str:
 <div class="card-header"><span class="card-title">&#9888;&#65039; 错误</span></div>
 <p style="color: var(--red);">{msg}</p>
 </div>"""
-
-def _now_str() -> str:
-    return datetime.now(TZ_BJ).strftime("%Y-%m-%d %H:%M:%S")
-
-def _today_str() -> str:
-    return datetime.now(TZ_BJ).strftime("%Y-%m-%d")
 
 
 async def _resolve_good_id(query):
@@ -184,17 +180,6 @@ def _dashboard_context():
         conn.close()
 
 
-def _load_j2():
-    """读 data/j2_channel_status.json（dashboard 引擎状态徽章 / checkup 信号体检 共用）。"""
-    _p = Path(__file__).resolve().parent.parent / "data" / "j2_channel_status.json"
-    if not _p.exists():
-        return None
-    try:
-        return json.loads(_p.read_text(encoding="utf-8"))
-    except Exception:
-        return None
-
-
 def _signal_density():
     """回放信号密度：最近30日信号数 vs 历史30日窗口分位（纯展示，读 item_backtest_full_2025.json）。"""
     try:
@@ -242,7 +227,7 @@ async def page_dashboard(request: Request):
         _ms_r.get("sentiment"), _ms_r.get("chg30"), _ms_r.get("th"))
     # ---- 引擎状态徽章（J-2 冻结监测，纯展示；读 j2_channel_status.json）----
     _engine_status = None
-    _j2 = _load_j2()
+    _j2 = _j2_status()
     if _j2:
         try:
             _ch = _j2.get("channels") or {}
@@ -428,8 +413,11 @@ async def page_watchlist(request: Request):
                 item["pnl_pct"] = (item["latest_price"] - item["avg_cost"]) / item["avg_cost"] * 100
         total_buy_cost = sum((i.get("avg_cost") or 0) * (i.get("quantity") or 0) for i in all_items if i.get("holding"))
         total_market = sum((i.get("latest_price") or 0) * (i.get("quantity") or 0) for i in all_items if i.get("holding"))
-        total_pnl = total_market - total_buy_cost
-        total_pnl_pct = (total_pnl / total_buy_cost * 100) if total_buy_cost > 0 else 0
+        floating_pnl = total_market - total_buy_cost
+        realized_pnl = db.realized_pnl_total(conn)
+        total_pnl = floating_pnl + realized_pnl
+        total_pnl_pct = (total_pnl / total_assets * 100) if total_assets > 0 else 0
+        net_assets = total_assets + total_pnl
         position_ratio = (total_buy_cost / total_assets * 100) if total_assets > 0 else 0
 
         # ---- 监控摘要（纯展示）：接近买点 Top + 破位止损 ----
@@ -526,6 +514,10 @@ async def page_watchlist(request: Request):
             "items": items,
             "total_assets": total_assets,
             "total_buy_cost": total_buy_cost,
+            "total_market": total_market,
+            "floating_pnl": floating_pnl,
+            "realized_pnl": realized_pnl,
+            "net_assets": net_assets,
             "total_pnl": total_pnl,
             "total_pnl_pct": total_pnl_pct,
             "position_ratio": position_ratio,
@@ -785,7 +777,7 @@ async def api_watchlist_delete(item_id: int):
 async def api_watchlist_analyze(request: Request, item_id: int):
     conn = db.get_conn()
     try:
-        row = conn.execute("SELECT name, rarity, source, is_discontinued, discontinued_years FROM items WHERE id = ?", (item_id,)).fetchone()
+        row = conn.execute("SELECT name FROM items WHERE id = ?", (item_id,)).fetchone()
         if not row:
             return HTMLResponse(_ae("物品不存在"))
         name = row["name"]
@@ -833,33 +825,30 @@ async def api_watchlist_analyze(request: Request, item_id: int):
         return HTMLResponse(_ae(f"分析失败: {str(e)[:300]}"))
 @app.get("/api/watchlist/{item_id}/report")
 async def api_watchlist_report(request: Request, item_id: int):
+    """自选「报告」按钮（F-3.13，2026-08-09）：与批量扫描弹窗同口径——
+    DB 重建完整分析页（持仓品带建议卡片），无新鲜数据/失败时回退已存快照报告。"""
     conn = db.get_conn()
     try:
-        row = db.get_latest_snapshot_report(conn, item_id)
-        if not row or not (row["report_html"] or row["report_md"]):
-            return HTMLResponse(
-                '<div class="card" style="border-color: rgba(245,158,11,0.5);">'
-                '<div class="card-header"><span class="card-title">⚠️ 暂无报告</span></div>'
-                '<p style="color: var(--text-secondary);">该物品尚未生成分析报告，请先点击「分析」按钮。</p>'
-                '</div>'
-            )
-        if row["report_html"]:
-            return HTMLResponse(row["report_html"])
-        report_html = _render_report_html(row["report_md"], row["date"], row["grade"], row["total_score"] or 0)
-        return HTMLResponse(report_html)
+        row = conn.execute("SELECT name FROM items WHERE id=?", (item_id,)).fetchone()
     finally:
         conn.close()
+    if not row:
+        return HTMLResponse(_ae("物品不存在"))
+    return await _report_view_rebuild(request, row["name"])
 
 
 
 # ---- Report view (批量扫描/自选「报告」弹窗统一入口, 2026-08-09) ----
 @app.get("/api/items/report-view")
 async def api_item_report_view(request: Request, name: str = Query(...)):
-    """报告弹窗统一入口：DB 复用重建完整分析页（不重新采集），持仓品带补仓/止损双路径卡片。
+    """报告弹窗统一入口：DB 复用重建完整分析页（不重新采集），持仓品带补仓/止损双路径卡片。"""
+    return await _report_view_rebuild(request, name)
 
-    F-3.7 (2026-08-09)：此前批量扫描/自选「报告」只显示已存 markdown 快照，无持仓上下文，
-    看不到「持仓浮亏 · 补仓/止损双路径」卡片；改为优先用 DB 新鲜 K 线（≤3天，F-3 采集复用口径）
-    重建 analysis.html（与「分析」按钮同口径）；数据不新鲜或无历史时回退已存快照报告。
+
+async def _report_view_rebuild(request: Request, name: str):
+    """报告重建核心（F-3.7 2026-08-09；F-3.13 自选「报告」按钮同口径）：
+    优先用 DB 新鲜 K 线（≤3天，F-3 采集复用口径）重建 analysis.html
+    （与「分析」按钮同口径，持仓品带建议卡片）；数据不新鲜或无历史时回退已存快照报告。
     """
     try:
         from webapp.analysis_service import db_kline_fresh, item_from_db, KLINE_FRESH_BATCH
@@ -874,7 +863,7 @@ async def api_item_report_view(request: Request, name: str = Query(...)):
             good_id = (_row["good_id"] if _row and _row["good_id"] else 0) or 0
             it = item_from_db(fresh, good_id)
             b = await analyze_fresh(it, good_id, fresh["db_name"], db_item_id=fresh["item_id"],
-                                    apply_anchor=False, allow_single_price=True)
+                                    apply_anchor=False, allow_single_price=True, auto_watchlist=False)
             ctx = build_analysis_ctx(b["analysis"], b["kline_stale_days"], b["kline_stale_date"],
                                      holding_ctx=b.get("holding_ctx"),
                                      market_30d_change=b.get("market_30d_change"),
@@ -1129,7 +1118,7 @@ async def _scan_item(row, idx, ms, market_th_score, sentiment_score, total_asset
     """批量扫描单个物品（可并发调用，共享 Playwright 浏览器多 page）。"""
     import json as _json
     from pipeline.batch_scan import _portfolio_advice, summarize_buy_distance
-    from pipeline import collector_csqaq, item_analysis
+    from pipeline import item_analysis
     item_id, name, holding, avg_cost, qty = row["id"], row["name"], row["holding"] or 0, row["avg_cost"] or 0, row["quantity"] or 0
     try:
         good_id, _ = await _resolve_good_id(name)
@@ -1148,34 +1137,34 @@ async def _scan_item(row, idx, ms, market_th_score, sentiment_score, total_asset
         # 新规则（2026-08-04）：出现偏差时统一以悠悠锚价为准——新鲜 chart 判脏先试 DB 缓存 K 线，
         # DB 仍判脏且悠悠锚价可用时，把最新价校正为锚价继续分析（不再跳过/保留旧数据）。
         _anchor_px = getattr(item, "price_rmb", 0) or 0
-        _sane, _sane_msg = kline_price_sane(daily_bars, item_id, anchor_price=_anchor_px)
-        if not _sane:
-            _db_bars, _db_stale, _db_stale_date = kline_db_fallback(good_id, exact_name)
-            if _db_bars:
-                _base_sane, _base_msg = kline_price_sane(_db_bars, item_id, anchor_price=_anchor_px)
-                if _base_sane:
-                    _web_log.warning(f"batch scan DB kline fallback {exact_name}: {_sane_msg}")
-                    daily_bars = _db_bars
-                elif _anchor_px and _anchor_px > 0:
-                    daily_bars = anchor_override(_db_bars, _anchor_px, label=exact_name)
-                    _web_log.warning(f"batch scan anchor override {exact_name}: {_base_msg} -> 统一以悠悠锚¥{_anchor_px:.2f}为准")
+        conn_c = db.get_conn()
+        try:
+            _sane, _sane_msg = kline_price_sane(daily_bars, item_id, anchor_price=_anchor_px, conn=conn_c)
+            if not _sane:
+                _db_bars, _db_stale, _db_stale_date = kline_db_fallback(good_id, exact_name)
+                if _db_bars:
+                    _base_sane, _base_msg = kline_price_sane(_db_bars, item_id, anchor_price=_anchor_px, conn=conn_c)
+                    if _base_sane:
+                        _web_log.warning(f"batch scan DB kline fallback {exact_name}: {_sane_msg}")
+                        daily_bars = _db_bars
+                    elif _anchor_px and _anchor_px > 0:
+                        daily_bars = anchor_override(_db_bars, _anchor_px, label=exact_name)
+                        _web_log.warning(f"batch scan anchor override {exact_name}: {_base_msg} -> 统一以悠悠锚¥{_anchor_px:.2f}为准")
+                    else:
+                        _web_log.warning(f"batch scan skip {exact_name}: {_base_msg}")
+                        return dict(name=exact_name, holding=holding, error="价格校验未通过，保留旧数据")
                 else:
-                    _web_log.warning(f"batch scan skip {exact_name}: {_base_msg}")
-                    return dict(name=exact_name, holding=holding, error="价格校验未通过，保留旧数据")
-            else:
-                if _anchor_px and _anchor_px > 0:
-                    daily_bars = anchor_override(daily_bars, _anchor_px, label=exact_name)
-                    _web_log.warning(f"batch scan anchor override {exact_name}: {_sane_msg} -> 统一以悠悠锚¥{_anchor_px:.2f}为准")
-                else:
-                    _web_log.warning(f"batch scan skip {exact_name}: {_sane_msg}")
-                    return dict(name=exact_name, holding=holding, error="价格校验未通过，保留旧数据")
+                    if _anchor_px and _anchor_px > 0:
+                        daily_bars = anchor_override(daily_bars, _anchor_px, label=exact_name)
+                        _web_log.warning(f"batch scan anchor override {exact_name}: {_sane_msg} -> 统一以悠悠锚¥{_anchor_px:.2f}为准")
+                    else:
+                        _web_log.warning(f"batch scan skip {exact_name}: {_sane_msg}")
+                        return dict(name=exact_name, holding=holding, error="价格校验未通过，保留旧数据")
+            recent_buys = recent_buy_dates(conn_c, item_id)
+        finally:
+            conn_c.close()
         prices = [k.close for k in daily_bars if k.close > 0] if daily_bars else [item.price_rmb]
         supply_hist = [k.in_sale_count for k in daily_bars] if daily_bars else []
-        conn_r = db.get_conn()
-        try:
-            recent_buys = recent_buy_dates(conn_r, item_id)
-        finally:
-            conn_r.close()
         analysis = await asyncio.get_running_loop().run_in_executor(
             None,
             lambda: item_analysis.run_item_analysis(
@@ -1229,7 +1218,7 @@ async def _scan_item(row, idx, ms, market_th_score, sentiment_score, total_asset
         # Persist
         conn_p = db.get_conn()
         try:
-            pid = db.upsert_item(conn_p, name=exact_name, good_id=good_id, yyyp_id=item.yyyp_id, in_watchlist=1)
+            pid = db.upsert_item(conn_p, name=exact_name, good_id=good_id, yyyp_id=item.yyyp_id, in_watchlist=None)
             db.save_price_history_batch(conn_p, pid, daily_bars)
             conn_p.commit()
         finally:
@@ -1356,6 +1345,16 @@ async def _run_batch_scan_task(scan_id: str, rows: list):
 
         _persist_scan_progress(scan_id)
 
+
+    # 数据保留清理（365/90/7 天 + VACUUM，口径 references/data-layer.md）
+    try:
+        from pipeline.db import run_retention_cleanup
+        _rc = run_retention_cleanup(vacuum=True)
+        if _rc["deleted"] or _rc["files"]:
+            _web_log.info(f"batch scan retention cleanup: deleted={_rc['deleted']} files={_rc['files']} vacuum={_rc['vacuum']}")
+    except Exception as _re:
+        _web_log.warning(f"batch scan retention cleanup failed: {_re}")
+
 @app.get("/api/watchlist/batch-scan-latest")
 async def api_batch_scan_latest():
     """Return the latest cached batch scan result."""
@@ -1385,7 +1384,7 @@ async def api_batch_scan_latest_clear():
 
 @app.get("/api/watchlist/scan-history")
 async def api_scan_history():
-    """批量扫描历史归档列表 + 最近一次信号摘要（信号中心数据源, 2026-08-04）。"""
+    """批量扫描历史归档列表（watchlist 历史下拉）。"""
     import json as _J
     from pathlib import Path as _P
     _hist_dir = _P(__file__).resolve().parent.parent / "data" / "scan_history"
@@ -1400,17 +1399,9 @@ async def api_scan_history():
                 "scan_id": f.stem.replace("scan_", ""),
                 "time": d.get("time", ""),
                 "results_count": d.get("results_count", 0),
-                "signals_count": len(d.get("signals", [])),
                 "market_th": d.get("market_th"),
             })
-    latest_signals = []
-    if scans:
-        _first = _hist_dir / ("scan_" + scans[0]["scan_id"] + ".json")
-        try:
-            latest_signals = _J.loads(_first.read_text(encoding="utf-8")).get("signals", [])
-        except Exception:
-            latest_signals = []
-    return {"found": bool(scans), "scans": scans, "latest_signals": latest_signals}
+    return {"found": bool(scans), "scans": scans}
 
 
 @app.get("/api/watchlist/scan-history/{scan_id}")
@@ -1570,12 +1561,46 @@ async def api_add_execution(request: Request):
         conn.close()
 
 
-@app.delete("/api/watchlist/executions/{eid}")
-async def api_delete_execution(eid: int):
+@app.put("/api/watchlist/executions/{eid}")
+async def api_update_execution(eid: int, request: Request):
+    """编辑执行记录（2026-08-09）：改动作/日期/价格/数量后自动分段重放，同步持仓与资产。"""
+    body = await request.json()
+    action = str(body.get("action", "")).strip()
+    try:
+        qty = max(1, int(body.get("qty", 1)))
+        price = float(body.get("exec_price", 0))
+    except (TypeError, ValueError):
+        return {"ok": False, "error": "数量和价格格式不正确"}
+    advice_date = str(body.get("advice_date", "")).strip()
+    try:
+        advice_price = float(body["advice_price"]) if body.get("advice_price") else None
+    except (TypeError, ValueError):
+        advice_price = None
+    if action not in EXEC_ACTIONS:
+        return {"ok": False, "error": "动作类型不正确"}
+    if price <= 0:
+        return {"ok": False, "error": "成交价必须大于0"}
+    if not advice_date:
+        return {"ok": False, "error": "日期不能为空"}
     conn = db.get_conn()
     try:
-        db.delete_execution(conn, eid)
-        return {"ok": True}
+        result = db.update_execution(conn, eid, action, advice_date, price, qty,
+                                     advice_signal=str(body.get("advice_signal", "") or ""),
+                                     advice_price=advice_price)
+        if result is None:
+            return {"ok": False, "error": "执行记录不存在"}
+        return {"ok": True, **result}
+    finally:
+        conn.close()
+
+
+@app.delete("/api/watchlist/executions/{eid}")
+async def api_delete_execution(eid: int):
+    """删除执行记录（2026-08-09）：同步回滚该品持仓数量/均价/累计买入，资产汇总随之恢复。"""
+    conn = db.get_conn()
+    try:
+        result = db.delete_execution(conn, eid)
+        return {"ok": True, **(result or {})}
     finally:
         conn.close()
 
@@ -1631,7 +1656,7 @@ async def api_health_status():
 
 @app.get("/api/portfolio/dashboard")
 async def api_portfolio_dashboard():
-    """组合仓位仪表: 持仓分布 + 并发建议仓位占用。"""
+    """组合仓位仪表: 持仓分布。"""
     from pipeline import dashboards
     conn = db.get_conn()
     try:
@@ -1673,7 +1698,7 @@ async def api_batch_scan_progress(scan_id: str):
 # ---- 信号体检页 (P2-1, 2026-08-07: J-2 C 通道月度 + 实盘信号跟踪) ----
 @app.get("/checkup", response_class=HTMLResponse)
 async def page_checkup(request: Request):
-    _j2 = _load_j2()
+    _j2 = _j2_status()
     _signals = []
     _conn = db.get_conn()
     try:
@@ -1739,7 +1764,7 @@ def _event_note(signal_date, fwd_series):
 
 @app.get("/api/signals/replay")
 async def api_signals_replay():
-    """?????????? 503 ???item_backtest_full_2025.json?K-2 ?? 2026-08-06?+ DB ?????????????"""
+    """信号复盘：读回放产物 data/item_backtest_full_2025.json（K-2 预研，2026-08-06）回放历史 buy 信号，叠加 DB 实盘最新价对照展示。"""
     import json as _J
     from pathlib import Path as _P
     p = _P(__file__).resolve().parent.parent / 'data' / 'item_backtest_full_2025.json'
@@ -1869,7 +1894,8 @@ async def _run_discover_task(task_id: str, items: list):
                     conn_p = db.get_conn()
                     try:
                         _pid = db.upsert_item(conn_p, name=exact_name, good_id=good_id,
-                                              yyyp_id=getattr(item, "yyyp_id", "") or "")
+                                              yyyp_id=getattr(item, "yyyp_id", "") or "",
+                                              in_watchlist=None)
                         db.save_price_history_batch(conn_p, _pid, daily_bars)
                         conn_p.commit()
                     finally:

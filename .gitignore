@@ -1,4 +1,4 @@
-﻿# Python
+# Python
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -57,3 +57,12 @@ cs-skin-market/data/uu_headers.json
 
 # Theme design check screenshots (2026-08-08) - debug only
 **/data/_theme_check_*.png
+
+# Test artifacts (Playwright MCP probes / screenshots / discover runtime state)
+.playwright-mcp/
+**/data/test-screenshots/
+**/data/_probe_*.png
+**/data/discover_progress_*.json
+
+# DB backups (P0 restore points) - not source
+cs-skin-market/data/market.db.bak*

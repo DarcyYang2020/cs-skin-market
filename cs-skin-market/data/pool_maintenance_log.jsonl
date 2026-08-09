@@ -1,0 +1,8 @@
+{"type": "discover", "task_id": "discover_1786192240", "note": "empty", "candidates": 0, "ok": 0, "error": 0, "skipped": 0, "market_th": null, "pool_size_now": 179, "ts": "2026-08-08 20:31:24"}
+{"type": "discover", "task_id": "discover_1786192524", "note": "completed", "candidates": 9, "ok": 4, "error": 0, "skipped": 5, "market_th": 39, "pool_size_now": 188, "ts": "2026-08-08 20:37:21"}
+{"type": "discover", "task_id": "discover_1786194852", "note": "completed", "candidates": 181, "ok": 70, "error": 0, "skipped": 111, "market_th": 39, "pool_size_now": 188, "ts": "2026-08-08 21:14:48"}
+{"type": "discover", "task_id": "discover_1786197957", "note": "completed", "candidates": 181, "ok": 70, "error": 0, "skipped": 111, "market_th": 37, "pool_size_now": 188, "ts": "2026-08-08 22:05:59"}
+{"type": "prune", "reason": "非崭新出厂", "marked": 7, "items": ["AK-47 | 抽象派 1337 (略有磨损)", "印花 | MOUZ（全息）| 2024年上海锦标赛", "指挥官 梅 “极寒” 贾米森 | 特警", "AK-47 | 精英之作 (战痕累累)", "亚诺（野草） | 游击队", "AWP | 无畏战神 (略有磨损)", "M4A4 | 二西莫夫 (久经沙场)"], "threshold": "name NOT LIKE '%崭新出厂%' AND 非自选/非持仓", "ts": "2026-08-08 23:32:24"}
+{"type": "discover", "task_id": "discover_1786203233", "note": "completed", "candidates": 170, "ok": 64, "error": 0, "skipped": 106, "market_th": 37, "pool_size_now": 188, "ts": "2026-08-08 23:33:54"}
+{"type": "discover", "task_id": "discover_1786205038", "note": "completed", "candidates": 170, "ok": 59, "error": 0, "skipped": 111, "market_th": 37, "pool_size_now": 188, "ts": "2026-08-09 00:04:06"}
+{"type": "discover", "task_id": "discover_1786247329", "note": "completed", "candidates": 170, "ok": 67, "error": 0, "skipped": 103, "market_th": 37, "pool_size_now": 188, "ts": "2026-08-09 11:48:51"}

@@ -4,6 +4,9 @@
 > If that file exists, its rules **override** this Master file.
 > If not, strictly follow the rules below.
 
+> **2026-08-09 归档说明**：本文档为早期深色 OLED 概念稿；实际已落地为 `webapp/static/css/style.css` v3 浅色设计系统（IBM Plex Sans、indigo 主色、4px 间距、44px 触控目标、prefers-reduced-motion）。后续改动以 style.css 为准。
+
+
 ---
 
 **Project:** CS Market

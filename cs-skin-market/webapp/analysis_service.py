@@ -6,15 +6,15 @@ api_watchlist_analyze 三条约 90% 重复的分析路径；批量扫描 _scan_i
 「价格校验先行 + 参数子集 + 结果结构不同」暂保留原流程（调用本模块助手函数）。
 """
 import asyncio, copy, json, logging, sys
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from fastapi.templating import Jinja2Templates
 from pipeline import db, collector, collector_csqaq, item_analysis, config as _config, signal_tracking as _sig_tracking
+from pipeline.config import TZ_BJ
 
 _log = logging.getLogger("webapp")  # 与 main.py 同通道
-TZ_BJ = timezone(timedelta(hours=8))
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent / "templates"))
 
 
@@ -152,7 +152,7 @@ def kline_db_fallback(good_id, name):
         conn.close()
 
 
-def kline_price_sane(daily_bars, item_id, anchor_price=None):
+def kline_price_sane(daily_bars, item_id, anchor_price=None, conn=None):
     """K线价格合理性校验，防 csQAQ 偶发串品/脏价覆盖历史。
 
     规则：新采集最新价 vs DB 该品最近历史价 偏差>25%，且新序列内存在单日跳变>30%，
@@ -180,16 +180,18 @@ def kline_price_sane(daily_bars, item_id, anchor_price=None):
     db_last = 0
     last_date = getattr(daily_bars[-1], "date", "") or "9999-99-99"
     try:
-        conn = db.get_conn()
+        _close_conn = conn is None
+        _conn = conn or db.get_conn()
         try:
-            row = conn.execute(
+            row = _conn.execute(
                 "SELECT price_rmb FROM price_history WHERE item_id=? AND date < ? ORDER BY date DESC LIMIT 1",
                 (item_id, last_date),
             ).fetchone()
             if row:
                 db_last = row["price_rmb"] or 0
         finally:
-            conn.close()
+            if _close_conn:
+                _conn.close()
     except Exception:
         return True, ""
     if db_last <= 0 or new_last <= 0:
@@ -347,12 +349,12 @@ def save_item_snapshot(conn, item_id, analysis, price_rmb, today=None, order_boo
     conn.commit()
 
 
-def save_analysis_result(analysis, kline_stale_days=None, kline_stale_date="", oob_price="", oob_grade=""):
+def save_analysis_result(analysis, kline_stale_days=None, kline_stale_date=""):
     """渲染简洁报告并 upsert 到 analysis_results（单品分析/批量扫描共用，按 name 覆盖老数据）。"""
     try:
         grade = analysis.value.grade
         th = analysis.trend_health or {}
-        trend_dir = th.get("trend_direction", "")
+        trend_dir = th.get("direction", "")
         trend_score = th.get("score", 0)
         report_html = templates.get_template("partials/analysis.html").render({
             "name": analysis.name,
@@ -369,8 +371,6 @@ def save_analysis_result(analysis, kline_stale_days=None, kline_stale_date="", o
             "trend_health": analysis.trend_health,
             "fusion_decision": analysis.fusion_decision,
             "error": None,
-            "oob_price": oob_price,
-            "oob_grade": oob_grade,
             "kline_stale_days": kline_stale_days,
             "kline_stale_date": kline_stale_date,
             "price_zones": analysis.price_zones,
@@ -396,7 +396,8 @@ def save_analysis_result(analysis, kline_stale_days=None, kline_stale_date="", o
 
 async def analyze_fresh(item, good_id, exact_name, *, db_item_id=None, apply_anchor=True,
                         hard_error_no_kline=False,
-                        allow_single_price=False):
+                        allow_single_price=False,
+                        auto_watchlist=True):
     """单品分析统一核心：大盘上下文 + K线兜底/锚价校正 + 引擎分析 + 落库 + 快照 + 报告。
 
     参数：
@@ -407,6 +408,7 @@ async def analyze_fresh(item, good_id, exact_name, *, db_item_id=None, apply_anc
       apply_anchor    是否应用锚价校正（search/analyze=True；watchlist 沿用历史行为=False）
       hard_error_no_kline  K 线获取失败时抛 AnalysisAbort（search 路径；其他路径降级用锚价单点）
       allow_single_price K 线为空时降级用单点锚价分析（watchlist 历史行为；search/analyze 传空保持原样）
+      auto_watchlist   分析后是否自动加入自选（2026-08-09 方案A：search/单品分析=True；查看报告=False，不污染关注列表）
     返回 bundle dict；失败抛 AnalysisAbort（msg 为用户可见文案）。
     """
     idx = await asyncio.to_thread(collector.fetch_market_index)
@@ -441,7 +443,8 @@ async def analyze_fresh(item, good_id, exact_name, *, db_item_id=None, apply_anc
 
     conn_p = db.get_conn()
     try:
-        pid = db.upsert_item(conn_p, name=exact_name, good_id=good_id, yyyp_id=item.yyyp_id, in_watchlist=1)
+        pid = db.upsert_item(conn_p, name=exact_name, good_id=good_id, yyyp_id=item.yyyp_id,
+                             in_watchlist=(1 if auto_watchlist else None))
         conn_p.commit()
     finally:
         conn_p.close()
@@ -644,6 +647,36 @@ def build_analysis_ctx(analysis, kline_stale_days=None, kline_stale_date="",
                 market_30d_change=market_30d_change, total_assets=0.0)
         except Exception as _he:
             _log.warning(f"holding advice failed {analysis.name}: {_he}")
+    # F-3.13 (2026-08-09) 持仓品「建议动作」以持仓风控矩阵为准（止损/补仓/止盈优先于入场信号），
+    # 与下方持仓建议卡片口径一致；仅展示层，不改引擎 fusion_decision。
+    holding_action = None
+    if holding_advice:
+        _sp2 = holding_advice.get("stop_plan") or {}
+        _sa2 = _sp2.get("sell_action")
+        _ha = holding_advice.get("action") or ""
+        _cur = analysis.price_rmb or 0
+        if _sa2 in ("sell", "reduce"):
+            holding_action = {
+                "action": "sell" if _sa2 == "sell" else "reduce",
+                "label": "清仓/止损" if _sa2 == "sell" else "减仓止损",
+                "signal": "止损评估·" + str(_sp2.get("state") or ""),
+                "price": _cur, "qty": int(_sp2.get("sell_qty") or 0),
+            }
+        elif _ha == "可分批补仓":
+            _adds2 = holding_advice.get("add_positions") or []
+            holding_action = {
+                "action": "add", "label": "补仓", "signal": _ha,
+                "price": float(_adds2[0]["price"]) if _adds2 else _cur,
+                "qty": int(_adds2[0]["qty"]) if _adds2 else 0,
+            }
+        elif _ha in ("建议止盈减仓", "大幅盈利，部分止盈"):
+            holding_action = {
+                "action": "reduce", "label": "减仓止盈", "signal": _ha,
+                "price": _cur, "qty": int(holding_advice.get("reduce_qty") or 0),
+            }
+        else:
+            holding_action = {"action": "hold", "label": "观望", "signal": _ha,
+                              "price": _cur, "qty": 0}
     fd = dict(analysis.fusion_decision or {})
     fd["expectancy"] = _expectancy_badge(fd.get("action_label"))
     _src_labels = [_SOURCE_LABELS.get(str(s), str(s)) for s in (fd.get("deduction_sources") or [])]
@@ -667,10 +700,11 @@ def build_analysis_ctx(analysis, kline_stale_days=None, kline_stale_date="",
         "data_quality": analysis.data_quality,
         "trend_health": analysis.trend_health,
         "fusion_decision": fd,
-        "error": None, "oob_price": "", "oob_grade": "",
+        "error": None,
         "kline_stale_days": kline_stale_days,
         "kline_stale_date": kline_stale_date,
         "price_zones": analysis.price_zones,
         "holding_advice": holding_advice,
+        "holding_action": holding_action,
         "analysis_time": datetime.now(TZ_BJ).strftime("%Y-%m-%d %H:%M"),
     }

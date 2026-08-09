@@ -12,15 +12,12 @@ import urllib.request
 import urllib.parse
 import asyncio
 from dataclasses import dataclass, field
-from datetime import datetime, timezone, timedelta
+from datetime import datetime
 from typing import Optional
 
-from .config import CSQAQ_BASE, API_TOKEN, API_RATE_LIMIT, DATA_DIR
+from .config import CSQAQ_BASE, API_TOKEN, API_RATE_LIMIT, DATA_DIR, TZ_BJ
 import logging
 _log = logging.getLogger(__name__)
-
-TZ_BJ = timezone(timedelta(hours=8))
-
 
 # ============================================================
 #  Data classes (unchanged from original)

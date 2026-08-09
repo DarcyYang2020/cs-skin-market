@@ -87,7 +87,7 @@ cd cs-skin-market && python run_server.py
 |---|---|---|
 | 大盘仪表盘 | / | 大盘指数 + 市场宏观 + 融合决策 + 数据积累进度 |
 | 单品分析 | /search | 搜索 + 分析，结果持久化 |
-| 持仓管理 | /watchlist | 自选 + 持仓 + 批量扫描 + 信号中心 + 执行记录 + 组合仓位仪表 |
+| 持仓管理 | /watchlist | 自选 + 持仓 + 批量扫描 + 执行记录 + 组合仓位仪表 |
 | 发现高分品 | /discover | 扫描全武器类型崭新出厂品，筛选 Top 10 |
 | 监控 | /monitor | M1 每日自选品异动事件（买点接近/止损/决策翻转/供给突变/价格异动/大盘切换/持仓到期/新买信号） |
 
@@ -128,7 +128,6 @@ webapp/templates/
     analysis.html        -- 单品分析结果部分
     index_analysis.html  -- 大盘分析结果部分
     index_card.html      -- 大盘指数卡片
-    sectors_card.html    -- 品类排名卡片
     dashboard_refresh.html -- 仪表盘刷新区域
 ```
 
@@ -266,11 +265,11 @@ python references/scripts-archive/run_item_backtest.py --items "AWP | 冥界之�
 
 2026-08-04 引擎冻结期（当时等真实成交量积累）的产品/展示层增强批次，不改任何信号引擎（2026-08-07 去量后已解冻）：
 
-- **P0-1 信号中心 + 历史归档**：批量扫描提取信号（可分批补仓 > 建议止损 > 已到买点），存 data/scan_history/scan_*.json（保留 30 份）；watchlist 页信号中心卡 + 历史下拉
+- **P0-1 批量扫描历史归档**：批量扫描提取信号（可分批补仓 > 建议止损 > 已到买点），存 data/scan_history/scan_*.json（保留 30 份）；watchlist 页历史下拉回看（信号中心卡 2026-08-09 移除）
 - **P0-2 执行记录 + 自动复盘**：executions 表；批量扫描「按建议执行」/手动录入；14/30 天到期按最近收盘价自动结算（净收益扣 2% 双边成本，与回测口径一致）
 - **P0-3 数据积累进度**：大盘/K线覆盖度 + 90 天目标进度条（2026-08-07 改为在售量覆盖，见 dashboards.data_progress）
-- **P0-4 组合仓位仪表**：持仓市值/仓位比例/集中度 + 并发建议仓位占用（Σ建仓补仓 vs 0.8 上限）
-- **体验优化**：批量扫描按钮信号角标、执行记录手动录入、待结算预计日期、平均净收益汇总、物品名自动补全、扫描后自动刷新信号中心
+- **P0-4 组合仓位仪表**：持仓市值/仓位比例/集中度 + 最近扫描时间（并发建议仓位占用 2026-08-09 移除）
+- **体验优化**：执行记录手动录入、待结算预计日期、平均净收益汇总、物品名自动补全
 
 ## 文档编码规范（防乱码，2026-08-04）
 
@@ -334,7 +333,7 @@ cs-skin-market/
     static/js/app.js     -- 公共 JS（Modal/导航）
   references/            -- 文档 + 研究脚本（j2_channel_monitor.py / refit_pipeline.py / portfolio_backtest.py 等）
   tests/
-    test_smoke.py        -- 冒烟测试（约 70 用例，支持 CS_MODEL_SKIP_NET）
+    test_smoke.py        -- 冒烟测试（86 用例，支持 CS_MODEL_SKIP_NET；P1.2 起含 Web 只读 API 冒烟）
     check_encoding.py    -- 编码健康检查
     snapshots/replay_v2.json -- 回放口径快照
 
@@ -343,7 +342,7 @@ cs-skin-market/
 
 完整表结构与用途见 `references/data-layer.md` 第 5 节：
 items / price_history / market_index / macro_history / snapshots / market_snapshot / monitor_rank_snapshot /
-monitor_events / positions / executions / signal_tracking / health_checks / backtest_results / settings / schema_version。
+monitor_events / positions / executions / signal_tracking / analysis_results / health_checks / backtest_results / settings / schema_version。
 
 ## 风控/信号职责分工（三层闸门，2026-08-06 定稿）
 

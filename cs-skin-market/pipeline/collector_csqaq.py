@@ -5,10 +5,10 @@ Navigates directly to goods page and intercepts chart API.
 
 import asyncio, json, re
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime
 from typing import Optional
 
-TZ_BJ = timezone(timedelta(hours=8))
+from .config import TZ_BJ
 _csq_log = logging.getLogger(__name__)
 CSQAQ_WEB = "https://csqaq.com"
 

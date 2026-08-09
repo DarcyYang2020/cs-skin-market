@@ -100,10 +100,10 @@ C buy 连续 2 月 14d<70% 或月度 14d<80%、30d<55%；监测见 data/j2_chann
         config.py              -- 配置（API/权重/评分表/阈值）
         collector.py           -- 大盘指数采集（HTTP）
         collector_csqaq.py     -- 单品采集（Playwright）
-        db.py                  -- SQLite 存储
-        item_analysis.py       -- 单品分析引擎（1051行）
-        index_analysis.py      -- 大盘分析引擎（903行）
-        trend_health.py        -- 趋势健康度 + 融合决策（802行）
+        db.py                  -- SQLite 存储（含数据保留清理 run_retention_cleanup）
+        item_analysis.py       -- 单品分析引擎（1963行）
+        index_analysis.py      -- 大盘分析引擎（1192行）
+        trend_health.py        -- 趋势健康度 + 融合决策（929行）
         valuation.py           -- 估值分位 + 估值宫格
         supply.py              -- 供给分析
         market_th.py           -- 大盘趋势健康度
@@ -111,7 +111,7 @@ C buy 连续 2 月 14d<70% 或月度 14d<80%、30d<55%；监测见 data/j2_chann
         market_context.py      -- 大盘上下文
         batch_scan.py          -- 自选批量扫描
       webapp/
-        main.py                -- FastAPI 应用（1816行，路由 + 页面编排）
+        main.py                -- FastAPI 应用（2386行，路由 + 页面编排）
         analysis_service.py    -- 单品分析服务层（2026-08-07 重构）：kline兜底/脏价校验/锚价校正/大盘上下文/快照落库 + 统一分析核心 analyze_fresh
         templates/             -- Jinja2 模板
         static/                -- CSS/JS
@@ -135,12 +135,12 @@ C buy 连续 2 月 14d<70% 或月度 14d<80%、30d<55%；监测见 data/j2_chann
 | POST | /api/watchlist/batch-scan/selected | 批量扫描（异步） |
 | GET | /api/watchlist/batch-scan-progress/{id} | 批量扫描进度 |
 
-批量扫描生成 Markdown 汇总报告（`data/scan_*.md`），含市场状态、总览表、每物品详情、持仓个性化建议。
+批量扫描结果展示为 HTML 汇总面板（`data/batch_scan_latest.json`）+ 历史归档（`data/scan_history/scan_*.json`，保留最近 30 份），含市场状态、总览表、每物品详情、持仓个性化建议；不再生成 scan_*.md 报告。
 
 ## 数据保留策略
 
-- price_history、snapshots、market_index：保留 365 天；scan_*.md 报告 90 天；debug 文件 7 天；池台账 `pool_maintenance_log.jsonl` 不清理。
-- 批量扫描自动执行清理 + VACUUM；完整口径见 `cs-skin-market/references/data-layer.md`。
+- price_history、snapshots、market_index、monitor_events：保留 365 天；scan_*.md 旧报告 90 天；进度文件（scan_progress_*/discover_progress_*）7 天；scan_history JSON 保留最近 30 份；monitor_rank_snapshot 为研究型数据积累不清理；池台账 `pool_maintenance_log.jsonl` 不清理。
+- 清理由批量扫描收尾与每日任务（run_daily_collect.py）自动执行（`pipeline/db.py:run_retention_cleanup`，含 VACUUM）；完整口径见 `cs-skin-market/references/data-layer.md`。
 
 ## 常见坑
 

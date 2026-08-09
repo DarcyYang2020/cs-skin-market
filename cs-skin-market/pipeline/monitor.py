@@ -6,15 +6,15 @@
 消费链：run_daily_collect 收尾自动跑（当日采集后数据已最新）；Web /monitor 展示；M2 接入钉钉推送。
 """
 import io, os, sys
-from datetime import datetime, timezone, timedelta, date as _date
+from datetime import datetime, timedelta, date as _date
 
 if sys.stdout is sys.__stdout__:
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from pipeline import db
+from pipeline.config import TZ_BJ
 
-TZ_BJ = timezone(timedelta(hours=8))
 MD_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "monitor_daily.md")
 
 # 事件规则阈值（纯提醒层，人工确认不回测拟合；冻结纪律内）
@@ -28,10 +28,6 @@ _TYPE_LABEL = {"near_buy": "买点接近", "stop_loss": "破位止损", "decisio
                "exec_due": "持仓到期", "new_buy_signal": "新买信号"}
 
 SLOT_LABEL = {"noon": "午间", "night": "晚间"}
-
-
-def _today() -> str:
-    return datetime.now(TZ_BJ).strftime("%Y-%m-%d")
 
 
 def _market_ctx_from_db(conn):
@@ -298,7 +294,7 @@ def run_daily_monitor(date=None, slot="night", push=True):
     push=False 时只生成事件+日报不推送（采集收尾用；推送由独立 21:30 任务 run_night_push.py 执行）。
     事件按 slot 前缀幂等去重，21:30 重跑同 slot 不产生重复事件。
     """
-    date = date or _today()
+    date = date or db._today()
     conn = db.get_conn()
     try:
         ms = _market_ctx_from_db(conn)

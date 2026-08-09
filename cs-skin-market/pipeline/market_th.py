@@ -5,8 +5,6 @@ from dataclasses import dataclass, field
 from .config import THRESHOLDS as T
 from .trend_health import compute_trend_health
 
-
-
 @dataclass
 
 class MarketTrendHealth:
@@ -45,19 +43,9 @@ class MarketTrendHealth:
 
     anomaly_type: str = "none"
 
-
     deduction_sources: list = field(default_factory=list)
-
-    volume_divergence: bool = False
-
-    volume_divergence_label: str = ""
-
-    bubble_breadth: float = 0.0
-
-    bubble_breadth_label: str = ""
     drop_from_peak_pct: float = 0.0
     pct_30d_ago: float = 50.0
-
 
 def derive_market_cycle(values, i):
     """Classify market cycle label at index i (same rules as webapp.analysis_service.market_snapshot).
@@ -91,7 +79,7 @@ def compute_market_trend_health(prices, cycle_phase="unknown",
 
                                  event_risk_discount=1.0,
 
-                                 volume_divergence_discount=1.0, bubble_breadth_discount=1.0, pct_30d_ago=50.0,
+                                 pct_30d_ago=50.0,
                                  zscore_90d=None, percentile_90d=None):
 
 # Compute 21-day peak drop before trend health (uses original prices)
@@ -115,18 +103,6 @@ def compute_market_trend_health(prices, cycle_phase="unknown",
 
         deductions.append("事件风险折价 x{:.1f}".format(event_risk_discount))
 
-    if volume_divergence_discount < 1.0:
-
-        th.score = round(th.score * volume_divergence_discount)
-
-        deductions.append("量价背离折价 x{:.1f}".format(volume_divergence_discount))
-
-    if bubble_breadth_discount < 1.0:
-
-        th.score = round(th.score * bubble_breadth_discount)
-
-        deductions.append("泡沫广度折价 x{:.1f}".format(bubble_breadth_discount))
-
     th.z_floor_applied = False
     if th.raw_direction == "down":
         # Oversold TH floor: when Z is extreme and percentile rock-bottom,
@@ -143,7 +119,6 @@ def compute_market_trend_health(prices, cycle_phase="unknown",
         th.score = min(th.score, 65)
 
     th.score = max(0, min(100, th.score))
-
 
     if th.score >= T["TH_STRONG"]:
 
@@ -171,75 +146,35 @@ def compute_market_trend_health(prices, cycle_phase="unknown",
 
         supply_score=th.supply_score, anomaly_score=th.anomaly_score,
 
-
         ma_cross_type=th.ma_cross_type, steepness_signal=th.steepness_signal,
 
         supply_signal=th.supply_signal, has_anomaly=th.has_anomaly,
 
         anomaly_count=th.anomaly_count, anomaly_type=th.anomaly_type,
 
-
-        volume_divergence=(volume_divergence_discount < 1.0),
-
-        volume_divergence_label="\u65e0\u91cf\u62c9\u5347" if volume_divergence_discount < 1.0 else "",
-
         drop_from_peak_pct=drop_from_peak_pct,
         pct_30d_ago=pct_30d_ago,
 
     )
 
-
-
-
-
 def market_th_summary(mth):
-
     return dict(raw_score=mth.raw_score, score=mth.score, level=mth.level,
-
                 level_label=mth.level_label, direction=mth.direction,
-
                 persistence_score=mth.persistence_score,
-
                 steepness_score=mth.steepness_score,
-
                 structure_score=mth.structure_score,
-
                 supply_score=mth.supply_score,
-
                 anomaly_score=mth.anomaly_score,
-
-
                 ma_structure=mth.ma_structure,
-
                 ma_cross_type=mth.ma_cross_type,
-
                 steepness_signal=mth.steepness_signal,
-
                 supply_signal=mth.supply_signal,
-
                 drop_from_peak_pct=mth.drop_from_peak_pct,
                 pct_30d_ago=mth.pct_30d_ago,
-
                 has_anomaly=mth.has_anomaly,
-
                 anomaly_count=mth.anomaly_count,
-
                 anomaly_type=mth.anomaly_type,
-
-
-                deduction_sources=mth.deduction_sources,
-
-                volume_divergence=mth.volume_divergence,
-
-                volume_divergence_label=mth.volume_divergence_label,
-
-                bubble_breadth=mth.bubble_breadth,
-
-                bubble_breadth_label=mth.bubble_breadth_label)
-
-
-
-
+                deduction_sources=mth.deduction_sources)
 
 @dataclass
 
@@ -276,16 +211,11 @@ class MarketFusionDecision:
     selling_pressure_score: int = 50
     volatility_regime: str = "normal"
 
-
     rebound_late: bool = False
 
     hysteresis_applied: bool = False
 
     maturing_detail: str = ""
-
-
-
-
 
 def compute_market_fusion_decision(percentile_90d, th, zscore_90d=0.0, cycle_phase="unknown", event_risk_discount=1.0, percentile_trend="flat", micro_th_score=None, is_bear=False, cap_triggered=False, rally_decay=False, sentiment_score=50, market_regime="sideways", selling_pressure_score=50, volatility_regime="normal", prices=None):
 
@@ -611,7 +541,6 @@ def compute_market_fusion_decision(percentile_90d, th, zscore_90d=0.0, cycle_pha
         if fd.global_position_limit > 0.05:
             fd.global_position_limit = 0.05
 
-
     # ---- Bubble resonance hard cap: override everything ----
     if bubble_resonance:
         fd.action = "avoid"
@@ -635,11 +564,6 @@ def compute_market_fusion_decision(percentile_90d, th, zscore_90d=0.0, cycle_pha
             fd.action_detail = "\u718a\u5e02\u4e2d\u6ca1\u6709\u66b4\u8dcc\u6b62\u8dcc\u4fe1\u53f7\uff0c\u6682\u4e0d\u5efa\u4ed3"
 
     return fd
-
-
-
-
-
 
 def compute_market_regime(prices):
     """Determine market regime: bull / sideways / bear.
@@ -687,6 +611,4 @@ def market_fd_summary(fd):
                 cap_triggered=fd.cap_triggered,
                 rally_decay=fd.rally_decay,
                 pct_30d_ago=fd.pct_30d_ago)
-
-
 

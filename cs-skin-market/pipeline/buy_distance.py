@@ -35,14 +35,20 @@ BAR_CAP = 20.0          # 进度条满格 20%（距离再远也封顶）
 #   首仓 10%（信号日）→ 较首仓价再跌 10% 加 20% → 跌 15% 加 30%（总仓位上限 60%）
 FIRST_TRANCHE = 10                  # 首仓仓位（信号日建）
 TRANCHES = ((10, 20), (15, 30))     # (相对首仓价跌幅%, 加仓仓位%)
-TOTAL_CAP = FIRST_TRANCHE + sum(w for _, w in TRANCHES)   # 60%
+TOTAL_CAP = FIRST_TRANCHE + sum(w for _, w in TRANCHES)   # 60%（回测节奏权重上限）
+# 2026-08-09 口径修正：60% 为方案 C 回测节奏权重；实际执行受组合层「单票总敞口≤30%」
+# （config.POSITION_CAP_SINGLE）约束，批次金额按 30% 等比缩放（每份≈5%仓位），避免单票 60% 误导。
 
 
 def tranche_plan_text():
-    """分批建仓方案文案（纯展示层）：首仓10% → 跌10%加20% → 跌15%加30%"""
+    """分批建仓方案 C 文案（纯展示层）：首仓10% → 跌10%加20% → 跌15%加30%（节奏参考·回测权重）。
+
+    2026-08-09 口径修正：档位总上限 60% 为回测节奏权重（1:2:3），实际执行受单票总敞口≤30%
+    约束（config.POSITION_CAP_SINGLE），批次金额按上限等比缩放（每份≈5%仓位）。
+    """
     parts = ["首仓{}%".format(FIRST_TRANCHE)]
     parts += ["跌{}%加{}%".format(thr, w) for thr, w in TRANCHES]
-    return " → ".join(parts)
+    return " → ".join(parts) + "（节奏参考·回测权重；单票总敞口≤30%，批次金额按上限缩放）"
 
 
 def _get(obj, key, default=None):

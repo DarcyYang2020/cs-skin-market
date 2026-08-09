@@ -13,7 +13,6 @@ Core algorithm path:
 import statistics
 from dataclasses import dataclass, field
 
-
 # ============================================================
 #  Strategy Constants (from trading-strategies.md)
 # ============================================================
@@ -26,7 +25,6 @@ OPTIMAL_HOLD_DAYS_MIN = 15     # 15-45 day optimal hold
 OPTIMAL_HOLD_DAYS_MAX = 45
 
 _SEP = "、"  # Chinese enumeration comma
-
 
 # ============================================================
 #  Data Classes
@@ -65,7 +63,6 @@ class PositionIntel:
             "bubble": "\U0001f534 \u6ce1\u6cab",
         }.get(self.valuation_tier, self.valuation_tier)
 
-
 @dataclass
 class ProbPrediction:
     """Probability prediction — Z-score mean-reversion + volatility regime."""
@@ -78,7 +75,6 @@ class ProbPrediction:
     key_support: float = 0.0
     key_resistance: float = 0.0
     volatility_regime: str = "normal"
-
 
 @dataclass
 class CycleAnalysis:
@@ -105,7 +101,6 @@ class CycleAnalysis:
             "distribution": "\U0001f4c9 \u51fa\u8d27\u671f",
         }.get(self.phase, self.phase)
 
-
 @dataclass
 class ValueScore:
     """Investment value score 1-10 — strategy-aligned.
@@ -120,7 +115,6 @@ class ValueScore:
     position_advice: str = ""        # light / build / full / hold / reduce / exit
     recommendation: str = ""
 
-
 # ============================================================
 #  Helpers
 # ============================================================
@@ -131,7 +125,6 @@ def _percentile(prices: list, current: float) -> float:
     below = sum(1 for p in prices if p < current)
     return round(below / len(prices) * 100, 1)
 
-
 def _zscore(prices: list, current: float) -> float:
     if len(prices) < 2 or current <= 0:
         return 0.0
@@ -141,11 +134,9 @@ def _zscore(prices: list, current: float) -> float:
         return 0.0
     return round((current - med) / (mad * 1.4826), 2)
 
-
 def _daily_returns(prices: list) -> list:
     return [(prices[i] / prices[i-1] - 1) * 100 for i in range(1, len(prices))
             if prices[i-1] > 0]
-
 
 def _rolling_volatility(returns: list, window: int = 14) -> list:
     if len(returns) < window:
@@ -156,12 +147,10 @@ def _rolling_volatility(returns: list, window: int = 14) -> list:
         vols.append(statistics.stdev(wr) if len(wr) > 1 else 0)
     return vols
 
-
 def _momentum(prices: list, lookback: int) -> float:
     if len(prices) <= lookback or prices[-lookback-1] <= 0:
         return 0.0
     return round((prices[-1] / prices[-lookback-1] - 1) * 100, 1)
-
 
 def _volatility_regime(vol_14d: float) -> str:
     if vol_14d < 1.0:
@@ -172,7 +161,6 @@ def _volatility_regime(vol_14d: float) -> str:
         return "elevated"
     else:
         return "extreme"
-
 
 def _strategy_zone(percentile: float, zscore: float) -> tuple:
     """Determine strategy zone per trading-strategies.md thresholds.
@@ -205,7 +193,6 @@ def _strategy_zone(percentile: float, zscore: float) -> tuple:
             "\U0001f7e1 \u6301\u6709\u533a",
             "\u4ecb\u4e8e\u5165\u573a\u548c\u79bb\u573a\u4e4b\u95f4\uff0c\u4fdd\u6301\u73b0\u6709\u4ed3\u4f4d\uff0c\u4e0d\u6025\u4e8e\u65b0\u5f00\u4ed3\u3002\u7b49\u5f85\u8d85\u8dcc\u4fe1\u53f7\u6216\u6b62\u76c8\u4fe1\u53f7\u3002"
         )
-
 
 # ============================================================
 #  1. Position Intelligence
@@ -289,7 +276,6 @@ def analyze_position(values: list, n: int = 90) -> PositionIntel:
         result.resistance_levels = [r for r in result.resistance_levels if r > current]
 
     return result
-
 
 # ============================================================
 #  2. Probability Prediction
@@ -457,7 +443,6 @@ def analyze_value_score(values: list, returns: list, percentile: float,
         recommendation=rec,
     )
 
-
 # ============================================================
 #  Main Entry Point
 # ============================================================
@@ -539,9 +524,6 @@ def analyze_index(index_history: list) -> dict:
             "recommendation": value_score.recommendation,
         },
     }
-
-
-
 
 # ============================================================
 #  Enhanced Cycle Detection with Probability Distribution
@@ -693,8 +675,6 @@ def analyze_cycle_probability(prices, pct_90d, zscore_90d) -> dict:
 
     return probs
 
-
-
 # ============================================================
 #  Integrated Probability Prediction (Z-score + macro modifiers)
 # ============================================================
@@ -833,23 +813,6 @@ def analyze_probability_integrated(prices, pct_90d, zscore_90d,
         },
     }
 
-
-
-# ============================================================
-#  Bottom-Fishing Signal (pre-trend leading indicator)
-# ============================================================
-
-def compute_bottom_signal_wrapper(prices, pct_90d, zscore_90d, cycle_probability=None) -> dict:
-    """Wrapper that calls market_macro.compute_bottom_signal with cycle alignment."""
-    from .market_macro import compute_bottom_signal, bottom_signal_summary
-    accum_prob = 0.0
-    if cycle_probability:
-        accum_prob = cycle_probability.get("accumulation", 0.0)
-    bs = compute_bottom_signal(pct_90d, zscore_90d, prices, accumulation_prob=accum_prob)
-    summary = bottom_signal_summary(bs)
-    summary["cycle_contrib"] = bs.cycle_contrib
-    return summary
-
 def compute_micro_th(prices, window=14):
     """Quick short-term trend score (0-100) for catching V-reversals within big trends."""
     if len(prices) < window:
@@ -909,7 +872,6 @@ def compute_micro_th(prices, window=14):
 def analyze_cycle_sector_recommendation(cycle_phase, accumulation_prob=0.0):
     """Removed - was unused. Returns empty result."""
     return {"cycle_phase": cycle_phase, "sectors": [], "core_sectors": [], "secondary_sectors": [], "avoid_sectors": []}
-
 
 def compute_selling_pressure_exhaustion(prices):
     """0-100 抛压衰竭先行信号：卖方力量枯竭 + 止跌企稳。
@@ -1182,9 +1144,14 @@ def analyze_index_full(index_history: list) -> dict:
             result["probability"]["prob_confidence"] = pi.get("confidence", "low")
             result["probability"]["prob_modifiers"] = pi.get("modifiers_applied", [])
 
-        result["bottom_signal"] = compute_bottom_signal_wrapper(
-            values[-90:], pct, z,
-            cycle_probability=result.get("cycle_probability"))
+        # Bottom-fishing signal (pre-trend leading indicator, inlined wrapper)
+        from .market_macro import compute_bottom_signal, bottom_signal_summary
+        _cycle_probability = result.get("cycle_probability")
+        _accum_prob = (_cycle_probability.get("accumulation", 0.0) if _cycle_probability else 0.0)
+        _bs = compute_bottom_signal(pct, z, values[-90:], accumulation_prob=_accum_prob)
+        _bs_summary = bottom_signal_summary(_bs)
+        _bs_summary["cycle_contrib"] = _bs.cycle_contrib
+        result["bottom_signal"] = _bs_summary
 
         # Cycle-sector recommendations
         result["sector_recommendation"] = analyze_cycle_sector_recommendation(
