@@ -1876,3 +1876,25 @@ vs 池内等权 +509.75%/-54.12% vs 大盘 -4.02%；引擎边际价值在回撤�
 - discover `_analyze_one`：引擎入参与单品分析对齐（index_change_7d=ms[chg7]、market_history/pct/z、recent_buy_dates、signal_date、price_anchor=悠悠锚）。
 **约束**：仅数据输入层兜底 + 路径口径统一；未改动任何评分/决策参数（PARAM_FREEZE 不受影响）。
 **验证**：复现脚本——全 0 在售量→watch、真实→buy；修复后兜底 merge 结果与真实一致且 discover 补齐参数后与单品分析同为 buy；冒烟 84 passed / 6 skipped；py_compile 通过。
+
+---
+
+## TH 合理性回测复核：低估区 TH 反向信号 + 守卫1 正优化确认（2026-08-09）
+
+**背景**：用户对「沙漠之鹰 | 午夜凶匪」趋势分 68 却不给买入存疑——原 proximity 展示层基础族口径为「趋势TH ≥70」，而决策层 deep 族阈值是 ≥35（工作区间 2-69）。
+
+**第一性原理拆解**：TH 由价格动量/均线构成，在「跌透的低估值区」里，价格已深跌 → 动量与均线结构必然差 → TH 天然偏低。用 TH 高来要求低估值品，等价于要求「便宜 + 已经涨起来」，两者在深跌区互斥，构成逻辑悖论。
+
+**回测验证（v2 引擎，data/item_backtest_full_2025.json，369 条 buy 信号）**：
+- 买点悖论证实：369 条中 th 最大=69，th≥70 = **0 条**；pct≤30 ∧ th≥70 = 0 条 → 「趋势TH ≥70」是虚构达标线。
+- 低估区 TH 反向（pct≤30 & z≤0，289 条）：th<35 win 94% / avg +36.4% 最优；th 45-54 win 44% 最差；th 55-64 avg +8.4% 平庸 → 跌透+TH低最好，高 TH 是半山腰/坏信号。
+- 大盘指标同构：market_th<35 win 90%（avg +26%）> ≥55 win 74%；sent≥75 win 94%（avg +44.7%）；mkt_drop21≤-18 win 98%；market_cycle bear win 88% → 大盘越弱/越恐慌，低吸信号越好。
+
+**A/B 重放（守卫1 market_weak 去留，95 品同窗口 2025-08-09~2026-08-05，335 信号）**：
+- 豁免后信号 +29 条，但新增 29 条全为负贡献（win 31%、avg -0.22%），整体 14d 期望 15.17→13.61、胜率 70.4→66.4 全面变差。
+- 结论：守卫1（market_th<45 且 mchg30<0 禁买）经回测证实为正优化，**保留并纳入 PARAM_FREEZE 冻结**。
+
+**落地**：
+- `item_analysis.py` proximity 基础族「趋势TH ≥70」→「深跌确认」（th<35 黄金坑 / 35-54 摩擦带 / ≥55 趋势确认，与 buy_distance TH_REF=55 对齐）；口径澄清：proximity 不参与引擎 action 判定（守卫/信号族/买点均不读它），buy/观望/止损结果不变；但它并非纯 UI——被监控 near_buy（score≥60 触发）与自选页排序读取，本次三区口径属信息层行为变更（监控事件与排序随之更新）。
+- `config.py` 死代码常量 TH_STRONG/NEUTRAL/WEAK 对齐 THRESHOLDS 字典（55/35/20）；PARAM_FREEZE 追加冻结项与 amendments。
+- 实验开关 `CS_ENGINE_NO_MARKET_WEAK=1` 保留用于复现 A/B（默认行为不变）；实验产物 `data/_exp_baseline.json` / `data/_exp_no_market_weak.json` 归档。

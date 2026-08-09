@@ -53,9 +53,11 @@ CATEGORY_PARAMS = {
 Z_EXTREME_EXIT = 2.5           # >= +2.5 = extreme overbought
 
 # --- Trend Health score bands ---
-TH_STRONG = 70                 # >=70 = strong trend
-TH_NEUTRAL = 50                # >=50 = neutral-to-positive
-TH_WEAK = 40                   # <40 = weak/declining
+# 2026-08-09：模块常量与 THRESHOLDS 字典对齐（55/35/20），消除三套阈值矛盾。
+# 实际生效值 = THRESHOLDS 字典（trend_health/market_th 用 T["TH_*"]）；本组常量无引用，仅保留文档语义。
+TH_STRONG = 55                 # >=55 = strong trend
+TH_NEUTRAL = 35                # >=35 = neutral-to-positive
+TH_WEAK = 20                   # <20 = weak/declining
 THRESHOLDS = {
     # Trend Health thresholds (used by market_th.py, trend_health.py)
     "TH_STRONG": 55,
@@ -181,10 +183,11 @@ POSITION_CAP_SINGLE = 0.30          # 单票敞口提示阈值: (持仓市值+�
 #   （新族须过 A2 三件套: walk-forward + 聚类 + 置换检验，且不得改动冻结集）。
 PARAM_FREEZE = {
     "frozen_at": "2026-08-07",
-    "frozen_set": ["去量引擎 v2（I-13）全参数", "组合层 cap0.8", "单票敞口提示 30%", "ITEM_EXPECTANCY_STATS 展示口径"],
+    "frozen_set": ["去量引擎 v2（I-13）全参数", "组合层 cap0.8", "单票敞口提示 30%", "ITEM_EXPECTANCY_STATS 展示口径", "proximity 深跌确认口径（TH≥70 虚构达标线废弃，2026-08-09；信息层：监控 near_buy / 自选排序读取，不参与 action 决策）", "守卫1 大盘走弱拦截（A/B 重放证实正优化，2026-08-09）"],
     "oos_revalidate_after": "2027-04-25",
     "triggers": ["A 独立恐慌市场事件≥3（当前 2，自然积累）", "B 新数据≥260 天（约 2027-04-25）", "C 胜率监测: buy 连续 2 月 14d<70% 或月度 14d<80%/30d<55%"],
     "frozen_period_note": "冻结期内禁止以回放数据为依据调参；仅允许新增独立数据观察项 / 新信号族研究（A2 三件套）",
+    "frozen_amendments": ["2026-08-09 第一性原理+回测复核（369 信号，data/item_backtest_full_2025.json）：低估区 TH 为反向信号，原 proximity 阈值 TH≥70 在样本内 0 达成，系虚构达标线，已废弃；引擎 action 判定未改（proximity 不参与守卫/信号族/买点，TH 实际工作区间 2-69，deep 阈值 ≥35 / panic 触发均 th<35），但 proximity 被监控 near_buy（score≥60）与自选页排序读取，三区口径属信息层行为变更。守卫1 market_weak（market_th<45 且 mchg30<0 禁买）经 A/B 重放（95 品同窗口 335 信号：豁免后 +29 信号全负贡献，win 70.4→66.4 / avg14 15.17→13.61 全面变差）证实为正优化，保留并纳入冻结。buy_distance TH_REF=55 三区口径（<35 黄金坑 / 35-54 摩擦带 / ≥55 趋势确认）为对照标准。"],
 }
 
 

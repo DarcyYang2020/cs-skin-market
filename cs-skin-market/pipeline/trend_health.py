@@ -86,7 +86,7 @@ class FusionDecision:
     liquidity_filtered: bool = False
     market_relative_strength: bool = False
     position_limit: float = 1.0
-    proximity: dict = None  # 纯展示层：买点接近度（不参与任何决策）
+    proximity: dict = None  # 信息层：买点接近度（不参与 action 决策；监控 near_buy / 自选排序读取）
 
 
 # ============================================================

@@ -6,7 +6,7 @@ value scoring, probability prediction, and whale manipulation detection.
 All statistical windows default to 90 days.
 """
 
-import statistics
+import os, statistics
 from .trend_health import compute_trend_health, trend_health_summary, compute_fusion_decision, fusion_decision_summary
 from .valuation import compute_valuation_grid, valuation_grid_summary
 from .supply import analyze_supply, supply_summary
@@ -1078,6 +1078,9 @@ _POST_FAMILIES = tuple(sorted(
 def _g_market_weak(fd, F):
     if fd.action != "buy":
         return None
+    # 实验/对照开关：CS_ENGINE_NO_MARKET_WEAK=1 豁免大盘走弱拦截（重放验证用，默认行为不变）
+    if os.environ.get("CS_ENGINE_NO_MARKET_WEAK") == "1":
+        return None
     if F["market_th"] < 45 and F["mchg30"] < 0:
         return ("🟡 大盘走弱·观望",
                 f"大盘TH={F['market_th']}且30日跌幅{F['mchg30']:.1f}%，弱势环境禁止新开仓",
@@ -1359,13 +1362,16 @@ def compute_buy_proximity(F):
     chg7, chg3d = F.get("chg7"), F.get("chg3d")
     dedup = 1.0 if not _dedup_hit(F.get("recent_buy_dates"), F.get("signal_date")) else 0.0
 
-    # 基础族：低估区 buy（pct<=30 + TH>=70 + Z 闸门，与 compute_fusion_decision 一致）
-    _s = sent if sent is not None else 50
-    ts = min(100, max(0, (th if th is not None else 50) + (_s - 50) / 50 * 3))
+    # 基础族：低估区 buy（pct<=30 + 深跌确认(th 低=黄金坑) + Z 闸门）
+    # 2026-08-09 回测修正（v2 引擎 369 信号，data/item_backtest_full_2025.json）：
+    # pct<=30 & z<=0 内 th<35 win 94%/avg+36% 最优、th 45-54 win 44% 最差、th 55-64 期望平庸——
+    # 低估区趋势分是反向信号（跌透>半山腰）。原「趋势TH≥70」展示阈值在 369 信号中 0 达成
+    # （max=69），为虚构达标线已废弃；现与 buy_distance TH_REF=55 三区口径对齐
+    # （<35 黄金坑 / 35-54 摩擦带 / ≥55 趋势确认，纯展示层，不参与决策）。
     z_gate = {"bear": 0, "consolidation": 0, "accumulation": 0.5, "markup": 1.0, "distribution": -0.5}.get(F.get("market_cycle"), 0)
     base = _fam("base", "低估区建仓", [
         ("低估分位", _prog_low(pct, 30, 45), _note(pct, "位置分位", "{:.0f}%", "≤30%", "，越低越便宜")),
-        ("趋势TH", _prog_high(ts, 70, 50), _note(ts, "趋势分", "{:.0f}", "≥70")),
+        ("深跌确认", _prog_low(th, 35, 55), _note(th, "趋势分", "{:.0f}", "<35 黄金坑", "（35-54 摩擦带需止跌/企稳确认）")),
         ("Z闸门", _prog_low(z, z_gate, z_gate + 1.0), _note(z, "估值Z", "{:.2f}", "≤{:.1f}".format(z_gate))),
     ])
 
@@ -1538,7 +1544,7 @@ def decide_fusion_signal(
                     _apply_guards(fd, F, fam.guards)
                 break
 
-    # ---- 纯展示层：买点接近度（不参与决策，仅报告展示） ----
+    # ---- 信息层：买点接近度（不参与 action 决策；被监控 near_buy 与自选排序读取） ----
     fd.proximity = compute_buy_proximity(F)
 
     return fd, bucket
