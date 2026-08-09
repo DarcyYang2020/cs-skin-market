@@ -44,9 +44,9 @@
 <div class="card" id="discover-history-card" style="display:none;margin-top:16px;">
   <div class="card-header">
     <span class="card-title">📈 高分品追踪</span>
-    <span style="font-size:12px;color:var(--text-muted);">每次扫描的 Top10 在 14/30 个交易日后的实际表现（自动结算，验证选品有效性）</span>
+    <span style="font-size:12px;color:var(--text-muted);">每天仅保留最新一次扫描的 Top10，在 14/30 个交易日后的实际表现（自动结算，验证选品有效性；滚轮滚动查看历史）</span>
   </div>
-  <div id="discover-history-body" style="padding:10px 14px;font-size:13px;color:var(--text-secondary);"></div>
+  <div id="discover-history-body" style="padding:10px 14px;font-size:13px;color:var(--text-secondary);max-height:420px;overflow-y:auto;"></div>
 </div>
 
 {% endblock %}
@@ -87,7 +87,7 @@ function loadDiscoverHistory() {
       }).join("");
       return '<div style="padding:8px 0;border-bottom:1px solid rgba(15,23,42,0.08);">'
         + '<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px;">'
-        + '<span style="font-weight:600;">' + String(e.time || "").replace("T", " ").slice(0, 16) + '</span>'
+        + '<span style="font-weight:600;">' + String(e.time || "").slice(0, 10) + '</span>'
         + '<span>' + e.n + ' 品</span>'
         + '<span style="color:var(--accent);">14d 均 ' + f14 + '</span>'
         + '<span style="color:var(--green);">30d 均 ' + f30 + '</span>'
@@ -99,7 +99,7 @@ function loadDiscoverHistory() {
 
 function refreshDiscover() { startScan(); }
 
-function addToWatchlist(name) {
+function addToWatchlist(name, btn) {
   var formData = new FormData();
   formData.append("name", name);
   formData.append("holding", "0");
@@ -108,10 +108,11 @@ function addToWatchlist(name) {
   fetch("/api/watchlist/add", {method:"POST", body: formData})
   .then(function(r) { return r.text(); })
   .then(function(html) {
-    if (html.indexOf("success") > -1 || html.indexOf("成功") > -1) {
+    if (String(html).trim() === "OK") {
+      if (btn) { btn.disabled = true; btn.innerHTML = "\u2713 \u5df2\u81ea\u9009"; btn.title = "\u5df2\u5728\u81ea\u9009"; }
       showToast("✅ 已添加到自选: " + name);
     } else {
-      showToast("添加失败，可能已存在", "error");
+      showToast("添加失败: " + (html || "未知错误"), "error");
     }
   })
   .catch(function() { showToast("请求失败", "error"); });

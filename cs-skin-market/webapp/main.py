@@ -2048,6 +2048,17 @@ async def _run_discover_task(task_id: str, items: list):
 
 def _render_discover_html(results, market_th=50):
     """Render discover results with valuation columns, add-to-watchlist, and heatmap."""
+    # 2026-08-09：已在自选的品渲染「已自选」禁用态，其余渲染「➕ 加入自选」
+    _wl_names = set()
+    try:
+        _conn_wl = db.get_conn()
+        try:
+            for _rw in _conn_wl.execute("SELECT name FROM items WHERE in_watchlist=1"):
+                _wl_names.add(_rw["name"])
+        finally:
+            _conn_wl.close()
+    except Exception:
+        pass
     sorted_r = sorted(results, key=lambda r: -(r.get("composite", 0) or r.get("score", 0) or 0))
     top10 = sorted_r[:10]
     errors = [r for r in sorted_r if r.get("error")]
@@ -2110,6 +2121,9 @@ def _render_discover_html(results, market_th=50):
         comp = r.get("composite", 0) or r.get("score", 0)
         rank_style = "font-weight:800;font-size:16px;" + ("color:#ffd700;" if idx == 0 else "color:var(--text-muted);")
         esc_name = r["name"].replace("'", "\\'").replace('"', '&quot;')
+        _btn_html = ('<button class="btn btn-xs btn-outline" disabled style="opacity:.55;cursor:default;" title="已在自选">✓ 已自选</button>'
+                     if r["name"] in _wl_names else
+                     '<button class="btn btn-xs btn-outline" onclick="addToWatchlist(\'' + esc_name + '\', this)" title="加入自选">➕ 加入自选</button>')
         lines.append(
             f'<tr><td style="{rank_style}">{idx+1}</td>'
             f'<td><span class="{grade_cls}">{g}</span></td>'
@@ -2119,7 +2133,7 @@ def _render_discover_html(results, market_th=50):
             f'<td style="font-weight:600;">{comp:.1f}</td>'
             f'<td class="{pct_clr}">{pct:.0f}%</td>'
             f'<td style="font-size:12px;">{cp}</td>'
-            f'<td><button class="btn btn-xs btn-outline" onclick="addToWatchlist(\'{esc_name}\')" title="\u52a0\u5165\u81ea\u9009">+</button></td></tr>'
+            f'<td>{_btn_html}</td></tr>'
         )
     lines.append("</tbody></table></div></div></div>")
     return heatmap_html + "\n".join(lines)
@@ -2196,12 +2210,26 @@ def _save_discover_artifacts(task_id: str):
         }
         (_hist_dir / ('discover_' + task_id.replace('discover_', '') + '.json')).write_text(
             _json_cache.dumps(_snap, ensure_ascii=False), encoding='utf-8')
-        _olds = sorted(_hist_dir.glob('discover_*.json'))
-        for _f in _olds[:-30]:
+        # 2026-08-09 需求：高分品追踪「同一天只保留最新推荐」，按天滚动保留最多 30 天
+        _keep = {}
+        for _f in sorted(_hist_dir.glob('discover_*.json'), reverse=True):
             try:
-                _f.unlink()
+                _day = str(_json_cache.loads(_f.read_text(encoding='utf-8')).get('time', ''))[:10]
             except Exception:
-                pass
+                _day = ''
+            if _day and _day not in _keep:
+                _keep[_day] = _f
+        _keep_days = set(sorted(_keep)[-30:])
+        for _f in _hist_dir.glob('discover_*.json'):
+            try:
+                _day = str(_json_cache.loads(_f.read_text(encoding='utf-8')).get('time', ''))[:10]
+            except Exception:
+                _day = ''
+            if _day not in _keep_days:
+                try:
+                    _f.unlink()
+                except Exception:
+                    pass
     except Exception:
         pass
 
@@ -2361,17 +2389,22 @@ def _settle_discover_items(items, scan_time):
 
 @app.get("/api/discover/history")
 async def api_discover_history():
-    """\u9ad8\u5206\u54c1\u8ffd\u8e2a\uff1a\u5386\u53f2\u626b\u63cf top10 + 14/30d \u56de\u6d4b\u8868\u73b0\u3002"""
+    """高分品追踪：每天最新一次扫描 top10 + 14/30d 回测表现（同日只保留最新，2026-08-09）。"""
     from pathlib import Path as _P
     import json as _J
     _hist_dir = _P(__file__).resolve().parent.parent / 'data' / 'discover_history'
     entries = []
     if _hist_dir.exists():
-        for f in sorted(_hist_dir.glob('discover_*.json'), reverse=True)[:10]:
+        seen_days = set()
+        for f in sorted(_hist_dir.glob('discover_*.json'), reverse=True):
             try:
                 d = _J.loads(f.read_text(encoding='utf-8'))
             except Exception:
                 continue
+            day = str(d.get('time', ''))[:10]
+            if not day or day in seen_days:
+                continue
+            seen_days.add(day)
             settled = _settle_discover_items(d.get('items', []), d.get('time', ''))
             entries.append({
                 'time': d.get('time', ''),
@@ -2381,6 +2414,8 @@ async def api_discover_history():
                 'avg30': settled['avg30'], 'win30': settled['win30'],
                 'items': settled['items'],
             })
+            if len(entries) >= 30:
+                break
     return {"entries": entries}
 
 
