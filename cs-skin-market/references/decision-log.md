@@ -1862,3 +1862,17 @@ vs 池内等权 +509.75%/-54.12% vs 大盘 -4.02%；引擎边际价值在回撤�
 - `addToWatchlist` JS 从 discover.html 提升至全站共享 `static/js/app.js`（分析报告在搜索/自选/批量扫描弹窗多页面渲染，按钮全局可用）。
 **约束**：仅展示层 + 数据写入策略；未触碰引擎评分/决策参数与 PARAM_FREEZE。
 **验证**：冒烟 84 passed / 6 skipped；ctx 单测验证非自选=False 显示按钮、自选后=True 隐藏；py_compile 通过。
+
+## F-3.17 单品分析/discover 决策分歧修复：在售量兜底 + 引擎入参对齐（2026-08-09，数据输入层）
+**背景**：用户反馈「AK-47 轨道 Mk01：单品点击分析=筑底中·观察，发现高分品=供给收缩·启动前吸筹·分批建仓」。
+**定位（复现闭环）**：
+- 单品分析走实时采集，csQAQ chart 在售量偶发全 0/缺失 → 供给分析退化 stable → 供给收缩吸筹路径不成立 → 降级「🟡 筑底中·观察」；
+  discover 用 DB K 线（在售量完整）→ buy。同品 snapshots 内 20:28→20:33 四分钟 buy/watch 交替为直接证据。
+- 附带隐患：`kline_price_sane` 只校验价格、`save_price_history_batch` 为 INSERT OR REPLACE → 全 0 在售量会覆盖 DB 非 0 值（二次污染，与 8/9 审计在售量错乱同源）。
+- 次要结构性差异：discover 直调 `run_item_analysis` 时 `index_change_7d=0` 写死，且缺 market_history/pct/z/recent_buy_dates/signal_date/price_anchor。
+**落地**：
+- `analyze_fresh`：实时采集在售量全 0/缺失时，按日期用 DB 在售量补全（supply DB backfill）后再分析。
+- `kline_price_sane`：新增在售量 sanity——chart 在售量全 0 且 DB 有非 0 值 → 判采集异常，不落库覆盖。
+- discover `_analyze_one`：引擎入参与单品分析对齐（index_change_7d=ms[chg7]、market_history/pct/z、recent_buy_dates、signal_date、price_anchor=悠悠锚）。
+**约束**：仅数据输入层兜底 + 路径口径统一；未改动任何评分/决策参数（PARAM_FREEZE 不受影响）。
+**验证**：复现脚本——全 0 在售量→watch、真实→buy；修复后兜底 merge 结果与真实一致且 discover 补齐参数后与单品分析同为 buy；冒烟 84 passed / 6 skipped；py_compile 通过。

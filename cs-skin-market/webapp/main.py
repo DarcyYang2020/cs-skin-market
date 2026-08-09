@@ -1928,16 +1928,33 @@ async def _run_discover_task(task_id: str, items: list):
                     skipped += 1
                     return "skip", "流动性不足(avg7在售<15)"
 
+            _recent_buys = []
+            try:
+                _conn_rb = db.get_conn()
+                try:
+                    _rb_row = _conn_rb.execute("SELECT id FROM items WHERE name=?", (exact_name,)).fetchone()
+                    if _rb_row:
+                        _recent_buys = recent_buy_dates(_conn_rb, _rb_row["id"])
+                finally:
+                    _conn_rb.close()
+            except Exception:
+                pass
             analysis = await asyncio.get_running_loop().run_in_executor(
                 None,
                 lambda: _ia.run_item_analysis(
                     name=exact_name, prices=prices,
                     supply_hist=supply_hist or None, order_book=item.order_book,
-                    index_change_7d=0,
+                    index_change_7d=ms["chg7"],
+                    market_history=ms["history"],
+                    market_pct_90d=ms["pct"],
+                    market_zscore=ms["z"],
                     market_cycle=ms["cycle"],
                     market_th_score=ms["th"],
                     market_30d_change=ms["chg30"],
                     market_drop21=ms.get("drop21", 0),
+                    recent_buy_dates=_recent_buys,
+                    signal_date=_today_str(),
+                    price_anchor=anchor_price,
                     survive_count=getattr(item, "survive_count", 0),
                 ),
             )

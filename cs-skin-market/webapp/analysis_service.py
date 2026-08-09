@@ -168,6 +168,23 @@ def kline_price_sane(daily_bars, item_id, anchor_price=None, conn=None):
     closes = [b.close for b in daily_bars if getattr(b, "close", 0) and b.close > 0]
     if len(closes) < 3:
         return True, ""
+    # F-3.17 (2026-08-09)：在售量 sanity —— chart 在售量全 0 但 DB 该品有非 0 在售量，
+    # 判采集异常（不落库覆盖 DB 在售量；分析侧由 analyze_fresh supply 兜底用 DB 在售量）
+    if all(not (getattr(b, "in_sale_count", 0) or 0) for b in daily_bars):
+        try:
+            _close_conn_s = conn is None
+            _conn_s = conn or db.get_conn()
+            try:
+                _srow = _conn_s.execute(
+                    "SELECT COUNT(*) AS n FROM price_history WHERE item_id=? AND in_sale_count>0",
+                    (item_id,)).fetchone()
+                if _srow and _srow["n"] > 0:
+                    return False, "chart 在售量全 0，DB 存在非 0 在售量（采集异常，不覆盖）"
+            finally:
+                if _close_conn_s:
+                    _conn_s.close()
+        except Exception:
+            pass
     new_last = closes[-1]
     if anchor_price and anchor_price > 0 and new_last > 0:
         dev_anchor = abs(new_last / anchor_price - 1)
@@ -449,6 +466,27 @@ async def analyze_fresh(item, good_id, exact_name, *, db_item_id=None, apply_anc
     finally:
         conn_p.close()
     use_id = db_item_id or pid
+
+    conn_r = db.get_conn()
+    # F-3.17 (2026-08-09)：实时采集 chart 在售量偶发全 0/缺失 -> 用 DB 在售量按日期补全，
+    # 避免供给分析退化导致决策降级（单品分析=筑底观察 vs discover=供给收缩吸筹 的分歧根因）
+    if daily_bars and (not supply_history or all(not s for s in supply_history)):
+        try:
+            _conn_sup = db.get_conn()
+            try:
+                _db_sup = {r['date']: (r['in_sale_count'] or 0) for r in _conn_sup.execute(
+                    'SELECT date, in_sale_count FROM price_history WHERE item_id=? AND in_sale_count>0',
+                    (use_id,))}
+            finally:
+                _conn_sup.close()
+            if _db_sup:
+                supply_history = [
+                    (getattr(_k, 'in_sale_count', 0) or 0) or _db_sup.get(getattr(_k, 'date', ''), 0)
+                    for _k in daily_bars
+                ]
+                _log.warning(f'supply DB backfill for {exact_name} (chart in_sale 缺失)')
+        except Exception:
+            pass
 
     conn_r = db.get_conn()
     try:
