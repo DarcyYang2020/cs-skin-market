@@ -91,7 +91,6 @@
 </div>
 {% endif %}
 
-
 {# ====== 持仓浮亏：补仓/止损双路径（F-3.7，2026-08-09，仅持仓时显示，纯展示层） ====== #}
 {% if holding_advice and holding_advice.pnl_pct is defined and holding_advice.pnl_pct < -10 %}
 {% set sp = holding_advice.stop_plan or {} %}
@@ -202,64 +201,6 @@
 </div>
 {% endif %}
 
-{# ====== 距买点（场景自适应 + 差距量化） ====== #}
-{% if buy_distance %}
-<div class="card" style="margin-bottom:12px;border-color:rgba(59,130,246,0.35);">
-  <div class="card-header" style="padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
-    <span class="card-title">🎯 距买点 · {{ buy_distance.scenario_label }}</span>
-    <span style="font-size:11px;color:var(--text-muted);">{{ buy_distance.ref }}</span>
-  </div>
-  <div style="padding:10px 14px;">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
-      <div style="font-size:15px;font-weight:700;color:{% if buy_distance.in_entry_zone %}var(--green){% else %}var(--text-primary){% endif %};">
-        {{ buy_distance.summary }}
-      </div>
-      {% if buy_distance.entry_zone %}
-      <div style="font-size:12px;color:var(--text-muted);">买入区 ¥{{ "%.2f"|format(buy_distance.entry_zone.low) }} ~ ¥{{ "%.2f"|format(buy_distance.entry_zone.high) }}</div>
-      {% endif %}
-      {% if buy_distance.anchor_note %}
-      <div style="width:100%;margin-top:6px;padding:6px 10px;border-radius:6px;background:rgba(245,158,11,0.12);color:var(--yellow);font-size:12px;line-height:1.5;">{{ buy_distance.anchor_note }}</div>
-      {% endif %}
-      {% if buy_distance.decision_note %}
-      <div style="width:100%;margin-top:6px;padding:6px 10px;border-radius:6px;background:rgba(245,158,11,0.12);color:var(--yellow);font-size:12px;line-height:1.5;">⚠️ {{ buy_distance.decision_note }}</div>
-      {% endif %}
-    </div>
-    <div style="margin-top:8px;height:10px;background:rgba(15,23,42,0.06);border-radius:5px;overflow:hidden;">
-      <div style="height:100%;width:{{ buy_distance.bar_pct }}%;background:linear-gradient(90deg,var(--blue),var(--green));border-radius:5px;"></div>
-    </div>
-    <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:12px;color:var(--text-muted);flex-wrap:wrap;gap:4px;">
-      <span>当前 <b style="color:var(--text-primary);">¥{{ "%.2f"|format(buy_distance.current_price) }}</b>
-        {% if buy_distance.anchor_price %}<span style="color:var(--text-muted);">悠悠锚价 ¥{{ "%.2f"|format(buy_distance.anchor_price) }}</span>{% endif %}</span>
-      <span>买点目标 <b style="color:var(--green);">¥{{ "%.2f"|format(buy_distance.target_price) }}</b>
-        {% if buy_distance.gap_pct > 0 %}<span style="color:var(--yellow);">（还差 {{ "%.1f"|format(buy_distance.gap_pct) }}% / 约 ¥{{ "%.2f"|format(buy_distance.gap_rmb) }}）</span>{% else %}<span style="color:var(--green);">（已到）</span>{% endif %}</span>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;font-size:12px;">
-      <span style="padding:3px 8px;border-radius:4px;background:rgba(100,116,139,0.15);color:#94a3b8;">低估参考 ¥{{ "%.2f"|format(buy_distance.pct30_price) }}</span>
-      {% if buy_distance.z15_price %}<span style="padding:3px 8px;border-radius:4px;background:rgba(100,116,139,0.15);color:#94a3b8;">超跌参考 ¥{{ "%.2f"|format(buy_distance.z15_price) }}</span>{% endif %}
-      <span style="padding:3px 8px;border-radius:4px;background:rgba(100,116,139,0.15);color:#94a3b8;">90日最低 ¥{{ "%.2f"|format(buy_distance.low90_price) }}</span>
-      {% if buy_distance.ma7 %}<span style="padding:3px 8px;border-radius:4px;background:rgba(100,116,139,0.15);color:#94a3b8;">MA7 ¥{{ "%.2f"|format(buy_distance.ma7) }}</span>{% endif %}
-      {% if buy_distance.ma30 %}<span style="padding:3px 8px;border-radius:4px;background:rgba(100,116,139,0.15);color:#94a3b8;">MA30 ¥{{ "%.2f"|format(buy_distance.ma30) }}</span>{% endif %}
-      {% if buy_distance.supply_signal == "hoarding" %}{% if buy_distance.supply_trap %}<span style="padding:3px 8px;border-radius:4px;background:rgba(245,158,11,0.15);color:var(--yellow);">📦 供给收缩·高位（锁仓诱多嫌疑）</span>{% else %}<span style="padding:3px 8px;border-radius:4px;background:rgba(34,197,94,0.15);color:var(--green);">📦 供给吸筹</span>{% endif %}{% endif %}
-      {% if buy_distance.scenario == "bottom" %}{% if buy_distance.stabilizing %}<span style="padding:3px 8px;border-radius:4px;background:rgba(34,197,94,0.15);color:var(--green);">✅ 已企稳（可下探）</span>{% else %}<span style="padding:3px 8px;border-radius:4px;background:rgba(245,158,11,0.15);color:var(--yellow);">⏳ 未企稳·不追跌</span>{% endif %}{% endif %}
-      {% if buy_distance.th_zone == "panic" %}<span style="padding:3px 8px;border-radius:4px;background:rgba(239,68,68,0.15);color:var(--red);">🔥 恐慌区·黄金坑</span>{% elif buy_distance.th_zone == "friction" %}<span style="padding:3px 8px;border-radius:4px;background:rgba(245,158,11,0.15);color:var(--yellow);">⚠️ 摩擦带</span>{% endif %}
-    </div>
-    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;font-size:12px;">
-      <span style="padding:3px 8px;border-radius:4px;background:{% if buy_distance.pct_gap <= 0 %}rgba(34,197,94,0.15);color:var(--green){% else %}rgba(245,158,11,0.15);color:var(--yellow){% endif %};">{% if buy_distance.pct_gap <= 0 %}低估 ✓{% else %}低估 还差 {{ "%.1f"|format(buy_distance.pct_gap) }}个百分点{% endif %}</span>
-      <span style="padding:3px 8px;border-radius:4px;background:{% if buy_distance.z_gap <= 0 %}rgba(34,197,94,0.15);color:var(--green){% else %}rgba(245,158,11,0.15);color:var(--yellow){% endif %};">{% if buy_distance.z_gap <= 0 %}超跌 ✓{% else %}超跌 还差 {{ "%.2f"|format(buy_distance.z_gap) }}{% endif %}</span>
-      <span style="padding:3px 8px;border-radius:4px;background:{% if buy_distance.th_gap <= 0 %}rgba(34,197,94,0.15);color:var(--green){% else %}rgba(245,158,11,0.15);color:var(--yellow){% endif %};">{% if buy_distance.th_gap <= 0 %}趋势分 ✓{% else %}趋势分 还差 {{ "%.0f"|format(buy_distance.th_gap) }}分{% endif %}</span>
-      <span style="padding:3px 8px;border-radius:4px;background:rgba(59,130,246,0.12);color:#60a5fa;">实际买点以决策条为准</span>
-    </div>
-    <div style="margin-top:6px;font-size:11px;color:var(--text-muted);line-height:1.5;">说明：低估参考=近90日30%分位价；超跌参考=均价-1.5倍波幅；趋势分=趋势健康度（≥55 更可靠，恐慌共振时更低也可参考）</div>
-    {% if price_zones and price_zones.expectancy %}
-    <div style="background:var(--blue-bg);border:1px solid var(--blue-border);padding:8px 10px;border-radius:8px;margin-top:10px;font-size:13px;color:var(--blue);">
-      历史同类信号(<b>{{ price_zones.expectancy.label }}</b>, {{ price_zones.expectancy.n }}个{% if price_zones.expectancy.events %}, {{ price_zones.expectancy.events }}次独立事件{% endif %}): 14日胜率 {{ price_zones.expectancy.win14 }}% <span style="color:#94a3b8;">(95%CI {{ price_zones.expectancy.ci14_lo }}~{{ price_zones.expectancy.ci14_hi }}%)</span> / 均收益 {{ "%+.1f"|format(price_zones.expectancy.avg14) }}% · 30日胜率 {{ price_zones.expectancy.win30 }}% / 均收益 {{ "%+.1f"|format(price_zones.expectancy.avg30) }}%
-      <span style="color:var(--text-muted);font-size:12px;">(回测口径)</span>
-    </div>
-    {% endif %}
-  </div>
-</div>
-{% endif %}
-{# ====== 数据质量 ====== #}
 {% if data_quality %}
 <div style="margin-top:8px;display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);">
   <span>数据质量: <b>{{ {'good':'高','medium':'中','low':'低'}.get(data_quality, data_quality) }}</b>（K 线 {{ {'good':'≥60 日','medium':'20~59 日','low':'<20 日'}.get(data_quality, '—') }}，在售量覆盖以图表为准）</span>

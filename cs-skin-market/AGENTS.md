@@ -318,7 +318,7 @@ cs-skin-market/
     market_context.py    -- 大盘上下文构建 + state_bucket 状态桶
     portfolio_risk.py    -- B1 风险预算层（组合回撤熔断 + 单票敞口提示）
     supply.py            -- 供给端追踪（在售量唯一量源）
-    buy_distance.py      -- 距买点 v3（企稳闸门/吸筹场景/TH 三区化）
+    buy_distance.py      -- 买点参考位（批量扫描排序/信号提取用；展示卡片 F-3.8 移除）
     signal_tracking.py   -- 生产实盘信号跟踪（J-2 C 通道）
     monitor.py           -- M1/M2 监控模式（每日自选品异动事件生成 + 日报 + 钉钉推送，纯提醒层）
     backtest_common.py   -- 回测公共模块（build_market_context 等）

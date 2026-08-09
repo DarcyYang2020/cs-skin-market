@@ -631,7 +631,6 @@ def build_analysis_ctx(analysis, kline_stale_days=None, kline_stale_date="",
     展示层增强（不参与决策，参数冻结不受影响）：
     - fusion_decision.expectancy：决策条回测徽章（族 14d 胜率 / 30d 期望）
     - supply_analysis：高位供给收缩语义统一（锁仓诱多嫌疑）
-    - buy_distance.decision_note：非买入态提示；supply_trap：高位供给徽章降级
     """
     # F-3.7 持仓浮亏双路径（纯展示层，回测 data/stop_loss_backtest.json）：有持仓时复用批量扫描同一套建议口径
     holding_advice = None
@@ -653,14 +652,7 @@ def build_analysis_ctx(analysis, kline_stale_days=None, kline_stale_date="",
         "bucket": fd.get("state_bucket", ""),
         "sources": _src_labels,
     }
-    pct = _position_pct(getattr(analysis, "position", None))
     supply = _supply_display(getattr(analysis, "supply_analysis", None), getattr(analysis, "position", None))
-    bd = dict(analysis.buy_distance or {})
-    if bd and fd.get("action") != "buy":
-        _lab = fd.get("action_label") or fd.get("action") or "观望"
-        bd["decision_note"] = "当前决策为「%s」，下方买点位置仅作参考，需决策转多（buy 族）后才可执行" % _lab
-    if bd.get("supply_signal") == "hoarding" and pct is not None and pct > 70:
-        bd["supply_trap"] = True
     return {
         "name": analysis.name,
         "price_rmb": analysis.price_rmb,
@@ -679,7 +671,6 @@ def build_analysis_ctx(analysis, kline_stale_days=None, kline_stale_date="",
         "kline_stale_days": kline_stale_days,
         "kline_stale_date": kline_stale_date,
         "price_zones": analysis.price_zones,
-        "buy_distance": bd,
         "holding_advice": holding_advice,
         "analysis_time": datetime.now(TZ_BJ).strftime("%Y-%m-%d %H:%M"),
     }

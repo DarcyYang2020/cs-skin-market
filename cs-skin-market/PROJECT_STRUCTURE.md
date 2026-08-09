@@ -51,13 +51,13 @@ cs-skin-market/
 |---|---|
 | `item_analysis.py` | 单品分析主入口：信号族注册制 + 六态状态桶 + 12 闸门融合决策 |
 | `index_analysis.py` | 大盘分析引擎：估值+情绪+资金+趋势+周期+融合决策 |
-| `trend_health.py`` | 趋势健康度（单品+大盘共用）+ 融合决策 |
+| `trend_health.py` | 趋势健康度（单品+大盘共用）+ 融合决策 |
 | `market_th.py` | 大盘趋势健康度 |
 | `market_macro.py` | 宏观情绪/资金面（贪婪指数/在线人数/点卡溢价等） |
 | `market_context.py` | 大盘上下文构建（供单品分析参考，state_bucket 状态桶） |
-| `valuation.py`` | 估值分位（百分位 + Z-score + 估值标签） |
+| `valuation.py` | 估值分位（百分位 + Z-score + 估值标签） |
 | `supply.py` | 供给分析（在售量变化率 + 吸筹/派发检测，唯一量源） |
-| `buy_distance.py`` | 距买点 v3（下跌寻底企稳闸门/供给吸筹场景/大盘TH三区化） |
+| `buy_distance.py` | 买点参考位量化（批量扫描排序/信号提取用；展示卡片 F-3.8 移除） |
 | `portfolio_risk.py` | B1 风险预算层（组合回撤熔断 + 单票敞口提示） |
 | `signal_tracking.py` | 生产实盘信号跟踪（J-2 C 通道：记录 buy 信号 → 14/30 交易日回填） |
 | `monitor.py` | M1/M2 监控模式（每日自选品异动事件生成 + 日报 + 钉钉推送，纯提醒层，只读引擎输出） |
@@ -66,23 +66,23 @@ cs-skin-market/
 
 | 文件 | 功能 |
 |---|---|
-| `backtest_common.py`` | 回测公共：build_market_context / patch_sentiment / approx_sentiment |
-| `backtest_methodology.py`` | A2 三件套：walk_forward_split / signal_cluster_report / permutation_baseline |
+| `backtest_common.py` | 回测公共：build_market_context / patch_sentiment / approx_sentiment |
+| `backtest_methodology.py` | A2 三件套：walk_forward_split / signal_cluster_report / permutation_baseline |
 
 ### 批量扫描与仪表盘
 
 | 文件 | 功能 |
 |---|---|
-| `batch_scan.py`` | 自选批量扫描（信号提取/按建议执行/组合建议/距买点列） |
+| `batch_scan.py` | 自选批量扫描（信号提取/按建议执行/组合建议/距买点列） |
 | `dashboards.py` | 仪表盘数据（数据积累进度/J-2 三通道/组合仓位，纯展示层） |
-| `factor_monitor.py`` | 因子衰减监控 |
+| `factor_monitor.py` | 因子衰减监控 |
 
 ## `webapp/` Web 层
 
 | 文件 | 功能 |
 |---|---|
 | `main.py` | FastAPI 应用：全部 REST API + Jinja2 渲染 + 批量扫描进度落盘持久化 |
-| `analysis_service.py`` | 公共分析服务层：analyze_fresh 统一核心 + 锚价校验/DB K线兜底/market_snapshot 等助手 |
+| `analysis_service.py` | 公共分析服务层：analyze_fresh 统一核心 + 锚价校验/DB K线兜底/market_snapshot 等助手 |
 | `static/css/style.`css | 全局样式 |
 | `static/js/app.`js | 前端交互（HTMX/模态/表单） |
 | `templates/` | `base/dashboard/search/watchlist/discover/`replay + `partials/*` |
@@ -91,7 +91,7 @@ cs-skin-market/
 
 | 文件 | 功能 |
 |---|---|
-| `test_smoke.py`` | 冒烟测试（约 70 用例，支持 CS_MODEL_SKIP_NET 离线跳过网络用例） |
+| `test_smoke.py` | 冒烟测试（约 70 用例，支持 CS_MODEL_SKIP_NET 离线跳过网络用例） |
 | `check_encoding.py` | 仓库文本编码健康检查（UTF-8 无 BOM / 无乱码） |
 | `snapshots/replay_v2.`json | 回放口径快照（aggregate+月度，防无意漂移） |
 
@@ -113,17 +113,17 @@ cs-skin-market/
 ### 研究脚本（产出 `data/*.`json）
 
 - `j2_channel_monitor.py` — J-2 三通道监测（A 恐慌事件/B 新数据天数/C 胜率）→ `j2_channel_status.json`
-- `refit_pipeline.py`` — Phase 3 重拟合流水线（A2 三件套 + 达标判定）→ `refit_pipeline_report.json`
+- `refit_pipeline.py` — Phase 3 重拟合流水线（A2 三件套 + 达标判定）→ `refit_pipeline_report.json`
 - `portfolio_backtest.py` — Phase 2 组合层回测（cap 变体）→ `portfolio_backtest.json`
-- `b1_risk_backtest_v2.py`` — B1 风险预算 v2 复验 → `b1_risk_validation_v2.json`
+- `b1_risk_backtest_v2.py` — B1 风险预算 v2 复验 → `b1_risk_validation_v2.json`
 - `cost_sensitivity.py` — 成本敏感性 → `cost_sensitivity.json`
 - `supply_quality.py` — 在售量质量诊断 → `supply_quality.json`
-- `benchmark_compare.py`` — 策略 vs 池/指数基准 → `benchmark_compare.json`
+- `benchmark_compare.py` — 策略 vs 池/指数基准 → `benchmark_compare.json`
 - `cap_family_backtest.py` / `s3_bucket_replay.py` — cap 族级/分桶复验
 - `sync_expectancy_config.py` / `sync_replay_snapshot.py` — 期望统计/回放口径同步
 - `j1_event_counts.py` — 各族独立事件数 → `signal_event_counts.json`
-- `run_item_backtest_full.py`` — 全窗口单品回放（标准基准 `item_backtest_full_2025.json`）
-- `t`rend_leg_*.`py` / `t`h_*_study.`py` / `topup_replay.py`` / `t`ranche_fit*.`py` / `c1_p10_replay.py` / `advice_layer_fit.py`` / `portfolio_cap_fit.py` — 历史研究脚本
+- `run_item_backtest_full.py` — 全窗口单品回放（标准基准 `item_backtest_full_2025.json`）
+- `t`rend_leg_*.`py` / `t`h_*_study.`py` / `topup_replay.py` / `t`ranche_fit*.`py` / `c1_p10_replay.py` / `advice_layer_fit.py` / `portfolio_cap_fit.py` — 历史研究脚本
 - `scripts-archive/` — 已下线脚本归档（成交量时代等，仅存证）
 
 ## 数据文件（data/）
@@ -133,10 +133,10 @@ cs-skin-market/
 | `market.db` | SQLite 主库（gitignore） |
 | `item_backtest_full_2025.json` | **标准回放基准**（去量 v2，370 信号） |
 | `item_backtest_full_2025.baseline450.`json / `.devol_v1.`json | 去量演进对比存档（旧引擎产物，仅存证） |
-| `j2_channel_status.json` / `refit_pipeline_report.json`` / `portfolio_backtest.json` 等 | 研究产物 |
+| `j2_channel_status.json` / `refit_pipeline_report.json` / `portfolio_backtest.json` 等 | 研究产物 |
 | `backup/` | 每日 DB 备份（保留 14 份，gitignore） |
 | `pool_maintenance_log.jsonl` | 池维护台账（daily/prune/discover 三类，F-3.2） |
-| `scan_history/` / `scan_progress_*.`json / `batch_scan_latest.json`` | 批量扫描归档/进度/缓存（gitignore） |
+| `scan_history/` / `scan_progress_*.`json / `batch_scan_latest.json` | 批量扫描归档/进度/缓存（gitignore） |
 
 ## 数据库表（schema_version = 1）
 

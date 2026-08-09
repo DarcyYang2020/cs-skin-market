@@ -90,7 +90,7 @@ def t_ianalysis():
     assert 'market_trend_health' in result
     assert 'market_fusion_decision' in result
     assert isinstance(result['market_trend_health'].get('score'), int)
-    assert 'buy_distance' in result, list(result.keys())
+    assert 'buy_distance' not in result, "F-3.8 大盘距买点展示模块已移除"
 check('index analysis produces complete output', t_ianalysis, skip=SKIP_NET)
 
 print('[API: Item Search]')
@@ -727,7 +727,7 @@ check('buy_distance anchor_price is display-only (chart-consistent)', t_buy_dist
 
 def t_buy_distance_v3():
     # 距买点 v3（2026-08-07 去量理念）：下跌中继不追跌 / 供给吸筹就近 / 恐慌黄金坑
-    from pipeline.buy_distance import compute_buy_distance, compute_market_buy_distance
+    from pipeline.buy_distance import compute_buy_distance
     # 连跌创新低（下跌中继）→ 等企稳不追跌：target 为 MA/ATR 支撑而非一路下探
     prices = [200 - i for i in range(90)]
     class _P:
@@ -742,10 +742,6 @@ def t_buy_distance_v3():
                                supply={"supply_risk": "hoarding", "supply_trend": "contracting"})
     assert bd2 and bd2["scenario"] == "accumulate" and bd2["supply_signal"] == "hoarding", bd2
     assert bd2["target_price"] < bd2["current_price"], bd2
-    # 大盘恐慌黄金坑（TH<35）：参考位提升，不一路下探到 90 日低
-    mbd = compute_market_buy_distance(list(range(11, 101)), pct=10.0, z=-1.0, th_score=30.0, regime="bear", action="watch")
-    assert mbd and mbd["scenario"] == "panic" and mbd["th_zone"] == "panic", mbd
-    assert mbd["target_price"] >= mbd["low90_price"], mbd
 check('buy_distance v3: 下跌中继不追跌/供给吸筹就近/恐慌黄金坑', t_buy_distance_v3)
 
 print('[Data Sane: K线脏价校验]')
@@ -771,22 +767,6 @@ def t_kline_price_sane():
     assert ok
 check('kline dirty-price anchor rule blocks offset series', t_kline_price_sane)
 
-
-def t_market_buy_distance():
-    from pipeline.buy_distance import compute_market_buy_distance
-    prices = list(range(11, 101))
-    mbd = compute_market_buy_distance(prices, pct=45.0, z=0.8, th_score=40.0, regime='bear', action='watch')
-    assert mbd is not None
-    assert mbd['line_price'] == 38.0, mbd          # min(pct30=38, z0=55.5)
-    assert mbd['drop_to_line_pct'] == 62.0, mbd
-    assert mbd['th_target'] == 55, mbd
-    assert mbd['scenario'] == 'bottom' and mbd['target_price'] == 38.0, mbd
-    assert mbd['gap_pct'] == 62.0 and mbd['gap_rmb'] == 62.0, mbd
-    mbd2 = compute_market_buy_distance(prices, pct=20.0, z=-0.5, th_score=60.0, regime='bear', action='buy', action_label='低估区间·分批建仓')
-    assert mbd2['bar_pct'] == 100 and '已到买点' in mbd2['summary'], mbd2
-    mbd3 = compute_market_buy_distance(prices, pct=45.0, z=0.8, th_score=20.0, regime='bull', action='watch')
-    assert mbd3['th_target'] == 30, mbd3
-check('market buy_distance prices the reference line', t_market_buy_distance)
 
 def t_item_result_buy_distance():
     from types import SimpleNamespace
