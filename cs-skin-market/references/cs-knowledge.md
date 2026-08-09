@@ -343,7 +343,7 @@ Body: {\"good_id\": int, \"key\": \"sell_price|sell_num|buy_price|buy_num|turnov
 
 #### 对项目的价值判断与落地（2026-08-04）
 
-- **成交量方向已废除（2026-08-07）**：官方文档无「单品每日真实成交历史」接口（simple/chartAll 的 v 为 csQAQ 内部成交量口径，与悠悠逐日量不一致，不做量因子）；真实成交量采集（悠悠有品）已整体删除，量源 = csQAQ chart 在售量（in_sale_count），引擎改为「在售量 + 价格」双核心（见 plan-supply-price-v1.md）。
+- **成交量方向已废除（2026-08-07）**：官方文档无「单品每日真实成交历史」接口（simple/chartAll 的 v 为 csQAQ 内部成交量口径，与悠悠逐日量不一致，不做量因子）；真实成交量采集（悠悠有品）已整体删除，量源 = csQAQ chart 在售量（in_sale_count），引擎改为「在售量 + 价格」双核心（见 decision-log.md 2026-08-07「废除成交量」条目）。
 - **历史深度（已落地）**：simple/chartAll(plat=2 悠悠价) 多窗口向前翻页可回补至 2023-08。经研判 **2024 及更早市场逻辑已过时，回填起点定为 2025-01-01**（覆盖 2025-02 反弹、2025-05 深底、2026-02 小牛，全部关键样本点）。`run_backfill_history.py` 给现有品补 2025-01-01~2025-08-03 缺失价格（仅补缺失、不覆盖已有 volume_day）。
 - **全市场快照（已落地）**：`collector_snapshot.py` 用 get_page_list 翻页（200/页，按热度取前 5000 品 ≈ 25 页 ≈ 2 分钟/天）每日采集悠悠锚价+在售数，存 market_snapshot 表，为未来全市场选品/估值分布/异动扫描积累面板，与在售量积累并行。
 - **P1 已落地（2026-08-04）**：monitor/rank 大户集中度每日快照（collector_monitor.py，每品 Top50 大户持有量，存 monitor_rank_snapshot，挂 run_daily_collect 每日任务）；复验期回测「集中度变化」能否提升吸筹信号（等数据积累 2~3 个月）。

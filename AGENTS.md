@@ -2,7 +2,7 @@
 
 CS 饰品市场投资分析工具。FastAPI Web 应用，从 csQAQ 采集大盘/单品数据（价格 + 在售量 in_sale_count），跑六维度评分 + 趋势健康度 + 融合决策模型，输出买卖建议。数据存 SQLite（`cs-skin-market/data/market.db`）。
 
-> **2026-08-07 去成交量（v2）**：引擎彻底放弃真实成交量方向，改为「在售量 + 价格」双核心（方案见 `references/plan-supply-price-v1.md`，回测见下文）。悠悠有品成交量采集器（collector_youpin.py）与登录凭据（uu_headers.json）已于 2026-08-07 删除。
+> **2026-08-07 去成交量（v2）**：引擎彻底放弃真实成交量方向，改为「在售量 + 价格」双核心（决策见 `references/decision-log.md` 2026-08-07 条目，回测见下文）。悠悠有品成交量采集器（collector_youpin.py）与登录凭据（uu_headers.json）已于 2026-08-07 删除。
 
 ## 唯一入口
 

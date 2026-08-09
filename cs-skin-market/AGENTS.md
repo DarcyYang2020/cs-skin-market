@@ -13,7 +13,7 @@
 1. **单层独立回测**：每层改动前先跑基线，改动后单独回测，记录单层增量（胜率/均收益/信号数）。
 2. **叠加回归**：层与层合入前，重跑当前完整引擎的统一窗口回测（大盘 `python run_backtest.py`；单品 `python run_item_backtest.py --all --warmup 30`），确认叠加后整体 ≥ 最优单层，不满足则不准合入。
 3. **消融定位**：叠加后整体变差时，临时关闭上一层规则再跑一次，区分「上一层被冗余化（删规则）」还是「本层引入副作用（调本层）」。
-4. **以完整引擎为准**：最终判定以当前完整引擎在统一窗口的胜率/收益为准，单层贡献数字仅作参考；结论与数字记入 `references/backtest_layered.md` 或对应引擎文档。
+4. **以完整引擎为准**：最终判定以当前完整引擎在统一窗口的胜率/收益为准，单层贡献数字仅作参考；结论与数字记入 `references/decision-log.md`（决策记录）。
 
 配套：每次回测自动生成快照 `data/item_backtest_YYYYMMDD.json`（保留 365 天），用于因子衰减监控与回归对比。
 
@@ -43,7 +43,7 @@
 - **存世量**: 崭新出厂 <3000 → 不建仓（`survive_too_low`）；口径为 `info/good.statistic_list`（非 `buff_sell_num`）。
 - **每日采集**: SQL 排除「存世量过低 / 活跃池淘汰」标记品（自选/持仓豁免）；大户集中度每周一采集。
 
-## 单品分析引擎## 单品分析引擎 (item_analysis.py)
+## 单品分析引擎 (item_analysis.py)
 
 run_item_analysis(name, prices, volumes, supply_hist, order_book, index_change_7d, market_history, market_pct_90d, market_zscore) 协调以下模块：
 
@@ -151,14 +151,13 @@ webapp/templates/
 - 百分位分档: <=30% 低估 / 30-70% 中性 / >70% 高估
 - **TH 三区语义（2026-08-06 TH 矫正后）**：TH<35 恐慌黄金坑（14d 95%/+41）｜35-54 摩擦带（deep_value 族加 chg30 闸门防阴跌横盘）｜≥55 趋势确认；详见 `references/th_calibration.md`
 
-### 发现高分品 (2026-07-28)
-新页面 /discover，自动扫描 8 个热门武器类型的崭新出厂品：
-- **扫描武器**：AK-47 / AWP / 沙漠之鹰 / M4A4 / USP / MP7 / SSG 08 / 法玛斯
-- **过滤**：仅崭新出厂，排除 StatTrak/纪念品/匕首
-- **去重**：每个武器类型最多 3 个 → 总计 ~20-24 个品
-- **排序**：按评分降序取 Top 10
-- **缓存**：结果存 data/discover_latest.json，24h 内可反复查看
-- **异步**：搜索和分析都在后台执行，点击立即返回进度条
+### 发现高分品（discover，F-3/F-3.4/F-3.5 定稿）
+新页面 /discover：默认**池内扫描**（纯 DB 重排序，DB 新鲜 K 线秒过，过期品才网络补齐）；`mode=search` 保留全网搜索扩池路径（手动触发，受验证码/限流影响）。
+- **范围**：13 武器类型（AK-47 / AWP / 沙漠之鹰 / M4A4 / USP / MP7 / SSG 08 / 法玛斯 / M4A1 消音版 / 格洛克 18 型 / MP9 / Tec-9 / 加利尔 AR）崭新出厂，排除 StatTrak/纪念品/匕首
+- **过滤**：近 7 天平均在售量 <15 预筛跳过；非崭新出厂/存世量过低/活跃池淘汰品排除
+- **排序**：综合分（评分 + 融合决策 + 趋势TH + 估值折价 + 数据质量系数）降序取 Top 10
+- **缓存**：结果存 data/discover_latest.json；完成产物含 top10 历史 + 台账（F-3.2）
+- **异步**：扫描在后台执行，点击立即返回进度条
 
 ### 超跌买入例外 (P0, 2026-07-21)
 当标准融合决策无法触发 buy 时，额外检查:
@@ -247,23 +246,19 @@ python references/scripts-archive/run_item_backtest.py --items "AWP | 冥界之�
 - 分层结论（支撑补仓阈值）: pct≤25&th≥40 → 14d胜率75%; pct 25~40(半山腰) → 14d胜率28%; 市场贪婪(sent≤30) → 30d胜率0%
 - 输出: 控制台明细 + data/backtest_snapshots/item_backtest_YYYYMMDD.json（标准回放基准 = data/item_backtest_full_2025.json，旧 88 基准已删）
 
-### 持仓补仓建议 (batch_scan._portfolio_advice, 2026-07-31)
+### 持仓补仓/止损（F-3.7 定稿，2026-08-09）
+浮亏持仓走**五状态止损矩阵 + V 型底补仓**（完整理论/回测/矩阵见 `references/stop-loss-strategy.md`）：
+- 触发线：浮亏≥-15% 评估（非直接止损）；供给扩张（单品在售量 30日+5%）→ 全止损；恐慌深跌（mchg30≤-15%）→ 不止损转补仓评估；阴跌中继（-15%~-5%）→ 减半止损；大盘上涨段/中性 → 不止损
+- 补仓：仅「恐慌深跌 + 单品供给收缩」（V 型底指纹 win87%/+43.7%），倒金字塔 3:2:1、单批≤15%、总敞口≤30%；禁补=阴跌中继/供给扩张/贪婪区（sent≤30）
+- 旧规则（sent≤30 禁补 / pct≤25+TH≥40 可补）已并入矩阵，不再单列
 
-浮亏持仓按数据验证阈值分层（sentiment_score 由大盘贪婪指数计算，批量扫描时传入）：
-
-- 市场贪婪 sent≤30 → 禁止补仓（30d 期望为负）
-- pct 25~40 半山腰 → 暂缓补仓，等 pct≤25
-- pct≤25 + 单品TH≥40 + z≤-0.5 + 大盘TH≥45 → 可分批补仓（14d 胜率 75%）
-- pct≤25 但大盘TH<45 → 暂缓，等大盘共振
-- 单品TH<30 → 止损优先（风险预算原则）
-
-## 发现高分品模块优化 (2026-08-01)
+## 发现高分品模块优化（2026-08-01，历史记录；扫描范围/路径 2026-08-08 起由 F-3/F-3.4/F-3.5 更新，见上节「发现高分品」）
 
 - P0-1 综合分重排: composite = (评分 + 融合决策加权 + 趋势TH加权) x 估值折价 x 数据质量系数
   - 数据质量: good=1.0 / medium=0.85 / low=0.6 / insufficient=0.2（杜绝"没数据排第一"）
   - 融合决策: buy +1.0 / watch +0.5 / hold 0 / reduce -0.5 / avoid -1.0 / sell -1.0
   - 趋势TH: (TH-50)/50 归一化 ±1.0 加权
-- P0-2 覆盖提升: 每类武器扫 6 个(原3), 总量上限 40(原24); K线<14天轻量预筛直接跳过(省采集+分析耗时)
+- P0-2 覆盖提升（2026-08-08 扩至 13 武器/240 候选，见 F-3）: 每类武器扫 6 个(原3), 总量上限 40(原24); K线<14天轻量预筛直接跳过(省采集+分析耗时)
 - P1-1 结构化持久化: discover_latest.json 保存 results 明细 + market_th, 前端显示上次扫描时间与成功数
 - P1-2 联动单品报告: Top 表名称点击跳 /search?q=名称 自动触发分析; search 页支持 q 参数预填+自动提交
 
@@ -350,7 +345,7 @@ cs-skin-market/
 items / price_history / market_index / macro_history / snapshots / market_snapshot / monitor_rank_snapshot /
 monitor_events / positions / executions / signal_tracking / health_checks / backtest_results / settings / schema_version。
 
-## 风控/信号职责分工## 风控/信号职责分工（三层闸门，2026-08-06 定稿）
+## 风控/信号职责分工（三层闸门，2026-08-06 定稿）
 
 - **组合闸门（portfolio_risk.py）**：组合回撤熔断（10%，收复峰值解除）+ 单票敞口提示（30%，只提示不拒绝）——管「组合层面是否开新仓」。
 - **信号族闸门（未来路由层）**：按市场状态（贪婪禁入/恐慌+深跌=V型底区/恐慌+中跌=阴跌中继区/恐慌浅跌/中性企稳/弱市观望）决定哪些信号族开火——当前由各族门控隐含实现，界面标注见 batch_scan.market_regime。

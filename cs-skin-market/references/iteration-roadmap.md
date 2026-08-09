@@ -310,3 +310,6 @@ eferences/refit_pipeline.py → data/refit_pipeline_report.json（A2 三件套�
 - F-3.4 discover 从池内跑：**完成（2026-08-08）**——默认 pool 模式扫池内活跃品（DB 复用零采集），search 扩池路径保留；扫描 181 品 / 70 通过 / 2 buy，见 v46。
 - F-4 成本建模进回测 / F-5 组合模拟器：**待做（P1，研究层）**——冻结期后议是否进引擎。
 - F-6 事件驱动提示 / F-7 钉钉卡片一键执行：**待做（P2，体验层）**。
+- F-3.5 高分品模块治理：**完成（2026-08-08）**——磨损过滤（仅崭新出厂）+ 流动性闸门（supply_depth<15 降级 buy），非 FN 品标记淘汰，见 decision-log。
+- F-3.6 价格串品治理：**完成（2026-08-09）**——fetch_kline_90d 悠悠锚校验 + 82 品体检修正 7 品错价，见 decision-log。
+- F-3.7 补仓/止损双路径：**完成（2026-08-09）**——五状态止损矩阵 + 倒金字塔 3:2:1 补仓（展示层建议，不触碰冻结参数），回测 data/stop_loss_backtest.json，文档 references/stop-loss-strategy.md。
