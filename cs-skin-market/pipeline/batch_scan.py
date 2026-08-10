@@ -5,6 +5,7 @@ import logging
 from .buy_distance import tranche_plan_text
 from .config import TOPUP_EXPECTANCY_STATS, PORTFOLIO_CAP_CONCURRENT
 from .portfolio_risk import single_position_exposure
+from webapp.render_html import _tpl_env
 
 _log = logging.getLogger("batch_scan")
 
@@ -850,9 +851,10 @@ def _bd_cell(bd):
 
 
 def build_scan_html(results, total, market_ctx=None, now_str="", name_link=None, risk_ctx=None):
-    """批量扫描结果 → HTML（市场条 + 汇总统计 + 持仓/关注表格 + 距买点列）。
+    """批量扫描结果 → Jinja（市场条 + 汇总统计 + 持仓/关注表格 + 距买点列）。
 
-    展示层函数：不调用任何信号引擎。
+    展示层函数：不调用任何信号引擎。页面结构在 templates/partials/scan_html.html；
+    单元格组件（距买点/动作徽章/执行按钮/名称，含 JS 转义与业务逻辑）保留 Python。
     """
     market_ctx = market_ctx or {}
     held = [r for r in results if r.get("holding") and r.get("error") is None]
@@ -864,10 +866,6 @@ def build_scan_html(results, total, market_ctx=None, now_str="", name_link=None,
     n_near = sum(1 for r in results if 0 < float((r.get("buy_distance") or {}).get("gap_pct", 99)) <= 5)
     n_loss = sum(1 for r in held if _pnl_pct(r) < 0)
     n_ok = len(results) - len(errors)
-    h = []
-    h.append('<div class="card" id="batch-result" style="margin-bottom:16px;">')
-    h.append('<div class="card-header" style="justify-content:space-between;"><span class="card-title">批量扫描完成</span>')
-    h.append('<span style="font-size:13px;color:var(--text-muted);">' + _esc(now_str) + " | 成功 " + str(n_ok) + "/" + str(total) + " | 刷新后仍保留</span></div></div>")
     # 市场环境条
     th = market_ctx.get("th")
     sent = market_ctx.get("sentiment")
@@ -878,11 +876,6 @@ def build_scan_html(results, total, market_ctx=None, now_str="", name_link=None,
     mood = "恐惧" if (sent is not None and sent >= 60) else ("贪婪" if (sent is not None and sent <= 30) else "中性")
     # I-1 市场状态标注(2026-08-06): V型底区/阴跌中继区等, 纯展示层
     _regime_label, _regime_cls, _regime_strategy = market_regime(sent, market_ctx.get("chg30"), th)
-    h.append('<div class="card" style="margin-bottom:16px;"><div class="card-header"><span class="card-title">市场环境</span></div>'
-             '<div style="padding:10px 14px;font-size:13px;color:var(--text-secondary);">'
-             + ("指数 " + _esc("{:.0f}".format(idxv)) + " ｜" if idxv else "") + " 大盘TH=" + th_txt + " ｜ 情绪 " + sent_txt + "（" + mood + "）｜ 周期 " + _esc(str(cycle))
-             + ' ｜ <span class="regime-badge ' + _regime_cls + '">' + _esc(_regime_label) + '</span>')
-    h.append('<br><span style="font-size:12px;color:var(--text-secondary);">策略：' + _esc(_regime_strategy) + '</span>')
     stats = []
     if n_at_buy:
         stats.append(str(n_at_buy) + " 个已到买点")
@@ -890,70 +883,68 @@ def build_scan_html(results, total, market_ctx=None, now_str="", name_link=None,
         stats.append(str(n_near) + " 个接近买点（≤5%）")
     if n_loss:
         stats.append(str(n_loss) + " 个持仓浮亏")
-    if stats:
-        h.append('<br><span style="color:var(--accent);font-weight:600;">' + " · ".join(stats) + "</span>")
+    stats_line = " · ".join(stats) if stats else ""
     # 组合并发仓位提示(P2, 2026-08-04): Σ建仓/补仓建议仓位超上限时预警(展示层, 不改信号)
     demand = sum(float(r.get("position_limit") or 0) for r in results
                  if (r.get("portfolio_advice") or {}).get("action") in ("可分批建仓", "可分批补仓"))
+    demand_line = ""
     if demand > PORTFOLIO_CAP_CONCURRENT + 1e-9:
-        h.append(('<br><span style="color:var(--yellow);font-weight:600;">并发建议仓位 {:.0f}%（上限 {:.0f}%），'
-                  '超出 {:.0f}%：信号扎堆时优先处理排序靠前的建仓/补仓，避免单日同时开仓过多'
-                  '（回测：超限持仓并发最高1200%、回撤可达-85%）</span>').format(
-            demand * 100, PORTFOLIO_CAP_CONCURRENT * 100, (demand - PORTFOLIO_CAP_CONCURRENT) * 100))
+        demand_line = ('<span style="color:var(--yellow);font-weight:600;">并发建议仓位 {:.0f}%（上限 {:.0f}%），'
+                       '超出 {:.0f}%：信号扎堆时优先处理排序靠前的建仓/补仓，避免单日同时开仓过多'
+                       '（回测：超限持仓并发最高1200%、回撤可达-85%）</span>').format(
+            demand * 100, PORTFOLIO_CAP_CONCURRENT * 100, (demand - PORTFOLIO_CAP_CONCURRENT) * 100)
     # B1 组合回撤熔断提示(2026-08-05): 持仓市值距峰值回撤超阈值 -> 建议暂停新开仓/补仓
-    # 回测(data/b1_risk_validation.json): cap0.8+熔断10% 总收益+60.5%/maxDD-12.0%, 优于无熔断+54.6%/-15.3%
+    breaker_line = ""
     _dd = (risk_ctx or {}).get("drawdown") or {}
     if _dd.get("breaker_active"):
-        h.append(('<br><span style="color:var(--red);font-weight:600;">组合回撤熔断：持仓市值距峰值回撤 '
-                  '{:.1f}%（阈值 {:.0f}%，收复峰值解除），建议暂停新开仓/补仓'
-                  '（回测：熔断10%组合总收益+60.5%、最大回撤-12.0%，优于无熔断+54.6%/-15.3%）'
-                  '</span>').format(
-            _dd["drawdown_pct"], _dd["threshold_pct"]))
-    h.append("</div></div>")
-    # 持仓分析
-    if held:
-        h.append('<div class="card" style="margin-bottom:16px;"><div class="card-header"><span class="card-title">持仓分析 (' + str(len(held)) + ")</span></div><div class=\"table-wrap\"><table><thead><tr><th>物品</th><th>成本/现价</th><th>盈亏</th><th>评分</th><th>距买点</th><th>建议</th></tr></thead><tbody>")
-        for r in held:
-            pnl_pct = _pnl_pct(r)
-            pa = r.get("portfolio_advice", {}) or {}
-            g = (r.get("grade") or "?").lower()
-            pnl_c = "green" if pnl_pct > 5 else ("red" if pnl_pct < -5 else "")
-            h.append("<tr><td>" + _name_cell(r, name_link) + "</td>")
-            h.append("<td>¥" + "%.2f" % r["avg_cost"] + " → <strong>¥" + "%.2f" % r["price_rmb"] + "</strong></td>")
-            h.append('<td class="' + pnl_c + '">' + "%.1f" % pnl_pct + "%</td>")
-            h.append('<td><span class="badge badge-' + g + '">' + _esc(str(r.get("grade", "?"))) + "</span></td>")
-            h.append("<td>" + _bd_cell(r.get("buy_distance")) + "</td>")
-            _sp_line = ""
-            _sp = pa.get("stop_plan") or {}
-            if _sp:
-                _sp_line = ('<br><span style="font-size:10px;color:var(--text-secondary);">🛑 止损评估：'
-                            + _esc(str(_sp.get("state", ""))) + " · " + _esc(str(_sp.get("action", "")))
-                            + (' · 参考(现价) ¥%.2f' % float(_sp.get("exec_price") or 0) if _sp.get("sell_action") else "")
-                            + (' · 已损%d/%d' % (int(_sp["sold_recent"]), int(_sp["total_ref"])) if _sp.get("sold_recent") else "")
-                            + (' · 卖出%s件' % int(_sp["sell_qty"]) if _sp.get("sell_action") else "")
-                            + '</span>')
-            _exec_mark = ""
-            if _is_sellish_advice(pa) and r["name"] not in _recently_exec:
-                _exec_mark = '<br><span style="font-size:10px;color:var(--yellow);">⚠️ 建议未执行（近30天无执行记录）</span>'
-            h.append('<td>' + _action_badge(pa) + "<br><span style=\"font-size:11px;color:var(--text-muted);\">" + _esc(pa.get("suggest", "")) + "</span>" + _sp_line + _exec_mark + _exec_btn(r["name"], pa, r["price_rmb"]) + "</td></tr>")
-        h.append("</tbody></table></div></div>")
-    # 关注列表（非持仓）
-    if unheld:
-        h.append('<div class="card" style="margin-bottom:16px;"><div class="card-header"><span class="card-title">关注列表 (' + str(len(unheld)) + ")</span></div><div class=\"table-wrap\"><table><thead><tr><th>物品</th><th>现价</th><th>评分</th><th>估值</th><th>距买点</th><th>建议</th></tr></thead><tbody>")
-        for r in unheld:
-            pa = r.get("portfolio_advice", {}) or {}
-            g = (r.get("grade") or "?").lower()
-            h.append("<tr><td>" + _name_cell(r, name_link) + "</td>")
-            h.append("<td>¥" + "%.2f" % r["price_rmb"] + "</td>")
-            h.append('<td><span class="badge badge-' + g + '">' + _esc(str(r.get("grade", "?"))) + "</span></td>")
-            h.append('<td style="font-size:12px;">' + _esc(str(r.get("valuation_tier", "?"))) + '<br><span style="color:var(--text-muted);">pct=' + "%.1f" % r.get("percentile_90d", 50) + "%</span></td>")
-            h.append("<td>" + _bd_cell(r.get("buy_distance")) + "</td>")
-            h.append('<td>' + _action_badge(pa) + "<br><span style=\"font-size:11px;color:var(--text-muted);\">" + _esc(pa.get("suggest", "")) + "</span>" + _exec_btn(r["name"], pa, r["price_rmb"]) + "</td></tr>")
-        h.append("</tbody></table></div></div>")
-    # 失败
-    if errors:
-        h.append('<div class="card" style="border-color:var(--red);"><div class="card-header"><span class="card-title">扫描失败</span></div>')
-        for e in errors:
-            h.append('<div style="margin-bottom:4px;"><strong>' + _esc(e["name"]) + "</strong>: <span style=\"color:var(--red);\">" + _esc(e.get("error", "")) + "</span></div>")
-        h.append("</div>")
-    return "\n".join(h)
+        breaker_line = ('<span style="color:var(--red);font-weight:600;">组合回撤熔断：持仓市值距峰值回撤 '
+                        '{:.1f}%（阈值 {:.0f}%，收复峰值解除），建议暂停新开仓/补仓'
+                        '（回测：熔断10%组合总收益+60.5%、最大回撤-12.0%，优于无熔断+54.6%/-15.3%）'
+                        '</span>').format(_dd["drawdown_pct"], _dd["threshold_pct"])
+
+    def _held_row(r):
+        pnl_pct = _pnl_pct(r)
+        pa = r.get("portfolio_advice", {}) or {}
+        g = (r.get("grade") or "?").lower()
+        pnl_c = "green" if pnl_pct > 5 else ("red" if pnl_pct < -5 else "")
+        _sp_line = ""
+        _sp = pa.get("stop_plan") or {}
+        if _sp:
+            _sp_line = ('<br><span style="font-size:10px;color:var(--text-secondary);">🛑 止损评估：'
+                        + _esc(str(_sp.get("state", ""))) + " · " + _esc(str(_sp.get("action", "")))
+                        + (' · 参考(现价) ¥%.2f' % float(_sp.get("exec_price") or 0) if _sp.get("sell_action") else "")
+                        + (' · 已损%d/%d' % (int(_sp["sold_recent"]), int(_sp["total_ref"])) if _sp.get("sold_recent") else "")
+                        + (' · 卖出%s件' % int(_sp["sell_qty"]) if _sp.get("sell_action") else "")
+                        + '</span>')
+        _exec_mark = ""
+        if _is_sellish_advice(pa) and r["name"] not in _recently_exec:
+            _exec_mark = '<br><span style="font-size:10px;color:var(--yellow);">⚠️ 建议未执行（近30天无执行记录）</span>'
+        return {"name_cell": _name_cell(r, name_link),
+                "avg_cost": float(r.get("avg_cost") or 0), "price": float(r.get("price_rmb") or 0),
+                "pnl_pct": pnl_pct, "pnl_cls": pnl_c,
+                "badge": '<span class="badge badge-' + g + '">' + _esc(str(r.get("grade", "?"))) + "</span>",
+                "bd_cell": _bd_cell(r.get("buy_distance")),
+                "advice_cell": (_action_badge(pa) + "<br><span style=\"font-size:11px;color:var(--text-muted);\">"
+                                + _esc(pa.get("suggest", "")) + "</span>" + _sp_line + _exec_mark
+                                + _exec_btn(r["name"], pa, r["price_rmb"]))}
+
+    def _unheld_row(r):
+        pa = r.get("portfolio_advice", {}) or {}
+        g = (r.get("grade") or "?").lower()
+        return {"name_cell": _name_cell(r, name_link),
+                "price": float(r.get("price_rmb") or 0),
+                "badge": '<span class="badge badge-' + g + '">' + _esc(str(r.get("grade", "?"))) + "</span>",
+                "valuation_tier": _esc(str(r.get("valuation_tier", "?"))),
+                "pct": float(r.get("percentile_90d", 50) or 50),
+                "bd_cell": _bd_cell(r.get("buy_distance")),
+                "advice_cell": (_action_badge(pa) + "<br><span style=\"font-size:11px;color:var(--text-muted);\">"
+                                + _esc(pa.get("suggest", "")) + "</span>" + _exec_btn(r["name"], pa, r["price_rmb"]))}
+
+    return _tpl_env.get_template("partials/scan_html.html").render(
+        now_str=now_str, n_ok=n_ok, total=total,
+        idx_txt="{:.0f}".format(idxv) if idxv else "", th_txt=th_txt, sent_txt=sent_txt, mood=mood,
+        cycle=_esc(str(cycle)), regime_cls=_regime_cls, regime_label=_esc(_regime_label),
+        regime_strategy=_esc(_regime_strategy), stats_line=stats_line,
+        demand_line=demand_line, breaker_line=breaker_line,
+        held=[_held_row(r) for r in held], unheld=[_unheld_row(r) for r in unheld],
+        errors=[{"name": _esc(e["name"]), "error": _esc(e.get("error", ""))} for e in errors])

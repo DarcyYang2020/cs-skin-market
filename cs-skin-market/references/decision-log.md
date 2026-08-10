@@ -2122,3 +2122,19 @@ watch/hold 做「无按钮」处理，未区分持仓/未持仓。
 - **Playwright 端到端回归（首次引入）**：服务重启加载新代码后实测——/discover 池扫描 120 品完整跑通（热力图/Top10/追踪更新）、/watchlist 批量扫描 7/7 成功（结果渲染正常）、/monitor /search /replay 页面无 500。任务路径（import 链 + 浏览器单例 + 进度落盘）搬移后无回归。
 
 **产物变更**：本次实测更新 data/discover_latest.json（扫描时间戳/结果）与 data/pool_maintenance_log.jsonl（池维护留痕）；未改动回放产物。
+## C-1 拆模块第三批：f-string 页面结构迁 Jinja 模板（2026-08-10，工程）
+
+**背景**：评估 C-1「双渲染体系（Jinja + Python f-string HTML 拼装）易漂移且放大 XSS 面」。前两批完成渲染纯函数集中 + 任务按域拆分后，本批把剩余的页面级 f-string HTML 结构迁到 Jinja，Python 侧只留内容渲染器。
+
+**落地**：
+- 新建 `webapp/templates/partials/discover_html.html`：发现页热力图 + Top10 表格（class 条件/已自选按钮分支进模板）；
+- 新建 `webapp/templates/partials/scan_html.html`：批量扫描市场条 + 统计 + 持仓/关注表 + 失败列表（循环/条件进模板）；
+- `webapp/render_html.py`：模块级 `_tpl_env`（Jinja2 Environment，autoescape=True）+ `render_discover_html` 重写为「预处理（排序/统计/JS 转义）→ 模板渲染」；
+- `pipeline/batch_scan.py::build_scan_html`：同样重写为「预处理（统计/止损行/并发提示/熔断）→ 模板渲染」；
+- **保留 Python 的内容渲染器**（有业务逻辑，非页面模板）：`_bd_cell`（距买点单元格）/`_action_badge`/`_exec_btn`（含 JS 转义与动作映射）/`_name_cell`（缓存提示）/`render_report_html`（markdown→HTML 解析器）/`spark_svg`（SVG 生成）。
+
+**影响面**：纯展示层迁移，渲染输出结构等价（t_smoke 全部断言原样通过）；引擎评分/决策零改动；不触碰回放产物与参数台账。
+
+**验证**：
+- 冒烟 98 passed / 0 failed（t_batch_scan_display / t_render_html 断言原样通过）；pyflakes 无告警；
+- **Playwright 端到端**：服务重启后 /discover 页热力图/Top10/加自选按钮正常；批量扫描 1/1 成功（16:37:40）——市场条/关注列表由新模板渲染。

@@ -5,7 +5,17 @@
 可独立单测（t_render_html）。Jinja 模板之外的 Python 侧 HTML 拼装集中于此；
 batch_scan.build_scan_html 属 batch_scan 域暂留原处（C-1 另一半=迁 Jinja 未做）。
 """
+from pathlib import Path
+
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 from pipeline import db
+
+# 页面级 HTML 结构统一走 Jinja（C-1 第三批，2026-08-10）：autoescape 兜底 XSS；
+# 内容渲染器（markdown->HTML / spark_svg / 单元格组件）保留 Python。
+_tpl_env = Environment(
+    loader=FileSystemLoader(str(Path(__file__).resolve().parent / "templates")),
+    autoescape=select_autoescape(["html", "xml"]),
+)
 
 
 def spark_svg(pts, cost):
@@ -131,8 +141,7 @@ def render_report_html(report_md, date, grade, total_score):
 
 
 def render_discover_html(results, market_th=50):
-    """Render discover results with valuation columns, add-to-watchlist, and heatmap."""
-    # 2026-08-09：已在自选的品渲染「已自选」禁用态，其余渲染「➕ 加入自选」
+    """发现页结果 → Jinja（热力图 + Top10）。逻辑（排序/统计/JS 转义）留 Python，HTML 结构在模板。"""
     _wl_names = set()
     try:
         _conn_wl = db.get_conn()
@@ -148,7 +157,6 @@ def render_discover_html(results, market_th=50):
     errors = [r for r in sorted_r if r.get("error")]
     ok_count = len(sorted_r) - len(errors)
 
-    # ---- Heatmap: by weapon type ----
     from collections import defaultdict
     by_type = defaultdict(list)
     for r in sorted_r:
@@ -156,7 +164,6 @@ def render_discover_html(results, market_th=50):
             continue
         wt = r["name"].split(" |")[0] if "|" in r["name"] else "other"
         by_type[wt].append(r)
-
     heatmap_rows = []
     for wt, items in sorted(by_type.items(), key=lambda x: -len(x[1])):
         if len(items) == 0:
@@ -165,61 +172,34 @@ def render_discover_html(results, market_th=50):
         avg_pct = sum(it.get("percentile_90d", 50) for it in items) / len(items)
         best = max(items, key=lambda x: x.get("composite", 0) or x.get("score", 0))
         pct_cls = "green" if avg_pct <= 25 else ("yellow" if avg_pct <= 50 else "red")
-        heatmap_rows.append(
-            f'<tr><td><strong>{wt}</strong></td>'
-            f'<td>{len(items)}</td>'
-            f'<td style="color:var(--green);">{avg_score:.1f}</td>'
-            f'<td class="{pct_cls}">{avg_pct:.0f}%</td>'
-            f'<td style="font-size:12px;">{best["name"][:30]}</td>'
-            f'<td style="font-weight:600;">{best.get("composite", best.get("score",0)):.1f}</td></tr>'
-        )
-    heatmap_html = (
-        '<div class="card" style="margin-bottom:16px;">'
-        '<div class="card-header"><span class="card-title">\U0001f4ca \u54c1\u7c7b\u70ed\u529b\u56fe</span></div>'
-        '<table style="width:100%;font-size:13px;">'
-        '<thead><tr><th>\u6b66\u5668</th><th>\u6570\u91cf</th><th>\u5747\u5206</th><th>\u5747\u4f30\u503c</th><th>\u6700\u4f18\u54c1</th><th>\u7efc\u5408</th></tr></thead>'
-        '<tbody>' + "".join(heatmap_rows) + '</tbody></table></div>'
-    ) if len(by_type) >= 2 else ""
+        heatmap_rows.append({"wt": wt, "count": len(items),
+                             "avg_score": round(avg_score, 1), "avg_pct": round(avg_pct),
+                             "pct_cls": pct_cls, "best_name": best["name"][:30],
+                             "best_comp": best.get("composite", best.get("score", 0))})
 
-    # ---- Top 10 Table ----
     market_note = ""
     if market_th < 55:
-        market_note = ' <span style="font-size:12px;color:var(--yellow);">(\u5927\u76d8TH=' + str(market_th) + ' \u504f\u5f31\uff0c\u4ec5\u5c55\u793a\u9ad8\u5206\u4f4e\u4f30\u54c1)</span>'
+        market_note = (' <span style="font-size:12px;color:var(--yellow);">(大盘TH=' + str(market_th)
+                       + ' 偏弱，仅展示高分低估品)</span>')
 
-    lines = [
-        f'<div class="card"><div class="card-header"><span class="card-title">\U0001f50d Top 10 \u9ad8\u5206\u9970\u54c1</span>'
-        f'<span class="card-subtitle">\u5df2\u626b\u63cf {ok_count} \u4e2a\u9970\u54c1\uff0c\u5c55\u793a\u524d10{market_note}'
-        f' <button class="btn btn-sm btn-outline" onclick="refreshDiscover()" style="margin-left:8px;">\U0001f504 \u5237\u65b0</button></span></div>'
-        f'<div class="card-body" style="padding:0;"><div class="table-wrap"><table class="data-table" style="width:100%;">'
-        f'<thead><tr><th>#</th><th>\u8bc4\u7ea7</th><th>\u540d\u79f0</th><th>\u4ef7\u683c</th><th>\u8bc4\u5206</th><th>\u7efc\u5408</th><th>%\u4f4d</th><th>\u5468\u671f</th><th>\u64cd\u4f5c</th></tr></thead><tbody>'
-    ]
+    rows = []
     for idx, r in enumerate(top10):
         if r.get("error"):
-            lines.append(f'<tr><td colspan="9" style="color:var(--danger);padding:12px 16px;">{r["name"]}: {r["error"]}</td></tr>')
+            rows.append({"error": r.get("error", ""), "name": r["name"]})
             continue
         g = r.get("grade", "Z")
-        grade_cls = {"S":"grade-s","A":"grade-a","B":"grade-b","C":"grade-c"}.get(g, "grade-z")
+        grade_cls = {"S": "grade-s", "A": "grade-a", "B": "grade-b", "C": "grade-c"}.get(g, "grade-z")
         cp = r.get("cycle_label", "") or r.get("cycle_phase", "")
         pct = r.get("percentile_90d", 50)
         pct_clr = "green" if pct <= 25 else ("yellow" if pct <= 50 else "red")
         comp = r.get("composite", 0) or r.get("score", 0)
         rank_style = "font-weight:800;font-size:16px;" + ("color:#ffd700;" if idx == 0 else "color:var(--text-muted);")
         esc_name = r["name"].replace("'", "\\'").replace('"', '&quot;')
-        _btn_html = ('<button class="btn btn-xs btn-outline" disabled style="opacity:.55;cursor:default;" title="已在自选">✓ 已自选</button>'
-                     if r["name"] in _wl_names else
-                     '<button class="btn btn-xs btn-outline" onclick="addToWatchlist(\'' + esc_name + '\', this)" title="加入自选">➕ 加入自选</button>')
-        _refresh_btn = ('<button class="btn btn-xs btn-outline" onclick="refreshDiscoverItem(\'' + esc_name + '\', this)" '
-                        'title="强制联网重采此品并重算评分">⚡ 刷新</button>')
-        lines.append(
-            f'<tr><td style="{rank_style}">{idx+1}</td>'
-            f'<td><span class="{grade_cls}">{g}</span></td>'
-            f'<td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><a href="javascript:void(0)" onclick="showDiscoverReport(\'{esc_name}\')" style="color:var(--accent);text-decoration:none;cursor:pointer;" title="\u67e5\u770b\u5206\u6790\u62a5\u544a">{r["name"]}</a></td>'
-            f'<td>\u00a5{r.get("price_rmb",0):.2f}</td>'
-            f'<td>{r.get("score",0):.1f}</td>'
-            f'<td style="font-weight:600;">{comp:.1f}</td>'
-            f'<td class="{pct_clr}">{pct:.0f}%</td>'
-            f'<td style="font-size:12px;">{cp}</td>'
-            f'<td style="white-space:nowrap;">{_btn_html} {_refresh_btn}</td></tr>'
-        )
-    lines.append("</tbody></table></div></div></div>")
-    return heatmap_html + "\n".join(lines)
+        rows.append({"rank": idx + 1, "rank_style": rank_style, "grade": g, "grade_cls": grade_cls,
+                     "name": r["name"], "esc_name": esc_name,
+                     "price": float(r.get("price_rmb", 0) or 0),
+                     "score": float(r.get("score", 0) or 0),
+                     "comp": float(comp or 0), "pct": float(pct or 0), "pct_clr": pct_clr,
+                     "cycle_label": cp, "in_wl": r["name"] in _wl_names})
+    return _tpl_env.get_template("partials/discover_html.html").render(
+        heatmap_rows=heatmap_rows, top10=rows, ok_count=ok_count, market_note=market_note)
