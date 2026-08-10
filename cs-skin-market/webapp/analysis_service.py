@@ -156,6 +156,26 @@ def kline_db_fallback(good_id, name):
         conn.close()
 
 
+def _log_caliber_event(kind, label, detail):
+    """F-4（2026-08-10）口径漂移审计日志：锚校正/脏价拦截事件写 data/caliber_override_log.jsonl。
+
+    纯留痕，不改任何分析/落库行为；供供给特征口径漂移核查与 8 节审计 SOP 旁证。
+    """
+    try:
+        import json as _json
+        from datetime import datetime as _dt
+        from pathlib import Path as _P3
+        _fp = _P3(__file__).resolve().parent.parent / "data" / "caliber_override_log.jsonl"
+        _line = _json.dumps({
+            "ts": _dt.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "kind": kind, "label": label, "detail": detail,
+        }, ensure_ascii=False)
+        with _fp.open("a", encoding="utf-8") as _f:
+            _f.write(_line + "\n")
+    except Exception:
+        pass
+
+
 def kline_price_sane(daily_bars, item_id, anchor_price=None, conn=None):
     """K线价格合理性校验，防 csQAQ 偶发串品/脏价覆盖历史。
 
@@ -183,7 +203,9 @@ def kline_price_sane(daily_bars, item_id, anchor_price=None, conn=None):
                     "SELECT COUNT(*) AS n FROM price_history WHERE item_id=? AND in_sale_count>0",
                     (item_id,)).fetchone()
                 if _srow and _srow["n"] > 0:
-                    return False, "chart 在售量全 0，DB 存在非 0 在售量（采集异常，不覆盖）"
+                    _msg2 = "chart 在售量全 0，DB 存在非 0 在售量（采集异常，不覆盖）"
+                    _log_caliber_event("sale_zero", str(item_id), _msg2)
+                    return False, _msg2
             finally:
                 if _close_conn_s:
                     _conn_s.close()
@@ -193,7 +215,9 @@ def kline_price_sane(daily_bars, item_id, anchor_price=None, conn=None):
     if anchor_price and anchor_price > 0 and new_last > 0:
         dev_anchor = abs(new_last / anchor_price - 1)
         if dev_anchor > 0.20:
-            return False, "最新价¥%.2f vs 悠悠锚¥%.2f 偏差%.0f%%" % (new_last, anchor_price, dev_anchor * 100)
+            _msg3 = "最新价¥%.2f vs 悠悠锚¥%.2f 偏差%.0f%%" % (new_last, anchor_price, dev_anchor * 100)
+            _log_caliber_event("anchor_mismatch", str(item_id), _msg3)
+            return False, _msg3
     max_jump = 0.0
     for i in range(1, len(closes)):
         if closes[i - 1] > 0:
@@ -219,7 +243,9 @@ def kline_price_sane(daily_bars, item_id, anchor_price=None, conn=None):
         return True, ""
     dev = abs(new_last / db_last - 1)
     if dev > 0.25 and max_jump > 0.30:
-        return False, "最新价¥%.2f vs DB ¥%.2f 偏差%.0f%%，序列内跳变%.0f%%" % (new_last, db_last, dev * 100, max_jump * 100)
+        _msg4 = "最新价¥%.2f vs DB ¥%.2f 偏差%.0f%%，序列内跳变%.0f%%" % (new_last, db_last, dev * 100, max_jump * 100)
+        _log_caliber_event("jump_suspect", str(item_id), _msg4)
+        return False, _msg4
     return True, ""
 
 
@@ -263,6 +289,7 @@ def anchor_override(daily_bars, anchor_price, label=""):
         out = list(daily_bars)
     out[-1].close = anchor_price
     _log.warning(f"anchor override {label}: 最新价¥{last_close:.2f} 近7日水平¥{ref:.2f} vs 悠悠锚¥{anchor_price:.2f}（偏差{dev_ref * 100:.0f}%），{mode}统一以悠悠锚价为准")
+    _log_caliber_event("anchor_override", label, "最新¥%.2f 近7日¥%.2f 锚¥%.2f 偏差%.0f%% %s" % (last_close, ref, anchor_price, dev_ref * 100, mode))
     today = _today_str()
     if (getattr(out[-1], "date", "") or "") < today:
         nb = copy.copy(out[-1])

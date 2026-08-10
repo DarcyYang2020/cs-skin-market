@@ -2625,6 +2625,56 @@ def t_startup_config():
     _conn.close()
 check('C-2 启动配置断言（reload/路由/DB 预热）', t_startup_config)
 
+
+# ---- 第三批（2026-08-10）：G-2 钉钉加签 / F-1 未来事件日历 / E-2 建议未执行判定 ----
+def t_notify_sign():
+    """G-2: 钉钉加签——secret 存在时 URL 追加 timestamp/sign；空 secret 原样透传。"""
+    from notify_alert import sign_webhook_url
+    url = "https://oapi.dingtalk.com/robot/send?access_token=abc"
+    signed = sign_webhook_url(url, "SEC123")
+    assert signed.startswith(url) and "timestamp=" in signed and "sign=" in signed, signed
+    assert sign_webhook_url(url, "") == url
+    assert sign_webhook_url(url, None) == url
+check('G-2 钉钉加签 URL 签名', t_notify_sign)
+
+
+def t_upcoming_events():
+    """F-1: 未来事件日历——EVENT_CALENDAR 未来条目返回 days_left，历史条目忽略（纯提示层）。"""
+    from unittest import mock
+    import pipeline.market_macro as mm
+    import datetime as _dt
+    _today = _dt.date.today()
+    _d5 = (_today + _dt.timedelta(days=5)).isoformat()
+    _d30 = (_today + _dt.timedelta(days=30)).isoformat()
+    fake = [
+        {"name": "历史事件", "date": "2020-01-01", "impact_days": 30, "type": "crash"},
+        {"name": "未来事件A", "date": _d5, "impact_days": 30, "type": "major"},
+        {"name": "未来事件B", "date": _d30, "impact_days": 14, "type": "sale"},
+    ]
+    with mock.patch("pipeline.config.EVENT_CALENDAR", fake):
+        evs = mm.upcoming_events(days=45)
+        names = [e["name"] for e in evs]
+        assert "历史事件" not in names and "未来事件A" in names and "未来事件B" in names, names
+        assert evs == sorted(evs, key=lambda x: x["date"])
+        assert all(e["days_left"] > 0 for e in evs)
+        # 历史标注路径不受影响
+        assert "历史事件" in mm.historical_event_impact("2020-01-10")
+check('F-1 未来事件日历（历史忽略/未来提示）', t_upcoming_events)
+
+
+def t_sellish_advice():
+    """E-2: 建议未执行标记判定——卖出类动作/止损矩阵 sell_action 命中即需执行。"""
+    from pipeline.batch_scan import _is_sellish_advice, _recently_executed_names
+    assert _is_sellish_advice({"action": "建议止盈减仓"})
+    assert _is_sellish_advice({"action": "减半止损"})
+    assert _is_sellish_advice({"action": "可分批补仓", "stop_plan": {"sell_action": "reduce"}})
+    assert not _is_sellish_advice({"action": "可分批补仓"})
+    assert not _is_sellish_advice(None)
+    assert isinstance(_recently_executed_names(), set)  # 兜底不抛异常
+check('E-2 建议未执行判定（卖出类动作识别）', t_sellish_advice)
+
+
+
 print(f'=== Results: {passed} passed, {failed} failed, {skipped} skipped ===')
 if failures:
     print()

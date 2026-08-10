@@ -28,6 +28,20 @@
 </div>
 {% endif %}
 
+<!-- F-1 未来事件日历 (2026-08-10, 纯提示层): EVENT_CALENDAR 未来条目, 不参与信号决策 -->
+{% if upcoming_events %}
+<div class="card" style="margin-top:12px;border-color:rgba(59,130,246,0.35);">
+  <div class="card-header"><span class="card-title">📅 未来事件</span>
+    <span style="font-size:11px;color:var(--text-muted);margin-left:auto;">配置：pipeline/config.py EVENT_CALENDAR（日期 > 今天）</span>
+  </div>
+  <div style="padding:10px 14px;font-size:12px;display:flex;gap:18px;flex-wrap:wrap;color:var(--text-secondary);">
+    {% for ev in upcoming_events %}
+    <span>📌 <b style="color:var(--text-primary);">{{ ev.name }}</b> {{ ev.date }}（{{ ev.days_left }} 天后）{% if ev.impact_days %}· 影响期 {{ ev.impact_days }} 天{% endif %}</span>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
 {% if signal_density %}
 <div class="card" style="margin-top:12px;">
   <div class="card-header"><span class="card-title">📡 信号密度（回放口径）</span></div>

@@ -2028,3 +2028,28 @@ watch/hold 做「无按钮」处理，未区分持仓/未持仓。
 **验证**：冒烟 92 passed / 0 failed（M2 幂等测试契约同步升级：返回值断言 push_id + 幂等值 JSON 校验）；三个归因/口径脚本产物均已生成归档 data/；pyflakes 无新增告警。
 
 **产物变更**：未改动回放基线 item_backtest_full_2025.json，无需重跑 sync；新增 data/portfolio_attribution.json / push_exec_attribution.json / sale_caliber_compare.json / _exp_pool_90d.json（实验归档）。
+
+
+## 系统全貌评估第三批落地：C-3 / C-5 / D-2 核查 / E-2 / F-1 / F-4 / G-2 / G-5（2026-08-10，P2 批次）
+
+**背景**：承接第一批/第二批，完成第三批小成本 P2 项（纯工程/展示/提示/安全层，引擎决策零改动）。C-1（拆模块）/D-1（报告分层）为分期大项，本次仅核查不落地。
+
+**C-3 错误日志统一（工程）**：`snapshot_error.log` 由裸写 CWD 工作目录改为写入 `data/snapshot_error.log`（`Path(__file__)` 定位，不受启动目录影响）；批量扫描/discover 任务错误卡（html + done + 日志）已完备，无重复改造。
+
+**C-5 任务生命周期补充（工程）**：`_prune_progress`（24h 过期回收）已存在；本次补「防重复并发」——批量扫描/discover 启动前 `_active_task()` 检查同类型未完成任务，命中即拒绝新任务并返回前端可见提示，杜绝用户重复点击叠加并行任务（并发无上限风险）。
+
+**D-2 排序依据可见性（核查=已落地）**：自选页每行已显示 `🎯 接近买点 xx%（路径）`（watchlist.html:152-158）+ 监控提醒栏展示，排序选项含「接近买点」，与监控 near_buy 口径一致；无需新增。
+
+**E-2 建议未执行标记（信息层）**：批量扫描持仓表建议列新增「⚠️ 建议未执行（近30天无执行记录）」——`_is_sellish_advice` 判定卖出类动作（止损/止盈/清仓/减仓文案或止损矩阵 sell_action），与 `executions` 表近 30 天品名比对；纯展示，不改建议口径。
+
+**F-1 未来事件日历（纯提示层）**：`market_macro.upcoming_events(days=45)` 读 `EVENT_CALENDAR` 未来条目（date>今天）返回 `days_left`；dashboard 新增「📅 未来事件」提示卡（有未来条目才显示）；EVENT_CALENDAR 注释说明支持未来条目（Major/大促/新箱由用户按真实赛程配置，不预置编造）；历史标注路径 historical_event_impact 不受影响。不参与任何信号决策。
+
+**F-4 口径漂移审计日志（数据层留痕）**：`kline_price_sane` 判脏（在售量全0/锚偏差/跳变可疑）与 `anchor_override` 校正发生时写 `data/caliber_override_log.jsonl`（ts/kind/label/detail），供供给特征口径漂移核查与 §8 审计 SOP 旁证；不改分析/落库行为。
+
+**G-2 钉钉加签（安全）**：`notify_alert.py` 新增 `NOTIFY_WEBHOOK_SECRET`（可选 env/.env）——配置后 send() 自动追加 timestamp+HMAC-SHA256 sign 参数（DingTalk 官方加签）；未配置行为不变（兼容现有 access_token-only）。
+
+**G-5 IP 绑定失败台账（工程）**：`collector.bind_local_ip` 失败写 `data/bind_fail_log.jsonl`（ts/kind/detail，含连续失败计数），恢复时记 recovered；401 风暴留痕可查，配合 notify_alert 告警通道。
+
+**验证**：冒烟 95 passed / 0 failed（新增 G-2 签名 / F-1 未来事件 / E-2 判定 3 项测试）；pyflakes 无新增告警；py_compile 全部通过。
+
+**产物变更**：新增审计日志 `data/caliber_override_log.jsonl` / `data/bind_fail_log.jsonl`（运行时生成，未入库）；未改动回放产物与引擎参数。

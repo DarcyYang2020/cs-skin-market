@@ -215,6 +215,15 @@ def _signal_density():
 
 
 # ---- Dashboard page ----
+
+def _upcoming_events(days: int = 45):
+    """F-1 未来事件（2026-08-10，纯提示层）：读 EVENT_CALENDAR 未来条目，异常兜底空列表。"""
+    try:
+        from pipeline.market_macro import upcoming_events
+        return upcoming_events(days=days)
+    except Exception:
+        return []
+
 @app.get("/", response_class=HTMLResponse)
 async def page_dashboard(request: Request):
     mi, last_update, chart_data = _dashboard_context()
@@ -261,6 +270,7 @@ async def page_dashboard(request: Request):
         "analysis": analysis_data,
         "signal_density": _signal_density(),
         "engine_status": _engine_status,
+        "upcoming_events": _upcoming_events(),
     })
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     return response
@@ -1108,6 +1118,14 @@ def _prune_progress(store, max_age=86400):
         except Exception:
             pass
 
+def _active_task(store):
+    """C-5（2026-08-10）：返回未完成（done != True）的任务 id；防同类型任务重复并发。"""
+    for k, v in store.items():
+        if isinstance(v, dict) and not v.get("done"):
+            return k
+    return None
+
+
 def _item_report_link(name):
     """批量扫描结果中可点击的名称链接：弹窗查看已存报告（不重新分析）。"""
     esc = str(name).replace("'", "\\'").replace('"', "&quot;")
@@ -1249,8 +1267,14 @@ async def _scan_item(row, idx, ms, market_th_score, sentiment_score, total_asset
             conn_s.commit()
         except Exception as _se:
             import traceback as _tb
-            with open("snapshot_error.log", "a", encoding="utf-8") as _ef:
-                _ef.write("\n=== BATCH ERROR " + str(item_id) + " ===\n" + _tb.format_exc() + "\n=== END ===\n")
+            # C-3（2026-08-10）：错误日志统一写入 data/ 目录（原裸写 CWD 工作目录）
+            try:
+                from pathlib import Path as _P2
+                _efp = _P2(__file__).resolve().parent.parent / "data" / "snapshot_error.log"
+                with _efp.open("a", encoding="utf-8") as _ef:
+                    _ef.write("\n=== BATCH ERROR " + str(item_id) + " ===\n" + _tb.format_exc() + "\n=== END ===\n")
+            except Exception:
+                pass
             _web_log.warning(f"Batch save error: {_se}")
         finally:
             conn_s.close()
@@ -1714,8 +1738,11 @@ async def api_watchlist_batch_scan_selected(request: Request):
     if not rows:
         return HTMLResponse('<div class="card" style="padding:20px;">\u672a\u627e\u5230\u7269\u54c1</div>')
     import uuid
-    scan_id = uuid.uuid4().hex[:8]
     _prune_progress(_scan_progress)
+    _busy = _active_task(_scan_progress)
+    if _busy:
+        return HTMLResponse('<div class="card" style="padding:20px;color:var(--yellow);">\u5df2\u6709\u6279\u91cf\u626b\u63cf\u8fdb\u884c\u4e2d\uff08' + _busy + '\uff09\uff0c\u8bf7\u7b49\u5f85\u5b8c\u6210\u540e\u518d\u53d1\u8d77</div>')
+    scan_id = uuid.uuid4().hex[:8]
     _scan_progress[scan_id] = {"current": 0, "total": len(rows), "name": "", "done": False, "html": "", "ts": time.time()}
     _persist_scan_progress(scan_id)
     asyncio.create_task(_run_batch_scan_task(scan_id, rows, force_refresh=force_refresh, concurrency=concurrency))
@@ -2303,8 +2330,11 @@ async def api_discover_scan_all(request: Request, mode: str = Query("pool")):
     """发现高分品扫描（F-3.4, 2026-08-08）：默认 pool 模式——从池内活跃品跑（DB 新鲜 K 线复用，
     不依赖 csQAQ 搜索 suggest，规避滑块验证码）；mode=search 保留原全网搜索扩池路径。"""
     import time as _time
-    task_id = f"discover_{int(_time.time())}"
     _prune_progress(_discover_progress)
+    _busy = _active_task(_discover_progress)
+    if _busy:
+        return {"task_id": "", "error": "已有 discover 扫描进行中（" + _busy + "），请等待完成后再发起"}
+    task_id = f"discover_{int(_time.time())}"
     _discover_progress[task_id] = {"current": 0, "total": len(DISCOVER_WEAPONS), "name": "", "done": False, "html": "", "results": [], "ts": time.time()}
     if mode == "search":
         asyncio.create_task(_run_discover_scan_all_task(task_id))

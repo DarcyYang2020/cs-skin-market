@@ -58,6 +58,7 @@ discover 扩池（手动）→ 候选入库（items + 90日K线，立即落库�
 - **健康检查**: `run_health_monitor.py` 随每日采集收尾执行，写 `health_checks`；`notify_alert.py --monitor` 在 FAIL 时推送告警。
 - **DB 备份**: `backup_db.py`（SQLite online backup → `data/backup/market_YYYYMMDD_HHMMSS.db`，保留 14 份）。
 - **J-2 监测**: 每日刷新 `data/j2_channel_status.json`（B 通道天数）。
+- **审计/异常台账（2026-08-10）**: `data/caliber_override_log.jsonl`（F-4 锚校正/脏价拦截留痕）、`data/bind_fail_log.jsonl`（G-5 IP 绑定失败/恢复）、`data/snapshot_error.log`（C-3 快照落库异常，统一 data/ 目录），均为追加型审计日志，随数据保留策略不主动清理。
 - **保留策略（2026-08-09 落地，`pipeline/db.py:run_retention_cleanup`）**: price_history / snapshots / market_index / monitor_events 365 天；scan_*.md 旧报告 90 天；进度文件（scan_progress_*/discover_progress_*）7 天；scan_history JSON 保留最近 30 份；monitor_rank_snapshot 为研究型积累不清理。清理由批量扫描收尾与每日任务自动执行（含 VACUUM）；台账与备份按各自规则。
 
 ## 5. 数据库表（market.db）

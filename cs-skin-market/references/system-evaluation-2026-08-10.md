@@ -164,7 +164,14 @@
 - G-4 ✅（采集退避 1.5s + K线失败台账 kline_fail_count/names）
 - D-3 ✅（executions.source 列 + push_id 幂等 JSON + `references/push_exec_attribution.py`，转化率 5.2% 样本不足仅参考）
 
-**仍待做（第三批/数据依赖）**：C-1、C-3、C-5、D-1、D-2、E-2、F-1、F-2、F-4、G-2、G-5、A1-4（滑点校准，executions≥20）。
+**第三批（P2，已提交，见 decision-log「系统全貌评估第三批落地」）**：
+- C-3 ✅（snapshot_error.log 统一写 data/ 目录）、C-5 ✅（任务防重复并发 _active_task）、D-2 ✅（核查=自选页已显示接近买点度）
+- E-2 ✅（持仓建议列「建议未执行」标记，近30天 executions 比对）
+- F-1 ✅（未来事件日历框架：upcoming_events + dashboard 提示卡，事件由用户配置）
+- F-4 ✅（口径漂移审计日志 data/caliber_override_log.jsonl）
+- G-2 ✅（钉钉加签 NOTIFY_WEBHOOK_SECRET 可选）、G-5 ✅（bind 失败台账 data/bind_fail_log.jsonl）
+
+**仍待做（分期大项/数据依赖）**：C-1（拆模块，分期）、D-1（报告分层，分期）、F-2（求购数据 90+ 天）、A1-4（滑点校准，executions≥20）、B-4（单品 6h 复用，P2 未排期）、G-2 加签后 webhook 轮换待用户配置。
 
 ## 附录：与「评估指标体系第一性审计」的边界
 

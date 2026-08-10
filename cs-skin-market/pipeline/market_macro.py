@@ -464,6 +464,38 @@ def historical_event_impact(signal_date, horizon_days=30):
     return hits
 
 
+def upcoming_events(days: int = 45):
+    """F-1 未来事件日历（2026-08-10，纯提示层）：EVENT_CALENDAR 中 date > 今天的条目。
+
+    返回 [{"name", "date", "impact_days", "type", "days_left"}, ...] 按日期升序；
+    与 historical_event_impact 共用同一日历，历史条目自动忽略。
+    用途：dashboard 提示条（如 Major/大促临近提示），不参与任何信号决策。
+    """
+    from datetime import datetime, timedelta
+    from .config import EVENT_CALENDAR
+    today = datetime.now().date()
+    horizon = today + timedelta(days=days)
+    out = []
+    for ev in EVENT_CALENDAR:
+        try:
+            d = datetime.strptime(ev["date"], "%Y-%m-%d").date()
+        except (TypeError, ValueError):
+            continue
+        if d < today:
+            continue  # 历史条目归历史标注用
+        if d > horizon:
+            continue
+        out.append({
+            "name": ev["name"],
+            "date": ev["date"],
+            "impact_days": ev.get("impact_days", 30),
+            "type": ev.get("type", ""),
+            "days_left": (d - today).days,
+        })
+    out.sort(key=lambda x: x["date"])
+    return out
+
+
 def event_risk_coefficient() -> float:
     """Return event risk discount (1.0 = no risk, 0.7 = major risk).
     Checks for known V社 events via settings table.

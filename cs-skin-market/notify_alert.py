@@ -26,7 +26,36 @@ def load_webhook_url():
     return ""
 
 
+def load_webhook_secret():
+    """G-2（2026-08-10）钉钉加签 secret（可选）：.env NOTIFY_WEBHOOK_SECRET。"""
+    if "NOTIFY_WEBHOOK_SECRET" in os.environ:
+        return os.environ["NOTIFY_WEBHOOK_SECRET"].strip()
+    if ENV_PATH.exists():
+        for line in ENV_PATH.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line.startswith("NOTIFY_WEBHOOK_SECRET="):
+                return line.split("=", 1)[1].strip()
+    return ""
+
+
+def sign_webhook_url(url, secret):
+    """DingTalk 加签：timestamp + HMAC-SHA256(secret) + base64 -> url 参数。
+
+    secret 为空时原样返回（兼容旧 access_token-only 配置）。
+    """
+    if not secret or not url:
+        return url
+    import base64, hashlib, hmac, time as _time
+    timestamp = str(round(_time.time() * 1000))
+    string_to_sign = f"{timestamp}\n{secret}"
+    hmac_code = hmac.new(secret.encode("utf-8"), string_to_sign.encode("utf-8"), digestmod=hashlib.sha256).digest()
+    sign = urllib.parse.quote_plus(base64.b64encode(hmac_code))
+    sep = "&" if "?" in url else "?"
+    return f"{url}{sep}timestamp={timestamp}&sign={sign}"
+
+
 def send(title, text, url, timeout=10):
+    url = sign_webhook_url(url, load_webhook_secret())  # G-2（2026-08-10）钉钉加签（可选）
     payload = json.dumps({
         "msgtype": "text",
         "text": {"content": f"{title}\n{text}"},

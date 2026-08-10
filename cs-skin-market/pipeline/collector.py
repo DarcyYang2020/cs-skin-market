@@ -119,16 +119,39 @@ def _api_post(path: str, body: dict) -> dict:
     return _api_call("POST", path, body)
 
 
+_bind_fail_streak = 0  # G-5（2026-08-10）连续绑定失败计数
+
+
+def _log_bind_fail(kind: str, detail: str) -> None:
+    """G-5（2026-08-10）IP 绑定失败台账：data/bind_fail_log.jsonl（审计/告警旁证）。"""
+    try:
+        from .config import DATA_DIR
+        from pathlib import Path as _P
+        _fp = _P(DATA_DIR) / "bind_fail_log.jsonl"
+        _line = json.dumps({"ts": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "kind": kind, "detail": detail}, ensure_ascii=False)
+        with _fp.open("a", encoding="utf-8") as _f:
+            _f.write(_line + "\n")
+    except Exception:
+        pass
+
+
 def bind_local_ip() -> str:
     """(Re)bind current public IP to csQAQ API whitelist (POST /sys/bind_local_ip).
 
     Direct API requires IP whitelist; dynamic ISP IPs can change.
-    Called at the start of daily collection (30s/次 rate limit)."""
+    Called at the start of daily collection (30s/次 rate limit).
+    G-5（2026-08-10）：失败/恢复写 data/bind_fail_log.jsonl 台账。"""
+    global _bind_fail_streak
     resp = _api_post("/sys/bind_local_ip", {})
     data = resp.get("data")
     if resp.get("code") == 200 and data:
         _log.info(f"bind_local_ip ok: {data}")
+        if _bind_fail_streak:
+            _log_bind_fail("recovered", f"连续失败 {_bind_fail_streak} 次后恢复")
+            _bind_fail_streak = 0
         return str(data)
+    _bind_fail_streak += 1
+    _log_bind_fail("fail", f"code={resp.get('code')} msg={resp.get('msg')}（连续 {_bind_fail_streak} 次）")
     _log.warning(f"bind_local_ip failed: code={resp.get('code')} msg={resp.get('msg')}")
     return ""
 

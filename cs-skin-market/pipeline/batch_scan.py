@@ -225,6 +225,35 @@ def _stop_loss_plan(avg_cost, qty, current_price, analysis, market_30d_change=No
     }
 
 
+def _recently_executed_names(days: int = 30):
+    """E-2（2026-08-10）近 N 天有执行记录的品名集合：用于批量扫描持仓表「建议未执行」标记。
+
+    纯信息层：仅与 executions 表比对，不改任何建议口径。
+    """
+    try:
+        import datetime
+        from . import db as _db
+        _d0 = (datetime.date.today() - datetime.timedelta(days=days)).isoformat()
+        _conn = _db.get_conn()
+        try:
+            rows = _conn.execute("SELECT DISTINCT name FROM executions WHERE advice_date >= ?", (_d0,)).fetchall()
+            return {r["name"] for r in rows}
+        finally:
+            _conn.close()
+    except Exception:
+        return set()
+
+
+def _is_sellish_advice(pa) -> bool:
+    """建议动作是否属「卖出/减仓」类（E-2 判定用）：动作文案或止损矩阵 sell_action 命中即视为需要执行。"""
+    if not pa:
+        return False
+    act = str(pa.get("action") or "")
+    if any(k in act for k in ("止损", "止盈", "清仓", "减仓", "卖出")):
+        return True
+    return bool((pa.get("stop_plan") or {}).get("sell_action"))
+
+
 def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th=None, sentiment_score=50.0, market_30d_change=None, total_assets=0.0, sold_recent=0):
     """Generate personalized portfolio advice based on cost basis and current position.
     sentiment_score: contrarian 0-100 (0=extreme greed, 100=extreme fear), default neutral.
@@ -829,6 +858,7 @@ def build_scan_html(results, total, market_ctx=None, now_str="", name_link=None,
     held = [r for r in results if r.get("holding") and r.get("error") is None]
     unheld = [r for r in results if not r.get("holding") and r.get("error") is None]
     errors = [r for r in results if r.get("error")]
+    _recently_exec = _recently_executed_names()  # E-2（2026-08-10）建议未执行标记
     n_at_buy = sum(1 for r in results if (r.get("buy_distance") or {}).get("gap_pct") is not None
                    and float((r.get("buy_distance") or {}).get("gap_pct", 99)) <= 0)
     n_near = sum(1 for r in results if 0 < float((r.get("buy_distance") or {}).get("gap_pct", 99)) <= 5)
@@ -902,7 +932,10 @@ def build_scan_html(results, total, market_ctx=None, now_str="", name_link=None,
                             + (' · 已损%d/%d' % (int(_sp["sold_recent"]), int(_sp["total_ref"])) if _sp.get("sold_recent") else "")
                             + (' · 卖出%s件' % int(_sp["sell_qty"]) if _sp.get("sell_action") else "")
                             + '</span>')
-            h.append('<td>' + _action_badge(pa) + "<br><span style=\"font-size:11px;color:var(--text-muted);\">" + _esc(pa.get("suggest", "")) + "</span>" + _sp_line + _exec_btn(r["name"], pa, r["price_rmb"]) + "</td></tr>")
+            _exec_mark = ""
+            if _is_sellish_advice(pa) and r["name"] not in _recently_exec:
+                _exec_mark = '<br><span style="font-size:10px;color:var(--yellow);">⚠️ 建议未执行（近30天无执行记录）</span>'
+            h.append('<td>' + _action_badge(pa) + "<br><span style=\"font-size:11px;color:var(--text-muted);\">" + _esc(pa.get("suggest", "")) + "</span>" + _sp_line + _exec_mark + _exec_btn(r["name"], pa, r["price_rmb"]) + "</td></tr>")
         h.append("</tbody></table></div></div>")
     # 关注列表（非持仓）
     if unheld:
