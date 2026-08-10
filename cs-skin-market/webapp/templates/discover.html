@@ -53,20 +53,24 @@
 {% block scripts %}
 <script>
 loadDiscoverHistory();
-fetch("/api/discover/latest")
-.then(function(r) { return r.json(); })
-.then(function(d) {
-  var el = document.getElementById("discover-results");
-  if (d.found && d.html) {
-    el.innerHTML = d.html;
-    var n = (d.results || []).filter(function(x){ return !x.error; }).length;
-    var t = d.time ? d.time.replace("T", " ").slice(0, 16) : "";
-    var note = document.createElement("div");
-    note.style.cssText = "font-size:12px;color:var(--text-muted);margin:10px 0 4px;";
-    note.textContent = "\u4e0a\u6b21\u626b\u63cf: " + t + " (\u6210\u529f " + n + " \u4e2a)";
-    el.insertBefore(note, el.firstChild);
-  }
-});
+loadDiscoverLatest();
+
+function loadDiscoverLatest() {
+  fetch("/api/discover/latest")
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    var el = document.getElementById("discover-results");
+    if (d.found && d.html) {
+      el.innerHTML = d.html;
+      var n = (d.results || []).filter(function(x){ return !x.error; }).length;
+      var t = d.time ? d.time.replace("T", " ").slice(0, 16) : "";
+      var note = document.createElement("div");
+      note.style.cssText = "font-size:12px;color:var(--text-muted);margin:10px 0 4px;";
+      note.textContent = "\u4e0a\u6b21\u626b\u63cf: " + t + " (\u6210\u529f " + n + " \u4e2a)";
+      el.insertBefore(note, el.firstChild);
+    }
+  });
+}
 
 function loadDiscoverHistory() {
   fetch("/api/discover/history")
@@ -135,6 +139,28 @@ function startScan() {
     }, 1500);
   })
   .catch(function(err) { status.textContent = "❌ 请求失败: " + err; if (mainBtn) { mainBtn.disabled = false; mainBtn.textContent = "🔄 刷新扫描"; } });
+}
+
+
+function refreshDiscoverItem(name, btn) {
+  if (!btn) return;
+  btn.disabled = true;
+  var old = btn.textContent;
+  btn.textContent = "⏳ 采集中";
+  fetch("/api/discover/refresh-item", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({name: name})
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (!d.ok) { showToast("❌ " + (d.error || "刷新失败"), "error"); return; }
+    if (d.warning) { showToast("⚠️ " + d.warning, "warning"); }
+    showToast("✅ 已刷新 " + d.name + " ¥" + d.price_rmb + " 综合 " + d.composite, "success");
+    loadDiscoverLatest();
+  })
+  .catch(function() { showToast("❌ 刷新请求失败", "error"); })
+  .then(function() { btn.disabled = false; btn.textContent = old; });
 }
 
 function showDiscoverReport(name) {

@@ -2168,6 +2168,8 @@ def _render_discover_html(results, market_th=50):
         _btn_html = ('<button class="btn btn-xs btn-outline" disabled style="opacity:.55;cursor:default;" title="已在自选">✓ 已自选</button>'
                      if r["name"] in _wl_names else
                      '<button class="btn btn-xs btn-outline" onclick="addToWatchlist(\'' + esc_name + '\', this)" title="加入自选">➕ 加入自选</button>')
+        _refresh_btn = ('<button class="btn btn-xs btn-outline" onclick="refreshDiscoverItem(\'' + esc_name + '\', this)" '
+                        'title="强制联网重采此品并重算评分">⚡ 刷新</button>')
         lines.append(
             f'<tr><td style="{rank_style}">{idx+1}</td>'
             f'<td><span class="{grade_cls}">{g}</span></td>'
@@ -2177,10 +2179,121 @@ def _render_discover_html(results, market_th=50):
             f'<td style="font-weight:600;">{comp:.1f}</td>'
             f'<td class="{pct_clr}">{pct:.0f}%</td>'
             f'<td style="font-size:12px;">{cp}</td>'
-            f'<td>{_btn_html}</td></tr>'
+            f'<td style="white-space:nowrap;">{_btn_html} {_refresh_btn}</td></tr>'
         )
     lines.append("</tbody></table></div></div></div>")
     return heatmap_html + "\n".join(lines)
+
+
+@app.post("/api/discover/refresh-item")
+async def api_discover_refresh_item(request: Request):
+    """发现高分品行级强制刷新（2026-08-10 方案A）：
+    单品行级强制联网重采（绕过 DB 新鲜复用，与批量扫描 force_refresh 同链路），
+    重算该品 discover 指标并合并回 discover_latest.json（排名随 composite 重排），
+    前端重拉列表即可看到更新。采集被锚校验拦截时回退库内 K 线并返回 warning。
+    """
+    import json as _json_r
+    from pathlib import Path as _Path_r
+    body = await request.json()
+    name = (body.get("name") or "").strip()
+    good_id = int(body.get("good_id") or 0)
+    if not name:
+        return JSONResponse({"ok": False, "error": "缺少物品名"})
+    try:
+        if good_id <= 0:
+            good_id, _ = await _resolve_good_id(name)
+        item = await resolve_item(good_id, name, KLINE_FRESH_SINGLE, force_refresh=True)
+        if item is None:
+            return JSONResponse({"ok": False, "error": "采集失败（无返回数据）"})
+        exact_name = item.name or name
+        daily_bars = item.kline_90d if hasattr(item, "kline_90d") and item.kline_90d else []
+        warning = ""
+        if not daily_bars:
+            _db_bars, _stale, _stale_date = kline_db_fallback(good_id, exact_name)
+            if _db_bars:
+                daily_bars = _db_bars
+                warning = "联网采集被判脏（锚校验拦截），已回退库内数据（stale %sd）" % _stale
+            else:
+                return JSONResponse({"ok": False, "error": "采集失败（被锚校验拦截且无库内数据）"})
+        # F-3 落库：新 K 线立即写入 price_history（与 discover 池扫描同口径）
+        conn_p = db.get_conn()
+        try:
+            _pid = db.upsert_item(conn_p, name=exact_name, good_id=good_id,
+                                  yyyp_id=getattr(item, "yyyp_id", "") or "", in_watchlist=None)
+            db.save_price_history_batch(conn_p, _pid, daily_bars)
+            conn_p.commit()
+        finally:
+            conn_p.close()
+        # 重算该品 discover 指标（与 _analyze_one 同口径：run_item_analysis + P0-1 composite）
+        from pipeline import item_analysis as _ia
+        prices = [k.close for k in daily_bars if k.close > 0] if daily_bars else [getattr(item, "price_rmb", 0) or 0]
+        if len(prices) < 14:
+            return JSONResponse({"ok": False, "error": "K 线不足 14 天（%s）" % len(prices)})
+        supply_hist = [k.in_sale_count for k in daily_bars] if daily_bars else []
+        ms = market_snapshot()
+        try:
+            _conn_rb = db.get_conn()
+            try:
+                _rb_row = _conn_rb.execute("SELECT id FROM items WHERE name=?", (exact_name,)).fetchone()
+                _recent_buys = recent_buy_dates(_conn_rb, _rb_row["id"]) if _rb_row else []
+            finally:
+                _conn_rb.close()
+        except Exception:
+            _recent_buys = []
+        analysis = await asyncio.get_running_loop().run_in_executor(
+            None, lambda: _ia.run_item_analysis(
+                name=exact_name, prices=prices, supply_hist=supply_hist or None,
+                order_book=getattr(item, "order_book", None),
+                index_change_7d=ms["chg7"], market_history=ms["history"],
+                market_pct_90d=ms["pct"], market_zscore=ms["z"],
+                market_cycle=ms["cycle"], market_th_score=ms["th"],
+                market_30d_change=ms["chg30"], market_drop21=ms.get("drop21", 0),
+                recent_buy_dates=_recent_buys, signal_date=_today_str(),
+                price_anchor=getattr(item, "price_rmb", 0) or 0,
+                survive_count=getattr(item, "survive_count", 0),
+            ))
+        pos = analysis.position if hasattr(analysis, "position") else {}
+        pct_val = getattr(pos, "percentile_90d", 50) if hasattr(pos, "percentile_90d") else 50
+        z_val = getattr(pos, "zscore_90d", 0) if hasattr(pos, "zscore_90d") else 0
+        score = analysis.value.score
+        dq_factor = {"good": 1.0, "medium": 0.85, "low": 0.6, "insufficient": 0.2}.get(getattr(analysis, "data_quality", "low"), 0.4)
+        fd_action = (analysis.fusion_decision or {}).get("action", "") if isinstance(analysis.fusion_decision, dict) else ""
+        action_bonus = {"buy": 1.0, "watch": 0.5, "hold": 0.0, "reduce": -0.5, "avoid": -1.0, "sell": -1.0}.get(fd_action, 0.0)
+        th_score = (analysis.trend_health or {}).get("score", 50) if isinstance(analysis.trend_health, dict) else 50
+        th_bonus = (th_score - 50) / 50 * 1.0
+        valuation_discount = max(0.5, 1.0 - pct_val / 200)
+        composite = round((score + action_bonus + th_bonus) * valuation_discount * dq_factor, 1)
+        new_res = dict(
+            name=exact_name, good_id=good_id,
+            price_rmb=prices[-1] or getattr(item, "price_rmb", 0) or 0,
+            grade=analysis.value.grade, score=score, composite=composite,
+            data_quality=getattr(analysis, "data_quality", "low"),
+            fd_action=fd_action, th_score=th_score,
+            percentile_90d=pct_val, zscore_90d=round(z_val, 2),
+            trend=analysis.trend_health,
+            cycle_phase=getattr(analysis.cycle, "phase", "unknown"),
+            cycle_label=getattr(analysis.cycle, "phase_label", ""),
+            strategy=getattr(analysis.cycle, "phase_strategy", ""),
+            fusion=getattr(analysis, "fusion_decision", {}),
+            valuation_tier=getattr(analysis.position, "valuation_tier", ""),
+            tier_label=getattr(analysis.position, "tier_label", ""),
+        )
+        # 合并回 discover_latest.json 并重渲染（排名随 composite 重排）
+        _cache_path = _Path_r(__file__).resolve().parent.parent / "data" / "discover_latest.json"
+        try:
+            if _cache_path.exists():
+                _cache_data = _json_r.loads(_cache_path.read_text(encoding="utf-8"))
+                _cache_data["results"] = [new_res if (r.get("name") == exact_name) else r for r in (_cache_data.get("results") or [])]
+                _cache_data["html"] = _render_discover_html(_cache_data["results"], _cache_data.get("market_th", 50))
+                _cache_data["time"] = datetime.now().isoformat()
+                _cache_path.write_text(_json_r.dumps(_cache_data, ensure_ascii=False), encoding="utf-8")
+        except Exception as _ce:
+            _web_log.warning("discover refresh merge latest failed: %s", _ce)
+        return JSONResponse({"ok": True, "name": exact_name, "price_rmb": new_res["price_rmb"],
+                             "score": score, "composite": composite, "warning": warning})
+    except Exception:
+        _web_log.error("discover refresh item %s error: %s", name, traceback.format_exc())
+        return JSONResponse({"ok": False, "error": "刷新失败"})
 
 @app.post("/api/items/discover")
 @app.post("/api/discover/scan-all")
