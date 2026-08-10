@@ -589,6 +589,12 @@ def t_batch_scan_display():
     assert "跌10%加20%" in html, html
     assert "¥96.00" in html and "¥90.00" in html
     assert "批量扫描完成" in html and "成功 2/2" in html
+    # F-3.x(2026-08-10): force 刷新回退缓存 -> 名称列可见提示
+    results_fb = [dict(name="A", holding=1, avg_cost=100.0, price_rmb=120.0, grade="A", score=4.0,
+                       buy_distance={}, portfolio_advice={"action": "持有", "suggest": "", "hold_guidance": ""},
+                       force_fallback=True, error=None)]
+    html_fb = build_scan_html(results_fb, 1, {"th": 55, "sentiment": 70, "cycle": "bear", "index": 1566}, now_str="12:00:00")
+    assert "⚠️缓存" in html_fb and "强制联网采集异常" in html_fb, html_fb
     # P2(2026-08-04): 并发建议仓位超上限 → 预警提示(展示层)
     results_cap = [
         dict(name="A", holding=0, price_rmb=100.0, grade="A", score=4.0, valuation_tier="低估", percentile_90d=12.0,

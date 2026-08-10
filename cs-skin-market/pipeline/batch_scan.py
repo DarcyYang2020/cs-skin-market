@@ -692,6 +692,15 @@ def extract_signals(results):
     return signals
 
 
+def _name_cell(r, name_link):
+    """名称单元格：force 刷新回退缓存时带可见提示（2026-08-10）。"""
+    nm = (name_link(r["name"]) if name_link else _esc(r["name"]))
+    if r.get("force_fallback"):
+        nm += ('<span style="margin-left:6px;font-size:10px;color:var(--yellow);" '
+               'title="强制联网采集异常（chart 与悠悠锚不符），已回退缓存数据">⚠️缓存</span>')
+    return nm
+
+
 def _esc(s):
     """HTML 转义（展示层防注入）。"""
     return html.escape(str(s or ""), quote=True)
@@ -871,7 +880,7 @@ def build_scan_html(results, total, market_ctx=None, now_str="", name_link=None,
             pa = r.get("portfolio_advice", {}) or {}
             g = (r.get("grade") or "?").lower()
             pnl_c = "green" if pnl_pct > 5 else ("red" if pnl_pct < -5 else "")
-            h.append("<tr><td>" + (name_link(r["name"]) if name_link else _esc(r["name"])) + "</td>")
+            h.append("<tr><td>" + _name_cell(r, name_link) + "</td>")
             h.append("<td>¥" + "%.2f" % r["avg_cost"] + " → <strong>¥" + "%.2f" % r["price_rmb"] + "</strong></td>")
             h.append('<td class="' + pnl_c + '">' + "%.1f" % pnl_pct + "%</td>")
             h.append('<td><span class="badge badge-' + g + '">' + _esc(str(r.get("grade", "?"))) + "</span></td>")
@@ -893,7 +902,7 @@ def build_scan_html(results, total, market_ctx=None, now_str="", name_link=None,
         for r in unheld:
             pa = r.get("portfolio_advice", {}) or {}
             g = (r.get("grade") or "?").lower()
-            h.append("<tr><td>" + (name_link(r["name"]) if name_link else _esc(r["name"])) + "</td>")
+            h.append("<tr><td>" + _name_cell(r, name_link) + "</td>")
             h.append("<td>¥" + "%.2f" % r["price_rmb"] + "</td>")
             h.append('<td><span class="badge badge-' + g + '">' + _esc(str(r.get("grade", "?"))) + "</span></td>")
             h.append('<td style="font-size:12px;">' + _esc(str(r.get("valuation_tier", "?"))) + '<br><span style="color:var(--text-muted);">pct=' + "%.1f" % r.get("percentile_90d", 50) + "%</span></td>")

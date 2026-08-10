@@ -1129,10 +1129,14 @@ async def _scan_item(row, idx, ms, market_th_score, sentiment_score, total_asset
             return dict(name=name, holding=holding, error="详情获取失败")
         exact_name = item.name or name
         daily_bars = item.kline_90d if hasattr(item, "kline_90d") and item.kline_90d else []
+        force_fallback = False
         if not daily_bars:
             _db_bars, _stale, _stale_date = kline_db_fallback(good_id, exact_name)
             if _db_bars:
                 daily_bars = _db_bars
+                if force_refresh:
+                    force_fallback = True
+                    _web_log.warning(f"batch scan force refresh fallback {exact_name}: 采集被锚校验拦截(脏chart)，回退DB缓存 stale={_stale}d")
         # 价格合理性校验：csQAQ 偶发串品/脏价，脏数据不落库。
         # 新规则（2026-08-04）：出现偏差时统一以悠悠锚价为准——新鲜 chart 判脏先试 DB 缓存 K 线，
         # DB 仍判脏且悠悠锚价可用时，把最新价校正为锚价继续分析（不再跳过/保留旧数据）。
@@ -1200,6 +1204,7 @@ async def _scan_item(row, idx, ms, market_th_score, sentiment_score, total_asset
             buy_distance=summarize_buy_distance(getattr(analysis, "buy_distance", None) or {}),
             valuation_tier=getattr(analysis.position, "valuation_tier", "") if hasattr(analysis, "position") else "",
             percentile_90d=getattr(analysis.position, "percentile_90d", 50) if hasattr(analysis, "position") else 50,
+            force_fallback=force_fallback,
             error=None,
         )
         # Save to analysis_results (同步至单品报告)
