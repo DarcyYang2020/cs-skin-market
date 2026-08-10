@@ -2780,6 +2780,44 @@ def t_data_review():
 check('t_data_review 数据质量复核（阈值/抽样/频率）', t_data_review)
 
 
+
+# ---- C-1 拆模块第一批（2026-08-10）：渲染纯函数集中 webapp/render_html.py ----
+def t_render_html():
+    """render_report_html / render_discover_html / spark_svg 输出结构断言（纯函数，不联网）。"""
+    from webapp.render_html import render_report_html, render_discover_html, spark_svg
+
+    # 1) markdown -> styled HTML：标题/小节/表格/列表/加粗/引用，无裸 **
+    md = (
+        "# 主标题\n\n## 小节A\n\n"
+        "| 列1 | 列2 |\n|---|---|\n| **加粗** | 值 |\n\n"
+        "- 列表项\n\n> 引用块\n"
+    )
+    html = render_report_html(md, "2026-08-10", "A", 8.0)
+    assert "<h2" in html and "<h3" in html, html[:200]
+    assert "<table" in html and "<strong>加粗</strong>" in html, html[:400]
+    assert "**" not in html, "残留裸加粗标记"
+    assert "badge-a" in html
+
+    # 2) discover 渲染：Top10 表格 + 加自选按钮 + 武器热度图（>=2 类）
+    results = [
+        {"name": "AK-47 | 深海复仇 (崭新出厂)", "score": 8.5, "composite": 9.0, "grade": "S",
+         "percentile_90d": 15, "cycle_label": "洗盘", "price_rmb": 120.0},
+        {"name": "M4A1 消音版 | 咆哮 (崭新出厂)", "score": 7.2, "composite": 7.0, "grade": "A",
+         "percentile_90d": 45, "cycle_phase": "吸筹", "price_rmb": 300.0},
+    ]
+    h = render_discover_html(results, market_th=40)
+    assert "Top 10" in h and "加入自选" in h, h[:300]
+    assert "品类热力图" in h, "两武器类应渲染热度图"
+    assert "已扫描 2 个饰品" in h
+
+    # 3) spark_svg：正常渲染 / 点数不足返回空
+    svg = spark_svg([(1, 10.0), (2, 11.0), (3, 10.5)], cost=10.2)
+    assert svg.startswith("<svg") and "成本" in svg, svg[:120]
+    assert spark_svg([(1, 10.0)], cost=10.2) == ""
+    assert spark_svg([], 0) == ""
+check('t_render_html 渲染纯函数集中模块', t_render_html)
+
+
 print(f'=== Results: {passed} passed, {failed} failed, {skipped} skipped ===')
 if failures:
     print()
