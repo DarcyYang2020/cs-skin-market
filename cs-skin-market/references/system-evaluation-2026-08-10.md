@@ -177,6 +177,9 @@
 - D-1 ✅（2026-08-10 落地，见 decision-log「D-1 单品报告分层落地」）：关键指标条 / 供给·流动性·庄家折叠为 details（摘要一行），首屏保留动作+一句原因+操作核心，纯展示层。
 - 组合层研究 ✅（2026-08-10，见 decision-log「组合层敏感性研究 + 出场口径对齐 hold21」）：cap 网格验证 0.8 为平衡点维持不变；组合模拟口径 hold14→hold21 对齐单品建议层，基准产物重跑（strategy +183.94%/-9.08%，maxDD 改善 4pp）。
 
+- P-1 ✅（2026-08-10 落地，见 decision-log「第一性原理测试 P-1 正式引擎 A/B + chg8 门落地」）：吸筹族新增 chg8（8 日动量）>3% 禁买门（T4 第一性原理审计候选），正式 A/B 基线 332→变体 317 信号（−26 剔除 +11 去重链解锁），win14 69.9→71.0%、wavg14 20.47→21.04、wwin14 74.4→75.4%、事件 14→15 不降、win30 不劣化，全指标改善无劣化；标准回放产物 317 信号 + 同步链重跑（sync_expectancy_config / sync_replay_snapshot / benchmark_compare / portfolio_attribution），ENGINE_VERSION v2-I13→v2-T4。
+- P-0/T1 ✅（2026-08-10 证据链更新）：greedy 持久化机制验证通过（60 天覆盖）；T1 探针 = 日级不一致（corr 0.26）但决策级零影响。
+
 **仍待做（数据依赖/配置）**：F-2（求购数据 90+ 天）、A1-4（滑点校准，executions≥20）。C-1 已全部完成：渲染纯函数切 `webapp/render_html.py`、任务块切 `pipeline/discover_tasks.py`+`scan_tasks.py`、页面结构迁 Jinja（`templates/partials/discover_html.html`+`scan_html.html`，保留 markdown/SVG/单元格内容渲染器），冒烟 + Playwright 端到端通过。G-2 加签后 webhook 轮换待用户配置。
 
 ## 附录：与「评估指标体系第一性审计」的边界

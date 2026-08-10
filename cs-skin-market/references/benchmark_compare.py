@@ -92,13 +92,11 @@ def ffill_curve(series, start, end):
     if days < 0:
         return []
     cur = None
-    cur_d = None
     out = []
     for i in range(days + 1):
         d = (start + timedelta(days=i)).isoformat()
         if d in series:
             cur = series[d]
-            cur_d = d
         if cur is not None:
             out.append((d, cur))
     return out

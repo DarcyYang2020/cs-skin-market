@@ -1,0 +1,46 @@
+{
+ "base": {
+  "signals": 332,
+  "n14": 332,
+  "win14_pct": 69.9,
+  "avg14": 15.36,
+  "wavg14": 20.48,
+  "wwin14_pct": 69.9,
+  "win30_pct": 67.1,
+  "avg30": 22.58,
+  "events": 14,
+  "max_cluster_share": 0.491,
+  "flagged": false
+ },
+ "variant": {
+  "signals": 306,
+  "n14": 306,
+  "win14_pct": 72.2,
+  "avg14": 16.31,
+  "wavg14": 21.46,
+  "wwin14_pct": 72.2,
+  "win30_pct": 67.2,
+  "avg30": 22.54,
+  "events": 15,
+  "max_cluster_share": 0.4641,
+  "flagged": false
+ },
+ "dropped": {
+  "n": 26,
+  "by_month": {
+   "2025-11": 1,
+   "2025-12": 2,
+   "2026-02": 19,
+   "2026-03": 2,
+   "2026-05": 1,
+   "2026-06": 1
+  },
+  "by_label": {
+   "🟢 供给收缩·启动前吸筹·分批建仓": 26
+  },
+  "median_price": 780.5,
+  "win14": 42.3,
+  "avg14": 4.14
+ },
+ "note": "只读模拟：剔除供给收缩族 chg7>3% 信号；正式落地需引擎开关 CS_ENGINE_SUPPLY_ACCUM_CHG7_CAP + 全窗口重跑 + 三件套确认"
+}

@@ -14,9 +14,8 @@ import io
 import json
 import math
 import statistics
-import sys
 from collections import defaultdict
-from datetime import date, timedelta
+from datetime import date
 from importlib.util import spec_from_file_location, module_from_spec
 from pathlib import Path
 
@@ -116,9 +115,15 @@ def risk_metrics(curve):
     }
 
 
-def run_variant(sigs, label, cap):
+def run_variant(sigs, label, cap, wstart=None, wend=None):
     sim = b1v2.simulate(sigs, cap=cap)
-    m = risk_metrics(sim["curve"])
+    # 窗口口径对齐 benchmark_compare（full 窗口 = 回放 args.start~end 固定区间）：
+    # 组合总收益与基准同窗对比，消除末笔平仓日落在窗口外导致的边界漂移（t_portfolio_backtest 一致性校验）。
+    curve = sim["curve"]
+    if wstart is not None:
+        curve = [c for c in curve if wstart <= c[0] <= (wend or "9999-12-31")]
+    sim = dict(sim, curve=curve)
+    m = risk_metrics(curve)
     closed = sim.get("closed") or []
     m.update({
         "n_signals": len(sigs),
@@ -135,10 +140,13 @@ def run_variant(sigs, label, cap):
 
 def main():
     sigs = load_signals()
-    cur = run_variant(sigs, "cap0.8", cap=0.8)
+    dargs = json.load(io.open(REPLAY, encoding="utf-8")).get("args", {})
+    wstart = dargs.get("start")
+    wend = dargs.get("end")
+    cur = run_variant(sigs, "cap0.8", cap=0.8, wstart=wstart, wend=wend)
     cl5 = cluster_cap(sigs, k=CLUSTER_K)
-    cluster_v = run_variant(cl5, "cap0.8+簇限次5", cap=0.8)
-    nocap = run_variant(sigs, "nocap_ref", cap=None)
+    cluster_v = run_variant(cl5, "cap0.8+簇限次5", cap=0.8, wstart=wstart, wend=wend)
+    nocap = run_variant(sigs, "nocap_ref", cap=None, wstart=wstart, wend=wend)
 
     bench = {}
     try:
@@ -150,7 +158,7 @@ def main():
         bench["error"] = str(e)
 
     out = {
-        "meta": "组合层回测(Phase 2a): hold21/成本2%/拒绝优先级panic>accumulate>deep_value/未部署资金按现金。簇限次=同簇(间隔<4天)内限5笔。",
+        "meta": "组合层回测(Phase 2a): hold21/成本2%/拒绝优先级panic>accumulate>deep_value/未部署资金按现金。簇限次=同簇(间隔<4天)内限5笔。窗口口径=回放 args.start~end 固定区间（与 benchmark_compare full 窗口对齐，2026-08-10）。",
         "generated": date.today().isoformat(),
         "variants": {"cap0_8": cur, "cap0_8_cluster5": cluster_v, "nocap_ref": nocap},
         "consistency_with_benchmark": bench,

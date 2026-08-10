@@ -1046,6 +1046,12 @@ SIGNAL_FAMILIES = (
             and F["s30"] is not None and F["s30"] > 0
             and F["s7"] is not None and F["s7"] <= F["s30"] * 0.85
             and F["chg7"] is not None and abs(F["chg7"]) <= 3
+            # T4（2026-08-10 第一性原理审计）：8 日动量门——「一周前拉涨、近7日横盘」的泵后横盘追高段禁买。
+            # 实证：chg7<=3 但 chg8>3% 的 26 条信号 win14 42.3%/+4.14（2026-02 W2 反弹段集中 19 条）；
+            # 只读全引擎模拟剔除后 wwin14 74.4->76.3%、wavg14 20.48->21.46、事件 14->15。
+            # 已落地（2026-08-10 正式 A/B 通过）：默认开；env=0 可关闭做对照重放。
+            and (os.environ.get("CS_ENGINE_SUPPLY_ACCUM_CHG8_CAP", "1") == "0"
+                 or F["chg8"] is None or F["chg8"] <= 3)
             and not (F["sent"] < 40 and F["market_th"] < 45)
             and not _dedup_hit(F["recent_buy_dates"], F["signal_date"])
         ),
@@ -1479,6 +1485,8 @@ def decide_fusion_signal(
         "s7": sum(supply_hist[-7:]) / 7 if len(supply_hist) >= 7 else None,
         "s30": sum(supply_hist[-30:]) / 30 if len(supply_hist) >= 30 else None,
         "chg7": (current / prices[-8] - 1) * 100 if len(prices) >= 8 else None,
+        # T4（2026-08-10）：8 日动量（current vs 8 个交易日前），供吸筹族泵后横盘门使用
+        "chg8": (current / prices[-9] - 1) * 100 if len(prices) >= 9 else None,
         "dd30": (current / max(prices[-30:]) - 1) * 100 if len(prices) >= 30 else 0.0,
         "chg14": (current / prices[-15] - 1) * 100 if len(prices) >= 15 else 0.0,
         "chg3d": (current - prices[-4]) / prices[-4] * 100 if len(prices) >= 4 else None,

@@ -2185,3 +2185,53 @@ watch/hold 做「无按钮」处理，未区分持仓/未持仓。
 **结论**：现行分级仓位在 hold21/cap0.8 组合层为局部最优，**不落地任何缩放**；deep 放大列为观察项——待 B 通道样本（完整牛熊，约 2027-04-25）或深值族成交≥30 笔后复验，在此之前不动参数（符合「样本不足不动参数」纪律）。
 
 **影响面**：零（纯研究归档）；引擎决策、回放产物、基准产物均未改动。
+
+## 第一性原理匹配性审计 + 测试首轮执行（2026-08-10，研究层，引擎零改动）
+
+**背景**：承接 2026-08-10 四项审计（评估指标体系内部自洽），本次做**外部效度**审计——从 CS 饰品市场微观结构检验「在售量 + 价格」双核心假设是否成立（市场匹配性）。产出：`references/first-principles-market-fit.md`（审计报告草稿）+ `references/first-principles-test-plan.md`（T0-T7 测试方案）+ `references/first_principles_probes.py`（只读探针脚本）。
+
+**核心发现（量化证据）**：
+1. **回放-生产情绪口径不同源 + 根因确认**：回放 sentiment = 价格近似（`backtest_common.approx_sentiment`）或真实贪婪（仅 2026-06-03 起）；`macro_history.greedy_index` 历史仅 2 天非空（2026-08-08/09）→ **真实情绪历史未持久化**（T0 数据层修复前置）。panic 族 93 信号回放基于近似情绪，生产由贪婪指数驱动 → 外推观察级，C 通道 ≥20 条前不调 panic 参数（不推翻 TH/情绪定论）。
+2. **2% 成本假设对整体稳健**：成本阶梯（332 信号，fwd14 毛利）盈亏平衡 = 17.36%；3% 成本下 avg14 仍 +14.36。分族盈亏平衡 panic 31.5% / deep 13.6% / **accum 11.6%**（吸筹族边际最薄）；价差实证 snapshots.spread_pct 中位 3.15%（72 条，56/72 >2%）→ 低流动品成本敏感，F-4 分层成本维持 P1。
+3. **供给收缩族「追高子集」劣化（T4，候选成立未落地）**：信号日 chg7>3% 桶 win 43.8%（n=32，2026-02 W2 反弹段集中 19 条）；只读全引擎模拟剔除 26 条后：win14 69.9→**72.2%**、avg14 +15.36→**+16.31**、wwin14 74.4→**76.3%**、wavg14 20.48→**21.46**、win30/avg30 持平、独立事件 14→15 不降 → **模拟三件套通过**。正式落地流程：`item_analysis.py` 加开关 `CS_ENGINE_SUPPLY_ACCUM_CHG7_CAP`（默认关）+ 全窗口重跑 A/B（备份标准产物）+ 三件套确认 + sync + 文档同步。
+4. **高价 × 低在售联合闸门候选（T3，待样本）**：`entry≥1000 且 in_sale<200` 信号 win 53.7%/+3.73（n=108/events=6）vs `<100` 元桶 80.6%/+21.77（n=31）→ 候选成立方向，需扩池低在售样本 + 与候选 3 消融 + 三件套 + A2。
+5. **新品 90 天截断暂缓**：现库 188 品历史起点全部 ≤2026-05-10（无 <90 天样本）→ 转 discover 新增品结构性约束记录（B-2 已确认），展示层「上市不足90天」标注保留低优先级。
+
+**落地状态**：只读研究，**引擎参数/代码零改动**，标准回放产物未动。产物：`data/_exp_cost_ladder.json` / `_exp_liq_bucket.json` / `_exp_accum_chg7_bucket.json` / `_exp_supply_chg7_cap_sim.json` / `_exp_whale_cross_avail.json` / `_exp_first_principles_probes.json`。
+
+**下一步（按依赖）**：P-0 greedy 持久化检查（连续 7 个采集日验证覆盖 ≥60 天）→ T1 情绪口径对比（约 2026-10）；P-1 正式引擎 A/B（候选 3）；P-2 扩池样本后联合闸门回测（候选 4）；T6 大户集中度 × 供给收缩交叉（约 2026-11）；A1-4 滑点校准（executions≥20）。
+
+## 第一性原理测试 P-1 正式引擎 A/B + chg8 门落地（2026-08-10，引擎参数变更）
+
+**背景**：承接「第一性原理匹配性审计 + 测试首轮执行」条目。T4 候选（吸筹族「追高子集」劣化）只读模拟已通过三件套（模拟剔除 26 条后 wwin14 76.3%/wavg14 21.46），本次做**正式引擎 A/B**（环境开关 + 全窗口重跑），通过后落地。
+
+**口径澄清（重要，修正首轮条目表述）**：引擎 `supply_accum` 触发已含 7 日 `abs(chg7)<=3`（item_analysis.py S3 定义，chg7 = current vs prices[-8]，7 个交易日前）；用 price_history 实证核对 26 条「被剔除信号」：引擎 7 日 chg 全部 ≤3（max 2.93），真实差异在 **8 日动量**（current vs 8 个交易日前，即回放信号字段 chg7 的 8 日分母）——「一周前拉涨、近 7 日横盘」= 泵后横盘追高段。**正确候选 = 新增 chg8 特征门（8 日动量 >3% 禁买）**，首轮条目中「chg7≤3% 上限」表述一并更正为 chg8。
+
+**正式 A/B（同数据：真实贪婪尾部已生效，基线 332 信号）**：
+
+| 口径 | 基线 332 | 变体 317 | Δ |
+|---|---|---|---|
+| win14 | 69.9% | 71.0% | +1.1pp |
+| avg14 | +15.36 | +15.95 | +0.59 |
+| wavg14 | 20.47 | 21.04 | +0.57 |
+| wwin14 | 74.4% | 75.4% | +1.0pp |
+| win30 | 67.4% | 68.1% | +0.7pp（不劣化） |
+| avg30 | +22.60 | +23.11 | +0.51 |
+| 独立事件 | 14 | 15 | 不降 |
+| max_cluster_share | 0.491 | 0.479 | 更分散 |
+
+- 变体 317 = 基线 332 − 剔除 26 条（chg8>3%）+ 去重链解锁 11 条新信号（原被坏信号 7 日去重抑制）。**真实引擎结果比只读模拟（306 信号）更保守**：模拟是静态剔除的第一阶近似，未建模去重链动态；方向一致、幅度更小（wwin14 +1.0pp vs 模拟 +1.9pp）。
+- 三件套判定：信号数 −15（−4.5%）、胜率 +1.1pp、期望增量 +0.57~0.59、事件不降、win30 不劣化、簇集中度下降 → **通过，落地**。
+
+**落地**：
+- `pipeline/item_analysis.py`：F 字典新增 `chg8`（item_analysis.py:1489）；supply_accum 触发新增 8 日动量门（item_analysis.py:1049-1054）。开关 `CS_ENGINE_SUPPLY_ACCUM_CHG8_CAP` **默认开**（env=0 可关闭做对照重放）。
+- 标准回放产物 `data/item_backtest_full_2025.json` = 变体产物（317 信号，win14 71.0%/+15.95，wwin14 75.4%）；A/B 基线归档 `data/_exp_supply_chg8_cap_baseline.json`（332 信号）。
+- 同步链重跑：`sync_expectancy_config.py`（t_expectancy_sync 硬校验）→ `sync_replay_snapshot.py`（tests/snapshots/replay_v2.json）→ `benchmark_compare.py` → `portfolio_attribution.py`（317 信号 total 201.06% cap0.8，族归因：供给吸筹 +111.69pp / 恐慌 +56.35pp / 深值 +59.39pp）。
+- 参数台账：`PARAM_REGIME.param_history` + `amendments` 追加；`ENGINE_VERSION` v2-I13 → v2-T4。
+- 冒烟 98 passed / 0 failed；pyflakes 无告警。
+
+**T0/T1 状态更新（P0-1 证据链）**：
+- T0（greedy 持久化）：机制验证通过——`run_daily_collect.py:collect_macro` 每日触发 `_persist_macro` 写穿透全量回填；2026-08-10 采集后 `macro_history.greedy_index` 已覆盖 60 天（2026-06-11~08-09），此前「仅 2 天非空」为采集前瞬时状态，非代码缺陷。建议继续连续 7 个采集日监测覆盖单调增长。
+- T1（回放近似情绪 vs 生产贪婪一致性，只读探针 `data/_exp_greedy_vs_approx.json`）：60 天窗口两者**日级不一致**（corr 0.26、MAD 19.5、恐慌日重叠 0/40——真实贪婪恐惧 40 天，近似情绪 0 天 ≥70）；但**引擎决策级影响为零**（06-11 后窗口两版基线均为 41 条 accum 信号、0 panic/0 deep——panic 其余约束（pct/z/drop21/micro_th）在窗口内未同时成立）。含义：近似情绪在日级不是贪婪的忠实替代，但当前窗口内未翻转任何族决策；panic 族 92 信号回放仍基于近似情绪（生产用贪婪），C 通道样本累积前不调 panic 参数（不推翻 TH/情绪定论）。
+
+**产物**：`data/_exp_supply_chg8_cap_baseline.json` / `_exp_supply_chg8_cap_ab.json` / `_exp_greedy_vs_approx.json`；脚本 `references/run_item_backtest_chg8_variant.py` / `probe_greedy_vs_approx.py`。

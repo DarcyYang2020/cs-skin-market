@@ -117,18 +117,18 @@ EVENT_CALENDAR = [
 
 ITEM_EXPECTANCY_STATS = {
     # 口径：自动生成（references/sync_expectancy_config.py），勿手改；改回放产物后必须重跑同步。
-    # 数据源：data/item_backtest_full_2025.json（去量引擎 v2（I-13 大盘 chg30>=3 深值禁买）回放 332 信号，net 已扣 2% 双边成本）。
+    # 数据源：data/item_backtest_full_2025.json（去量引擎 v2（I-13 大盘 chg30>=3 深值禁买）回放 317 信号，net 已扣 2% 双边成本）。
     # events = ±3 天去簇独立事件数（J-1 口径，backtest_methodology.signal_cluster_report window=3）。
     # 展示键按单品报告 action_label 匹配：含「恐慌」→panic / 含「深值」→deep_value / 其余→accumulate。
     # win30/avg30 为 n30 口径（含 net30 信号的子集）；ci14 = Wilson 95%% 区间。
     # 历史备注：panic 旧 n=21 为 2026-08-02 强信号层切片；accumulate 旧 n=16 为短窗口切片；deep_value 旧 154 为 I-13 前，均已废弃。
-    # 恐慌族：恐慌退潮(49) + 恐慌共振(44) 全量（自动生成）
+    # 恐慌族：恐慌退潮(48) + 恐慌共振(44) 全量（自动生成）
     "panic": {
         "label": "恐慌族",
-        "n": 93,
+        "n": 92,
         "events": 1,
-        "win14": 90.3, "avg14": 29.51, "ci14_lo": 82.6, "ci14_hi": 94.8,
-        "win30": 75.3, "avg30": 21.48,  # n30=93
+        "win14": 90.2, "avg14": 29.79, "ci14_lo": 82.4, "ci14_hi": 94.8,
+        "win30": 76.1, "avg30": 21.78,  # n30=92
     },
     # 深值企稳：深值企稳(27) 全量（自动生成）
     "deep_value": {
@@ -138,13 +138,13 @@ ITEM_EXPECTANCY_STATS = {
         "win14": 63.0, "avg14": 11.55, "ci14_lo": 44.2, "ci14_hi": 78.5,
         "win30": 63.6, "avg30": 51.51,  # n30=22
     },
-    # 吸筹族：供给收缩吸筹(157) + 深度回调低吸(34) + 基础分批(21) 全量（自动生成）
+    # 吸筹族：供给收缩吸筹(142) + 深度回调低吸(34) + 基础分批(22) 全量（自动生成）
     "accumulate": {
         "label": "吸筹族",
-        "n": 212,
-        "events": 13,
-        "win14": 61.8, "avg14": 9.63, "ci14_lo": 55.1, "ci14_hi": 68.1,
-        "win30": 63.8, "avg30": 20.03,  # n30=210
+        "n": 198,
+        "events": 12,
+        "win14": 63.1, "avg14": 10.12, "ci14_lo": 56.2, "ci14_hi": 69.5,
+        "win30": 64.8, "avg30": 20.55,  # n30=196
     },
 }
 # ============================================================
@@ -213,6 +213,7 @@ PARAM_REGIME = {
         "守卫1 大盘走弱拦截（A/B 重放证实正优化，2026-08-09）",
         "四项审计落地（周期权重反转 / panic 分级仓位修复 / 概率去 z 化 / 供给降仓证伪，2026-08-10）",
         "洗盘降级 A/B 验证（2026-08-10）：移除 consolidation buy 降级对 365d 三件套零影响，保留现状；开关 CS_ENGINE_NO_CONSOLIDATION_DOWNGRADE 保留",
+        "吸筹族 8 日动量门（chg8>3% 禁买，T4 第一性原理审计，2026-08-10 正式 A/B 通过后落地；开关 CS_ENGINE_SUPPLY_ACCUM_CHG8_CAP 默认开，env=0 可关闭对照）",
     ],
     "monitors": [
         "A 独立恐慌市场事件≥3（当前 2，自然积累）",
@@ -226,6 +227,7 @@ PARAM_REGIME = {
         "2026-08-10 四项审计落地（基线改为 365 天窗口：price_history 按保留策略仅存 2025-08-10 起，旧 2025-01-01 基线不可复现；新基线 332 信号等权口径与旧引擎 365d 完全一致 win14 69.9%/+15.36）：① 周期权重反转（consolidation 2.5 > accumulation 2.0 > markup 1.2，原吸筹>拉升>洗盘）——365d 回放洗盘期最优（win14 82.2%/+18.9、win30 +30.6），吸筹期（MA7>MA30 已启动）win30 +15.8 平庸、拉升期（追高）win14 63% 最差；② panic_resonance 跳过分级仓位（保持 fam.limit=0.30）——修复分级覆盖族级参数的架构 bug（panic 低 TH 使 th_boost 负值推高 value，换档即错配降仓），反事实 panic 0.30→0.20 使 wavg14 19.03→21.71 即 -2.68；③ 概率去 z 化——base_up 改由波动率 regime 主导（stable 65 / normal 55 / volatile 48 / high_volatile 42，TH<30→50），消除与位置 40% 的双计权，Z 仅保留展示口径；④ 供给收缩族维持 limit=0.10——组合模拟证伪降仓（降 0.05 致组合 -12.9pp，最大族被砍半）。加权验证：旧→v3 wavg14 19.71→20.48 / wwin14 72.9→74.4、wavg30 22.07→23.27 / wwin30 64.0→65.8；组合模拟 旧 +86.03%/-13.36% → v3 +83.65%/-13.05%（±2pp 噪音，回撤改善）。中间版废弃：v1（甜点区映射错配 panic，wavg30 20.09 劣化）、v2（supply 0.05 组合 -12.9pp）。实验产物归档 data/_exp_old_engine_365d.json / _exp_new_engine_365d.json / _exp_new_engine_v2_365d.json / _exp_v3_365d.json / _exp_v3_benchmark.json。",
         "2026-08-10 系统全貌评估第二批（A1-2/A1-3/B-2/B-3 归因与口径验证，引擎决策零改动）：A1-2 sent 66-74 非空区（43 条 win74.4%/+15.99%，39 条深值特征中 34 条 panic 族 win82.4% 已覆盖，base 子集 9 条平庸 +7.33% → 放开 deep_value 上限边际价值低，不落地）；A1-3 组合归因（供给吸筹 +34.2pp / 恐慌 +21.65pp / 深值 +13.98pp，策略低于等权=2025 低价品暴涨集中度 top10 占 43.5%，引擎以回撤换集中度，见 data/portfolio_attribution.json）；B-2 扩池回放（97 品=基线 96+1 新品，三件套与基线一致 333 信号 win14 69.9% avg14 +15.36%，新品 <90d 历史结构性约束进不了 365d 回测，回测池维持 A 池口径，见 data/_exp_pool_90d.json）；B-3 在售量三口径（末点 vs 中位/均值偏差>20% 属偶发非系统：5 品各 0-1 天敏感日，现行末点口径保留，见 data/sale_caliber_compare.json）。G-4 采集退避（重试/平台切换前 sleep 1.5s）+ K 线失败台账（kline_fail_count/kline_fail_names）；D-3 推送→执行归因（executions.source 列 manual/push:{push_id}，monitor 幂等键升级 JSON 兼容旧值 '1'，转化率 5.2% 样本不足仅参考，见 data/push_exec_attribution.json）。",
         "2026-08-10 组合层敏感性研究 + 组合模拟口径 hold14→hold21（引擎决策零改动，见 decision-log「组合层敏感性研究 + 出场口径对齐 hold21」）：cap 网格（0.4~None）验证 0.8 为收益/回撤平衡点维持不变（cap1.0 可换 +21pp 收益/代价 -2.4pp 回撤，留待用户决策）；出场规则 hold21 全切分稳健胜出（全样本 +185.18%/-9.08% vs hold14 +83.65%/-13.05%，前半/后半/去 panic 均占优），与单品建议层 hold_guidance「回测最优持有21日退出」一致（原「建议 21 日、组合模拟 14 日」口径不一致）。b1_risk_backtest_v2 / benchmark_compare / portfolio_backtest 的 HOLD 14→21，重跑基准产物：strategy full +183.94%/-9.08%（maxDD 改善 4pp）。三件套（332 信号，14d→21d 口径）：net win14 69.9%→win21 64.7%、net avg14 +15.36%→avg21 +18.22%。实验产物 data/_exp_cap_sensitivity.json / _exp_exit_strategy.json；研究脚本 references/portfolio_sensitivity.py。",
+        "2026-08-10 吸筹族 chg8 门落地（T4 正式引擎 A/B，见 decision-log「第一性原理测试 P-1 正式引擎 A/B + chg8 门落地」）：供给收缩族新增 8 日动量门（当前 vs 8 个交易日前 >3% 禁买），剔除「一周前拉涨、近7日横盘」泵后横盘追高段。口径澄清：引擎 chg7（7日）在触发内已 ≤3，差异在 8 日动量（回放 chg7 字段实际为 8 日分母）；chg7 表述更正为 chg8。正式 A/B（同数据真实贪婪尾部，基线 332 信号）：变体 317 信号（剔除 26 条 chg8>3% + 去重链解锁 11 条新信号），win14 69.9→71.0、avg14 +15.36→+15.95、wavg14 20.47→21.04、wwin14 74.4→75.4、win30 67.4→68.1 不劣化、独立事件 14→15 不降、max_cluster_share 0.491→0.479——全指标改善无劣化，落地。模拟（306 信号 wwin14 76.3%）为第一阶近似，真实引擎因去重链解锁比模拟更保守但方向一致。同步：标准回放产物 317 信号，sync_expectancy_config / sync_replay_snapshot / benchmark_compare / portfolio_attribution 已重跑；ENGINE_VERSION v2-I13→v2-T4。实验产物 data/_exp_supply_chg8_cap_baseline.json / _exp_supply_chg8_cap_ab.json；T1 探针 data/_exp_greedy_vs_approx.json。",
     ],
 }
 
@@ -245,4 +247,4 @@ J2_THRESHOLDS = {
 # ---- 引擎参数版本（Phase 0 版本化）----
 # signal_tracking 记录每条生产信号时的引擎版本；重拟合发布新参数时 bump，
 # 使新旧引擎产生的实盘信号可区分、可分别统计。
-ENGINE_VERSION = "v2-I13"  # 对应 PARAM_REGIME.param_history 首项: 去量引擎 v2（I-13）全参数
+ENGINE_VERSION = "v2-T4"  # v2-I13 + 吸筹族 chg8 门（2026-08-10 T4 落地）；对应 PARAM_REGIME.param_history 台账

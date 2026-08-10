@@ -1,0 +1,95 @@
+{
+ "T3": {
+  "15-50": {
+   "n": 1,
+   "win14": 0.0,
+   "avg14": -10.88,
+   "wavg14": -10.88,
+   "events": 1,
+   "max_share": 1.0,
+   "flagged": true,
+   "warnings": [
+    "单簇占比 100.0% > 50%，胜率由单一事件主导，外推性存疑",
+    "有效事件日 1 < 5，独立样本不足"
+   ],
+   "median_in_sale": 45
+  },
+  "50-200": {
+   "n": 19,
+   "win14": 68.4,
+   "avg14": 8.86,
+   "wavg14": 10.53,
+   "events": 8,
+   "max_share": 0.3684,
+   "flagged": false,
+   "warnings": [],
+   "median_in_sale": 112
+  },
+  "200-500": {
+   "n": 55,
+   "win14": 78.2,
+   "avg14": 23.16,
+   "wavg14": 24.41,
+   "events": 9,
+   "max_share": 0.6,
+   "flagged": true,
+   "warnings": [
+    "单簇占比 60.0% > 50%，胜率由单一事件主导，外推性存疑"
+   ],
+   "median_in_sale": 368
+  },
+  ">500": {
+   "n": 88,
+   "win14": 73.9,
+   "avg14": 26.64,
+   "wavg14": 34.65,
+   "events": 11,
+   "max_share": 0.5455,
+   "flagged": true,
+   "warnings": [
+    "单簇占比 54.5% > 50%，胜率由单一事件主导，外推性存疑"
+   ],
+   "median_in_sale": 766.0
+  }
+ },
+ "cross": {
+  "<100 & in_sale<200": {
+   "n": 31,
+   "win14": 80.6,
+   "avg14": 21.77,
+   "wavg14": 21.58,
+   "events": 6,
+   "max_share": 0.7097,
+   "flagged": true,
+   "warnings": [
+    "单簇占比 71.0% > 50%，胜率由单一事件主导，外推性存疑"
+   ]
+  },
+  "100-1000 & in_sale<200": {
+   "n": 45,
+   "win14": 82.2,
+   "avg14": 8.61,
+   "wavg14": 9.11,
+   "events": 5,
+   "max_share": 0.7333,
+   "flagged": true,
+   "warnings": [
+    "单簇占比 73.3% > 50%，胜率由单一事件主导，外推性存疑"
+   ]
+  },
+  ">1000 & in_sale<200": {
+   "n": 108,
+   "win14": 53.7,
+   "avg14": 3.73,
+   "wavg14": 3.94,
+   "events": 6,
+   "max_share": 0.9074,
+   "flagged": true,
+   "warnings": [
+    "单簇占比 90.7% > 50%，胜率由单一事件主导，外推性存疑"
+   ]
+  }
+ },
+ "unmatched": 0,
+ "verdict": "低桶(15-50) 相对 >500 桶 win 差>=10pp 且 n>=30 且 events>=3 => 候选分层下限（当前见数据）"
+}

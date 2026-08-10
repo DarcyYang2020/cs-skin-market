@@ -2,8 +2,8 @@
  "meta": "组合绩效归因(A1-3, 2026-08-10)：与 portfolio_backtest 同源口径；leave-one-out=剔除该族后组合总收益差值(pp)。",
  "generated": "2026-08-10",
  "base": {
-  "total_return_pct": 83.65,
-  "n_signals": 332
+  "total_return_pct": 201.06,
+  "n_signals": 317
  },
  "family_contribution": {
   "deep_value": {
@@ -11,36 +11,36 @@
    "n_signals": 27,
    "win14_pct": 63.0,
    "avg14_net_pct": 11.55,
-   "leave_out_contrib_pp": 13.98,
-   "share_of_signals_pct": 8.1
+   "leave_out_contrib_pp": 59.39,
+   "share_of_signals_pct": 8.5
   },
   "accumulate": {
    "label": "供给吸筹族",
-   "n_signals": 212,
-   "win14_pct": 61.8,
-   "avg14_net_pct": 9.63,
-   "leave_out_contrib_pp": 34.2,
-   "share_of_signals_pct": 63.9
+   "n_signals": 198,
+   "win14_pct": 63.1,
+   "avg14_net_pct": 10.12,
+   "leave_out_contrib_pp": 111.69,
+   "share_of_signals_pct": 62.5
   },
   "panic": {
    "label": "恐慌族",
-   "n_signals": 93,
-   "win14_pct": 90.3,
-   "avg14_net_pct": 29.51,
-   "leave_out_contrib_pp": 21.65,
-   "share_of_signals_pct": 28.0
+   "n_signals": 92,
+   "win14_pct": 90.2,
+   "avg14_net_pct": 29.79,
+   "leave_out_contrib_pp": 56.35,
+   "share_of_signals_pct": 29.0
   }
  },
  "monthly_pnl": {
   "2025-11": {
    "n": 14,
-   "pnl_weighted": 14.08,
+   "pnl_weighted": 14.12,
    "win14_pct": 64.3
   },
   "2025-12": {
-   "n": 13,
-   "pnl_weighted": 27.73,
-   "win14_pct": 46.2
+   "n": 11,
+   "pnl_weighted": 28.44,
+   "win14_pct": 54.5
   },
   "2026-01": {
    "n": 5,
@@ -48,24 +48,24 @@
    "win14_pct": 80.0
   },
   "2026-02": {
-   "n": 139,
-   "pnl_weighted": 83.74,
-   "win14_pct": 63.3
+   "n": 133,
+   "pnl_weighted": 82.53,
+   "win14_pct": 63.9
   },
   "2026-03": {
-   "n": 26,
-   "pnl_weighted": 47.9,
-   "win14_pct": 76.9
+   "n": 21,
+   "pnl_weighted": 43.33,
+   "win14_pct": 76.2
   },
   "2026-05": {
-   "n": 94,
-   "pnl_weighted": 664.25,
-   "win14_pct": 89.4
+   "n": 93,
+   "pnl_weighted": 664.26,
+   "win14_pct": 90.3
   },
   "2026-06": {
-   "n": 34,
-   "pnl_weighted": 75.42,
-   "win14_pct": 58.8
+   "n": 33,
+   "pnl_weighted": 76.47,
+   "win14_pct": 60.6
   },
   "2026-07": {
    "n": 7,
@@ -91,19 +91,19 @@
     "pnl": 48.66
    },
    {
-    "name": "格洛克 18 型 | 本生灯 (崭新出厂)",
-    "n": 4,
-    "pnl": 44.58
-   },
-   {
     "name": "沙漠之鹰 | 蓝色层压板 (崭新出厂)",
     "n": 3,
     "pnl": 40.8
    },
    {
+    "name": "格洛克 18 型 | 本生灯 (崭新出厂)",
+    "n": 3,
+    "pnl": 40.23
+   },
+   {
     "name": "沙漠之鹰 | 午夜凶匪 (崭新出厂)",
     "n": 3,
-    "pnl": 37.16
+    "pnl": 37.78
    },
    {
     "name": "格洛克 18 型 | 粉碎者 (崭新出厂)",
@@ -126,8 +126,8 @@
     "pnl": 30.71
    }
   ],
-  "top10_share_pct": 43.5,
-  "total_pnl": 940.03
+  "top10_share_pct": 43.3,
+  "total_pnl": 936.06
  },
  "pool_buy_hold_concentration": {
   "n_items": 98,
