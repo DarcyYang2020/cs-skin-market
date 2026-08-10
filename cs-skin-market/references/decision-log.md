@@ -2235,3 +2235,28 @@ watch/hold 做「无按钮」处理，未区分持仓/未持仓。
 - T1（回放近似情绪 vs 生产贪婪一致性，只读探针 `data/_exp_greedy_vs_approx.json`）：60 天窗口两者**日级不一致**（corr 0.26、MAD 19.5、恐慌日重叠 0/40——真实贪婪恐惧 40 天，近似情绪 0 天 ≥70）；但**引擎决策级影响为零**（06-11 后窗口两版基线均为 41 条 accum 信号、0 panic/0 deep——panic 其余约束（pct/z/drop21/micro_th）在窗口内未同时成立）。含义：近似情绪在日级不是贪婪的忠实替代，但当前窗口内未翻转任何族决策；panic 族 92 信号回放仍基于近似情绪（生产用贪婪），C 通道样本累积前不调 panic 参数（不推翻 TH/情绪定论）。
 
 **产物**：`data/_exp_supply_chg8_cap_baseline.json` / `_exp_supply_chg8_cap_ab.json` / `_exp_greedy_vs_approx.json`；脚本 `references/run_item_backtest_chg8_variant.py` / `probe_greedy_vs_approx.py`。
+
+## 第一性原理审计扩展执行：P-2 预评估 / T1 触发域扩展 / T0 挂接 / 扩池扫描受阻（2026-08-10，只读研究）
+
+**背景**：承接「第一性原理测试 P-1 正式引擎 A/B + chg8 门落地」。本条目为审计扩展批次：P-2 候选预评估（数据质量前置）、T1 触发域口径对比（第二轮探针）、T0 每日覆盖监测挂接、扩池扫描试跑。**引擎参数零改动**。
+
+**T1 扩展（同数据对照回放，`data/_exp_t1_panic_domain.json`）**：窗口 2026-06-11~08-05 强制近似情绪回放 vs 真实贪婪基线：
+- panic 族两口径均 0 条（低敏感，窗口内其余约束未同时成立）；
+- accum 族 36 vs 35（边际差异）；
+- **deep_value 族 5 vs 18 条——近似情绪高估 deep 触发 13 条且多为负贡献**（真实贪婪下 deep win 20.0%/avg -4.17 vs 近似 win 11.1%/avg -5.62，net14 中位负）；
+- **修正 2026-08-10 P-1 条目「决策级影响为零」表述**：deep_value 族触发域受情绪口径影响实质存在，回放 deep 统计含近似专属负贡献信号；panic/accum 低敏感结论维持。
+- 含义：生产（真实贪婪）下 deep 触发更少且剔除负贡献 → deep 族生产表现可能优于回放统计（或样本不足）；deep 参数维持不调、外推置信度低标注维持，C 通道 + deep 触发样本积累后再验。
+
+**P-2 预评估（`data/_exp_p2_hi_price_liq.json`）——数据断档污染**：
+- `price_history.in_sale_count` **2026-02 仅 180/2657 行有值、2026-03~04 全 0、2026-05 起恢复**（采集器历史兼容问题，非引擎缺陷）；
+- 317 信号中 153 条（48%）在售量=0；高价品（entry≥1000）154 条中 92 条=0；
+- 首轮 T3 n=108 与本次 100 条候选均含大量断档缺失值被当 0 处理 → 此前「高价×低在售 win 53.7%」不可作为证据；
+- 干净样本不足（高价 n=62、低在售 1-199 桶 n=8）→ **候选降级为数据积累型**；
+- 引擎免疫性确认：supply_accum 触发含 s30>0 约束，断档 0 值不会误触发供给收缩信号；与 chg8 门 overlap=0（独立候选）。
+- 前置条件：① 数据层标注 2026-02-01~04-30 在售量为缺失（B-3 延伸，防未来分桶研究再被污染）；② 2026-05 起重建分桶；③ 扩池补样本；④ 三件套 + A2（在 v2-T4 基线）。
+
+**T0 挂接**：`run_daily_collect.py` 每日任务 J-2 刷新后插入 `references/greedy_backfill_check.py`（幂等追加 `data/_exp_greedy_backfill_check.json`，记录 greedy_index 覆盖天数），连续 7 个采集日验证覆盖单调增长。
+
+**扩池扫描受阻（外部依赖，实证）**：`/api/discover/scan-all?mode=search` 试跑 candidates 0 / scanned 0，已记 `data/pool_maintenance_log.jsonl`（discover_1786365191）。**根因实证（2026-08-10 20:40 直连探测）**：csQAQ `/proxies/api/v1/search` 与 `search/suggest` 端点服务端 500（含空参数），同窗口 `/info/chart`、`/info` 亦 500——**单品/搜索 API 全线服务端故障**，仅 `current_data`（大盘）正常；与当日晚间每日采集 K 线 94/177 失败同源（pool_maintenance_log daily 行 kline_fail_count=94，非采集器代码问题）。替代方案：等 csQAQ 恢复后重试（次日 18:00 每日采集自动验证 K 线恢复率）；恢复前不做 discover 扩池。
+
+**产物**：`data/_exp_p2_hi_price_liq.json` / `data/_exp_t1_panic_domain.json` / `data/_exp_greedy_backfill_check.json`；脚本 `references/probe_p2_hi_price_liq.py` / `references/probe_t1_panic_domain.py` / `references/greedy_backfill_check.py`。

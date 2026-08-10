@@ -331,6 +331,14 @@ def main():
         log(f"J-2 三通道监测刷新: exit={_r.returncode} {(_r.stdout or '').strip()}")
     except Exception as e:
         log(f"J-2 三通道监测刷新异常（不中断采集）: {e}")
+    # T0 greedy 覆盖监测 (2026-08-10): 采集后记录 greedy_index 覆盖天数，连续 7 个采集日验证单调增长（第一性原理审计 P-0/T0）
+    try:
+        import subprocess, sys as _sys
+        _r = subprocess.run([_sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "references", "greedy_backfill_check.py")],
+                            capture_output=True, text=True, timeout=60)
+        log(f"T0 greedy 覆盖监测: exit={_r.returncode} {(_r.stdout or '').strip()[-200:]}")
+    except Exception as e:
+        log(f"T0 greedy 覆盖监测异常（不中断采集）: {e}")
     # 生产实盘信号跟踪回填 (2026-08-07 C 通道实盘化): 14/30 交易日后按真实价格回填 buy 信号收益
     try:
         from pipeline.signal_tracking import run_backfill_once

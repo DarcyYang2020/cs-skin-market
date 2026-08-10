@@ -1,0 +1,110 @@
+{
+ "source": "item_backtest_full_2025.json (v2-T4, 317 signals)",
+ "n_signals": 317,
+ "matched": 317,
+ "generated": "2026-08-10",
+ "price_cross_low_liq": {
+  "<100 & in_sale<200": {
+   "n": 29,
+   "win14": 82.8,
+   "avg14": 22.54,
+   "wavg14": 22.33,
+   "events": 7,
+   "max_share": 0.379,
+   "flagged": false,
+   "by_family": {
+    "accum": 28,
+    "deep": 1
+   },
+   "median_in_sale": 0
+  },
+  "100-1000 & in_sale<200": {
+   "n": 43,
+   "win14": 83.7,
+   "avg14": 8.8,
+   "wavg14": 9.21,
+   "events": 5,
+   "max_share": 0.744,
+   "flagged": true,
+   "by_family": {
+    "accum": 37,
+    "panic": 6
+   },
+   "median_in_sale": 0
+  },
+  ">1000 & in_sale<200": {
+   "n": 100,
+   "win14": 53.0,
+   "avg14": 3.7,
+   "wavg14": 3.96,
+   "events": 6,
+   "max_share": 0.9,
+   "flagged": true,
+   "by_family": {
+    "accum": 91,
+    "panic": 6,
+    "deep": 3
+   },
+   "median_in_sale": 0.0
+  }
+ },
+ "hi_candidate": {
+  "n": 100,
+  "win14": 53.0,
+  "avg14": 3.7,
+  "events": 6,
+  "by_month": {
+   "2026-02": 79,
+   "2026-03": 13,
+   "2026-05": 6,
+   "2026-07": 1,
+   "2025-11": 1
+  },
+  "by_family": {
+   "accum": 91,
+   "panic": 6,
+   "deep": 3
+  },
+  "chg8_over3_share": 6.0
+ },
+ "ablation_with_chg8": {
+  "hi_candidate_keys": 100,
+  "chg8_removed_keys": 0,
+  "overlap": 0,
+  "overlap_share_of_hi": 0.0,
+  "overlap_share_of_chg8": null,
+  "conclusion": "overlap<30% => 候选独立于 chg8 门，联合闸门有独立边际价值；>=30% => 高度重叠，优先合并/关闭"
+ },
+ "sim_drop_hi_low_liq": {
+  "base": {
+   "n": 317,
+   "win14": 71.0,
+   "avg14": 15.95,
+   "wavg14": 21.04,
+   "events": 15,
+   "max_share": 0.479,
+   "flagged": false
+  },
+  "variant": {
+   "n": 217,
+   "win14": 79.3,
+   "avg14": 21.59,
+   "wavg14": 26.66,
+   "events": 14,
+   "max_share": 0.401,
+   "flagged": false
+  },
+  "delta": {
+   "win14_pp": 8.3,
+   "avg14": 5.64
+  }
+ },
+ "data_quality_finding": {
+  "in_sale_zero_share": "317 ??? 153 ?(48%) in_sale_count=0???(>=1000) 154 ?? 92 ?=0",
+  "root_cause": "price_history.in_sale_count ?????2026-02 ? 180/2657 ???2026-03~04 ? 0?2026-05 ????",
+  "impact": "??????????? 2026-02~04 ??????? 0 ????? T3 ????????(n=108)??? 100 ???????????",
+  "engine_immunity": "supply_accum ??? s30>0 ???? 0 ?????????????????",
+  "recommendation": "P-2 ???????? ????? 2026-02-01~04-30 ????????????B-3 ????? ? 2026-05 ???????????? ??????????????"
+ },
+ "verdict": "???????????????????????????in_sale>0????? n=62????(1-199) n=8 ?????????????? = ???? + ?????? + ???"
+}
