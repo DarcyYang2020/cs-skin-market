@@ -29,8 +29,8 @@
   `python references/sync_expectancy_config.py` 自动同步 `config.ITEM_EXPECTANCY_STATS` +
   `data/signal_event_counts.json`；`t_expectancy_sync` 全字段硬校验防漂移（改回放不重跑同步即测试失败）。
 - **基准对照**：`python references/benchmark_compare.py` → `data/benchmark_compare.json`
-  （策略 cap0.8 vs 池内等权买入持有 vs 大盘指数，full/active 双窗口）。2026-08-10 结论（365d 窗口，332 信号）：策略 +83.65%/-13.05%
-  大幅跑赢大盘 -24.20%/-58.21%，但低于池内等权 +252.31%/-55.59% —— 引擎边际价值在风险控制（maxDD 13.05% vs 55~58%）。
+  （策略 cap0.8 vs 池内等权买入持有 vs 大盘指数，full/active 双窗口）。2026-08-10 结论（365d 窗口，332 信号，组合模拟口径 hold21——2026-08-10 对齐单品 hold_guidance，见 decision-log）：策略 +183.94%/-9.08%
+  大幅跑赢大盘 -24.20%/-58.21%，但低于池内等权 +252.32%/-55.59% —— 引擎边际价值在风险控制（maxDD 9.08% vs 55~58%）。
 - **组合归因（A1-3，2026-08-10）**：`python references/portfolio_attribution.py` → `data/portfolio_attribution.json`（leave-one-out 族级/月度/集中度）；供给吸筹族贡献最大 +34.2pp（n=212）、恐慌族 +21.65pp（n=93）、深值族 +13.98pp（n=27）；策略低于等权主因=2025 低价品暴涨集中度（top10 占 43.5%），引擎以回撤换集中度。
 
 

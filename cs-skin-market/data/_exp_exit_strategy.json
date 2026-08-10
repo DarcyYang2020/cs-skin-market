@@ -1,0 +1,339 @@
+{
+ "generated": "2026-08-10T17:39",
+ "note": "组合层敏感性 v3：cap 网格复用 b1v2.simulate；出场策略同骨架只改平仓判定，平仓笔与 unreal 互斥，hold14 基准与 b1v2 完全一致（83.65/-13.05）。稳健性=分半窗口+去panic。",
+ "signals": 332,
+ "baseline_hold14": {
+  "total": 83.65,
+  "maxDD": -13.05
+ },
+ "cap_grid": {
+  "None": {
+   "total_return_pct": 940.03,
+   "n_trades": 332,
+   "max_position": 18.2,
+   "rejected_cap": 0,
+   "max_drawdown_pct": -64.39
+  },
+  "0.4": {
+   "total_return_pct": 52.21,
+   "n_trades": 31,
+   "max_position": 0.4,
+   "rejected_cap": 301,
+   "max_drawdown_pct": -11.13
+  },
+  "0.6": {
+   "total_return_pct": 75.5,
+   "n_trades": 46,
+   "max_position": 0.6,
+   "rejected_cap": 286,
+   "max_drawdown_pct": -10.27
+  },
+  "0.8": {
+   "total_return_pct": 83.65,
+   "n_trades": 58,
+   "max_position": 0.8,
+   "rejected_cap": 274,
+   "max_drawdown_pct": -13.05
+  },
+  "1.0": {
+   "total_return_pct": 104.69,
+   "n_trades": 66,
+   "max_position": 1.0,
+   "rejected_cap": 266,
+   "max_drawdown_pct": -15.49
+  },
+  "1.5": {
+   "total_return_pct": 123.83,
+   "n_trades": 86,
+   "max_position": 1.5,
+   "rejected_cap": 246,
+   "max_drawdown_pct": -20.17
+  }
+ },
+ "results": {
+  "hold7": {
+   "total_return_pct": 66.68,
+   "max_drawdown_pct": -9.55,
+   "n_trades": 87,
+   "win_pct": 44.8,
+   "avg_trade_pct": 0.77,
+   "avg_hold_days": 7.0,
+   "max_position": 0.8,
+   "rejected_cap": 245,
+   "days": 281,
+   "by_family": {
+    "deep_value": {
+     "n": 22,
+     "win_pct": 22.7,
+     "avg_pct": 0.74
+    },
+    "accumulate": {
+     "n": 55,
+     "win_pct": 47.3,
+     "avg_pct": 0.72
+    },
+    "panic": {
+     "n": 10,
+     "win_pct": 80.0,
+     "avg_pct": 1.07
+    }
+   }
+  },
+  "hold14": {
+   "total_return_pct": 83.65,
+   "max_drawdown_pct": -13.05,
+   "n_trades": 58,
+   "win_pct": 46.6,
+   "avg_trade_pct": 1.44,
+   "avg_hold_days": 14.0,
+   "max_position": 0.8,
+   "rejected_cap": 274,
+   "days": 281,
+   "by_family": {
+    "deep_value": {
+     "n": 18,
+     "win_pct": 44.4,
+     "avg_pct": 1.11
+    },
+    "accumulate": {
+     "n": 37,
+     "win_pct": 43.2,
+     "avg_pct": 1.14
+    },
+    "panic": {
+     "n": 3,
+     "win_pct": 100.0,
+     "avg_pct": 7.22
+    }
+   }
+  },
+  "hold21": {
+   "total_return_pct": 185.18,
+   "max_drawdown_pct": -9.08,
+   "n_trades": 50,
+   "win_pct": 62.0,
+   "avg_trade_pct": 3.7,
+   "avg_hold_days": 21.0,
+   "max_position": 0.8,
+   "rejected_cap": 281,
+   "days": 281,
+   "by_family": {
+    "deep_value": {
+     "n": 17,
+     "win_pct": 35.3,
+     "avg_pct": 3.74
+    },
+    "accumulate": {
+     "n": 30,
+     "win_pct": 73.3,
+     "avg_pct": 3.54
+    },
+    "panic": {
+     "n": 3,
+     "win_pct": 100.0,
+     "avg_pct": 5.12
+    }
+   }
+  },
+  "hold30": {
+   "total_return_pct": 109.88,
+   "max_drawdown_pct": -16.2,
+   "n_trades": 31,
+   "win_pct": 71.0,
+   "avg_trade_pct": 3.54,
+   "avg_hold_days": 30.0,
+   "max_position": 0.8,
+   "rejected_cap": 294,
+   "days": 281,
+   "by_family": {
+    "deep_value": {
+     "n": 11,
+     "win_pct": 63.6,
+     "avg_pct": 4.79
+    },
+    "accumulate": {
+     "n": 17,
+     "win_pct": 70.6,
+     "avg_pct": 2.93
+    },
+    "panic": {
+     "n": 3,
+     "win_pct": 100.0,
+     "avg_pct": 2.48
+    }
+   }
+  },
+  "stop12_max30": {
+   "total_return_pct": 180.83,
+   "max_drawdown_pct": -18.23,
+   "n_trades": 39,
+   "win_pct": 53.8,
+   "avg_trade_pct": 4.64,
+   "avg_hold_days": 25.1,
+   "max_position": 0.8,
+   "rejected_cap": 289,
+   "days": 281,
+   "by_family": {
+    "deep_value": {
+     "n": 13,
+     "win_pct": 46.2,
+     "avg_pct": 6.17
+    },
+    "accumulate": {
+     "n": 20,
+     "win_pct": 60.0,
+     "avg_pct": 2.39
+    },
+    "panic": {
+     "n": 6,
+     "win_pct": 50.0,
+     "avg_pct": 8.82
+    }
+   }
+  },
+  "tp20_sl8_max30": {
+   "total_return_pct": 59.12,
+   "max_drawdown_pct": -11.38,
+   "n_trades": 73,
+   "win_pct": 43.8,
+   "avg_trade_pct": 0.81,
+   "avg_hold_days": 12.1,
+   "max_position": 0.8,
+   "rejected_cap": 258,
+   "days": 281,
+   "by_family": {
+    "deep_value": {
+     "n": 18,
+     "win_pct": 33.3,
+     "avg_pct": 0.43
+    },
+    "accumulate": {
+     "n": 41,
+     "win_pct": 48.8,
+     "avg_pct": 0.83
+    },
+    "panic": {
+     "n": 14,
+     "win_pct": 42.9,
+     "avg_pct": 1.25
+    }
+   }
+  },
+  "tp30_sl12_max30": {
+   "total_return_pct": 81.11,
+   "max_drawdown_pct": -11.77,
+   "n_trades": 50,
+   "win_pct": 52.0,
+   "avg_trade_pct": 1.62,
+   "avg_hold_days": 18.4,
+   "max_position": 0.8,
+   "rejected_cap": 278,
+   "days": 281,
+   "by_family": {
+    "deep_value": {
+     "n": 13,
+     "win_pct": 38.5,
+     "avg_pct": 0.89
+    },
+    "accumulate": {
+     "n": 27,
+     "win_pct": 59.3,
+     "avg_pct": 1.72
+    },
+    "panic": {
+     "n": 10,
+     "win_pct": 50.0,
+     "avg_pct": 2.3
+    }
+   }
+  },
+  "trail10_max30": {
+   "total_return_pct": 73.47,
+   "max_drawdown_pct": -11.61,
+   "n_trades": 65,
+   "win_pct": 44.6,
+   "avg_trade_pct": 1.13,
+   "avg_hold_days": 13.6,
+   "max_position": 0.8,
+   "rejected_cap": 266,
+   "days": 281,
+   "by_family": {
+    "deep_value": {
+     "n": 19,
+     "win_pct": 36.8,
+     "avg_pct": 1.17
+    },
+    "accumulate": {
+     "n": 40,
+     "win_pct": 45.0,
+     "avg_pct": 0.76
+    },
+    "panic": {
+     "n": 6,
+     "win_pct": 66.7,
+     "avg_pct": 3.5
+    }
+   }
+  },
+  "hold14_stop12": {
+   "total_return_pct": 99.73,
+   "max_drawdown_pct": -11.5,
+   "n_trades": 65,
+   "win_pct": 43.1,
+   "avg_trade_pct": 1.53,
+   "avg_hold_days": 12.6,
+   "max_position": 0.8,
+   "rejected_cap": 267,
+   "days": 281,
+   "by_family": {
+    "deep_value": {
+     "n": 19,
+     "win_pct": 42.1,
+     "avg_pct": 1.02
+    },
+    "accumulate": {
+     "n": 40,
+     "win_pct": 40.0,
+     "avg_pct": 1.06
+    },
+    "panic": {
+     "n": 6,
+     "win_pct": 66.7,
+     "avg_pct": 6.32
+    }
+   }
+  }
+ },
+ "robustness": {
+  "first_half_hold14": {
+   "total": 65.77,
+   "maxDD": -8.56,
+   "n": 38
+  },
+  "first_half_tp20_sl8": {
+   "total": 57.67,
+   "maxDD": -5.58,
+   "n": 43
+  },
+  "second_half_hold14": {
+   "total": 38.86,
+   "maxDD": -12.35,
+   "n": 24
+  },
+  "second_half_tp20_sl8": {
+   "total": 10.21,
+   "maxDD": -19.07,
+   "n": 36
+  },
+  "no_panic_hold14": {
+   "total": 61.99,
+   "maxDD": -9.4,
+   "n": 55
+  },
+  "no_panic_tp20_sl8": {
+   "total": 41.58,
+   "maxDD": -12.55,
+   "n": 59
+  }
+ }
+}

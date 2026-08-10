@@ -175,8 +175,16 @@
   </div>
 </div>
 {% endif %}
-{# ====== 关键指标条 ====== #}
-<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px;">
+{# ====== 关键指标条（D-1 报告分层：默认折叠，摘要一行；展开看明细） ====== #}
+<details style="margin-bottom:12px;">
+  <summary style="cursor:pointer;font-weight:700;color:var(--text-primary);font-size:14px;">📊 关键指标：
+    趋势TH <b style="color:var(--text-primary);">{{ trend_health.score if trend_health else '-' }}</b>
+    · 90日分位 <b style="color:var(--text-primary);">{{ "%.1f"|format(position.percentile_90d) if position else '-' }}%</b>
+    {% if position and position.valuation_tier %}<span style="font-size:12px;color:var(--text-muted);">（{{ {'undervalued':'低估','fair':'合理','overvalued':'高估','bubble':'泡沫'}.get(position.valuation_tier, position.valuation_tier) }}）</span>{% endif %}
+    · Z-Score <b style="color:var(--text-primary);">{{ "%+.2f"|format(position.zscore_90d) if position else '-' }}</b>
+  </summary>
+  <div style="margin-top:8px;">
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
   <div class="card" style="padding:10px;text-align:center;">
     <div style="font-size:20px;font-weight:700;color:{% if trend_health and trend_health.score >= 55 %}var(--green){% elif trend_health and trend_health.score >= 35 %}var(--yellow){% else %}var(--red){% endif %};">
       {{ trend_health.score if trend_health else '-' }}
@@ -205,11 +213,17 @@
     </div>
     <div style="font-size:11px;color:var(--text-muted);">当前价</div>
   </div>
-</div>
+  </div>
+</details>
 
 ﻿{# ====== 供给 · 流动性 · 庄家（去量 v2 引擎核心） ====== #}
 {% if supply_analysis or liquidity or whale %}
-<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;">
+<details style="margin-bottom:12px;">
+  <summary style="cursor:pointer;font-weight:700;color:var(--text-primary);font-size:14px;">📦 供给 · 流动性 · 庄家
+    {% if supply_analysis %}：在售 <b style="color:var(--text-primary);">{{ "{:,}".format(supply_analysis.current_supply) }}</b> 件 · 7日 <b style="color:{% if supply_analysis.supply_change_7d > 0 %}var(--red){% elif supply_analysis.supply_change_7d < 0 %}var(--green){% else %}var(--text-primary){% endif %};">{{ "%+.1f"|format(supply_analysis.supply_change_7d) }}%</b> · 30日 <b style="color:{% if supply_analysis.supply_change_30d > 0 %}var(--red){% elif supply_analysis.supply_change_30d < 0 %}var(--green){% else %}var(--text-primary){% endif %};">{{ "%+.1f"|format(supply_analysis.supply_change_30d) }}%</b> · <b style="color:var(--text-primary);">{{ supply_analysis.supply_risk_label if supply_analysis.supply_risk_label else ('吸筹' if supply_analysis.supply_risk == 'hoarding' else ('派发' if supply_analysis.supply_risk == 'dumping' else '平稳')) }}</b>{% endif %}
+  </summary>
+  <div style="margin-top:8px;">
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
   {% if supply_analysis %}
   <div class="card" style="padding:10px 12px;">
     <div style="font-size:11px;color:var(--text-muted);">在售量 · 供给</div>
@@ -236,7 +250,9 @@
     <div style="font-size:11px;color:var(--text-secondary);margin-top:2px;line-height:1.5;">{{ whale.trading_rule }}</div>
   </div>
   {% endif %}
-</div>
+  </div>
+  </div>
+</details>
 {% endif %}
 
 {% if data_quality %}

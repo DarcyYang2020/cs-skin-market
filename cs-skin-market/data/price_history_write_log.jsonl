@@ -2,3 +2,4 @@
 {"ts": "2026-08-10T14:18:42+08:00", "item_id": 1, "mode": "incremental", "n_insert": 1, "n_update": 0, "detail": [{"op": "insert", "date": "2026-08-10", "price": 105.0}]}
 {"ts": "2026-08-10T14:18:42+08:00", "item_id": 1, "mode": "incremental", "n_insert": 0, "n_update": 1, "detail": [{"op": "update", "date": "2026-08-10", "price": 106.0}]}
 {"ts": "2026-08-10T14:18:42+08:00", "item_id": 1, "mode": "force", "n_insert": 1, "n_update": 0, "detail": [{"op": "insert", "date": "2026-08-01", "price": 200.0}]}
+{"ts": "2026-08-10T16:59:45+08:00", "item_id": 999058, "mode": "incremental", "n_insert": 0, "n_update": 1, "detail": [{"op": "update", "date": "2026-08-10", "price": 132.75}]}

@@ -1,6 +1,6 @@
 {
- "generated": "2026-08-10T01:26",
- "note": "策略腿=去量引擎 v2 信号组合模拟（cap0.8/hold14/手续费2%/拒绝优先级 panic>accumulate>deep_value，权益曲线未部署资金按现金计，首信号日前无仓位故 full/active 同区间）；strategy_nocap_ref=同模拟去掉 cap 上限（仅信息参考，实盘不采用，回撤 -61% 不可行）；pool_buy_hold=策略池 95 品等权买入持有（price_history.price_rmb 前向填充，2025 低价品暴涨主导，未计一次性 2% 成本）；market_index=大盘指数同期（高价品权重，2025-10 五合一崩盘 maxDD -58%）。全量 332 信号（2025-08-10~2026-08-05，365 天窗口）。结论参照：策略相对大盘大幅超额，但绝对收益低于池内等权买入持有——引擎的边际价值在风险控制（maxDD -13.05% vs 池 -55.59% / 指数 -58.21%），非裸多收益。",
+ "generated": "2026-08-10T17:40",
+ "note": "策略腿=去量引擎 v2 信号组合模拟（cap0.8/hold21/手续费2%/拒绝优先级 panic>accumulate>deep_value，权益曲线未部署资金按现金计，首信号日前无仓位故 full/active 同区间）；strategy_nocap_ref=同模拟去掉 cap 上限（仅信息参考，实盘不采用，回撤 -61% 不可行）；pool_buy_hold=策略池 95 品等权买入持有（price_history.price_rmb 前向填充，2025 低价品暴涨主导，未计一次性 2% 成本）；market_index=大盘指数同期（高价品权重，2025-10 五合一崩盘 maxDD -58%）。全量 332 信号（2025-08-10~2026-08-05，365 天窗口）。结论参照：策略相对大盘大幅超额，但绝对收益低于池内等权买入持有——引擎的边际价值在风险控制（maxDD -13.05% vs 池 -55.59% / 指数 -58.21%），非裸多收益。",
  "replay": {
   "signals": 332,
   "pool": "A(98老品,365天窗口)",
@@ -14,26 +14,26 @@
     "2026-08-05"
    ],
    "strategy": {
-    "total_return_pct": 83.65,
-    "max_drawdown_pct": -13.05,
+    "total_return_pct": 183.94,
+    "max_drawdown_pct": -9.08,
     "days": 264,
-    "annualized_pct": 131.72,
+    "annualized_pct": 323.27,
     "first": "2025-11-14",
     "last": "2026-08-05"
    },
    "strategy_nocap_ref": {
-    "total_return_pct": 940.03,
-    "max_drawdown_pct": -64.39,
+    "total_return_pct": 1031.26,
+    "max_drawdown_pct": -50.12,
     "days": 264,
-    "annualized_pct": 2447.66,
+    "annualized_pct": 2761.74,
     "first": "2025-11-14",
     "last": "2026-08-05"
    },
    "pool_buy_hold": {
-    "total_return_pct": 252.31,
+    "total_return_pct": 252.32,
     "max_drawdown_pct": -55.59,
     "days": 360,
-    "annualized_pct": 258.53,
+    "annualized_pct": 258.54,
     "first": "2025-08-10",
     "last": "2026-08-05"
    },
@@ -49,39 +49,39 @@
   "active": {
    "range": [
     "2025-11-14",
-    "2026-08-05"
+    "2026-08-12"
    ],
    "strategy": {
-    "total_return_pct": 83.65,
-    "max_drawdown_pct": -13.05,
-    "days": 264,
-    "annualized_pct": 131.72,
+    "total_return_pct": 184.43,
+    "max_drawdown_pct": -9.08,
+    "days": 271,
+    "annualized_pct": 308.73,
     "first": "2025-11-14",
-    "last": "2026-08-05"
+    "last": "2026-08-12"
    },
    "strategy_nocap_ref": {
-    "total_return_pct": 940.03,
-    "max_drawdown_pct": -64.39,
-    "days": 264,
-    "annualized_pct": 2447.66,
+    "total_return_pct": 1031.75,
+    "max_drawdown_pct": -50.12,
+    "days": 271,
+    "annualized_pct": 2525.77,
     "first": "2025-11-14",
-    "last": "2026-08-05"
+    "last": "2026-08-12"
    },
    "pool_buy_hold": {
-    "total_return_pct": 49.11,
-    "max_drawdown_pct": -47.73,
-    "days": 264,
-    "annualized_pct": 73.74,
+    "total_return_pct": 49.81,
+    "max_drawdown_pct": -47.69,
+    "days": 271,
+    "annualized_pct": 72.35,
     "first": "2025-11-14",
-    "last": "2026-08-05"
+    "last": "2026-08-12"
    },
    "market_index": {
-    "total_return_pct": -25.6,
+    "total_return_pct": -25.41,
     "max_drawdown_pct": -42.29,
-    "days": 264,
-    "annualized_pct": -33.56,
+    "days": 271,
+    "annualized_pct": -32.63,
     "first": "2025-11-14",
-    "last": "2026-08-05"
+    "last": "2026-08-12"
    }
   }
  },

@@ -7,7 +7,7 @@
   - 去簇纪律变体: 同事件簇（日期间隔<4天）内限 K 笔（默认5），对照现行 cap0.8
   - 与 benchmark_compare full.strategy 一致性校验
 
-口径: hold14 / 双边成本2% / 拒绝优先级 panic>accumulate>deep_value / 未部署资金按现金。
+口径: hold21（2026-08-10 对齐单品 hold_guidance，见 decision-log）/ 双边成本2% / 拒绝优先级 panic>accumulate>deep_value / 未部署资金按现金。
 结论写入 data/portfolio_backtest.json。
 """
 import io
@@ -32,7 +32,7 @@ _spec.loader.exec_module(b1v2)
 
 CLUSTER_GAP = 4   # 同簇定义（与 j2_channel_monitor 一致）: 日期间隔 <4 天
 CLUSTER_K = 5     # 簇内限次: 每簇最多 K 笔（按优先级保留）
-HOLD = 14
+HOLD = 21
 
 
 def load_signals():
@@ -150,7 +150,7 @@ def main():
         bench["error"] = str(e)
 
     out = {
-        "meta": "组合层回测(Phase 2a): hold14/成本2%/拒绝优先级panic>accumulate>deep_value/未部署资金按现金。簇限次=同簇(间隔<4天)内限5笔。",
+        "meta": "组合层回测(Phase 2a): hold21/成本2%/拒绝优先级panic>accumulate>deep_value/未部署资金按现金。簇限次=同簇(间隔<4天)内限5笔。",
         "generated": date.today().isoformat(),
         "variants": {"cap0_8": cur, "cap0_8_cluster5": cluster_v, "nocap_ref": nocap},
         "consistency_with_benchmark": bench,

@@ -174,7 +174,10 @@
 - B-4 ✅（单品分析「当日已采 6h 内复用」双轨，KLINE_FRESH_SINGLE_HOURS=6，force_refresh 不受影响）
 - 数据质量定期复核 ✅（`references/data_quality_review.py` 每周抽样复核：持仓+自选+活跃池随机，周日自动触发；三层机制见 data-layer.md §8，决策见 decision-log「数据质量定期复核」）
 
-**仍待做（分期大项/数据依赖）**：D-1（报告分层，分期；决策条溯源/术语已折叠，深层分层低优先）、F-2（求购数据 90+ 天）、A1-4（滑点校准，executions≥20）。C-1 已全部完成：渲染纯函数切 `webapp/render_html.py`、任务块切 `pipeline/discover_tasks.py`+`scan_tasks.py`、页面结构迁 Jinja（`templates/partials/discover_html.html`+`scan_html.html`，保留 markdown/SVG/单元格内容渲染器），冒烟 + Playwright 端到端通过。、D-1（报告分层，分期；决策条溯源/术语已折叠，深层分层低优先）、F-2（求购数据 90+ 天）、A1-4（滑点校准，executions≥20）、G-2 加签后 webhook 轮换待用户配置。
+- D-1 ✅（2026-08-10 落地，见 decision-log「D-1 单品报告分层落地」）：关键指标条 / 供给·流动性·庄家折叠为 details（摘要一行），首屏保留动作+一句原因+操作核心，纯展示层。
+- 组合层研究 ✅（2026-08-10，见 decision-log「组合层敏感性研究 + 出场口径对齐 hold21」）：cap 网格验证 0.8 为平衡点维持不变；组合模拟口径 hold14→hold21 对齐单品建议层，基准产物重跑（strategy +183.94%/-9.08%，maxDD 改善 4pp）。
+
+**仍待做（数据依赖/配置）**：F-2（求购数据 90+ 天）、A1-4（滑点校准，executions≥20）。C-1 已全部完成：渲染纯函数切 `webapp/render_html.py`、任务块切 `pipeline/discover_tasks.py`+`scan_tasks.py`、页面结构迁 Jinja（`templates/partials/discover_html.html`+`scan_html.html`，保留 markdown/SVG/单元格内容渲染器），冒烟 + Playwright 端到端通过。G-2 加签后 webhook 轮换待用户配置。
 
 ## 附录：与「评估指标体系第一性审计」的边界
 

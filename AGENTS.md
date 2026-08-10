@@ -87,8 +87,8 @@ J-2 三通道监测数据照常收集（A 独立恐慌事件≥3 / B v2 样本�
 （`data/signal_event_counts.json`），`t_expectancy_sync` 全字段硬校验防漂移。
 
 **基准对照**：`python references/benchmark_compare.py` 产出 `data/benchmark_compare.json`
-（策略 cap0.8 vs 池内等权买入持有 vs 大盘指数，full/active 双窗口）。2026-08-10 结论（365d 窗口，332 信号）：策略 +83.65%/-13.05%
-大幅跑赢大盘 -24.20%/-58.21%，但低于池内等权 +252.31%/-55.59%——引擎边际价值在风险控制（maxDD 13.05% vs 55~58%）。
+（策略 cap0.8 vs 池内等权买入持有 vs 大盘指数，full/active 双窗口）。2026-08-10 结论（365d 窗口，332 信号，组合模拟口径 hold21——2026-08-10 对齐单品 hold_guidance，见 decision-log）：策略 +183.94%/-9.08%
+大幅跑赢大盘 -24.20%/-58.21%，但低于池内等权 +252.32%/-55.59%——引擎边际价值在风险控制（maxDD 9.08% vs 55~58%）。
 
 
 ## 文件结构

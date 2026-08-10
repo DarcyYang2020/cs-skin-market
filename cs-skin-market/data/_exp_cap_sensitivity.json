@@ -1,0 +1,78 @@
+{
+ "generated": "2026-08-10T17:38",
+ "note": "cap 敏感性：同 b1v2.simulate 口径（hold14/费2%/优先级拒绝/现金计息），仅改 cap=总投入上限。",
+ "signals": 332,
+ "baseline": "cap=0.8 现行政策",
+ "results": {
+  "None": {
+   "total_return_pct": 940.03,
+   "max_drawdown_pct": -64.39,
+   "n_trades": 332,
+   "win_pct": 69.9,
+   "avg_trade_pct": 2.83,
+   "max_position": 18.2,
+   "rejected_cap": 0,
+   "days": 265
+  },
+  "0.2": {
+   "total_return_pct": 43.88,
+   "max_drawdown_pct": -9.34,
+   "n_trades": 16,
+   "win_pct": 50.0,
+   "avg_trade_pct": 2.74,
+   "max_position": 0.2,
+   "rejected_cap": 316,
+   "days": 265
+  },
+  "0.4": {
+   "total_return_pct": 52.21,
+   "max_drawdown_pct": -11.13,
+   "n_trades": 31,
+   "win_pct": 48.4,
+   "avg_trade_pct": 1.68,
+   "max_position": 0.4,
+   "rejected_cap": 301,
+   "days": 265
+  },
+  "0.6": {
+   "total_return_pct": 75.5,
+   "max_drawdown_pct": -10.27,
+   "n_trades": 46,
+   "win_pct": 50.0,
+   "avg_trade_pct": 1.64,
+   "max_position": 0.6,
+   "rejected_cap": 286,
+   "days": 265
+  },
+  "0.8": {
+   "total_return_pct": 83.65,
+   "max_drawdown_pct": -13.05,
+   "n_trades": 58,
+   "win_pct": 46.6,
+   "avg_trade_pct": 1.44,
+   "max_position": 0.8,
+   "rejected_cap": 274,
+   "days": 265
+  },
+  "1.0": {
+   "total_return_pct": 104.69,
+   "max_drawdown_pct": -15.49,
+   "n_trades": 66,
+   "win_pct": 50.0,
+   "avg_trade_pct": 1.59,
+   "max_position": 1.0,
+   "rejected_cap": 266,
+   "days": 265
+  },
+  "1.5": {
+   "total_return_pct": 123.83,
+   "max_drawdown_pct": -20.17,
+   "n_trades": 86,
+   "win_pct": 54.7,
+   "avg_trade_pct": 1.44,
+   "max_position": 1.5,
+   "rejected_cap": 246,
+   "days": 265
+  }
+ }
+}

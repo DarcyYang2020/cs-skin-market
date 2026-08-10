@@ -4,13 +4,13 @@
 给 engine-unified / 决策日志补充参照系：策略信号组合 vs 池内等权买入持有 vs 大盘指数。
 
 - 策略腿: 去量引擎 v2 信号组合模拟（复用 b1_risk_backtest_v2.simulate，现行政策 cap0.8、
-  hold14、手续费 2%、拒绝优先级 panic>accumulate>deep_value，权益曲线按未部署资金计现金）。
+  hold21（2026-08-10 对齐单品 hold_guidance，见 decision-log）、手续费 2%、拒绝优先级 panic>accumulate>deep_value，权益曲线按未部署资金计现金）。
 - 基准腿A: 策略池等权买入持有（price_history.price_rmb，前向填充，2025-01-01 起）。
 - 基准腿B: 大盘指数（market_index.value）同期。
 
 窗口:
 - full:   回放窗口 2025-01-01 ~ 2026-08-05（与回放 args 一致）。
-- active: 策略活跃窗口（首个信号日 ~ 末日+hold14，即组合模拟曲线覆盖区间）。
+- active: 策略活跃窗口（首个信号日 ~ 末日+hold21，即组合模拟曲线覆盖区间）。
 
 输出: data/benchmark_compare.json
 用法: python references/benchmark_compare.py
@@ -35,7 +35,7 @@ from pipeline import db
 
 REPLAY = ROOT / "data" / "item_backtest_full_2025.json"
 OUT = ROOT / "data" / "benchmark_compare.json"
-HOLD = 14
+HOLD = 21
 COST = 0.02
 
 
@@ -189,7 +189,7 @@ def main():
     wins = sum(1 for s in n14 if s["net14"] > 0)
     out = {
         "generated": __import__("datetime").datetime.now().isoformat(timespec="minutes"),
-        "note": "策略腿=去量引擎 v2 信号组合模拟（cap0.8/hold14/手续费2%/拒绝优先级 panic>accumulate>deep_value，"
+        "note": "策略腿=去量引擎 v2 信号组合模拟（cap0.8/hold21/手续费2%/拒绝优先级 panic>accumulate>deep_value，"
                 "权益曲线未部署资金按现金计，首信号日前无仓位故 full/active 同区间）；strategy_nocap_ref=同模拟去掉 cap 上限"
                 "（仅信息参考，实盘不采用，回撤 -61% 不可行）；pool_buy_hold=策略池 95 品等权买入持有"
                 "（price_history.price_rmb 前向填充，2025 低价品暴涨主导，未计一次性 2% 成本）；"
