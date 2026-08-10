@@ -79,12 +79,12 @@ def monitor_mode():
         import run_health_monitor as rhm
         summary = rhm.run_monitor()
     except Exception as exc:
-        return _push("CS health monitor error", f"monitor itself failed: {exc}")
+        return _push("CS 监控 health monitor error", f"monitor itself failed: {exc}")
     if summary.get("status") != "fail":
         return 0
     fails = [c for c in summary.get("checks", []) if c.get("level") == "FAIL"]
     text = "\n".join(f"- {c.get('name')}: {c.get('detail', '')}" for c in fails[:10])
-    title = f"CS health FAIL ({summary.get('date', '')}, {len(fails)} item(s))"
+    title = f"CS 监控 health FAIL ({summary.get('date', '')}, {len(fails)} item(s))"
     return _push(title, text)
 
 
@@ -105,7 +105,7 @@ def _push(title, text):
 if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8")
     ap = argparse.ArgumentParser()
-    ap.add_argument("--title", default="CS alert")
+    ap.add_argument("--title", default="CS 监控 alert")
     ap.add_argument("--text", default="")
     ap.add_argument("--monitor", action="store_true", help="run health monitor and push on FAIL")
     args = ap.parse_args()
