@@ -250,6 +250,12 @@
       <button type="button" class="btn btn-outline btn-sm" onclick="closeModal('scan-modal')" aria-label="关闭">✕</button>
     </div>
     <input type="text" id="scan-search" aria-label="搜索要扫描的饰品" placeholder="搜索要扫描的饰品..." class="form-input" style="width:100%;margin-bottom:10px;" oninput="filterScanList()">
+    <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text-muted);margin-bottom:8px;flex-wrap:wrap;">
+      <span>快速选择：</span>
+      <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="scan-filter-holding" onchange="toggleScanStatusFilter()"> 仅持仓</label>
+      <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="scan-filter-not-holding" onchange="toggleScanStatusFilter()"> 仅未持仓</label>
+      <span style="font-size:11px;color:var(--text-muted);">勾选后自动全选该类物品</span>
+    </div>
     <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;user-select:none;margin-bottom:8px;">
       <input type="checkbox" id="scan-select-all" onchange="toggleScanSelectAll(this)">
       <span>全选当前列表</span>
@@ -588,14 +594,46 @@ var scanSelectedMap = {};
 function openScanModal() {
   scanSelectedMap = {};
   var inp = document.getElementById('scan-search'); if (inp) inp.value = '';
+  var fh = document.getElementById('scan-filter-holding'); if (fh) fh.checked = false;
+  var fn = document.getElementById('scan-filter-not-holding'); if (fn) fn.checked = false;
   renderScanList();
   openModal('scan-modal');
+}
+function scanStatusFilter() {
+  var h = document.getElementById('scan-filter-holding');
+  var nh = document.getElementById('scan-filter-not-holding');
+  var showH = h && h.checked, showNH = nh && nh.checked;
+  if (showH === showNH) return null;  // 都勾或都不勾 -> 全部
+  return showH;                       // true=仅持仓, false=仅未持仓
+}
+function selectVisibleScanItems(checked) {
+  var cbs = document.querySelectorAll('#scan-list .scan-cb');
+  cbs.forEach(function(cb) {
+    cb.checked = checked;
+    var id = parseInt(cb.value);
+    if (checked) scanSelectedMap[id] = true; else delete scanSelectedMap[id];
+  });
+  updateScanCount();
+}
+function toggleScanStatusFilter() {
+  renderScanList();
+  var st = scanStatusFilter();
+  if (st !== null) {
+    // 单一筛选：自动全选当前可见项（显式选中，不依赖 toggleScanSelectAll 的 anyUnchecked 语义）
+    selectVisibleScanItems(true);
+  }
+  updateScanCount();
 }
 function filterScanList() { renderScanList(); }
 function renderScanList() {
   var list = document.getElementById('scan-list');
   var q = ((document.getElementById('scan-search') || {}).value || '').toLowerCase();
-  var items = allWatchlistItems.filter(function(it) { return !q || (it.name || '').toLowerCase().indexOf(q) !== -1; });
+  var st = scanStatusFilter();
+  var items = allWatchlistItems.filter(function(it) {
+    if (q && (it.name || '').toLowerCase().indexOf(q) === -1) return false;
+    if (st !== null && !!it.holding !== st) return false;
+    return true;
+  });
   list.innerHTML = items.map(function(it) {
     var tag = it.holding ? '<span style="font-size:11px;color:var(--green);margin-left:auto;">持仓</span>'
                          : '<span style="font-size:11px;color:var(--text-muted);margin-left:auto;">未持仓</span>';
