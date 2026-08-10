@@ -1939,3 +1939,21 @@ vs 池内等权 +509.75%/-54.12% vs 大盘 -4.02%；引擎边际价值在回撤�
 **落地**：`item_analysis.py`（①周期分值 / ②分级仓位跳过分级 / ③概率 base_up / ④supply 注释维持 0.10）；`references/run_item_backtest_full.py`（基线 365 天窗口）；产物重跑 `item_backtest_full_2025.json` / `benchmark_compare.json` / `signal_event_counts.json` / `j2_channel_status.json` / `portfolio_backtest.json` / `cost_sensitivity.json` / `tests/snapshots/replay_v2.json`；`tests/test_smoke.py` t_cost_sensitivity 硬编码口径更新（71.1/16.7 → 69.9/15.36）；`config.PARAM_REGIME` 台账追加本条；实验产物 `_exp_old_engine_365d.json` / `_exp_new_engine_365d.json` / `_exp_new_engine_v2_365d.json` / `_exp_v3_365d.json` / `_exp_v3_benchmark.json` 归档。
 
 **验证**：冒烟 84 passed / 0 failed / 6 skipped（skip 联网用例）。
+
+---
+
+## 修复：reload=True 导致 Playwright 采集全线失败（2026-08-10）
+
+**现象**：单品分析返回「分析失败: 」（空消息）；批量扫描静默无结果（不写 latest）。
+
+**根因**：2026-08-09 给 `run_server.py` 加的 `uvicorn.run(reload=True)` 在 Windows + uvicorn>=0.36 下回归——
+`reload` 使 `use_subprocess=True`，`asyncio_loop_factory` 在 Windows 返回 `SelectorEventLoop`，
+其 `subprocess_exec` 直接 `NotImplementedError`；Playwright `async_playwright().start()` 启动浏览器失败。
+单品分析抛异常（`NotImplementedError` 的 `str()` 为空 → 前端只显示「分析失败: 」），
+批量扫描/发现高分品被任务级 try/except 吞掉（静默返回空结果）。
+
+**修复**：
+- `run_server.py` 还原 `reload=False`（改代码后手动重启生效；开发热重载与 Playwright subprocess 在 Windows 上不可兼得）。
+- `webapp/main.py` 3 处「分析失败: {str(e)}」改为 `(str(e) or type(e).__name__)`，空消息异常也能显示类型，避免再次出现无信息错误。
+
+**验证**：重启后自选单品分析 9.1s 出报告；批量扫描 1/1 完成并写 latest；冒烟测试 90 passed。
