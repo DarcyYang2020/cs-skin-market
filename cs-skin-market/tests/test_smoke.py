@@ -37,7 +37,10 @@ def t_config():
     assert hasattr(config, 'CSQAQ_BASE')
     assert config.CSQAQ_BASE.startswith('https://')
     assert hasattr(config, 'API_TOKEN')
-    assert len(config.API_TOKEN) > 10
+    # G-1（2026-08-10）：token 仅允许来自环境变量/.env，代码库不得内嵌默认值
+    _cfg_src = open(os.path.join(os.path.dirname(TEST_DIR), 'pipeline', 'config.py'), encoding='utf-8').read()
+    assert 'RMYAF1H7O8O4N1Q2B6J0F1F2' not in _cfg_src, 'config.py 内嵌 csQAQ token（G-1）'
+    assert len(config.API_TOKEN) > 10, 'CSQAQ_API_TOKEN 未配置（需 .env 或环境变量）' 
 check('config loads with csQAQ settings', t_config)
 
 print('[Database]')
@@ -336,6 +339,13 @@ def t_advice():
     a = _portfolio_advice(True, 100.0, 10, 80.0, mk(pct=15, z=-1.2, th=45), market_th=50, sentiment_score=85, market_30d_change=-8.0)
     assert a['action'] == '暂缓补仓', a['action']
     assert '阴跌中继' in a['reason'], a['reason']
+    # E-1(2026-08-10) 止损/补仓互斥: 阴跌中继(sent<80) + 深度低估 + 融合buy → 先止损再观察
+    a = _portfolio_advice(True, 100.0, 10, 80.0, mk(pct=15, z=-1.2, th=45, fusion='buy'), market_th=50, sentiment_score=60, market_30d_change=-8.0)
+    assert a['action'] == '先止损再观察', a['action']
+    assert a['stop_plan']['sell_action'] == 'reduce', a['stop_plan']
+    # 恐慌深跌 V型底(sent>=80, m<=-15) 不受互斥影响，仍可提前补
+    a = _portfolio_advice(True, 100.0, 10, 80.0, mk(pct=15, z=-1.2, th=45, fusion='buy'), market_th=50, sentiment_score=85, market_30d_change=-18.0)
+    assert a['action'] == '可分批补仓', a['action']
     # 深度低估但大盘TH<45 → 暂缓补仓
     a = _portfolio_advice(True, 100.0, 10, 80.0, mk(pct=15, z=-1.2, th=45), market_th=40, sentiment_score=60)
     assert a['action'] == '暂缓补仓', a['action']
@@ -2173,22 +2183,29 @@ check('大盘 401 后 bind 重试成功', t_market_401_rebind_retry)
 
 print('[F-1/F-2: 一键执行录入 + 执行复盘对照 (2026-08-08)]')
 def t_report_exec_btn():
-    """F-1: 单品报告渲染含「按建议记录执行」按钮（决策动作默认映射 buy/hold/reduce/sell，watch 类信号→观望）。"""
+    """F-1: 单品报告渲染含「按建议记录执行」按钮（决策动作默认映射 buy/hold/reduce/sell，watch 类信号→观望）。
+    2026-08-10 语义修正：未持仓（无 is_holding/holding_action）时仅 buy 类动作有按钮，avoid/sell/reduce 一律观望；
+    持仓（is_holding=True 或 holding_action 存在）时才显示减仓/清仓按钮。"""
     from webapp.main import templates
-    def _render(action, label="已到买点"):
+    def _render(action, label="已到买点", **extra):
         return templates.get_template("partials/analysis.html").render(
             name="测试|AK", price_rmb=55.5,
-            fusion_decision={"action": action, "action_label": label})
+            fusion_decision={"action": action, "action_label": label}, **extra)
     h = _render("buy")
     assert "按建议记录执行" in h, h[:500]
     assert 'data-action="buy"' in h and 'data-name="测试|AK"' in h, h[:500]
     assert 'data-price="55.50"' in h, h[:500]
-    assert 'data-action="reduce"' in _render("reduce")
-    assert 'data-action="sell"' in _render("sell")
     assert 'data-action="hold"' not in _render("watch")
     assert "按建议记录执行" not in _render("watch")  # F-1.3: 观望类无按钮
     assert "无需记录" in _render("watch")  # 提示观望无需记录
-    assert 'data-action="sell"' in _render("avoid")
+    # 未持仓：减仓/清仓无意义，不渲染按钮
+    assert "按建议记录执行" not in _render("reduce")
+    assert "按建议记录执行" not in _render("sell")
+    assert "按建议记录执行" not in _render("avoid")
+    # 持仓：减仓/清仓按映射渲染
+    assert 'data-action="reduce"' in _render("reduce", is_holding=True)
+    assert 'data-action="sell"' in _render("sell", is_holding=True)
+    assert 'data-action="sell"' in _render("avoid", is_holding=True)
     h2 = templates.get_template("partials/analysis.html").render(name="X", price_rmb=1.0)
     assert "按建议记录执行" not in h2  # 无决策不显示
 check("F-1 单品报告按建议执行按钮渲染", t_report_exec_btn)
@@ -2581,6 +2598,29 @@ def t_http_api_smoke():
         db._SCHEMA_INIT_PATHS.clear()
         shutil.rmtree(tmp, ignore_errors=True)
 check('P1.2 web readonly API smoke', t_http_api_smoke)
+
+
+print('[C-2: 启动配置断言 (2026-08-10)]')
+def t_startup_config():
+    """C-2: 防 reload=True 事故回归 + 关键路由完整性 + DB 预热可用（纯离线）。"""
+    # 2026-08-10 事故：uvicorn reload=True 在 Windows 上导致 Playwright 采集全灭，CI 未捕获
+    _rs = open(os.path.join(os.path.dirname(TEST_DIR), 'run_server.py'), encoding='utf-8').read()
+    # 只检查 uvicorn.run(...) 调用参数（文件注释允许出现 reload=True 字样）
+    _uv = _rs.find('uvicorn.run(')
+    assert _uv != -1, 'run_server.py 未找到 uvicorn.run 调用（C-2）'
+    _end = _rs.find(')', _uv)
+    _call = _rs[_uv:_end]
+    assert 'reload=False' in _call, f'uvicorn.run 必须显式 reload=False（C-2）: {_call}'
+    assert 'reload=True' not in _call, f'uvicorn.run 不得 reload=True（C-2）: {_call}'
+    from webapp.main import app
+    _paths = {r.path for r in app.routes}
+    for _p in ['/', '/search', '/watchlist', '/api/market/refresh', '/api/items/analyze',
+               '/api/watchlist/batch-scan-selected', '/api/discover/refresh-item']:
+        assert _p in _paths, f'关键路由缺失: {_p}（C-2）'
+    from pipeline import db as _db
+    _conn = _db.get_conn()  # DB schema 预热（run_server 启动同款路径）
+    _conn.close()
+check('C-2 启动配置断言（reload/路由/DB 预热）', t_startup_config)
 
 print(f'=== Results: {passed} passed, {failed} failed, {skipped} skipped ===')
 if failures:

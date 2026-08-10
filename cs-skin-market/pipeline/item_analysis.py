@@ -351,7 +351,6 @@ def _analyze_cycle(prices, sentiment_factor=0.0, supply=None):
     elif ma7 > ma30 and 30 <= pct_current <= 65:
         cyc.phase = "markup"
         cyc.phase_label = "拉升期"
-        cyc.phase_label = "拉升期"
         cyc.phase_description = "价格在合理区间持续上行"
         cyc.phase_strategy = "持有为主，临近高位减仓"
         cyc.phase_confidence = 60
@@ -540,15 +539,7 @@ def analyze_probability(prices, trend_score=None, whale_prob=0, cycle_phase="unk
     # Expected return based on Z-score mean reversion (展示口径，不参与 value 计权)
     exp_ret = -z * 3.0  # rough: Z=-2 -> +6% expected return
 
-    # Timeframe adjustments
-    prob.prob_up_3d  = round(base_up * 1.05, 1)
-    prob.prob_up_7d  = round(base_up * 1.10, 1)
-    prob.prob_up_30d = round(base_up * 1.15, 1)
-
-    prob.prob_down_3d  = round(100 - prob.prob_up_3d, 1)
-    prob.prob_down_7d  = round(100 - prob.prob_up_7d, 1)
-    prob.prob_down_30d = round(100 - prob.prob_up_30d, 1)
-
+    # H-2（2026-08-10）：首段 prob_up/down 赋值被多特征修正后重算覆盖（死代码），已移除
     prob.prob_range_3d  = round(abs(z) * 5, 1)
     prob.prob_range_7d  = round(abs(z) * 8, 1)
     prob.prob_range_30d = round(abs(z) * 15, 1)

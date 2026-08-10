@@ -19,6 +19,7 @@ Fusion: percentile_90d + corrected trend health -> standardized action.
 
 from __future__ import annotations
 
+import os
 import statistics
 from dataclasses import dataclass, field
 from .config import THRESHOLDS as T
@@ -898,7 +899,9 @@ def compute_fusion_decision(percentile_90d, th, liquidity_score=50, zscore_90d=0
             fd.deduction_sources.append("cycle_distribution")
 
     elif cycle_phase == "consolidation":
-        if fd.action == "buy":
+        # A1-1（2026-08-10）回测开关：CS_ENGINE_NO_CONSOLIDATION_DOWNGRADE=1 时不移除洗盘期基础 buy 降级
+        # （A/B 实验用，默认保持线上行为；结论见 decision-log 2026-08-10 A1-1 条目）
+        if fd.action == "buy" and not os.environ.get("CS_ENGINE_NO_CONSOLIDATION_DOWNGRADE") == "1":
             fd.action = "watch"
             fd.action_label = "🟡 周期洗盘·观望"
             fd.action_detail = "周期洗盘期方向不明，不宜追买，先观察等待突破。"

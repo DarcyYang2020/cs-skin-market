@@ -87,6 +87,13 @@ def run_checks(db_path=None):
             bad.append(f"覆盖{n}<预期{expect}*0.85")
         if age > 1:
             bad.append(f"latest={d} 距今{age}天")
+        # B-5（2026-08-10）失败品清单：当日未覆盖的基线品逐品列出，便于排查
+        miss = _q(c, """SELECT i.name FROM items i
+            WHERE i.good_id > 0 AND i.id IN (SELECT DISTINCT item_id FROM price_history WHERE in_sale_count IS NOT NULL AND in_sale_count > 0)
+              AND i.id NOT IN (SELECT DISTINCT item_id FROM price_history WHERE date = ?) ORDER BY i.id""", (d,))
+        miss = [m[0] for m in miss if m[0] != "__ERR__"]
+        if miss:
+            bad.append(f"缺{len(miss)}品" + (f": {', '.join(miss[:10])}" + ("…" if len(miss) > 10 else "")))
         rows.append(("单品K线", "FAIL" if bad else "PASS",
                      f"{d} 覆盖{n}/{expect}品" + (f" | 异常: {'; '.join(bad)}" if bad else "")))
     else:
@@ -102,6 +109,13 @@ def run_checks(db_path=None):
             bad.append(f"有在售量{n}<预期{expect}*0.85")
         if age > 1:
             bad.append(f"latest={d} 距今{age}天")
+        # B-5（2026-08-10）失败品清单：当日无在售量的基线品逐品列出
+        miss = _q(c, """SELECT i.name FROM items i
+            WHERE i.good_id > 0 AND i.id IN (SELECT DISTINCT item_id FROM price_history WHERE in_sale_count IS NOT NULL AND in_sale_count > 0)
+              AND i.id NOT IN (SELECT DISTINCT item_id FROM price_history WHERE date = ? AND in_sale_count > 0) ORDER BY i.id""", (d,))
+        miss = [m[0] for m in miss if m[0] != "__ERR__"]
+        if miss:
+            bad.append(f"缺{len(miss)}品" + (f": {', '.join(miss[:10])}" + ("…" if len(miss) > 10 else "")))
         rows.append(("在售量", "FAIL" if bad else "PASS",
                      f"{d} 有在售量{n}/{expect}品" + (f" | 异常: {'; '.join(bad)}" if bad else "")))
     else:
@@ -119,7 +133,10 @@ def run_checks(db_path=None):
                  f"greedy={g}点 card={k}点" + (f" | 异常: {'; '.join(bad)}" if bad else "")))
 
     # 5. 全市场快照（基线 2026-08-04 过滤后 1468 品）
-    snap = _q(c, "SELECT MAX(date) d, COUNT(*) n FROM market_snapshot")
+    # B-5（2026-08-10）修复：原 MAX(date)+全表 COUNT(*) 口径混用，多日累计后行数虚增
+    # （3 天 x1468=4404 触发 >3500 误报连续 3 天）；改为统计最新日快照行数
+    snap = _q(c, """SELECT s.date d, COUNT(*) n FROM market_snapshot s
+                    WHERE s.date = (SELECT MAX(date) FROM market_snapshot)""")
     if snap and snap[0][0] != "__ERR__":
         d, n = snap[0]
         age = _days_since(d)

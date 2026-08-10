@@ -399,6 +399,14 @@ def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th
             advice["suggest"] = (f"当前处中跌恐慌：sent={sent:.0f}、大盘30日跌幅{market_30d_change:.1f}%；"
                                  f"历史同场景易阴跌（14d均-8.3%），建议等大盘30日跌幅≥15%的深跌指纹，"
                                  f"或等大盘企稳(TH≥45)+融合buy确认再补")
+        # E-1（2026-08-10）止损/补仓互斥：止损矩阵判定减半/残余升级止损时，补仓让位于止损。
+        # 与「中跌恐慌暂缓」互补——后者仅限 sent>=80 恐慌场景，本互斥覆盖阴跌中继全情绪区间
+        elif _sp and _sp.get("sell_action") in ("sell", "reduce") and _sp.get("state") != "供给扩张":
+            advice["action"] = "先止损再观察"
+            advice["reason"] = (f"浮亏{pnl_pct:.0f}%，止损评估为「{_sp['action']}」（{_sp['state']}），"
+                                f"先执行止损释放风险，暂不补仓")
+            advice["suggest"] = (f"{_sp['reason']}；补仓需待止损执行完毕、大盘止跌企稳"
+                                 f"（TH≥45）且融合决策放行后再评估")
         # 半山腰（pct 25~40）：14d胜率仅28%，不构成补仓点
         elif 25 < pct <= 40:
             advice["action"] = "暂缓补仓"

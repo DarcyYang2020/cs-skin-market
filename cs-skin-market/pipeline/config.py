@@ -16,10 +16,31 @@ DATA_DIR = ROOT_DIR / "data"
 # 环境变量 CS_MODEL_DB 可覆盖 DB 路径，默认 data/market.db
 DB_PATH = Path(os.environ.get("CS_MODEL_DB", str(DATA_DIR / "market.db")))
 
+# ---- .env 加载（2026-08-10 G-1）：凭据仅来自环境变量/.env，代码库不落默认值 ----
+def _load_dotenv():
+    """轻量 .env 解析（无第三方依赖）：仅填充未设置的环境变量。"""
+    try:
+        p = Path(__file__).resolve().parent.parent / ".env"
+        if not p.exists():
+            return
+        for line in p.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            k, v = line.split("=", 1)
+            k, v = k.strip(), v.strip().strip('"').strip("'")
+            if k and k not in os.environ:
+                os.environ[k] = v
+    except Exception:
+        pass
+
+
+_load_dotenv()
+
 # ---- csQAQ API ----
 CSQAQ_BASE = "https://api.csqaq.com/api/v1"
-# CSQAQ_API_TOKEN 环境变量优先，缺省用内置 token
-API_TOKEN = os.environ.get("CSQAQ_API_TOKEN", "RMYAF1H7O8O4N1Q2B6J0F1F2")
+# G-1（2026-08-10）：原内置默认 token 已从代码库移除；未配置时采集侧给出明确报错
+API_TOKEN = os.environ.get("CSQAQ_API_TOKEN", "").strip()
 API_RATE_LIMIT = 1.1  # seconds between calls (1 req/sec)
 
 # ---- Four-factor model weights ----
@@ -189,6 +210,7 @@ PARAM_REGIME = {
         "proximity 深跌确认口径（TH≥70 虚构达标线废弃，2026-08-09；信息层：监控 near_buy / 自选排序读取，不参与 action 决策）",
         "守卫1 大盘走弱拦截（A/B 重放证实正优化，2026-08-09）",
         "四项审计落地（周期权重反转 / panic 分级仓位修复 / 概率去 z 化 / 供给降仓证伪，2026-08-10）",
+        "洗盘降级 A/B 验证（2026-08-10）：移除 consolidation buy 降级对 365d 三件套零影响，保留现状；开关 CS_ENGINE_NO_CONSOLIDATION_DOWNGRADE 保留",
     ],
     "monitors": [
         "A 独立恐慌市场事件≥3（当前 2，自然积累）",
@@ -198,6 +220,7 @@ PARAM_REGIME = {
     "iteration_note": "参数迭代纪律：回测先行 + 三件套记录（信号数/胜率/期望增量）+ 文档同步；新信号族须过 A2 三件套（walk-forward + 聚类 + 置换检验）",
     "amendments": [
         "2026-08-09 第一性原理+回测复核（369 信号，data/item_backtest_full_2025.json）：低估区 TH 为反向信号，原 proximity 阈值 TH≥70 在样本内 0 达成，系虚构达标线，已废弃；引擎 action 判定未改（proximity 不参与守卫/信号族/买点，TH 实际工作区间 2-69，deep 阈值 ≥35 / panic 触发均 th<35），但 proximity 被监控 near_buy（score≥60）与自选页排序读取，三区口径属信息层行为变更。守卫1 market_weak（market_th<45 且 mchg30<0 禁买）经 A/B 重放（95 品同窗口 335 信号：豁免后 +29 信号全负贡献，win 70.4→66.4 / avg14 15.17→13.61 全面变差）证实为正优化，保留并纳入参数台账。buy_distance TH_REF=55 三区口径（<35 黄金坑 / 35-54 摩擦带 / ≥55 趋势确认）为对照标准。",
+        "2026-08-10 系统全貌评估落地（E-1/B-1/G-1/B-5/C-2/H-1/H-2 + A1-1 A/B）：E-1 止损/补仓互斥——止损矩阵判定减半/残余升级止损时补仓让位于止损（原阴跌中继 sent<80 场景双卡并存矛盾，补 t_f37 用例）；B-1 price_history 增量写——历史行不可覆盖，坏 chart 只污染当日行，force 模式留审计修复路径；G-1 csQAQ token 环境变量化（原内嵌默认值已移除，凭据走 .env，collector 缺配置报错）；B-5 健康检查——快照行数改按最新日统计（原 MAX(date)+全表 COUNT(*) 口径虚增导致 3 天误报 4404>3500），K线/在售量覆盖 FAIL 附失败品清单；C-2 启动配置断言（reload=False 回归防护 + 关键路由 + DB 预热）；H-1/H-2 文档同步与死代码清理；A1-1 A/B（365d 96 品 332 信号：移除洗盘降级后信号数/胜率/期望完全一致，仅 1 条族标签 accumulate→oversold 且收益相同，结论=保留现状）。",
         "2026-08-10 四项审计落地（基线改为 365 天窗口：price_history 按保留策略仅存 2025-08-10 起，旧 2025-01-01 基线不可复现；新基线 332 信号等权口径与旧引擎 365d 完全一致 win14 69.9%/+15.36）：① 周期权重反转（consolidation 2.5 > accumulation 2.0 > markup 1.2，原吸筹>拉升>洗盘）——365d 回放洗盘期最优（win14 82.2%/+18.9、win30 +30.6），吸筹期（MA7>MA30 已启动）win30 +15.8 平庸、拉升期（追高）win14 63% 最差；② panic_resonance 跳过分级仓位（保持 fam.limit=0.30）——修复分级覆盖族级参数的架构 bug（panic 低 TH 使 th_boost 负值推高 value，换档即错配降仓），反事实 panic 0.30→0.20 使 wavg14 19.03→21.71 即 -2.68；③ 概率去 z 化——base_up 改由波动率 regime 主导（stable 65 / normal 55 / volatile 48 / high_volatile 42，TH<30→50），消除与位置 40% 的双计权，Z 仅保留展示口径；④ 供给收缩族维持 limit=0.10——组合模拟证伪降仓（降 0.05 致组合 -12.9pp，最大族被砍半）。加权验证：旧→v3 wavg14 19.71→20.48 / wwin14 72.9→74.4、wavg30 22.07→23.27 / wwin30 64.0→65.8；组合模拟 旧 +86.03%/-13.36% → v3 +83.65%/-13.05%（±2pp 噪音，回撤改善）。中间版废弃：v1（甜点区映射错配 panic，wavg30 20.09 劣化）、v2（supply 0.05 组合 -12.9pp）。实验产物归档 data/_exp_old_engine_365d.json / _exp_new_engine_365d.json / _exp_new_engine_v2_365d.json / _exp_v3_365d.json / _exp_v3_benchmark.json。",
     ],
 }

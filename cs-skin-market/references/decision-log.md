@@ -1957,3 +1957,50 @@ vs 池内等权 +509.75%/-54.12% vs 大盘 -4.02%；引擎边际价值在回撤�
 - `webapp/main.py` 3 处「分析失败: {str(e)}」改为 `(str(e) or type(e).__name__)`，空消息异常也能显示类型，避免再次出现无信息错误。
 
 **验证**：重启后自选单品分析 9.1s 出报告；批量扫描 1/1 完成并写 latest；冒烟测试 90 passed。
+
+---
+
+## 修复：未持仓物品误显示「轻仓/止损」建议（2026-08-10）
+
+**现象**：AWP | 浮生如梦（崭新出厂）未持仓，报告「建议动作」却显示清仓/止损，并带「按建议记录执行」按钮。
+
+**根因**：`partials/analysis.html` 一键执行段中 `engine_exec` 无条件把 `avoid`→`sell`、`reduce`→`reduce`；未持仓时
+`holding_action=None`，模板回落到 `engine_exec`，导致未持仓物品也渲染清仓/止损按钮。历史原因：F-1.3 只对
+watch/hold 做「无按钮」处理，未区分持仓/未持仓。
+
+**修复**：
+- `analysis_service.build_analysis_ctx` 返回 `is_holding`（holding_ctx 有持仓才为 True）。
+- 模板：未持仓时 `engine_exec` 仅映射 buy/oversold_buy→buy，其余一律 hold（观望、无按钮）；持仓时保持原映射
+  （减仓/清仓/止损按钮 + 持仓风控优先）。
+- 同步更新测试 `t_report_exec_btn`：未持仓 buy→建仓按钮 / watch→观望 / sell/avoid/reduce→无按钮；持仓
+  sell/avoid→清仓、reduce→减仓。
+
+**验证**：未持仓+avoid→观望无按钮；未持仓+buy→建仓+建议仓位；持仓+avoid→清仓/止损+按钮；冒烟测试 90 passed。
+
+
+---
+
+## 系统全貌评估第一批落地：E-1 / B-1 / G-1 / B-5 / C-2 / H-1 / H-2 + A1-1 A/B（2026-08-10，P0 批次）
+
+**背景**：`references/system-evaluation-2026-08-10.md` 七角度评估（27 项问题，全部只读核验）后按落地路线执行第一批 P0 + 顺手项。除 A1-1 外均为计算/工程/文档层，不改变引擎信号语义（A1-1 经 A/B 证实无差异后保留现状）。
+
+**E-1 止损/补仓互斥（P0，计算层）**：`_stop_loss_plan` 与 `_portfolio_advice` 独立计算——阴跌中继（大盘 30 日 -15%~-5% 且 sent<80）场景下止损矩阵给「减半止损」、补仓路径给「可分批补仓」，两卡并存矛盾（原「中跌恐慌暂缓」仅覆盖 sent>=80）。修复：`batch_scan.py` 补仓分支新增互斥——止损矩阵判定减半/残余升级止损（sell_action ∈ sell/reduce 且非供给扩张）时，动作改为「先止损再观察」，补仓让位于止损；恐慌深跌 V 型底（sell_action=None）不受影响仍可提前补。t_f37 扩展 2 用例。
+
+**B-1 price_history 增量写（P0，数据层）**：`save_price_history_batch` 默认从「90 天整窗 INSERT OR REPLACE」改为 `incremental`——只写 date>库内 max(date) 的新行 + 当日最新行更新（仅改 price/in_sale，保留 volume/created_at），历史行不可覆盖（单次坏 chart 只污染当日行，防 8/9 串品事故复发）；变更记 `data/price_history_write_log.jsonl`；`mode="force"` 保留全量覆盖供审计回填（须人工确认）。6 处调用方（run_daily_collect / run_daily_monitor / analysis_service / main.py×3）走默认增量。
+
+**G-1 csQAQ token 环境变量化（P0，安全）**：`config.py` 内嵌默认 token（已提交 git）移除；新增轻量 `.env` 加载（无第三方依赖）；token 仅来自环境变量/.env（`.env` 已 gitignore，已补 `CSQAQ_API_TOKEN`）；`collector._api_call` 缺配置时报错不静默；测试断言改为「代码库不得内嵌 token + 运行环境已配置」。**轮换动作需用户在 csQAQ 平台更换后更新 `.env`**。
+
+**B-5 健康检查修正（P2）**：① 全市场快照行数口径修复——原 `MAX(date)+全表 COUNT(*)` 混用导致多日累计虚增（3 天×1468=4404>3500 连续 3 天误报），改为按最新日计数（1468 行 PASS，非池扩容问题）；② 单品K线/在售量覆盖 FAIL 附失败品清单（逐品名，便于排查）。
+
+**C-2 启动配置断言（P1，工程）**：新增 `t_startup_config`——`uvicorn.run` 必须显式 `reload=False`（2026-08-10 reload 事故回归防护）、关键路由完整性、DB schema 预热可用。
+
+**H-1/H-2 文档与卫生（P2）**：根 AGENTS.md 评级口径 4 分制→10 分制（S>=8/A>=6.5/B>=4.5）、main.py 行数 2386→2615；`item_analysis.py` 移除首段被覆盖的死赋值（prob_up/down 544-550）与 `phase_label="拉升期"` 重复行；positions 表标注历史遗留保留（无读写，删表风险大于收益）。
+
+**A1-1 洗盘降级 A/B（P0，回测先行）**：新增开关 `CS_ENGINE_NO_CONSOLIDATION_DOWNGRADE=1`（默认行为不变）。365d 窗口 96 品回放两臂对比（实验产物 `data/_exp_consolidation_base.json` / `_exp_consolidation_nodowngrade.json` 归档）：
+- 三件套完全一致：信号 332=332、win14 69.9%=69.9%、avg14 +15.36=+15.36、avg30 +22.6=+22.6；
+- 唯一差异：1 条信号族标签 accumulate→oversold（M4A1消音版|印花集 2026-02-12），fwd14/net14 完全相同（+3.89/+1.89）；
+- **结论：移除降级在现有样本上零增益零损失，保留线上行为（洗盘期谨慎语义），开关保留供 188 品池/未来窗口复用。**
+
+**验证**：冒烟测试 92 passed / 0 failed；`python run_data_health.py` 快照误报消除、失败品清单生效；B-1 增量语义单测通过（历史防覆盖/当日更新/force 覆盖/非法 mode）。
+
+**产物变更**：未改动回放产物（item_backtest_full_2025.json 等），无需重跑 sync；新增 `data/price_history_write_log.jsonl`（B-1 变更日志）。

@@ -9,6 +9,7 @@ Tables: items, price_history, market_index, snapshots, positions, backtest_resul
 """
 
 
+import json
 import sqlite3
 import time
 
@@ -293,6 +294,7 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         created_at TEXT DEFAULT (datetime('now','localtime')))""")
 
 
+    # H-2（2026-08-10）：positions 表为历史遗留（仅建表无读写，库内 1 行），保留不删以免 schema 变更风险
     conn.execute("""CREATE TABLE IF NOT EXISTS positions (
 
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -547,20 +549,78 @@ def upsert_item(conn, name, weapon="", skin="", wear="",
     return cur.lastrowid
 
 
-def save_price_history_batch(conn, item_id, daily_bars):
+def save_price_history_batch(conn, item_id, daily_bars, mode="incremental"):
     """Save 90-day K-line data (Bar objects) to price_history table.
     daily_bars: list of Bar objects with .date, .close, .volume, .in_sale_count, .survive
+
+    mode（2026-08-10 B-1 增量写，防串品污染历史）:
+      incremental（默认）: 只写「date > 库内 max(date)」的新行 + 当日最新行更新；
+        历史行不可被覆盖——单次坏 chart 只污染当日行；变更记 data/price_history_write_log.jsonl。
+      force: 原全窗口 INSERT OR REPLACE 语义（审计回填/串品修复专用，须人工确认后调用）。
+    返回 (n_insert, n_update)。
     """
+    if mode not in ("incremental", "force"):
+        raise ValueError(f"save_price_history_batch mode 非法: {mode!r}")
+    n_ins = n_upd = 0
+    log = []
+    today = datetime.now(TZ_BJ).date().isoformat()
+
+    def _vals(bar):
+        return (item_id, bar.date, round(bar.close, 2),
+                int(bar.volume) if bar.volume else 0,
+                int(bar.survive) if bar.survive else 0,
+                int(bar.in_sale_count) if getattr(bar, "in_sale_count", 0) else 0)
+
+    if mode == "force":
+        for bar in daily_bars:
+            if not bar.date or not bar.close or bar.close <= 0:
+                continue
+            conn.execute(
+                "INSERT OR REPLACE INTO price_history (item_id, date, price_rmb, volume_day, volume_total, in_sale_count) VALUES (?,?,?,?,?,?)",
+                _vals(bar))
+            n_ins += 1
+            log.append(("insert", bar.date, round(bar.close, 2)))
+        _append_price_write_log(item_id, mode, n_ins, n_upd, log)
+        return n_ins, n_upd
+
+    r = conn.execute("SELECT MAX(date) m FROM price_history WHERE item_id=?", (item_id,)).fetchone()
+    max_date = r[0] if r and r[0] else ""
     for bar in daily_bars:
         if not bar.date or not bar.close or bar.close <= 0:
             continue
-        vol_day = int(bar.volume) if bar.volume else 0
-        vol_total = int(bar.survive) if bar.survive else 0
-        in_sale = int(bar.in_sale_count) if getattr(bar, "in_sale_count", 0) else 0
-        conn.execute(
-            "INSERT OR REPLACE INTO price_history (item_id, date, price_rmb, volume_day, volume_total, in_sale_count) VALUES (?,?,?,?,?,?)",
-            (item_id, bar.date, round(bar.close, 2), vol_day, vol_total, in_sale)
-        )
+        if bar.date > max_date:
+            conn.execute(
+                "INSERT OR REPLACE INTO price_history (item_id, date, price_rmb, volume_day, volume_total, in_sale_count) VALUES (?,?,?,?,?,?)",
+                _vals(bar))
+            n_ins += 1
+            log.append(("insert", bar.date, round(bar.close, 2)))
+        elif bar.date == today and bar.date == max_date:
+            # 当日最新行更新（晚间重采/当日修正）：仅改 price/in_sale，保留 volume/created_at
+            conn.execute(
+                "UPDATE price_history SET price_rmb=?, in_sale_count=? WHERE item_id=? AND date=?",
+                (round(bar.close, 2), int(bar.in_sale_count) if getattr(bar, "in_sale_count", 0) else 0,
+                 item_id, bar.date))
+            n_upd += 1
+            log.append(("update", bar.date, round(bar.close, 2)))
+        # 其余历史行跳过：防单次坏 chart 整段覆盖落库（2026-08-08/09 串品事故根因）
+    if log:
+        _append_price_write_log(item_id, mode, n_ins, n_upd, log)
+    return n_ins, n_upd
+
+
+def _append_price_write_log(item_id, mode, n_ins, n_upd, log):
+    """B-1 变更日志（2026-08-10）：记录增量写/强制写事件，供审计回溯。"""
+    try:
+        p = DATA_DIR / "price_history_write_log.jsonl"
+        with open(p, "a", encoding="utf-8") as f:
+            f.write(json.dumps({
+                "ts": datetime.now(TZ_BJ).isoformat(timespec="seconds"),
+                "item_id": item_id, "mode": mode,
+                "n_insert": n_ins, "n_update": n_upd,
+                "detail": [{"op": o, "date": d, "price": pr} for o, d, pr in log],
+            }, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
 
 
 def save_macro_snapshots(conn, rows):

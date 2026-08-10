@@ -86,6 +86,9 @@ class ItemData:
 def _api_call(method: str, path: str, body: dict | None = None) -> dict:
     """Call csQAQ API with rate-limit protection."""
     time.sleep(API_RATE_LIMIT)
+    if not API_TOKEN:
+        _log.error("CSQAQ_API_TOKEN 未配置：请在 cs-skin-market/.env 或环境变量中设置（G-1）")
+        return {"code": -1, "msg": "CSQAQ_API_TOKEN not configured (see .env)", "data": None}
     url = CSQAQ_BASE + path
     req = urllib.request.Request(url, method=method)
     req.add_header("ApiToken", API_TOKEN)

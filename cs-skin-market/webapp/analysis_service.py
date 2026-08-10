@@ -770,6 +770,7 @@ def build_analysis_ctx(analysis, kline_stale_days=None, kline_stale_date="",
         "price_zones": analysis.price_zones,
         "holding_advice": holding_advice,
         "holding_action": holding_action,
+        "is_holding": bool(holding_ctx and holding_ctx.get("holding")),
         "analysis_time": datetime.now(TZ_BJ).strftime("%Y-%m-%d %H:%M"),
         "in_watchlist": _in_wl,
     }

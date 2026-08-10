@@ -73,7 +73,12 @@
    F-1.3 (2026-08-08): 只给有意义的操作（建仓/补仓/减仓/清仓）出按钮；
    观望类（watch/hold）无按钮——没操作不记录，真实相反操作去自选页手动录入。#}
 {% if name and fusion_decision and fusion_decision.action %}
+{% if is_holding %}
 {% set engine_exec = {'buy':'buy','oversold_buy':'buy','watch':'hold','hold':'hold','reduce':'reduce','sell':'sell','avoid':'sell'}.get(fusion_decision.action, 'hold') %}
+{% else %}
+{# 2026-08-10 修复：未持仓物品只有建仓类动作有意义，avoid/watch 等不得显示清仓/止损或执行按钮 #}
+{% set engine_exec = {'buy':'buy','oversold_buy':'buy'}.get(fusion_decision.action, 'hold') %}
+{% endif %}
 {% set disp_exec = holding_action.action if holding_action else engine_exec %}
 {% set disp_label = holding_action.label if holding_action else {'buy':'建仓','oversold_buy':'建仓','reduce':'减仓','sell':'清仓/止损','avoid':'清仓/止损'}.get(fusion_decision.action, '观望') %}
 {% set disp_signal = holding_action.signal if holding_action else (fusion_decision.action_label or '') %}
