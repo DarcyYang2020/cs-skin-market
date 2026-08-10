@@ -2105,3 +2105,20 @@ watch/hold 做「无按钮」处理，未区分持仓/未持仓。
 **影响面**：纯工程搬移，渲染输出逐字节不变（函数体原样切出）；引擎评分/决策零改动；不触碰回放产物与参数台账。
 
 **验证**：新增 t_render_html（标题/表格/加粗/热度图/加自选按钮/svg 结构与空输入）；冒烟 98 passed / 0 failed；pyflakes 无告警。
+## C-1 拆模块第二批：discover/scan 后台任务按域拆分（2026-08-10，工程）
+
+**背景**：第一批切出渲染纯函数后，main.py 仍 2433 行，其中 discover 任务域（~800 行）+ 批量扫描任务域（~280 行）是膨胀主体。本批按域拆到 pipeline/，路由壳保留在 main.py。
+
+**落地**：
+- 新建 `pipeline/discover_tasks.py`（521 行）：`_discover_progress` 内存字典 + `DISCOVER_WEAPONS` 武器池 + 进度落盘/完成回收 + `_run_discover_task`（按品扫描）/`_run_discover_pool_task`（池扫描）/`_run_discover_scan_all_task`（全武器扩容扫描）/`_save_discover_artifacts`/`_settle_discover_items`；
+- 新建 `pipeline/scan_tasks.py`（334 行）：`_scan_progress` 内存字典 + `_resolve_good_id`（DB→Playwright 兜底）+ 进度落盘 + `_scan_item`/`_run_batch_scan_task`；
+- `webapp/main.py` 2433 → 1585 行（-848）：只剩路由 + 页面编排 + `_prune_progress`/`_active_task`（仅路由使用）；任务模块从 main import 回来供路由调用；
+- 函数体原样搬移（含局部 import），命名保留 `_` 前缀（与 analysis_service._today_str 导出风格一致）；行为零变化。
+
+**影响面**：纯工程搬移，引擎评分/决策零改动；不触碰回放产物与参数台账。
+
+**验证**：
+- 冒烟 98 passed / 0 failed；pyflakes 无告警；
+- **Playwright 端到端回归（首次引入）**：服务重启加载新代码后实测——/discover 池扫描 120 品完整跑通（热力图/Top10/追踪更新）、/watchlist 批量扫描 7/7 成功（结果渲染正常）、/monitor /search /replay 页面无 500。任务路径（import 链 + 浏览器单例 + 进度落盘）搬移后无回归。
+
+**产物变更**：本次实测更新 data/discover_latest.json（扫描时间戳/结果）与 data/pool_maintenance_log.jsonl（池维护留痕）；未改动回放产物。

@@ -14,3 +14,4 @@
 {"type": "discover", "task_id": "discover_1786286108", "note": "completed", "candidates": 170, "ok": 96, "error": 0, "skipped": 74, "market_th": 37, "pool_size_now": 188, "ts": "2026-08-09 22:35:13"}
 {"type": "discover", "task_id": "discover_1786327103", "note": "completed", "candidates": 170, "ok": 120, "error": 0, "skipped": 50, "market_th": 37, "pool_size_now": 188, "ts": "2026-08-10 09:58:25"}
 {"type": "discover", "task_id": "discover_1786331849", "note": "completed", "candidates": 170, "ok": 119, "error": 0, "skipped": 51, "market_th": 37, "pool_size_now": 188, "ts": "2026-08-10 11:17:40"}
+{"type": "discover", "task_id": "discover_1786350532", "note": "completed", "candidates": 170, "ok": 120, "error": 0, "skipped": 50, "market_th": 37, "pool_size_now": 188, "ts": "2026-08-10 16:28:59"}
