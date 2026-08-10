@@ -1114,14 +1114,21 @@ def _item_report_link(name):
     return ('<a href="javascript:void(0)" onclick="showItemReport(\'' + esc + '\')" '
             'style="color:var(--accent);text-decoration:none;cursor:pointer;font-weight:600;">' + str(name) + '</a>')
 
-async def _scan_item(row, idx, ms, market_th_score, sentiment_score, total_assets=0.0, force_refresh=False):
-    """批量扫描单个物品（可并发调用，共享 Playwright 浏览器多 page）。"""
+async def _scan_item(row, idx, ms, market_th_score, sentiment_score, total_assets=0.0, force_refresh=False, good_id_override=None):
+    """批量扫描单个物品（可并发调用，共享 Playwright 浏览器多 page）。
+
+    2026-08-10：good_id_override 由任务层在搜索串行阶段预解析后传入，
+    采集/分析阶段可并行（锚校验兜底脏 chart），避免搜索 UI 并发串品。
+    """
     import json as _json
     from pipeline.batch_scan import _portfolio_advice, summarize_buy_distance
     from pipeline import item_analysis
     item_id, name, holding, avg_cost, qty = row["id"], row["name"], row["holding"] or 0, row["avg_cost"] or 0, row["quantity"] or 0
     try:
-        good_id, _ = await _resolve_good_id(name)
+        if good_id_override:
+            good_id = good_id_override
+        else:
+            good_id, _ = await _resolve_good_id(name)
         if good_id == 0:
             return dict(name=name, holding=holding, error="未找到")
         item = await resolve_item(good_id, name, KLINE_FRESH_BATCH, force_refresh=force_refresh)
@@ -1253,8 +1260,13 @@ async def _scan_item(row, idx, ms, market_th_score, sentiment_score, total_asset
         return dict(name=name, holding=holding, error=str(e)[:100])
 
 
-async def _run_batch_scan_task(scan_id: str, rows: list, force_refresh=False):
-    """批量扫描：串行共享浏览器采集（2026-08-04 起，并发页面导航会串出脏 chart 数据），结果排序 + 结构化缓存。
+async def _run_batch_scan_task(scan_id: str, rows: list, force_refresh=False, concurrency=2):
+    """批量扫描：搜索阶段串行 + 采集/分析阶段小并发（默认 2，可 1~3），结果排序 + 结构化缓存。
+
+    2026-08-10 提速设计：2026-08-04 曾因「并发页面导航串出脏 chart」改全串行；
+    现采集链路已有串品锚校验自愈（chart vs 悠悠锚不符→重试→清空回退 DB，不落脏数据），
+    故放开采集并发；搜索阶段（Playwright 下拉 UI）保持串行避免串品，good_id 由任务层预解析。
+    concurrency=1 即还原旧串行行为。
 
     整体 try/except：任何未预期异常也会置 done=True，避免前端弹窗无限轮询。
     """
@@ -1282,15 +1294,20 @@ async def _run_batch_scan_task(scan_id: str, rows: list, force_refresh=False):
         _scan_progress[scan_id]["total"] = total
         _scan_progress[scan_id]["name"] = "准备扫描..."
         _persist_scan_progress(scan_id)
-        # 串行采集：并发共享浏览器多 page 导航会把不同品的 chart/锚价串到一起
-        # （复现：AWP 火卫一 并发 chart 收盘 59.78/93.63 vs 串行 64.69；沙鹰 53.62 vs 36.20）
-        sem = asyncio.Semaphore(1)
+        # 2026-08-10 提速：搜索阶段串行（DB 秒回为主，Playwright 搜索兜底避免 UI 并发串品），
+        # 采集/分析阶段小并发（锚校验兜底脏 chart；并发高会加剧 csQAQ 限流，故 clamp 1~3）
+        sem_search = asyncio.Semaphore(1)
+        sem_fetch = asyncio.Semaphore(concurrency)
         done = 0
 
         async def _one(row):
             nonlocal done
-            async with sem:
-                res = await _scan_item(row, idx, ms, market_th_score, sentiment_score, total_assets=_total_assets, force_refresh=force_refresh)
+            async with sem_search:
+                _gid, _gt = await _resolve_good_id(row["name"])
+            async with sem_fetch:
+                res = await _scan_item(row, idx, ms, market_th_score, sentiment_score,
+                                       total_assets=_total_assets, force_refresh=force_refresh,
+                                       good_id_override=_gid)
                 done += 1
                 _scan_progress[scan_id]["current"] = done
                 if res:
@@ -1680,6 +1697,10 @@ async def api_watchlist_batch_scan_selected(request: Request):
     body = await request.json()
     ids = body.get("ids", [])
     force_refresh = bool(body.get("force_refresh", False))
+    try:
+        concurrency = min(3, max(1, int(body.get("concurrency", 2))))
+    except (TypeError, ValueError):
+        concurrency = 2
     if not ids:
         return HTMLResponse('<div class="card" style="padding:20px;">\u8bf7\u9009\u62e9\u7269\u54c1</div>')
     conn = db.get_conn()
@@ -1695,7 +1716,7 @@ async def api_watchlist_batch_scan_selected(request: Request):
     _prune_progress(_scan_progress)
     _scan_progress[scan_id] = {"current": 0, "total": len(rows), "name": "", "done": False, "html": "", "ts": time.time()}
     _persist_scan_progress(scan_id)
-    asyncio.create_task(_run_batch_scan_task(scan_id, rows, force_refresh=force_refresh))
+    asyncio.create_task(_run_batch_scan_task(scan_id, rows, force_refresh=force_refresh, concurrency=concurrency))
     html = '<div class="card" id="scan-progress-{sid}" data-scanid="{sid}"><div class="card-header"><span class="card-title">\u626b\u63cf\u8fdb\u5ea6</span></div><div class="card-body" id="scan-status-{sid}"><p style="text-align:center;padding:20px;">\u6b63\u5728\u51c6\u5907\u626b\u63cf... <span class="spinner"></span></p></div></div>'.format(sid=scan_id)
     return HTMLResponse(html)
 # ---- Batch Scan Progress Polling ----

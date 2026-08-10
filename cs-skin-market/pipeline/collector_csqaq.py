@@ -482,19 +482,11 @@ async def _fetch_item_detail_once(good_id: int):
             await page.goto(f'{CSQAQ_WEB}/goods/{good_id}', wait_until='domcontentloaded', timeout=25000)
         except Exception as _ge:
             _csq_log.warning(f"goto goods/{good_id} failed: {_ge}")
-        await _wait_chart(page, captured, key='charts')
-        # 悠悠锚优先：先用 DOM 价 + info/good 悠悠在售量 挑选 platform=2 的 chart，
-        # 防偶发捕获到 Buff/Steam chart（2026-08-08 钴蓝禁锢曾捕获 Steam 价 1187 vs 悠悠 824）
-        try:
-            yyyp_price_dom = await page.evaluate("() => { const el = document.querySelector('.ant-statistic-content-value'); if (el) return el.innerText.trim(); return ''; }")
-            if yyyp_price_dom:
-                _pd = float(yyyp_price_dom.replace(',', '').replace('¥', ''))
-                if _pd > 0:
-                    item.price_rmb = _pd
-        except Exception:
-            pass
+        # 2026-08-10 重排：先等 info/good API（权威锚：yyyp_sell_price + yyyp_sell_num），
+        # 再等 chart；DOM 价仅作 API 缺失时的兜底——DOM 选择器偶发命中非卖价 statistic
+        # （曾见 38.1 品抓成 8.1），用 API 价可避免选图/判脏被错误锚带偏。
         if not captured.get('detail'):
-            for _i in range(15):
+            for _i in range(20):
                 if captured.get('detail'):
                     break
                 await asyncio.sleep(0.1)
@@ -503,15 +495,21 @@ async def _fetch_item_detail_once(good_id: int):
                 _dd0 = json.loads(captured['detail'])
                 _gi0 = ((_dd0.get('data') or {}).get('goods_info')) or {}
                 item.sell_num_yyyp = int(_gi0.get('yyyp_sell_num', 0) or 0)
-                # 2026-08-09 锚兜底：DOM 价选择器失效（页面改版/加载时序）时，
-                # 回退 info/good 的 yyyp_sell_price，避免 chart 挑选无价格锚（防串品 chart 误入）。
-                if not item.price_rmb:
-                    try:
-                        _ysp0 = float(_gi0.get('yyyp_sell_price') or 0)
-                        if _ysp0 > 0:
-                            item.price_rmb = _ysp0
-                    except (TypeError, ValueError):
-                        pass
+                _ysp0 = float(_gi0.get('yyyp_sell_price') or 0)
+                if _ysp0 > 0:
+                    item.price_rmb = _ysp0
+            except Exception:
+                pass
+        # 2026-08-10：等待窗口 2.5s→5s（并发/限流下 platform=2 chart 偶发慢响应，
+        # 过早判空会误落 Buff/C5GAME，后者因在售量差异几乎必被锚校验拒绝）
+        await _wait_chart(page, captured, key='charts', timeout=5.0)
+        if not item.price_rmb:
+            try:
+                yyyp_price_dom = await page.evaluate("() => { const el = document.querySelector('.ant-statistic-content-value'); if (el) return el.innerText.trim(); return ''; }")
+                if yyyp_price_dom:
+                    _pd = float(yyyp_price_dom.replace(',', '').replace('¥', ''))
+                    if _pd > 0:
+                        item.price_rmb = _pd
             except Exception:
                 pass
         _best_chart = _pick_best_chart(captured.get('charts') or [], item.price_rmb, item.sell_num_yyyp)
@@ -520,6 +518,22 @@ async def _fetch_item_detail_once(good_id: int):
                 _extract_chart(item, json.loads(_best_chart))
             except Exception:
                 pass
+        # 2026-08-10：platform=2 偶发空响应，同平台重试一次（避免过早落 Buff/C5GAME）
+        if not item.kline_90d:
+            _csq_log.info(f"Empty chart from platform=2, retrying platform=2 once good_id={good_id}")
+            captured['charts'] = []
+            try:
+                await page.goto(f'{CSQAQ_WEB}/goods/{good_id}', wait_until='domcontentloaded', timeout=25000)
+                await _wait_chart(page, captured, key='charts', timeout=5.0)
+            except Exception as _ge2:
+                _csq_log.warning(f"platform=2 retry goto failed good={good_id}: {_ge2}")
+            if captured['charts']:
+                _best2 = _pick_best_chart(captured['charts'], item.price_rmb, item.sell_num_yyyp)
+                if _best2:
+                    try:
+                        _extract_chart(item, json.loads(_best2))
+                    except Exception:
+                        pass
         # Retry with Buff (platform=1) / C5GAME (platform=3) if chart still empty
         for fb_platform, fb_name in ((1, "Buff"), (3, "C5GAME")):
             if item.kline_90d:
@@ -537,13 +551,25 @@ async def _fetch_item_detail_once(good_id: int):
             except Exception as e2:
                 _csq_log.warning(f"{fb_name} retry failed: {e2}")
 
-        # 定价锚：悠悠有品 DOM 价最高优先级（最后覆盖，任何 chart close 都不得覆盖）
+        # 定价锚：悠悠 API yyyp_sell_price 为权威锚（最后覆盖任何 chart close）；
+        # DOM 价仅当 API 缺失时采用（2026-08-10 防 DOM 偶发命中非卖价 statistic）
         try:
-            yyyp_price = await page.evaluate("() => { const el = document.querySelector('.ant-statistic-content-value'); if (el) return el.innerText.trim(); return ''; }")
-            if yyyp_price:
-                p = float(yyyp_price.replace(',', '').replace('\u00a5', ''))
-                if p > 0:
-                    item.price_rmb = p
+            _api_anchor = 0.0
+            if captured.get('detail'):
+                try:
+                    _dd = json.loads(captured['detail'])
+                    _gi = ((_dd.get('data') or {}).get('goods_info')) or {}
+                    _api_anchor = float(_gi.get('yyyp_sell_price') or 0)
+                except Exception:
+                    pass
+            if _api_anchor > 0:
+                item.price_rmb = _api_anchor
+            else:
+                yyyp_price = await page.evaluate("() => { const el = document.querySelector('.ant-statistic-content-value'); if (el) return el.innerText.trim(); return ''; }")
+                if yyyp_price:
+                    p = float(yyyp_price.replace(',', '').replace('\u00a5', ''))
+                    if p > 0:
+                        item.price_rmb = p
         except Exception:
             pass
         if captured['detail']:
@@ -763,25 +789,29 @@ async def fetch_kline_90d(good_id: int):
                 await page.goto(f'{CSQAQ_WEB}/goods/{good_id}', wait_until='domcontentloaded', timeout=15000)
             except Exception as _ge:
                 _csq_log.warning(f"fetch_kline_90d goto goods/{good_id} failed: {_ge}")
-            await _wait_chart(page, captured, key='charts')
+            # 2026-08-10：等待窗口 2.5s→5s（偶发慢响应/限流；早退轮询，正常时无额外耗时）
+            await _wait_chart(page, captured, key='charts', timeout=5.0)
 
         async def _anchor():
-            """悠悠锚（DOM 价 + info/good yyyp_sell_num）。"""
+            """悠悠锚（info/good API 价 + yyyp_sell_num 优先；DOM 价兜底）。
+            2026-08-10：DOM 选择器偶发命中非卖价 statistic，API yyyp_sell_price 为权威锚。"""
             _ap, _as = 0, 0
-            try:
-                yyyp_price = await page.evaluate(
-                    "() => { const el = document.querySelector('.ant-statistic-content-value'); if (el) return el.innerText.trim(); return ''; }")
-                if yyyp_price:
-                    _pd = float(yyyp_price.replace(',', '').replace('¥', '').replace('\u00a5', ''))
-                    if _pd > 0:
-                        _ap = _pd
-            except Exception:
-                pass
             if captured.get('detail'):
                 try:
                     dd = json.loads(captured['detail'])
                     gi = ((dd.get('data') or {}).get('goods_info')) or {}
+                    _ap = float(gi.get('yyyp_sell_price') or 0)
                     _as = int(gi.get('yyyp_sell_num', 0) or 0)
+                except Exception:
+                    pass
+            if not _ap:
+                try:
+                    yyyp_price = await page.evaluate(
+                        "() => { const el = document.querySelector('.ant-statistic-content-value'); if (el) return el.innerText.trim(); return ''; }")
+                    if yyyp_price:
+                        _pd = float(yyyp_price.replace(',', '').replace('¥', '').replace('\u00a5', ''))
+                        if _pd > 0:
+                            _ap = _pd
                 except Exception:
                     pass
             return _ap, _as
