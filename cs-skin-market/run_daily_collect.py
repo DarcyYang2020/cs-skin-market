@@ -95,6 +95,63 @@ def collect_macro() -> bool:
         return False
 
 
+def _guard_batch_write(day: str):
+    """跨品一致性闸门（2026-08-10 csQAQ 故障事件后新增）。
+
+    背景：8/10 csQAQ 搜索/单品 API 500 期间，采集器兜底写入 16 品异常数据
+    （价格跳变 +40~60%、在售量 -60~-97%）；单品「chart vs 锚」校验失效
+    （锚与 chart 同源异常）。本闸门用「本批跨品同现跳变占比」识别数据源级失真。
+    正常日基线（7/28~8/9 实证）：价格跳变>20% 品占比 <=0.5%、在售量变化>50% <=1.2%。
+    触发阈值：价格 >=3 品且占比 >=3%，或在售量 >=5 品且占比 >=5%（约 4~12 倍裕度）。
+    触发动作：异常品当日行回滚至上一交易日值 + 留痕 caliber（batch_guard_rollback）+ 日志。
+    开关：CS_DATA_BATCH_GUARD=0 时仅留痕告警不自动回滚（默认开）。
+    仅作用于有「上一交易日」可比行的批量写入；单品分析/新品（无 prev）不受影响。
+    """
+    import json as _json
+    from pipeline import db as _db
+    if os.environ.get("CS_DATA_BATCH_GUARD", "1") not in ("1", "true", "True", "yes"):
+        return {"guarded": False, "note": "guard disabled"}
+    conn = _db.get_conn()
+    try:
+        _prev = conn.execute("SELECT MAX(date) d FROM price_history WHERE date < ?", (day,)).fetchone()
+        if not _prev or not _prev["d"]:
+            return {"guarded": False, "note": "no prev day"}
+        prev = _prev["d"]
+        rows = conn.execute("""
+            SELECT p1.item_id, p1.price_rmb p1, p0.price_rmb p0, p1.in_sale_count s1, p0.in_sale_count s0
+            FROM price_history p1 JOIN price_history p0 ON p0.item_id=p1.item_id AND p0.date=? AND p1.date=?
+            WHERE p1.price_rmb>0 AND p0.price_rmb>0""", (prev, day)).fetchall()
+        n = len(rows)
+        if n < 10:
+            return {"guarded": False, "note": f"batch too small n={n}"}
+        pj = [r["item_id"] for r in rows if r["p0"] and abs(r["p1"] / r["p0"] - 1) > 0.20]
+        sj = [r["item_id"] for r in rows if r["s0"] and r["s1"] is not None and r["s0"] > 0 and abs(r["s1"] / r["s0"] - 1) > 0.50]
+        trig_p = len(pj) >= 3 and len(pj) / n >= 0.03
+        trig_s = len(sj) >= 5 and len(sj) / n >= 0.05
+        if not (trig_p or trig_s):
+            return {"guarded": False, "n": n, "price_jump": len(pj), "sale_jump": len(sj)}
+        # 触发：回滚异常品当日行至 prev 值
+        roll = []
+        for r in rows:
+            if r["item_id"] in pj or r["item_id"] in sj:
+                conn.execute("UPDATE price_history SET price_rmb=?, in_sale_count=? WHERE item_id=? AND date=?",
+                             (r["p0"], r["s0"], r["item_id"], day))
+                roll.append(r["item_id"])
+        conn.commit()
+        _rec = {"ts": datetime.now(TZ_BJ).strftime("%Y-%m-%d %H:%M:%S"),
+                "kind": "batch_guard_rollback", "label": day,
+                "detail": f"跨品跳变占比超阈（n={n} 价跳变{len(pj)} 在售量异常{len(sj)}，prev={prev}），判定 csQAQ 数据源失真，回滚异常品至上一交易日值"}
+        try:
+            _fp = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "caliber_override_log.jsonl")
+            with open(_fp, "a", encoding="utf-8") as _f:
+                _f.write(_json.dumps(_rec, ensure_ascii=False) + "\n")
+        except Exception:
+            pass
+        return {"guarded": True, "n": n, "price_jump": len(pj), "sale_jump": len(sj), "rolled_back": roll, "prev": prev}
+    finally:
+        conn.close()
+
+
 async def collect_kline_all() -> int:
     from pipeline import collector_csqaq, db
     conn = db.get_conn()
@@ -124,6 +181,16 @@ async def collect_kline_all() -> int:
             conn.close()
         ok += 1
     log(f"K线全量刷新: {ok}/{len(rows)} 失败={len(fails)}")
+    # 跨品一致性闸门（2026-08-10 csQAQ 故障事件后新增）：本批写入 vs 上一交易日跳变异常占比
+    # 超阈（正常基线 价<=0.5%/量<=1.2%，阈值 3%/5%）→ 判定数据失真，回滚异常品 + 留痕告警。
+    try:
+        _g = _guard_batch_write(datetime.now(TZ_BJ).date().isoformat())
+        if _g.get("guarded"):
+            log(f"批量写入闸门触发: 回滚 {len(_g['rolled_back'])} 品（价跳变{_g['price_jump']}/在售量异常{_g['sale_jump']}，n={_g['n']}）")
+        elif _g.get("note"):
+            log(f"批量写入闸门: {_g['note']}")
+    except Exception as _ge:
+        log(f"批量写入闸门异常（不中断采集）: {_ge}")
     return ok, fails
 
 

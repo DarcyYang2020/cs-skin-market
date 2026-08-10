@@ -55,6 +55,7 @@ discover 扩池（手动）→ 候选入库（items + 90日K线，立即落库�
 - **K 线写库（2026-08-10 B-1 增量写）**: `save_price_history_batch` 默认 `incremental`——只写「date > 库内 max(date)」的新行 + 当日最新行更新，历史行不可被覆盖（单次坏 chart 只污染当日行，防 8/9 串品事故复发）；变更记 `data/price_history_write_log.jsonl`；审计回填/串品修复用 `mode="force"` 全量覆盖（须人工确认）。
 - **活跃池淘汰（F-3.1）**: 非自选/非持仓且最近 7 天平均在售量 <10 → 标记「活跃池淘汰:在售量过低(<10)」，退出每日采集与 discover 捞回；数据保留，加回自选恢复采集。
 - **池台账（F-3.2）**: `data/pool_maintenance_log.jsonl` 一行一条 JSON（daily/prune/discover 三类），追加不清理。
+- **跨品一致性批闸门（2026-08-10 csQAQ 故障事件后新增）**: 每日 K 线批量刷新收尾执行 `_guard_batch_write`——本日 vs 上一交易日「价格跳变>20% / 在售量变化>50%」品占比超阈（3%/5%，正常基线 0.5%/1.2%）判定数据源失真，自动回滚异常品当日行至上一交易日值 + caliber 留痕 + 告警；开关 `CS_DATA_BATCH_GUARD`（默认开）。详见 decision-log「数据污染防护落地」；误伤恢复 = 人工确认后 force 重采（本节批量修复 SOP）。
 - **K线失败台账（G-4, 2026-08-10）**: `collect_kline_all` 返回失败品清单，每日台账写 `kline_fail_count` / `kline_fail_names[:10]`（品名+原因），便于告警排查；采集可疑重试/平台切换前退避 1.5s 降限流压力。
 - **健康检查**: `run_health_monitor.py` 随每日采集收尾执行，写 `health_checks`；`notify_alert.py --monitor` 在 FAIL 时推送告警。
 - **DB 备份**: `backup_db.py`（SQLite online backup → `data/backup/market_YYYYMMDD_HHMMSS.db`，保留 14 份）。
