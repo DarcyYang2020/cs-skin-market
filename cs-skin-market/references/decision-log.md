@@ -2260,3 +2260,19 @@ watch/hold 做「无按钮」处理，未区分持仓/未持仓。
 **扩池扫描受阻（外部依赖，实证）**：`/api/discover/scan-all?mode=search` 试跑 candidates 0 / scanned 0，已记 `data/pool_maintenance_log.jsonl`（discover_1786365191）。**根因实证（2026-08-10 20:40 直连探测）**：csQAQ `/proxies/api/v1/search` 与 `search/suggest` 端点服务端 500（含空参数），同窗口 `/info/chart`、`/info` 亦 500——**单品/搜索 API 全线服务端故障**，仅 `current_data`（大盘）正常；与当日晚间每日采集 K 线 94/177 失败同源（pool_maintenance_log daily 行 kline_fail_count=94，非采集器代码问题）。替代方案：等 csQAQ 恢复后重试（次日 18:00 每日采集自动验证 K 线恢复率）；恢复前不做 discover 扩池。
 
 **产物**：`data/_exp_p2_hi_price_liq.json` / `data/_exp_t1_panic_domain.json` / `data/_exp_greedy_backfill_check.json`；脚本 `references/probe_p2_hi_price_liq.py` / `references/probe_t1_panic_domain.py` / `references/greedy_backfill_check.py`。
+
+## P-2 功效分析：断档伪劣化解释 + 候选降级为观察项（2026-08-10，只读研究）
+
+**背景**：承接「第一性原理审计扩展执行」条目。csQAQ 搜索/单品 API 故障期间（外部依赖），完成不依赖采集的 P-2 样本量研究，产物 `data/_exp_p2_power_analysis.json`，脚本 `references/probe_p2_power_analysis.py`。引擎参数零改动。
+
+**断档精确边界**：`price_history.in_sale_count` 非零占比按月 = 2026-01 91.8% → 2026-02 6.8%（180/2657）→ 2026-03/04 0% → 2026-05 93.6% → 06/07/08 100%。与 data-layer.md 标注的 2026-02-01~04-30 一致。
+
+**关键发现（干净段无劣化）**：2026-05-01 起 133 信号（317 中）分桶——高价（≥1000）×低在售（<200）n=7 win14 71.4% avg +9.92 vs 高价×在售≥200 n=47 win14 72.3% avg +19.53。**首轮 T3「高价×低在售 win 53.7% 劣化」主要为断档 0 值污染伪信号**；干净段胜率无差（n 小不可证等价，但无正向证据）。
+
+**功效估算**：两比例检验（单侧 α=0.05 / power=0.8）——真实差 27pp 需每组 35 条（现 7/47）；11pp 需 228/组；接近基线 1pp 需 >2.5 万/组（不可行）。高价低在售桶积累速率 2.33 条/月 → 不扩池需 ~15 个月达 35。
+
+**结论**：P-2 从「数据积累型」进一步**降级为观察项**——联合闸门无第一性原理支撑，扩池优先级让给其他候选；数据层断档标注保留；未来若做流动性价差方向研究再补桶样本（三件套 + A2）。
+
+**T0 挂接验证**：`references/greedy_backfill_check.py` dry-run 幂等通过（覆盖 60 天、verdict 需连续 7 个采集日样本），挂接代码与产物无异常。
+
+**产物**：`data/_exp_p2_power_analysis.json`；脚本 `references/probe_p2_power_analysis.py`。

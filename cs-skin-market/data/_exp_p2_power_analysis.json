@@ -1,0 +1,212 @@
+{
+ "generated": "2026-08-10",
+ "clean_start": "2026-05-01",
+ "source": "item_backtest_full_2025.json (v2-T4 317) + price_history 联查在售量",
+ "n_signals_total": 317,
+ "n_signals_clean": 133,
+ "month_gap_analysis": {
+  "2026-01": {
+   "days": 3038,
+   "nonzero_days": 2790,
+   "nonzero_share": 91.8
+  },
+  "2026-02": {
+   "days": 2657,
+   "nonzero_days": 180,
+   "nonzero_share": 6.8
+  },
+  "2026-03": {
+   "days": 2935,
+   "nonzero_days": 0,
+   "nonzero_share": 0.0
+  },
+  "2026-04": {
+   "days": 2848,
+   "nonzero_days": 0,
+   "nonzero_share": 0.0
+  },
+  "2026-05": {
+   "days": 5016,
+   "nonzero_days": 4695,
+   "nonzero_share": 93.6
+  },
+  "2026-06": {
+   "days": 5640,
+   "nonzero_days": 5640,
+   "nonzero_share": 100.0
+  },
+  "2026-07": {
+   "days": 5828,
+   "nonzero_days": 5828,
+   "nonzero_share": 100.0
+  },
+  "2026-08": {
+   "days": 1756,
+   "nonzero_days": 1756,
+   "nonzero_share": 100.0
+  }
+ },
+ "clean_buckets": {
+  "<100 x in_sale 1-199": {
+   "n": 0,
+   "win14": null,
+   "avg14": null,
+   "events": null,
+   "by_family": {},
+   "median_in_sale": null
+  },
+  "<100 x in_sale 200-999": {
+   "n": 22,
+   "win14": 86.4,
+   "avg14": 39.59,
+   "events": 11,
+   "by_family": {
+    "panic": 14,
+    "accum": 7,
+    "deep": 1
+   },
+   "median_in_sale": 660.0
+  },
+  "<100 x in_sale >=1000": {
+   "n": 6,
+   "win14": 100.0,
+   "avg14": 39.74,
+   "events": 5,
+   "by_family": {
+    "panic": 5,
+    "accum": 1
+   },
+   "median_in_sale": 1438.5
+  },
+  "100-1000 x in_sale 1-199": {
+   "n": 8,
+   "win14": 75.0,
+   "avg14": 9.21,
+   "events": 5,
+   "by_family": {
+    "panic": 6,
+    "accum": 2
+   },
+   "median_in_sale": 75.5
+  },
+  "100-1000 x in_sale 200-999": {
+   "n": 33,
+   "win14": 84.8,
+   "avg14": 24.22,
+   "events": 11,
+   "by_family": {
+    "panic": 22,
+    "accum": 10,
+    "deep": 1
+   },
+   "median_in_sale": 539
+  },
+  "100-1000 x in_sale >=1000": {
+   "n": 10,
+   "win14": 70.0,
+   "avg14": 16.11,
+   "events": 6,
+   "by_family": {
+    "accum": 4,
+    "panic": 6
+   },
+   "median_in_sale": 1509.0
+  },
+  ">=1000 x in_sale 1-199": {
+   "n": 7,
+   "win14": 71.4,
+   "avg14": 9.92,
+   "events": 4,
+   "by_family": {
+    "panic": 6,
+    "accum": 1
+   },
+   "median_in_sale": 153
+  },
+  ">=1000 x in_sale 200-999": {
+   "n": 43,
+   "win14": 72.1,
+   "avg14": 17.48,
+   "events": 9,
+   "by_family": {
+    "panic": 31,
+    "accum": 10,
+    "deep": 2
+   },
+   "median_in_sale": 456
+  },
+  ">=1000 x in_sale >=1000": {
+   "n": 4,
+   "win14": 75.0,
+   "avg14": 41.55,
+   "events": 4,
+   "by_family": {
+    "panic": 2,
+    "accum": 1,
+    "deep": 1
+   },
+   "median_in_sale": 1260.5
+  }
+ },
+ "hi_price_control": {
+  "hi_all": {
+   "n": 54,
+   "win14": 72.2,
+   "avg14": 18.28,
+   "events": 12
+  },
+  "hi_liq_lt200": {
+   "n": 7,
+   "win14": 71.4,
+   "avg14": 9.92,
+   "events": 4
+  },
+  "hi_liq_ge200": {
+   "n": 47,
+   "win14": 72.3,
+   "avg14": 19.53,
+   "events": 11
+  }
+ },
+ "power_analysis": {
+  "T3观察差 27pp": {
+   "p1_candidate": 0.537,
+   "p2_control": 0.806,
+   "diff_pp": 26.9,
+   "n_per_group_needed": 35,
+   "current_n1": 7,
+   "current_n2": 47,
+   "feasible": false
+  },
+  "保守差 11pp": {
+   "p1_candidate": 0.6,
+   "p2_control": 0.71,
+   "diff_pp": 11.0,
+   "n_per_group_needed": 228,
+   "current_n1": 7,
+   "current_n2": 47,
+   "feasible": false
+  },
+  "接近基线 1pp": {
+   "p1_candidate": 0.7,
+   "p2_control": 0.71,
+   "diff_pp": 1.0,
+   "n_per_group_needed": 25714,
+   "current_n1": 7,
+   "current_n2": 47,
+   "feasible": false
+  }
+ },
+ "accumulation_rate": {
+  "months": {
+   "2026-05": 93,
+   "2026-06": 33,
+   "2026-07": 7
+  },
+  "n_months": 3,
+  "avg_signals_per_month": 44.3,
+  "avg_hi_liq_per_month": 2.33,
+  "months_to_reach_n35": 15
+ },
+ "conclusion": "若真实胜率差≈27pp：每组仅需 ~35 条，按当前速率约 15 个月可积累；若真实差≈11pp：每组需 ~228 条，依赖扩池后样本速率；若真实差≈1pp：不可行（>2.5 万条/组）。恢复扩池前可用 2026-05 起干净段先做描述性监测，正式三件套待样本达标。"
+}
