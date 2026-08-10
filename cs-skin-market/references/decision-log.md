@@ -2291,3 +2291,22 @@ watch/hold 做「无按钮」处理，未区分持仓/未持仓。
 **落地（展示/监测层，非引擎）**：`references/j2_channel_monitor.py` docstring + C 通道 note 修正（332→317 信号 v2-T4；加入事件簇复核结论），`data/j2_channel_status.json` 已重刷。
 
 **产物**：`data/_exp_c_channel_cluster_review.json`；脚本 `references/probe_c_channel_cluster_review.py`。
+## csQAQ 故障期数据污染事件 + 回滚处置（2026-08-10，数据修复）
+
+**背景**：csQAQ 搜索/单品 API 自 18:00 前后持续 `HTTP 500 Service Unavailable`（仅 current_data 正常）。18:23-18:31 每日采集（run_daily_collect）K 线刷新走兜底路径，**16 品写入异常数据**；21:27 推送前分析重写同值。21:35 探测确认故障未恢复后启动数据修复。
+
+**污染特征与范围（vs 8/9 真实值）**：
+- 价格跳变 +40~60% 6 品：AWP 火卫一 63.89→97.7、USP 守护者 54.8→80.0、AK 抽象派 1337 3459→5470.1、加利尔 蓝钛 189.37→273.51、M4A1 闪回 878.5→1254.2、法玛斯 目皆转睛 127→202.22；
+- 在售量失真 16 品（含上述 6 品）：-60~-97% 骤降（如 M4A4 合纵 351→51、地狱烈焰 626→92、AWP 复古流行 1145→331）或异常 +333%（M4A4 全球攻势 83→360）——价格不动、在售量系统性骤降，判定为 csQAQ 故障期数据失真（非市场真实波动）。
+- 引擎影响评估：在售量骤降会被供给分析识别为「供给收缩」→ 有制造假吸筹信号风险（P0）；回滚前 8/10 行已可能影响 19:16/21:27 分析。
+
+**处置（已执行）**：
+1. 备份 `data/market.db.bak-csqaq-20260810-2130`；
+2. `references/rollback_csqaq_pollution.py` 回滚 16 品 8/10 行 price_rmb/in_sale_count → 8/9 真实值（临时替代，csQAQ 恢复后须 force 重采覆盖）；验证回滚后异常行=0；
+3. 留痕 `data/caliber_override_log.jsonl`（kind=csqaq_failure_rollback）。
+
+**已知影响（待恢复后清理）**：今日 monitor_events 73 条含污染品事件（item 2/6/9/18/23/27/33/37 的 near_buy 等）；21:30 推送已发出（push_id 1015261e0f70，新增 0 条事件）无法撤回；analysis_results/快照中基于污染价的分析需恢复后重跑。
+
+**待办（csQAQ 恢复后，与 8/9 批量修复 SOP 一致）**：① force 重采 16 品 K 线；② 重分析刷新 analysis_results；③ 复核今日监控事件与推送内容；④ 若故障期内有其他采集窗口，全量复查 8/10 行。
+
+**经验（候选，不落地）**：采集器在 chart API 500 时兜底写入无「多品同现异常」防护——建议未来评估「单批采集内跨品价格/在售量同步跳变超过阈值则整批标记异常」的数据质量闸门（回测/验证先行）。

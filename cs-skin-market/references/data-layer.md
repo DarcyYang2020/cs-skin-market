@@ -94,6 +94,7 @@ discover 扩池（手动）→ 候选入库（items + 90日K线，立即落库�
 ## 7. 故障 SOP
 
 - **csQAQ 限流**: 采集自动等待（API_RATE_LIMIT 1.1s）；大批量失败中止当日，次日 18:00 重跑。
+- **csQAQ 搜索/单品 API 500（2026-08-10 事件）**: 故障期（18:00 后）采集器兜底路径会写入异常数据（16 品价格跳变 +40~60% / 在售量 -60~-97%，见 decision-log「csQAQ 故障期数据污染事件」）。处置 SOP：① 立即备份 market.db（bak-csqaq-<日期>）；② 用 references/rollback_csqaq_pollution.py 回滚污染行至上一真实交易日（脚本内污染清单需按当日实际核对）；③ 留痕 caliber_override_log；④ 恢复后 force 重采 + 重分析 + 复核事件/推送。探测命令：GET /proxies/api/v1/info/chart?id=2 返回 code=500 Service Unavailable 即未恢复。
 - **服务器重启中断扫描**: discover 进度落盘（data/discover_progress_*.json），重触发按「已库 3 天新鲜品」自动跳过已完成。
 - **计划任务失败**: 排查顺序 —— 台账 JSONL（做了什么）→ data/daily_collect.log（采集详情）→ health_checks 表（数据体检）。
 - **数据不一致**: 以本手册为准；发现 AGENTS.md / PROJECT_STRUCTURE.md 与新口径冲突时修正对应文档并在此追加记录。
