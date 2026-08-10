@@ -103,8 +103,19 @@ def db_kline_fresh(good_id, name, max_stale_days=KLINE_FRESH_BATCH, max_stale_ho
                 if _age_h > max_stale_hours:
                     _log.info(f"db_kline_fresh {row['name']}: 当日已采但超 {max_stale_hours}h（{_age_h:.1f}h）→ 重新采集")
                     return None
+        # F-3.18（2026-08-10）采集时间带出：缓存复用路径需告知用户数据新鲜度（模板提示条）
+        _collected_at = ""
+        try:
+            for _r in reversed(rows):
+                _c = ((_r["created_at"] if "created_at" in _r.keys() else "") or "").strip()
+                if _c:
+                    _collected_at = _c
+                    break
+        except Exception:
+            _collected_at = ""
         return {"bars": _history_to_bars(rows), "stale": stale, "last_date": last_date,
-                "item_id": row["id"], "db_name": row["name"], "yyyp_id": row["yyyp_id"] or ""}
+                "item_id": row["id"], "db_name": row["name"], "yyyp_id": row["yyyp_id"] or "",
+                "collected_at": _collected_at}
     except Exception as _e:
         _log.warning(f"db_kline_fresh failed: {_e}")
         return None
@@ -133,6 +144,7 @@ def item_from_db(fresh, good_id):
     it.order_book = None  # 求购为数据储备阶段，DB 复用不采集（分析可选参数）
     it.from_db = True
     it.stale_days = fresh["stale"]
+    it.collected_at = fresh.get("collected_at") or ""
     return it
 
 
@@ -641,6 +653,7 @@ async def analyze_fresh(item, good_id, exact_name, *, db_item_id=None, apply_anc
         "kline_stale_date": kline_stale_date,
         "price_rmb": price_rmb,
         "volume_total": volume_total,
+        "collected_at": getattr(item, "collected_at", "") or "",
     }
 
 
@@ -717,7 +730,8 @@ def _supply_display(supply_dict, position):
 
 
 def build_analysis_ctx(analysis, kline_stale_days=None, kline_stale_date="",
-                       holding_ctx=None, market_30d_change=None, market_th=None, sentiment=50.0):
+                       holding_ctx=None, market_30d_change=None, market_th=None, sentiment=50.0,
+                       collected_at=""):
     """三条分析路径共用的模板上下文（与原 api_items_search/analyze 输出一致）。
 
     展示层增强（不参与决策，参数冻结不受影响）：
@@ -820,4 +834,5 @@ def build_analysis_ctx(analysis, kline_stale_days=None, kline_stale_date="",
         "is_holding": bool(holding_ctx and holding_ctx.get("holding")),
         "analysis_time": datetime.now(TZ_BJ).strftime("%Y-%m-%d %H:%M"),
         "in_watchlist": _in_wl,
+        "collected_at": collected_at or "",
     }

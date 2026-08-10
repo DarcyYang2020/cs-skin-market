@@ -2068,3 +2068,17 @@ watch/hold 做「无按钮」处理，未区分持仓/未持仓。
 **影响面**：采集层/数据层行为变更——单品分析限流压力降为约 1/（6h 窗口内重复点击），数据新鲜度由「强制当天」放宽为「当日 6h 内」（当天晚于 6h 未刷新仍会重新采集，不影响"当天数据"承诺）。引擎评分/决策零改动。
 
 **验证**：新增 t_b4_fresh_hours（6h 内命中 / 超 6h 不命中 / 不限窗口兼容）；冒烟 96 passed / 0 failed。
+## 数据质量定期复核：三层机制落地（2026-08-10，数据层）
+
+**背景**：8/8 串品事件与 8/9 全库审计后，数据质量靠「发现问题→触发审计」被动兜底；用户要求「一定要确保数据的质量，定期进行复核」——升级为周期性主动复核。
+
+**落地**：
+- 新增 `references/data_quality_review.py` 每周抽样复核：持仓品全量 + 自选 + 活跃池随机（默认 15 品上限），联网 `fetch_kline_90d`（悠悠锚 + 串品防护）实拉 chart 与 DB `price_history` 逐日对比价格/在售量；
+- 阈值：单日偏差>20%（DEV_TH，与锚校验口径一致）记敏感行，整段价格偏差中位数≥10%（MED_TH）或存在>20% 行 → ISSUE；`--fix` 仅回填偏差>20% 行的 price_rmb/in_sale_count（原值备份 `data/_data_review_backup_<date>.json`），默认只读；
+- 产物：`data/data_review_<YYYYMMDD>.json`（证据留档）+ `data/data_review_latest.json`（最新指针），settings `data_review_last` 记录上次复核日；退出码 0=全部 OK / 2=存在 ISSUE；
+- 每日任务接入：每周日且距上次≥7 天自动跑 `--sample 15`（timeout 900s，异常不中断采集），exit 2 记告警日志并提示按 §8 SOP 人工确认后 --fix；
+- 三层机制总览（日常健康检查 / 每周抽样复核 / 全库深度审计 SOP）写入 data-layer.md §8。
+
+**影响面**：数据层留痕与周期性质检，引擎评分/决策零改动；不触碰回放产物与参数台账（无 sync 联动）。
+
+**验证**：新增 t_data_review（compare 阈值 OK/单日>20% ISSUE/中位数≥10% ISSUE、sample_items 只读去重、--skip-net 频率检查）；冒烟 97 passed / 0 failed；pyflakes 无告警。

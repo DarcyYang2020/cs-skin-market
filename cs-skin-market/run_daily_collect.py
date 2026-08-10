@@ -292,6 +292,37 @@ def main():
         })
     except Exception as e:
         log(f"池维护台账异常（不中断采集）: {e}")
+    # 数据质量定期复核（2026-08-10）：距上次复核 >=7 天且今天是周日 → 抽样联网实拉对比（只读）
+    # 三层机制：日常健康检查(上面) / 每周抽样复核(本块) / 全库审计 SOP（data-layer.md §8，触发式）
+    try:
+        import subprocess, sys as _sys
+        _today_w = datetime.now(TZ_BJ)
+        _last_review = ""
+        try:
+            from pipeline import db as _db2
+            _c2 = _db2.get_conn()
+            _last_review = (_db2.get_setting(_c2, "data_review_last", "") or "")
+            _c2.close()
+        except Exception:
+            pass
+        _due = _today_w.weekday() == 6  # 周日
+        if _last_review:
+            try:
+                _gap = (_today_w.date() - datetime.strptime(_last_review, "%Y-%m-%d").date()).days
+                _due = _due and _gap >= 7
+            except ValueError:
+                _due = True
+        if _due:
+            _review_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "references", "data_quality_review.py")
+            _rr = subprocess.run([_sys.executable, _review_script, "--sample", "15"],
+                                 capture_output=True, text=True, timeout=900)
+            log(f"数据质量复核: exit={_rr.returncode} {( _rr.stdout or '').strip()[-400:]}")
+            if _rr.returncode == 2:
+                log("数据质量复核发现 ISSUE：查看 data/data_review_latest.json，按 §8 SOP 确认后 --fix 回填")
+        else:
+            log(f"数据质量复核: 未到周期（上次 {_last_review or '从未'}，每周日且间隔>=7天触发）")
+    except Exception as e:
+        log(f"数据质量复核异常（不中断采集）: {e}")
     # J-2 三通道监测刷新 (2026-08-07): 重跑 j2_channel_monitor.py 更新 data/j2_channel_status.json（B 通道天数每日变化）
     try:
         import subprocess, sys as _sys

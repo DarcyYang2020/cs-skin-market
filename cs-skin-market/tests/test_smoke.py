@@ -2316,7 +2316,13 @@ def t_b4_fresh_hours():
                 (iid, dt, 100.0 + d * 0.1, 0, 0, 500))
         conn.commit()
         # created_at 默认=now：6h 窗口内命中复用
-        assert db_kline_fresh(999999002, TEST, max_stale_days=0, max_stale_hours=6) is not None
+        f_hit = db_kline_fresh(999999002, TEST, max_stale_days=0, max_stale_hours=6)
+        assert f_hit is not None
+        assert f_hit.get("collected_at"), "db_kline_fresh should carry collected_at"
+        from webapp.analysis_service import item_from_db as _ifdb
+        _it = _ifdb(f_hit, 999999002)
+        assert _it.collected_at == f_hit["collected_at"], (_it.collected_at, f_hit["collected_at"])
+        assert _it.from_db is True
         # 最新行 created_at 改为 10 小时前 -> 超 6h 不命中（重新采集）
         conn.execute("UPDATE price_history SET created_at=datetime('now','localtime','-10 hours') WHERE item_id=?", (iid,))
         conn.commit()
@@ -2712,6 +2718,66 @@ def t_sellish_advice():
     assert isinstance(_recently_executed_names(), set)  # 兜底不抛异常
 check('E-2 建议未执行判定（卖出类动作识别）', t_sellish_advice)
 
+
+
+
+# ---- 第四批（2026-08-10）：数据质量定期复核 ----
+def t_data_review():
+    """数据质量复核：compare 阈值判定 / sample_items 抽样去重 / --skip-net 频率检查（不联网）。"""
+    import types, sqlite3
+    from unittest import mock
+    import references.data_quality_review as dqr
+
+    # 1) compare 纯函数：正常偏差 -> OK
+    bars_ok = [
+        types.SimpleNamespace(date="2026-08-01", close=100.0, in_sale_count=50),
+        types.SimpleNamespace(date="2026-08-02", close=102.0, in_sale_count=48),
+    ]
+    dmap_ok = {
+        "2026-08-01": {"price": 101.0, "sale": 51},
+        "2026-08-02": {"price": 101.0, "sale": 50},
+    }
+    r = dqr.compare(bars_ok, dmap_ok)
+    assert r["status"] == "OK", r
+    assert r["n_dev_gt20"] == 0 and r["n_days"] == 2
+
+    # 2) 单日 >20% 敏感 -> ISSUE 且计数/证据正确
+    bars_bad = bars_ok + [
+        types.SimpleNamespace(date="2026-08-03", close=130.0, in_sale_count=50),
+        types.SimpleNamespace(date="2026-08-04", close=100.0, in_sale_count=50),
+    ]
+    dmap_bad = dict(dmap_ok, **{
+        "2026-08-03": {"price": 100.0, "sale": 50},
+        "2026-08-04": {"price": 100.0, "sale": 50},
+    })
+    r = dqr.compare(bars_bad, dmap_bad)
+    assert r["status"] == "ISSUE", r
+    assert r["n_dev_gt20"] == 1, r
+    assert len(r["dev_days"]) == 1 and r["dev_days"][0]["date"] == "2026-08-03"
+
+    # 3) 中位数偏差 >=10% 即使无单日>20% 也 -> ISSUE
+    bars_m = [types.SimpleNamespace(date=f"2026-08-{d:02d}", close=110.0, in_sale_count=50) for d in range(1, 6)]
+    dmap_m = {f"2026-08-{d:02d}": {"price": 100.0, "sale": 50} for d in range(1, 6)}
+    r = dqr.compare(bars_m, dmap_m)
+    assert r["status"] == "ISSUE" and r["med_dev_pct"] == 10.0, r
+
+    # 4) sample_items：只读 DB，格式与去重
+    conn = sqlite3.connect(dqr.DB_PATH, timeout=10)
+    conn.row_factory = sqlite3.Row
+    try:
+        items = dqr.sample_items(conn, limit=3)
+    finally:
+        conn.close()
+    assert 0 < len(items) <= 3, items
+    gids = [i["good_id"] for i in items]
+    assert len(gids) == len(set(gids)), "抽样去重失败"
+    for it in items:
+        assert it["good_id"] > 0 and it["name"]
+
+    # 5) --skip-net：不联网，仅频率检查（exit 0，只读 settings）
+    with mock.patch("sys.argv", ["data_quality_review.py", "--skip-net"]):
+        assert dqr.main() == 0
+check('t_data_review 数据质量复核（阈值/抽样/频率）', t_data_review)
 
 
 print(f'=== Results: {passed} passed, {failed} failed, {skipped} skipped ===')

@@ -97,7 +97,31 @@ discover 扩池（手动）→ 候选入库（items + 90日K线，立即落库�
 - **计划任务失败**: 排查顺序 —— 台账 JSONL（做了什么）→ data/daily_collect.log（采集详情）→ health_checks 表（数据体检）。
 - **数据不一致**: 以本手册为准；发现 AGENTS.md / PROJECT_STRUCTURE.md 与新口径冲突时修正对应文档并在此追加记录。
 
-## 8. 数据审计方案（全库核查 SOP）
+## 8. 数据质量复核机制（三层）+ 全库审计 SOP
+
+> 2026-08-10 起数据质量实行三层机制，从「被动发现脏数据」升级为「定期抽样复核 + 触发式深审」：
+
+| 层 | 频率 | 执行 | 机制 |
+|---|---|---|---|
+| ① 日常健康检查 | 每日 | 每日任务 run_data_health.py + run_health_monitor.py | SQLite 只读基线体检（表/行数/缺失/最新日期）+ FAIL 告警 |
+| ② 每周抽样复核 | 每周日（距上次≥7天） | 每日任务自动 `references/data_quality_review.py --sample 15`，可手动触发 | 持仓品全量 + 自选 + 活跃池随机（默认≤15品），联网悠悠锚实拉 chart90 与 DB price_history 逐日对比价格/在售量 |
+| ③ 全库深度审计 | 触发式（怀疑污染时） | 人工按本节 SOP | 逐品实拉全量核查 + 回填 + 回放联动 |
+
+### 每周抽样复核脚本（层②）
+
+```bash
+python references/data_quality_review.py              # 只读复核（默认 15 品）
+python references/data_quality_review.py --sample 30  # 加大样本
+python references/data_quality_review.py --fix        # 对偏差>20% 行回填（原值备份）
+python references/data_quality_review.py --skip-net   # 仅频率检查（CI/测试）
+```
+
+- **阈值**：单日偏差>20%（DEV_TH，与锚校验口径一致）记敏感行；整段价格偏差中位数≥10%（MED_TH）或存在>20% 行 → 该品 ISSUE。
+- **判定**：`--fix` 仅回填偏差>20% 行的 price_rmb/in_sale_count，原值备份 `data/_data_review_backup_<date>.json`；默认只读。
+- **产物**：`data/data_review_<YYYYMMDD>.json`（证据留档）+ `data/data_review_latest.json`（最新指针）；settings `data_review_last` 记录上次复核日。
+- **退出码**：0=全部 OK / 2=存在 ISSUE（每日任务记告警日志，人工确认后 --fix）。
+- **限流**：逐品间隔 1.5s（G-4 退避），15 品约 2-3 分钟。
+- **注意**：在售量端差 30-80% 属平台流动/表达差异（SALE 偏差），非数据错误，不修复。
 
 > 适用：怀疑价格/在售量历史段被污染（串品、脏段）时，对数据层做全量核查与修复。
 > 首次执行：2026-08-09（188 品逐品实拉），结论与修复清单见 `decision-log.md`「全库数据审计 + 混合回放重跑」。

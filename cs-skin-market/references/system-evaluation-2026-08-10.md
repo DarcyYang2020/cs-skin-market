@@ -172,6 +172,7 @@
 - G-2 ✅（钉钉加签 NOTIFY_WEBHOOK_SECRET 可选）、G-5 ✅（bind 失败台账 data/bind_fail_log.jsonl）
 
 - B-4 ✅（单品分析「当日已采 6h 内复用」双轨，KLINE_FRESH_SINGLE_HOURS=6，force_refresh 不受影响）
+- 数据质量定期复核 ✅（`references/data_quality_review.py` 每周抽样复核：持仓+自选+活跃池随机，周日自动触发；三层机制见 data-layer.md §8，决策见 decision-log「数据质量定期复核」）
 
 **仍待做（分期大项/数据依赖）**：C-1（拆模块，分期）、D-1（报告分层，分期；决策条溯源/术语已折叠，深层分层低优先）、F-2（求购数据 90+ 天）、A1-4（滑点校准，executions≥20）、G-2 加签后 webhook 轮换待用户配置。
 

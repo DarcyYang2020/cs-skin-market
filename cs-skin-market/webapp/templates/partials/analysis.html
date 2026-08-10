@@ -23,6 +23,13 @@
   </div>
   <div style="padding:8px 14px;font-size:12px;color:var(--text-secondary);">数据截至 {{ kline_stale_date }}（过期 {{ kline_stale_days }} 天），仅供参考，建议稍后重新分析。</div>
 </div>
+{% elif collected_at is defined and collected_at %}
+<div class="card" style="border-color: rgba(100,116,139,0.45);margin-bottom:12px;">
+  <div class="card-header" style="padding:10px 14px;">
+    <span style="font-size:14px;font-weight:700;color:var(--text-muted);">📦 本次分析使用数据库缓存数据</span>
+  </div>
+  <div style="padding:8px 14px;font-size:12px;color:var(--text-secondary);">最新数据采集于 {{ collected_at }}（B-4 限流预算策略：当日已采 6h 内复用，超 6h 后重新点击分析会自动重新采集）。如需立即强制刷新，请到发现页使用「强制刷新」。</div>
+</div>
 {% endif %}
 {# ====== 决策条 ====== #}
 {% if fusion_decision and fusion_decision.action %}

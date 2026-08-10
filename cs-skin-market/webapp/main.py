@@ -656,7 +656,8 @@ async def api_items_search(request: Request, query: str = Form(...)):
         ctx = build_analysis_ctx(b["analysis"], b["kline_stale_days"], b["kline_stale_date"],
                                  holding_ctx=b.get("holding_ctx"),
                                  market_30d_change=b.get("market_30d_change"),
-                                 market_th=b.get("market_th"), sentiment=b.get("sentiment", 50.0))
+                                 market_th=b.get("market_th"), sentiment=b.get("sentiment", 50.0),
+                                 collected_at=b.get("collected_at"))
         return templates.TemplateResponse(request, "partials/analysis.html", ctx)
 
     except AnalysisAbort as _ab:
@@ -706,7 +707,8 @@ async def api_items_analyze(
         ctx = build_analysis_ctx(b["analysis"], b["kline_stale_days"], b["kline_stale_date"],
                                  holding_ctx=b.get("holding_ctx"),
                                  market_30d_change=b.get("market_30d_change"),
-                                 market_th=b.get("market_th"), sentiment=b.get("sentiment", 50.0))
+                                 market_th=b.get("market_th"), sentiment=b.get("sentiment", 50.0),
+                                 collected_at=b.get("collected_at"))
         return templates.TemplateResponse(request, "partials/analysis.html", ctx)
 
     except AnalysisAbort as _ab:
@@ -821,7 +823,8 @@ async def api_watchlist_analyze(request: Request, item_id: int):
         ctx = build_analysis_ctx(b["analysis"], b["kline_stale_days"], b["kline_stale_date"],
                                  holding_ctx=b.get("holding_ctx"),
                                  market_30d_change=b.get("market_30d_change"),
-                                 market_th=b.get("market_th"), sentiment=b.get("sentiment", 50.0))
+                                 market_th=b.get("market_th"), sentiment=b.get("sentiment", 50.0),
+                                 collected_at=b.get("collected_at"))
         return templates.TemplateResponse(request, "partials/analysis.html", ctx)
 
     except AnalysisAbort as _ab:
@@ -877,7 +880,8 @@ async def _report_view_rebuild(request: Request, name: str):
             ctx = build_analysis_ctx(b["analysis"], b["kline_stale_days"], b["kline_stale_date"],
                                      holding_ctx=b.get("holding_ctx"),
                                      market_30d_change=b.get("market_30d_change"),
-                                     market_th=b.get("market_th"), sentiment=b.get("sentiment", 50.0))
+                                     market_th=b.get("market_th"), sentiment=b.get("sentiment", 50.0),
+                                     collected_at=b.get("collected_at"))
             return templates.TemplateResponse(request, "partials/analysis.html", ctx)
         return await _saved_report_response(name)
     except Exception as _rv_e:
