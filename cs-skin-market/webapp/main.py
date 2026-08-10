@@ -654,7 +654,7 @@ async def api_items_search(request: Request, query: str = Form(...)):
     except Exception as e:
         import traceback
         _web_log.error(f"Search error: {e}\n{traceback.format_exc()}")
-        return HTMLResponse(_ae(f"分析失败: {str(e)[:300]}"))
+        return HTMLResponse(_ae(f"分析失败: {(str(e) or type(e).__name__)[:300]}"))
 
 
 # ---- Item analyze ----
@@ -707,7 +707,7 @@ async def api_items_analyze(
                 f.write(f"\n=== ERROR ===\n{traceback.format_exc()}\n=== END ===\n")
         except Exception:
             pass
-        return HTMLResponse(_ae(f"分析失败: {str(e)[:300]}"))
+        return HTMLResponse(_ae(f"分析失败: {(str(e) or type(e).__name__)[:300]}"))
 @app.post("/api/watchlist/add")
 async def api_watchlist_add(request: Request):
     form = await request.form()
@@ -822,7 +822,7 @@ async def api_watchlist_analyze(request: Request, item_id: int):
                 f.write(f"\n=== WL ERROR ===\n{traceback.format_exc()}\n=== END ===\n")
         except Exception:
             pass
-        return HTMLResponse(_ae(f"分析失败: {str(e)[:300]}"))
+        return HTMLResponse(_ae(f"分析失败: {(str(e) or type(e).__name__)[:300]}"))
 @app.get("/api/watchlist/{item_id}/report")
 async def api_watchlist_report(request: Request, item_id: int):
     """自选「报告」按钮（F-3.13，2026-08-09）：与批量扫描弹窗同口径——
@@ -1114,7 +1114,7 @@ def _item_report_link(name):
     return ('<a href="javascript:void(0)" onclick="showItemReport(\'' + esc + '\')" '
             'style="color:var(--accent);text-decoration:none;cursor:pointer;font-weight:600;">' + str(name) + '</a>')
 
-async def _scan_item(row, idx, ms, market_th_score, sentiment_score, total_assets=0.0):
+async def _scan_item(row, idx, ms, market_th_score, sentiment_score, total_assets=0.0, force_refresh=False):
     """批量扫描单个物品（可并发调用，共享 Playwright 浏览器多 page）。"""
     import json as _json
     from pipeline.batch_scan import _portfolio_advice, summarize_buy_distance
@@ -1124,7 +1124,7 @@ async def _scan_item(row, idx, ms, market_th_score, sentiment_score, total_asset
         good_id, _ = await _resolve_good_id(name)
         if good_id == 0:
             return dict(name=name, holding=holding, error="未找到")
-        item = await resolve_item(good_id, name, KLINE_FRESH_BATCH)
+        item = await resolve_item(good_id, name, KLINE_FRESH_BATCH, force_refresh=force_refresh)
         if item is None:
             return dict(name=name, holding=holding, error="详情获取失败")
         exact_name = item.name or name
@@ -1248,7 +1248,7 @@ async def _scan_item(row, idx, ms, market_th_score, sentiment_score, total_asset
         return dict(name=name, holding=holding, error=str(e)[:100])
 
 
-async def _run_batch_scan_task(scan_id: str, rows: list):
+async def _run_batch_scan_task(scan_id: str, rows: list, force_refresh=False):
     """批量扫描：串行共享浏览器采集（2026-08-04 起，并发页面导航会串出脏 chart 数据），结果排序 + 结构化缓存。
 
     整体 try/except：任何未预期异常也会置 done=True，避免前端弹窗无限轮询。
@@ -1285,7 +1285,7 @@ async def _run_batch_scan_task(scan_id: str, rows: list):
         async def _one(row):
             nonlocal done
             async with sem:
-                res = await _scan_item(row, idx, ms, market_th_score, sentiment_score, total_assets=_total_assets)
+                res = await _scan_item(row, idx, ms, market_th_score, sentiment_score, total_assets=_total_assets, force_refresh=force_refresh)
                 done += 1
                 _scan_progress[scan_id]["current"] = done
                 if res:
@@ -1674,6 +1674,7 @@ async def api_portfolio_dashboard():
 async def api_watchlist_batch_scan_selected(request: Request):
     body = await request.json()
     ids = body.get("ids", [])
+    force_refresh = bool(body.get("force_refresh", False))
     if not ids:
         return HTMLResponse('<div class="card" style="padding:20px;">\u8bf7\u9009\u62e9\u7269\u54c1</div>')
     conn = db.get_conn()
@@ -1689,7 +1690,7 @@ async def api_watchlist_batch_scan_selected(request: Request):
     _prune_progress(_scan_progress)
     _scan_progress[scan_id] = {"current": 0, "total": len(rows), "name": "", "done": False, "html": "", "ts": time.time()}
     _persist_scan_progress(scan_id)
-    asyncio.create_task(_run_batch_scan_task(scan_id, rows))
+    asyncio.create_task(_run_batch_scan_task(scan_id, rows, force_refresh=force_refresh))
     html = '<div class="card" id="scan-progress-{sid}" data-scanid="{sid}"><div class="card-header"><span class="card-title">\u626b\u63cf\u8fdb\u5ea6</span></div><div class="card-body" id="scan-status-{sid}"><p style="text-align:center;padding:20px;">\u6b63\u5728\u51c6\u5907\u626b\u63cf... <span class="spinner"></span></p></div></div>'.format(sid=scan_id)
     return HTMLResponse(html)
 # ---- Batch Scan Progress Polling ----

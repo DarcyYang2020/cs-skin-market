@@ -2319,6 +2319,62 @@ def t_resolve_item_reuse():
         conn.close()
 check("F-3 resolve_item DB 复用不触发采集", t_resolve_item_reuse)
 
+def t_resolve_item_force():
+    """F-3: force_refresh=True 时即使 DB 新鲜也强制联网采集（批量扫描「强制联网刷新」入口）。"""
+    import asyncio
+    from datetime import date, timedelta
+    from pipeline import db
+    from webapp import analysis_service
+    from pipeline.collector_csqaq import ItemData
+    conn = db.get_conn()
+    TEST = "__SMOKE_FORCE__"
+    try:
+        conn.execute("DELETE FROM price_history WHERE item_id IN (SELECT id FROM items WHERE name=?)", (TEST,))
+        conn.execute("DELETE FROM items WHERE name=?", (TEST,))
+        conn.commit()
+        iid = db.upsert_item(conn, TEST, good_id=999999003)
+        conn.commit()
+        base = date.today() - timedelta(days=60)
+        for d in range(60):
+            dt = (base + timedelta(days=d)).isoformat()
+            conn.execute(
+                "INSERT INTO price_history (item_id, date, price_rmb, volume_day, volume_total, in_sale_count) VALUES (?,?,?,?,?,?)",
+                (iid, dt, 50.0 + d * 0.2, 0, 0, 300))
+        conn.commit()
+
+        async def _run():
+            orig = analysis_service.collector_csqaq.fetch_item_detail
+            called = {"n": 0}
+            async def fake_fetch(good_id):
+                called["n"] += 1
+                it = ItemData()
+                it.good_id = good_id
+                it.name = TEST
+                it.price_rmb = 66.0
+                it.in_sale_count = 77
+                it.kline_90d = []
+                return it
+            analysis_service.collector_csqaq.fetch_item_detail = fake_fetch
+            try:
+                item = await analysis_service.resolve_item(999999003, TEST, max_stale_days=3, force_refresh=True)
+            finally:
+                analysis_service.collector_csqaq.fetch_item_detail = orig
+            return item, called["n"]
+
+        item, fetch_n = asyncio.run(_run())
+        assert fetch_n == 1, "force_refresh 未触发网络采集"
+        assert item is not None and not getattr(item, "from_db", False), "强制刷新应返回采集结果而非 DB 复用"
+        assert item.name == TEST and item.price_rmb == 66.0 and item.in_sale_count == 77
+    finally:
+        try:
+            conn.execute("DELETE FROM price_history WHERE item_id IN (SELECT id FROM items WHERE name=?)", (TEST,))
+            conn.execute("DELETE FROM items WHERE name=?", (TEST,))
+            conn.commit()
+        except Exception:
+            pass
+        conn.close()
+check("F-3 resolve_item 强制联网刷新跳过 DB 复用", t_resolve_item_force)
+
 # ---- F-3.5 流动性深度闸门 (2026-08-08) ----
 print('[F-3.5: 流动性闸门 supply_depth]')
 

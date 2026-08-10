@@ -117,13 +117,17 @@ def item_from_db(fresh, good_id):
     return it
 
 
-async def resolve_item(good_id, name, max_stale_days=KLINE_FRESH_BATCH):
+async def resolve_item(good_id, name, max_stale_days=KLINE_FRESH_BATCH, force_refresh=False):
     """复用优先入口：DB 新鲜则返回 DB ItemData（不采集）；否则走 csQAQ 采集。
+    force_refresh=True 时跳过 DB 复用，强制联网采集最新数据（批量扫描「强制联网刷新」入口）。
     返回 ItemData（可能 from_db=True）或 None。"""
-    fresh = db_kline_fresh(good_id, name, max_stale_days)
-    if fresh:
-        _log.info(f"采集复用 DB {fresh['db_name']}: stale={fresh['stale']}d bars={len(fresh['bars'])}")
-        return item_from_db(fresh, good_id)
+    if not force_refresh:
+        fresh = db_kline_fresh(good_id, name, max_stale_days)
+        if fresh:
+            _log.info(f"采集复用 DB {fresh['db_name']}: stale={fresh['stale']}d bars={len(fresh['bars'])}")
+            return item_from_db(fresh, good_id)
+    else:
+        _log.info(f"强制联网刷新 {name} (good_id={good_id})")
     return await collector_csqaq.fetch_item_detail(good_id)
 
 
