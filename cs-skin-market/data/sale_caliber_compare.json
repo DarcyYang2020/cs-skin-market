@@ -1,0 +1,1396 @@
+{
+ "meta": "在售量三口径对比(B-3, 2026-08-10)：末点(现行) vs 当日中位数 vs 均值；偏差>20% 计为口径敏感日。5 品各重采 30 天：AWP|火卫一 1 天、蓝层压板 1 天、FN57|霸意大名 1 天(负向)、AK-47|抽象派 0 天、USP|守护者 0 天 → 偏差属偶发而非系统性，现行末点口径保留（与 8/9 审计整窗坏 chart 覆盖归因不同）。",
+ "generated": "2026-08-10",
+ "items": {
+  "12196": {
+   "name": "沙漠之鹰 | 蓝色层压板 (崭新出厂)",
+   "days": [
+    {
+     "date": "2026-07-12",
+     "n_points": 6,
+     "last": 667.0,
+     "median": 534.0,
+     "mean": 559.0,
+     "last_vs_median_pct": 24.9,
+     "last_vs_mean_pct": 19.3
+    },
+    {
+     "date": "2026-07-13",
+     "n_points": 6,
+     "last": 643.0,
+     "median": 658.0,
+     "mean": 660.0,
+     "last_vs_median_pct": -2.2,
+     "last_vs_mean_pct": -2.5
+    },
+    {
+     "date": "2026-07-14",
+     "n_points": 6,
+     "last": 615.0,
+     "median": 624.0,
+     "mean": 626.0,
+     "last_vs_median_pct": -1.4,
+     "last_vs_mean_pct": -1.8
+    },
+    {
+     "date": "2026-07-15",
+     "n_points": 6,
+     "last": 569.0,
+     "median": 592.0,
+     "mean": 587.0,
+     "last_vs_median_pct": -3.8,
+     "last_vs_mean_pct": -3.1
+    },
+    {
+     "date": "2026-07-16",
+     "n_points": 6,
+     "last": 618.0,
+     "median": 611.0,
+     "mean": 592.0,
+     "last_vs_median_pct": 1.1,
+     "last_vs_mean_pct": 4.4
+    },
+    {
+     "date": "2026-07-17",
+     "n_points": 6,
+     "last": 672.0,
+     "median": 608.0,
+     "mean": 615.0,
+     "last_vs_median_pct": 10.5,
+     "last_vs_mean_pct": 9.3
+    },
+    {
+     "date": "2026-07-18",
+     "n_points": 6,
+     "last": 705.0,
+     "median": 693.0,
+     "mean": 686.0,
+     "last_vs_median_pct": 1.7,
+     "last_vs_mean_pct": 2.8
+    },
+    {
+     "date": "2026-07-19",
+     "n_points": 6,
+     "last": 722.0,
+     "median": 721.0,
+     "mean": 714.0,
+     "last_vs_median_pct": 0.1,
+     "last_vs_mean_pct": 1.1
+    },
+    {
+     "date": "2026-07-20",
+     "n_points": 6,
+     "last": 767.0,
+     "median": 712.0,
+     "mean": 717.0,
+     "last_vs_median_pct": 7.7,
+     "last_vs_mean_pct": 7.0
+    },
+    {
+     "date": "2026-07-21",
+     "n_points": 6,
+     "last": 776.0,
+     "median": 770.0,
+     "mean": 768.0,
+     "last_vs_median_pct": 0.8,
+     "last_vs_mean_pct": 1.1
+    },
+    {
+     "date": "2026-07-22",
+     "n_points": 6,
+     "last": 779.0,
+     "median": 780.0,
+     "mean": 779.0,
+     "last_vs_median_pct": -0.1,
+     "last_vs_mean_pct": -0.0
+    },
+    {
+     "date": "2026-07-23",
+     "n_points": 6,
+     "last": 739.0,
+     "median": 760.0,
+     "mean": 758.0,
+     "last_vs_median_pct": -2.8,
+     "last_vs_mean_pct": -2.5
+    },
+    {
+     "date": "2026-07-24",
+     "n_points": 6,
+     "last": 837.0,
+     "median": 785.0,
+     "mean": 777.0,
+     "last_vs_median_pct": 6.6,
+     "last_vs_mean_pct": 7.7
+    },
+    {
+     "date": "2026-07-25",
+     "n_points": 6,
+     "last": 835.0,
+     "median": 834.0,
+     "mean": 832.0,
+     "last_vs_median_pct": 0.2,
+     "last_vs_mean_pct": 0.4
+    },
+    {
+     "date": "2026-07-26",
+     "n_points": 6,
+     "last": 812.0,
+     "median": 817.0,
+     "mean": 820.0,
+     "last_vs_median_pct": -0.6,
+     "last_vs_mean_pct": -0.9
+    },
+    {
+     "date": "2026-07-27",
+     "n_points": 6,
+     "last": 833.0,
+     "median": 825.0,
+     "mean": 830.0,
+     "last_vs_median_pct": 1.0,
+     "last_vs_mean_pct": 0.4
+    },
+    {
+     "date": "2026-07-28",
+     "n_points": 6,
+     "last": 827.0,
+     "median": 833.0,
+     "mean": 833.0,
+     "last_vs_median_pct": -0.7,
+     "last_vs_mean_pct": -0.8
+    },
+    {
+     "date": "2026-07-29",
+     "n_points": 6,
+     "last": 843.0,
+     "median": 833.0,
+     "mean": 824.0,
+     "last_vs_median_pct": 1.2,
+     "last_vs_mean_pct": 2.3
+    },
+    {
+     "date": "2026-07-30",
+     "n_points": 6,
+     "last": 858.0,
+     "median": 836.0,
+     "mean": 833.0,
+     "last_vs_median_pct": 2.7,
+     "last_vs_mean_pct": 3.0
+    },
+    {
+     "date": "2026-07-31",
+     "n_points": 6,
+     "last": 868.0,
+     "median": 862.0,
+     "mean": 856.0,
+     "last_vs_median_pct": 0.6,
+     "last_vs_mean_pct": 1.4
+    },
+    {
+     "date": "2026-08-01",
+     "n_points": 6,
+     "last": 856.0,
+     "median": 848.0,
+     "mean": 848.0,
+     "last_vs_median_pct": 1.0,
+     "last_vs_mean_pct": 0.9
+    },
+    {
+     "date": "2026-08-02",
+     "n_points": 6,
+     "last": 894.0,
+     "median": 888.0,
+     "mean": 878.0,
+     "last_vs_median_pct": 0.6,
+     "last_vs_mean_pct": 1.8
+    },
+    {
+     "date": "2026-08-03",
+     "n_points": 6,
+     "last": 899.0,
+     "median": 902.0,
+     "mean": 900.0,
+     "last_vs_median_pct": -0.4,
+     "last_vs_mean_pct": -0.1
+    },
+    {
+     "date": "2026-08-04",
+     "n_points": 6,
+     "last": 861.0,
+     "median": 871.0,
+     "mean": 876.0,
+     "last_vs_median_pct": -1.1,
+     "last_vs_mean_pct": -1.7
+    },
+    {
+     "date": "2026-08-05",
+     "n_points": 6,
+     "last": 834.0,
+     "median": 834.0,
+     "mean": 832.0,
+     "last_vs_median_pct": -0.1,
+     "last_vs_mean_pct": 0.2
+    },
+    {
+     "date": "2026-08-06",
+     "n_points": 6,
+     "last": 823.0,
+     "median": 808.0,
+     "mean": 807.0,
+     "last_vs_median_pct": 1.9,
+     "last_vs_mean_pct": 2.0
+    },
+    {
+     "date": "2026-08-07",
+     "n_points": 6,
+     "last": 826.0,
+     "median": 795.0,
+     "mean": 798.0,
+     "last_vs_median_pct": 3.9,
+     "last_vs_mean_pct": 3.5
+    },
+    {
+     "date": "2026-08-08",
+     "n_points": 6,
+     "last": 824.0,
+     "median": 811.0,
+     "mean": 814.0,
+     "last_vs_median_pct": 1.6,
+     "last_vs_mean_pct": 1.2
+    },
+    {
+     "date": "2026-08-09",
+     "n_points": 6,
+     "last": 813.0,
+     "median": 818.0,
+     "mean": 818.0,
+     "last_vs_median_pct": -0.6,
+     "last_vs_mean_pct": -0.6
+    },
+    {
+     "date": "2026-08-10",
+     "n_points": 6,
+     "last": 808.0,
+     "median": 799.0,
+     "mean": 798.0,
+     "last_vs_median_pct": 1.1,
+     "last_vs_mean_pct": 1.3
+    }
+   ],
+   "n_days": 30,
+   "dev>20%_days": 1,
+   "worst_last_vs_median": 24.9
+  },
+  "13363": {
+   "name": "AK-47 | 抽象派 1337 (略有磨损)",
+   "days": [
+    {
+     "date": "2026-07-12",
+     "n_points": 6,
+     "last": 1199.0,
+     "median": 1166.0,
+     "mean": 1166.0,
+     "last_vs_median_pct": 2.8,
+     "last_vs_mean_pct": 2.9
+    },
+    {
+     "date": "2026-07-13",
+     "n_points": 6,
+     "last": 1316.0,
+     "median": 1244.0,
+     "mean": 1247.0,
+     "last_vs_median_pct": 5.7,
+     "last_vs_mean_pct": 5.5
+    },
+    {
+     "date": "2026-07-14",
+     "n_points": 6,
+     "last": 1241.0,
+     "median": 1206.0,
+     "mean": 1211.0,
+     "last_vs_median_pct": 2.9,
+     "last_vs_mean_pct": 2.5
+    },
+    {
+     "date": "2026-07-15",
+     "n_points": 6,
+     "last": 1234.0,
+     "median": 1236.0,
+     "mean": 1240.0,
+     "last_vs_median_pct": -0.2,
+     "last_vs_mean_pct": -0.5
+    },
+    {
+     "date": "2026-07-16",
+     "n_points": 6,
+     "last": 1243.0,
+     "median": 1220.0,
+     "mean": 1204.0,
+     "last_vs_median_pct": 1.9,
+     "last_vs_mean_pct": 3.3
+    },
+    {
+     "date": "2026-07-17",
+     "n_points": 6,
+     "last": 1217.0,
+     "median": 1202.0,
+     "mean": 1203.0,
+     "last_vs_median_pct": 1.2,
+     "last_vs_mean_pct": 1.2
+    },
+    {
+     "date": "2026-07-18",
+     "n_points": 6,
+     "last": 1220.0,
+     "median": 1200.0,
+     "mean": 1201.0,
+     "last_vs_median_pct": 1.7,
+     "last_vs_mean_pct": 1.6
+    },
+    {
+     "date": "2026-07-19",
+     "n_points": 6,
+     "last": 1214.0,
+     "median": 1191.0,
+     "mean": 1192.0,
+     "last_vs_median_pct": 1.9,
+     "last_vs_mean_pct": 1.8
+    },
+    {
+     "date": "2026-07-20",
+     "n_points": 6,
+     "last": 1197.0,
+     "median": 1198.0,
+     "mean": 1192.0,
+     "last_vs_median_pct": -0.0,
+     "last_vs_mean_pct": 0.4
+    },
+    {
+     "date": "2026-07-21",
+     "n_points": 6,
+     "last": 1234.0,
+     "median": 1218.0,
+     "mean": 1216.0,
+     "last_vs_median_pct": 1.3,
+     "last_vs_mean_pct": 1.5
+    },
+    {
+     "date": "2026-07-22",
+     "n_points": 6,
+     "last": 1222.0,
+     "median": 1222.0,
+     "mean": 1220.0,
+     "last_vs_median_pct": 0.0,
+     "last_vs_mean_pct": 0.2
+    },
+    {
+     "date": "2026-07-23",
+     "n_points": 6,
+     "last": 1222.0,
+     "median": 1214.0,
+     "mean": 1210.0,
+     "last_vs_median_pct": 0.7,
+     "last_vs_mean_pct": 1.0
+    },
+    {
+     "date": "2026-07-24",
+     "n_points": 6,
+     "last": 1214.0,
+     "median": 1196.0,
+     "mean": 1195.0,
+     "last_vs_median_pct": 1.5,
+     "last_vs_mean_pct": 1.6
+    },
+    {
+     "date": "2026-07-25",
+     "n_points": 6,
+     "last": 1197.0,
+     "median": 1198.0,
+     "mean": 1193.0,
+     "last_vs_median_pct": -0.1,
+     "last_vs_mean_pct": 0.3
+    },
+    {
+     "date": "2026-07-26",
+     "n_points": 6,
+     "last": 1218.0,
+     "median": 1204.0,
+     "mean": 1198.0,
+     "last_vs_median_pct": 1.1,
+     "last_vs_mean_pct": 1.7
+    },
+    {
+     "date": "2026-07-27",
+     "n_points": 6,
+     "last": 1226.0,
+     "median": 1200.0,
+     "mean": 1200.0,
+     "last_vs_median_pct": 2.1,
+     "last_vs_mean_pct": 2.1
+    },
+    {
+     "date": "2026-07-28",
+     "n_points": 6,
+     "last": 1217.0,
+     "median": 1210.0,
+     "mean": 1206.0,
+     "last_vs_median_pct": 0.6,
+     "last_vs_mean_pct": 0.9
+    },
+    {
+     "date": "2026-07-29",
+     "n_points": 6,
+     "last": 1209.0,
+     "median": 1212.0,
+     "mean": 1214.0,
+     "last_vs_median_pct": -0.3,
+     "last_vs_mean_pct": -0.4
+    },
+    {
+     "date": "2026-07-30",
+     "n_points": 6,
+     "last": 1210.0,
+     "median": 1200.0,
+     "mean": 1196.0,
+     "last_vs_median_pct": 0.9,
+     "last_vs_mean_pct": 1.2
+    },
+    {
+     "date": "2026-07-31",
+     "n_points": 6,
+     "last": 1161.0,
+     "median": 1180.0,
+     "mean": 1176.0,
+     "last_vs_median_pct": -1.6,
+     "last_vs_mean_pct": -1.3
+    },
+    {
+     "date": "2026-08-01",
+     "n_points": 6,
+     "last": 1186.0,
+     "median": 1165.0,
+     "mean": 1160.0,
+     "last_vs_median_pct": 1.8,
+     "last_vs_mean_pct": 2.3
+    },
+    {
+     "date": "2026-08-02",
+     "n_points": 6,
+     "last": 1171.0,
+     "median": 1165.0,
+     "mean": 1160.0,
+     "last_vs_median_pct": 0.5,
+     "last_vs_mean_pct": 1.0
+    },
+    {
+     "date": "2026-08-03",
+     "n_points": 6,
+     "last": 1233.0,
+     "median": 1182.0,
+     "mean": 1189.0,
+     "last_vs_median_pct": 4.3,
+     "last_vs_mean_pct": 3.7
+    },
+    {
+     "date": "2026-08-04",
+     "n_points": 6,
+     "last": 1182.0,
+     "median": 1183.0,
+     "mean": 1186.0,
+     "last_vs_median_pct": -0.1,
+     "last_vs_mean_pct": -0.3
+    },
+    {
+     "date": "2026-08-05",
+     "n_points": 6,
+     "last": 1185.0,
+     "median": 1159.0,
+     "mean": 1162.0,
+     "last_vs_median_pct": 2.2,
+     "last_vs_mean_pct": 2.0
+    },
+    {
+     "date": "2026-08-06",
+     "n_points": 6,
+     "last": 1174.0,
+     "median": 1178.0,
+     "mean": 1174.0,
+     "last_vs_median_pct": -0.3,
+     "last_vs_mean_pct": -0.0
+    },
+    {
+     "date": "2026-08-07",
+     "n_points": 6,
+     "last": 1160.0,
+     "median": 1162.0,
+     "mean": 1161.0,
+     "last_vs_median_pct": -0.2,
+     "last_vs_mean_pct": -0.1
+    },
+    {
+     "date": "2026-08-08",
+     "n_points": 6,
+     "last": 1185.0,
+     "median": 1154.0,
+     "mean": 1152.0,
+     "last_vs_median_pct": 2.7,
+     "last_vs_mean_pct": 2.8
+    },
+    {
+     "date": "2026-08-09",
+     "n_points": 6,
+     "last": 1172.0,
+     "median": 1176.0,
+     "mean": 1177.0,
+     "last_vs_median_pct": -0.3,
+     "last_vs_mean_pct": -0.4
+    },
+    {
+     "date": "2026-08-10",
+     "n_points": 6,
+     "last": 1202.0,
+     "median": 1174.0,
+     "mean": 1181.0,
+     "last_vs_median_pct": 2.3,
+     "last_vs_mean_pct": 1.8
+    }
+   ],
+   "n_days": 30,
+   "dev>20%_days": 0,
+   "worst_last_vs_median": 5.7
+  },
+  "279": {
+   "name": "AWP | 火卫一 (崭新出厂)",
+   "days": [
+    {
+     "date": "2026-07-12",
+     "n_points": 6,
+     "last": 1231.0,
+     "median": 1191.0,
+     "mean": 1188.0,
+     "last_vs_median_pct": 3.4,
+     "last_vs_mean_pct": 3.6
+    },
+    {
+     "date": "2026-07-13",
+     "n_points": 6,
+     "last": 1271.0,
+     "median": 1262.0,
+     "mean": 1211.0,
+     "last_vs_median_pct": 0.8,
+     "last_vs_mean_pct": 5.0
+    },
+    {
+     "date": "2026-07-14",
+     "n_points": 6,
+     "last": 1221.0,
+     "median": 1210.0,
+     "mean": 1186.0,
+     "last_vs_median_pct": 1.0,
+     "last_vs_mean_pct": 2.9
+    },
+    {
+     "date": "2026-07-15",
+     "n_points": 6,
+     "last": 1162.0,
+     "median": 1174.0,
+     "mean": 1164.0,
+     "last_vs_median_pct": -1.0,
+     "last_vs_mean_pct": -0.1
+    },
+    {
+     "date": "2026-07-16",
+     "n_points": 6,
+     "last": 1272.0,
+     "median": 1195.0,
+     "mean": 1148.0,
+     "last_vs_median_pct": 6.4,
+     "last_vs_mean_pct": 10.8
+    },
+    {
+     "date": "2026-07-17",
+     "n_points": 6,
+     "last": 1362.0,
+     "median": 1295.0,
+     "mean": 1256.0,
+     "last_vs_median_pct": 5.2,
+     "last_vs_mean_pct": 8.5
+    },
+    {
+     "date": "2026-07-18",
+     "n_points": 6,
+     "last": 1369.0,
+     "median": 1337.0,
+     "mean": 1292.0,
+     "last_vs_median_pct": 2.4,
+     "last_vs_mean_pct": 6.0
+    },
+    {
+     "date": "2026-07-19",
+     "n_points": 6,
+     "last": 1392.0,
+     "median": 1378.0,
+     "mean": 1331.0,
+     "last_vs_median_pct": 1.0,
+     "last_vs_mean_pct": 4.6
+    },
+    {
+     "date": "2026-07-20",
+     "n_points": 6,
+     "last": 1380.0,
+     "median": 1380.0,
+     "mean": 1396.0,
+     "last_vs_median_pct": 0.0,
+     "last_vs_mean_pct": -1.2
+    },
+    {
+     "date": "2026-07-21",
+     "n_points": 6,
+     "last": 1427.0,
+     "median": 1369.0,
+     "mean": 1353.0,
+     "last_vs_median_pct": 4.2,
+     "last_vs_mean_pct": 5.5
+    },
+    {
+     "date": "2026-07-22",
+     "n_points": 6,
+     "last": 1196.0,
+     "median": 1270.0,
+     "mean": 1271.0,
+     "last_vs_median_pct": -5.9,
+     "last_vs_mean_pct": -5.9
+    },
+    {
+     "date": "2026-07-23",
+     "n_points": 6,
+     "last": 1271.0,
+     "median": 1150.0,
+     "mean": 1135.0,
+     "last_vs_median_pct": 10.6,
+     "last_vs_mean_pct": 11.9
+    },
+    {
+     "date": "2026-07-24",
+     "n_points": 6,
+     "last": 1367.0,
+     "median": 1180.0,
+     "mean": 1185.0,
+     "last_vs_median_pct": 15.9,
+     "last_vs_mean_pct": 15.4
+    },
+    {
+     "date": "2026-07-25",
+     "n_points": 6,
+     "last": 1491.0,
+     "median": 1487.0,
+     "mean": 1435.0,
+     "last_vs_median_pct": 0.3,
+     "last_vs_mean_pct": 3.9
+    },
+    {
+     "date": "2026-07-26",
+     "n_points": 6,
+     "last": 1580.0,
+     "median": 1464.0,
+     "mean": 1450.0,
+     "last_vs_median_pct": 8.0,
+     "last_vs_mean_pct": 9.0
+    },
+    {
+     "date": "2026-07-27",
+     "n_points": 6,
+     "last": 1445.0,
+     "median": 1472.0,
+     "mean": 1485.0,
+     "last_vs_median_pct": -1.8,
+     "last_vs_mean_pct": -2.7
+    },
+    {
+     "date": "2026-07-28",
+     "n_points": 6,
+     "last": 1297.0,
+     "median": 1310.0,
+     "mean": 1282.0,
+     "last_vs_median_pct": -1.0,
+     "last_vs_mean_pct": 1.2
+    },
+    {
+     "date": "2026-07-29",
+     "n_points": 6,
+     "last": 1331.0,
+     "median": 1304.0,
+     "mean": 1252.0,
+     "last_vs_median_pct": 2.1,
+     "last_vs_mean_pct": 6.3
+    },
+    {
+     "date": "2026-07-30",
+     "n_points": 6,
+     "last": 1728.0,
+     "median": 1346.0,
+     "mean": 1356.0,
+     "last_vs_median_pct": 28.3,
+     "last_vs_mean_pct": 27.5
+    },
+    {
+     "date": "2026-07-31",
+     "n_points": 6,
+     "last": 1274.0,
+     "median": 1306.0,
+     "mean": 1377.0,
+     "last_vs_median_pct": -2.5,
+     "last_vs_mean_pct": -7.5
+    },
+    {
+     "date": "2026-08-01",
+     "n_points": 6,
+     "last": 1276.0,
+     "median": 1270.0,
+     "mean": 1220.0,
+     "last_vs_median_pct": 0.5,
+     "last_vs_mean_pct": 4.6
+    },
+    {
+     "date": "2026-08-02",
+     "n_points": 6,
+     "last": 1272.0,
+     "median": 1286.0,
+     "mean": 1233.0,
+     "last_vs_median_pct": -1.1,
+     "last_vs_mean_pct": 3.2
+    },
+    {
+     "date": "2026-08-03",
+     "n_points": 6,
+     "last": 1250.0,
+     "median": 1243.0,
+     "mean": 1228.0,
+     "last_vs_median_pct": 0.6,
+     "last_vs_mean_pct": 1.8
+    },
+    {
+     "date": "2026-08-04",
+     "n_points": 6,
+     "last": 1267.0,
+     "median": 1259.0,
+     "mean": 1208.0,
+     "last_vs_median_pct": 0.6,
+     "last_vs_mean_pct": 4.9
+    },
+    {
+     "date": "2026-08-05",
+     "n_points": 6,
+     "last": 1277.0,
+     "median": 1250.0,
+     "mean": 1201.0,
+     "last_vs_median_pct": 2.2,
+     "last_vs_mean_pct": 6.3
+    },
+    {
+     "date": "2026-08-06",
+     "n_points": 6,
+     "last": 1349.0,
+     "median": 1294.0,
+     "mean": 1250.0,
+     "last_vs_median_pct": 4.2,
+     "last_vs_mean_pct": 7.9
+    },
+    {
+     "date": "2026-08-07",
+     "n_points": 6,
+     "last": 1375.0,
+     "median": 1332.0,
+     "mean": 1287.0,
+     "last_vs_median_pct": 3.3,
+     "last_vs_mean_pct": 6.8
+    },
+    {
+     "date": "2026-08-08",
+     "n_points": 6,
+     "last": 1425.0,
+     "median": 1390.0,
+     "mean": 1359.0,
+     "last_vs_median_pct": 2.5,
+     "last_vs_mean_pct": 4.8
+    },
+    {
+     "date": "2026-08-09",
+     "n_points": 6,
+     "last": 1354.0,
+     "median": 1350.0,
+     "mean": 1314.0,
+     "last_vs_median_pct": 0.3,
+     "last_vs_mean_pct": 3.0
+    },
+    {
+     "date": "2026-08-10",
+     "n_points": 6,
+     "last": 1357.0,
+     "median": 1317.0,
+     "mean": 1284.0,
+     "last_vs_median_pct": 3.0,
+     "last_vs_mean_pct": 5.7
+    }
+   ],
+   "n_days": 30,
+   "dev>20%_days": 1,
+   "worst_last_vs_median": 28.3
+  },
+  "28": {
+   "name": "FN57 | 霸意大名 (崭新出厂)",
+   "days": [
+    {
+     "date": "2026-07-12",
+     "n_points": 6,
+     "last": 482.0,
+     "median": 432.0,
+     "mean": 439.0,
+     "last_vs_median_pct": 11.6,
+     "last_vs_mean_pct": 9.8
+    },
+    {
+     "date": "2026-07-13",
+     "n_points": 6,
+     "last": 333.0,
+     "median": 435.0,
+     "mean": 422.0,
+     "last_vs_median_pct": -23.4,
+     "last_vs_mean_pct": -21.0
+    },
+    {
+     "date": "2026-07-14",
+     "n_points": 6,
+     "last": 352.0,
+     "median": 356.0,
+     "mean": 368.0,
+     "last_vs_median_pct": -1.1,
+     "last_vs_mean_pct": -4.3
+    },
+    {
+     "date": "2026-07-15",
+     "n_points": 6,
+     "last": 337.0,
+     "median": 331.0,
+     "mean": 337.0,
+     "last_vs_median_pct": 1.8,
+     "last_vs_mean_pct": 0.0
+    },
+    {
+     "date": "2026-07-16",
+     "n_points": 6,
+     "last": 343.0,
+     "median": 320.0,
+     "mean": 314.0,
+     "last_vs_median_pct": 7.2,
+     "last_vs_mean_pct": 9.2
+    },
+    {
+     "date": "2026-07-17",
+     "n_points": 6,
+     "last": 374.0,
+     "median": 338.0,
+     "mean": 347.0,
+     "last_vs_median_pct": 10.7,
+     "last_vs_mean_pct": 7.9
+    },
+    {
+     "date": "2026-07-18",
+     "n_points": 6,
+     "last": 415.0,
+     "median": 376.0,
+     "mean": 380.0,
+     "last_vs_median_pct": 10.5,
+     "last_vs_mean_pct": 9.1
+    },
+    {
+     "date": "2026-07-19",
+     "n_points": 6,
+     "last": 419.0,
+     "median": 404.0,
+     "mean": 405.0,
+     "last_vs_median_pct": 3.8,
+     "last_vs_mean_pct": 3.4
+    },
+    {
+     "date": "2026-07-20",
+     "n_points": 6,
+     "last": 419.0,
+     "median": 408.0,
+     "mean": 411.0,
+     "last_vs_median_pct": 2.7,
+     "last_vs_mean_pct": 1.9
+    },
+    {
+     "date": "2026-07-21",
+     "n_points": 6,
+     "last": 484.0,
+     "median": 406.0,
+     "mean": 427.0,
+     "last_vs_median_pct": 19.2,
+     "last_vs_mean_pct": 13.4
+    },
+    {
+     "date": "2026-07-22",
+     "n_points": 6,
+     "last": 458.0,
+     "median": 467.0,
+     "mean": 468.0,
+     "last_vs_median_pct": -1.9,
+     "last_vs_mean_pct": -2.1
+    },
+    {
+     "date": "2026-07-23",
+     "n_points": 6,
+     "last": 467.0,
+     "median": 460.0,
+     "mean": 460.0,
+     "last_vs_median_pct": 1.5,
+     "last_vs_mean_pct": 1.6
+    },
+    {
+     "date": "2026-07-24",
+     "n_points": 6,
+     "last": 508.0,
+     "median": 486.0,
+     "mean": 479.0,
+     "last_vs_median_pct": 4.5,
+     "last_vs_mean_pct": 6.0
+    },
+    {
+     "date": "2026-07-25",
+     "n_points": 6,
+     "last": 492.0,
+     "median": 498.0,
+     "mean": 500.0,
+     "last_vs_median_pct": -1.3,
+     "last_vs_mean_pct": -1.7
+    },
+    {
+     "date": "2026-07-26",
+     "n_points": 6,
+     "last": 496.0,
+     "median": 470.0,
+     "mean": 472.0,
+     "last_vs_median_pct": 5.4,
+     "last_vs_mean_pct": 5.0
+    },
+    {
+     "date": "2026-07-27",
+     "n_points": 6,
+     "last": 529.0,
+     "median": 504.0,
+     "mean": 505.0,
+     "last_vs_median_pct": 5.1,
+     "last_vs_mean_pct": 4.7
+    },
+    {
+     "date": "2026-07-28",
+     "n_points": 6,
+     "last": 491.0,
+     "median": 494.0,
+     "mean": 498.0,
+     "last_vs_median_pct": -0.5,
+     "last_vs_mean_pct": -1.4
+    },
+    {
+     "date": "2026-07-29",
+     "n_points": 6,
+     "last": 496.0,
+     "median": 488.0,
+     "mean": 488.0,
+     "last_vs_median_pct": 1.5,
+     "last_vs_mean_pct": 1.7
+    },
+    {
+     "date": "2026-07-30",
+     "n_points": 6,
+     "last": 465.0,
+     "median": 456.0,
+     "mean": 458.0,
+     "last_vs_median_pct": 1.9,
+     "last_vs_mean_pct": 1.6
+    },
+    {
+     "date": "2026-07-31",
+     "n_points": 6,
+     "last": 490.0,
+     "median": 465.0,
+     "mean": 466.0,
+     "last_vs_median_pct": 5.4,
+     "last_vs_mean_pct": 5.2
+    },
+    {
+     "date": "2026-08-01",
+     "n_points": 6,
+     "last": 494.0,
+     "median": 476.0,
+     "mean": 476.0,
+     "last_vs_median_pct": 3.8,
+     "last_vs_mean_pct": 3.7
+    },
+    {
+     "date": "2026-08-02",
+     "n_points": 6,
+     "last": 507.0,
+     "median": 496.0,
+     "mean": 485.0,
+     "last_vs_median_pct": 2.1,
+     "last_vs_mean_pct": 4.6
+    },
+    {
+     "date": "2026-08-03",
+     "n_points": 6,
+     "last": 527.0,
+     "median": 484.0,
+     "mean": 487.0,
+     "last_vs_median_pct": 8.8,
+     "last_vs_mean_pct": 8.1
+    },
+    {
+     "date": "2026-08-04",
+     "n_points": 6,
+     "last": 514.0,
+     "median": 511.0,
+     "mean": 506.0,
+     "last_vs_median_pct": 0.6,
+     "last_vs_mean_pct": 1.5
+    },
+    {
+     "date": "2026-08-05",
+     "n_points": 6,
+     "last": 453.0,
+     "median": 455.0,
+     "mean": 455.0,
+     "last_vs_median_pct": -0.4,
+     "last_vs_mean_pct": -0.4
+    },
+    {
+     "date": "2026-08-06",
+     "n_points": 6,
+     "last": 400.0,
+     "median": 401.0,
+     "mean": 397.0,
+     "last_vs_median_pct": -0.2,
+     "last_vs_mean_pct": 0.8
+    },
+    {
+     "date": "2026-08-07",
+     "n_points": 6,
+     "last": 464.0,
+     "median": 431.0,
+     "mean": 431.0,
+     "last_vs_median_pct": 7.7,
+     "last_vs_mean_pct": 7.6
+    },
+    {
+     "date": "2026-08-08",
+     "n_points": 6,
+     "last": 441.0,
+     "median": 439.0,
+     "mean": 436.0,
+     "last_vs_median_pct": 0.5,
+     "last_vs_mean_pct": 1.1
+    },
+    {
+     "date": "2026-08-09",
+     "n_points": 6,
+     "last": 459.0,
+     "median": 454.0,
+     "mean": 452.0,
+     "last_vs_median_pct": 1.0,
+     "last_vs_mean_pct": 1.5
+    },
+    {
+     "date": "2026-08-10",
+     "n_points": 6,
+     "last": 462.0,
+     "median": 436.0,
+     "mean": 443.0,
+     "last_vs_median_pct": 6.0,
+     "last_vs_mean_pct": 4.4
+    }
+   ],
+   "n_days": 30,
+   "dev>20%_days": 1,
+   "worst_last_vs_median": 19.2
+  },
+  "6554": {
+   "name": "USP 消音版 | 守护者 (崭新出厂)",
+   "days": [
+    {
+     "date": "2026-07-12",
+     "n_points": 6,
+     "last": 1016.0,
+     "median": 975.0,
+     "mean": 976.0,
+     "last_vs_median_pct": 4.2,
+     "last_vs_mean_pct": 4.1
+    },
+    {
+     "date": "2026-07-13",
+     "n_points": 6,
+     "last": 1044.0,
+     "median": 1046.0,
+     "mean": 1049.0,
+     "last_vs_median_pct": -0.2,
+     "last_vs_mean_pct": -0.4
+    },
+    {
+     "date": "2026-07-14",
+     "n_points": 6,
+     "last": 1042.0,
+     "median": 1030.0,
+     "mean": 1024.0,
+     "last_vs_median_pct": 1.2,
+     "last_vs_mean_pct": 1.8
+    },
+    {
+     "date": "2026-07-15",
+     "n_points": 6,
+     "last": 1083.0,
+     "median": 1036.0,
+     "mean": 1040.0,
+     "last_vs_median_pct": 4.5,
+     "last_vs_mean_pct": 4.2
+    },
+    {
+     "date": "2026-07-16",
+     "n_points": 6,
+     "last": 1075.0,
+     "median": 1050.0,
+     "mean": 1032.0,
+     "last_vs_median_pct": 2.4,
+     "last_vs_mean_pct": 4.1
+    },
+    {
+     "date": "2026-07-17",
+     "n_points": 6,
+     "last": 1064.0,
+     "median": 1046.0,
+     "mean": 1044.0,
+     "last_vs_median_pct": 1.8,
+     "last_vs_mean_pct": 1.9
+    },
+    {
+     "date": "2026-07-18",
+     "n_points": 6,
+     "last": 1075.0,
+     "median": 1056.0,
+     "mean": 1050.0,
+     "last_vs_median_pct": 1.8,
+     "last_vs_mean_pct": 2.4
+    },
+    {
+     "date": "2026-07-19",
+     "n_points": 6,
+     "last": 1124.0,
+     "median": 1096.0,
+     "mean": 1094.0,
+     "last_vs_median_pct": 2.6,
+     "last_vs_mean_pct": 2.8
+    },
+    {
+     "date": "2026-07-20",
+     "n_points": 6,
+     "last": 1137.0,
+     "median": 1128.0,
+     "mean": 1119.0,
+     "last_vs_median_pct": 0.8,
+     "last_vs_mean_pct": 1.6
+    },
+    {
+     "date": "2026-07-21",
+     "n_points": 6,
+     "last": 1070.0,
+     "median": 1066.0,
+     "mean": 1062.0,
+     "last_vs_median_pct": 0.4,
+     "last_vs_mean_pct": 0.7
+    },
+    {
+     "date": "2026-07-22",
+     "n_points": 6,
+     "last": 1064.0,
+     "median": 1060.0,
+     "mean": 1057.0,
+     "last_vs_median_pct": 0.4,
+     "last_vs_mean_pct": 0.6
+    },
+    {
+     "date": "2026-07-23",
+     "n_points": 6,
+     "last": 1080.0,
+     "median": 1068.0,
+     "mean": 1064.0,
+     "last_vs_median_pct": 1.2,
+     "last_vs_mean_pct": 1.5
+    },
+    {
+     "date": "2026-07-24",
+     "n_points": 6,
+     "last": 1124.0,
+     "median": 1064.0,
+     "mean": 1064.0,
+     "last_vs_median_pct": 5.6,
+     "last_vs_mean_pct": 5.7
+    },
+    {
+     "date": "2026-07-25",
+     "n_points": 6,
+     "last": 1127.0,
+     "median": 1107.0,
+     "mean": 1100.0,
+     "last_vs_median_pct": 1.8,
+     "last_vs_mean_pct": 2.5
+    },
+    {
+     "date": "2026-07-26",
+     "n_points": 6,
+     "last": 1127.0,
+     "median": 1117.0,
+     "mean": 1109.0,
+     "last_vs_median_pct": 0.9,
+     "last_vs_mean_pct": 1.6
+    },
+    {
+     "date": "2026-07-27",
+     "n_points": 6,
+     "last": 1120.0,
+     "median": 1112.0,
+     "mean": 1106.0,
+     "last_vs_median_pct": 0.8,
+     "last_vs_mean_pct": 1.3
+    },
+    {
+     "date": "2026-07-28",
+     "n_points": 6,
+     "last": 1120.0,
+     "median": 1110.0,
+     "mean": 1098.0,
+     "last_vs_median_pct": 0.9,
+     "last_vs_mean_pct": 2.0
+    },
+    {
+     "date": "2026-07-29",
+     "n_points": 6,
+     "last": 1154.0,
+     "median": 1122.0,
+     "mean": 1116.0,
+     "last_vs_median_pct": 2.8,
+     "last_vs_mean_pct": 3.5
+    },
+    {
+     "date": "2026-07-30",
+     "n_points": 6,
+     "last": 1184.0,
+     "median": 1148.0,
+     "mean": 1141.0,
+     "last_vs_median_pct": 3.1,
+     "last_vs_mean_pct": 3.8
+    },
+    {
+     "date": "2026-07-31",
+     "n_points": 6,
+     "last": 1193.0,
+     "median": 1194.0,
+     "mean": 1181.0,
+     "last_vs_median_pct": -0.1,
+     "last_vs_mean_pct": 1.0
+    },
+    {
+     "date": "2026-08-01",
+     "n_points": 6,
+     "last": 1137.0,
+     "median": 1148.0,
+     "mean": 1147.0,
+     "last_vs_median_pct": -1.0,
+     "last_vs_mean_pct": -0.9
+    },
+    {
+     "date": "2026-08-02",
+     "n_points": 6,
+     "last": 1110.0,
+     "median": 1102.0,
+     "mean": 1104.0,
+     "last_vs_median_pct": 0.8,
+     "last_vs_mean_pct": 0.5
+    },
+    {
+     "date": "2026-08-03",
+     "n_points": 6,
+     "last": 1097.0,
+     "median": 1087.0,
+     "mean": 1082.0,
+     "last_vs_median_pct": 0.9,
+     "last_vs_mean_pct": 1.4
+    },
+    {
+     "date": "2026-08-04",
+     "n_points": 6,
+     "last": 1109.0,
+     "median": 1098.0,
+     "mean": 1084.0,
+     "last_vs_median_pct": 1.0,
+     "last_vs_mean_pct": 2.3
+    },
+    {
+     "date": "2026-08-05",
+     "n_points": 6,
+     "last": 1116.0,
+     "median": 1098.0,
+     "mean": 1090.0,
+     "last_vs_median_pct": 1.6,
+     "last_vs_mean_pct": 2.4
+    },
+    {
+     "date": "2026-08-06",
+     "n_points": 6,
+     "last": 1093.0,
+     "median": 1092.0,
+     "mean": 1083.0,
+     "last_vs_median_pct": 0.0,
+     "last_vs_mean_pct": 0.9
+    },
+    {
+     "date": "2026-08-07",
+     "n_points": 6,
+     "last": 1083.0,
+     "median": 1070.0,
+     "mean": 1065.0,
+     "last_vs_median_pct": 1.3,
+     "last_vs_mean_pct": 1.7
+    },
+    {
+     "date": "2026-08-08",
+     "n_points": 6,
+     "last": 1104.0,
+     "median": 1094.0,
+     "mean": 1080.0,
+     "last_vs_median_pct": 0.9,
+     "last_vs_mean_pct": 2.2
+    },
+    {
+     "date": "2026-08-09",
+     "n_points": 6,
+     "last": 1085.0,
+     "median": 1084.0,
+     "mean": 1081.0,
+     "last_vs_median_pct": 0.1,
+     "last_vs_mean_pct": 0.3
+    },
+    {
+     "date": "2026-08-10",
+     "n_points": 6,
+     "last": 1102.0,
+     "median": 1071.0,
+     "mean": 1075.0,
+     "last_vs_median_pct": 2.9,
+     "last_vs_mean_pct": 2.5
+    }
+   ],
+   "n_days": 30,
+   "dev>20%_days": 0,
+   "worst_last_vs_median": 5.6
+  }
+ }
+}

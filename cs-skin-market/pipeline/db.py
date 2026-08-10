@@ -337,10 +337,13 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         prev_quantity INTEGER,
         prev_avg_cost REAL,
         prev_total_bought REAL,
+        source TEXT DEFAULT 'manual',   -- D-3（2026-08-10）执行来源: manual / push:{push_id}，供推送→执行归因
         created_at TEXT DEFAULT (datetime('now','localtime')))""")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_executions_date ON executions(advice_date)")
     # 滑点统计(2026-08-06): 旧库惰性补 advice_price 列
     _exec_cols = [r[1] for r in conn.execute("PRAGMA table_info(executions)").fetchall()]  # 索引访问兼容无 row_factory 连接
+    if "source" not in _exec_cols:
+        conn.execute("ALTER TABLE executions ADD COLUMN source TEXT DEFAULT 'manual'")  # D-3（2026-08-10）推送→执行归因
     if "advice_price" not in _exec_cols:
         conn.execute("ALTER TABLE executions ADD COLUMN advice_price REAL")
 
@@ -839,7 +842,7 @@ def _rebuild_item(conn, item_id):
     return _write_position(conn, item_id, state)
 
 
-def add_execution(conn, item_id, name, action, advice_date, exec_price, qty=1, advice_signal="", advice_price=None):
+def add_execution(conn, item_id, name, action, advice_date, exec_price, qty=1, advice_signal="", advice_price=None, source="manual"):
     """新增执行记录（按建议执行：建仓/补仓/减仓/清仓）。
 
     2026-08-09: 记录操作前持仓快照(prev_*)，删除/编辑该条时可从此状态分段重放回滚持仓/资产。
@@ -853,10 +856,10 @@ def add_execution(conn, item_id, name, action, advice_date, exec_price, qty=1, a
                     float(row["avg_cost"] or 0), float(row["total_bought"] or 0))
     cur = conn.execute(
         "INSERT INTO executions (item_id, name, action, advice_date, advice_signal, advice_price, exec_price, qty, "
-        "prev_holding, prev_quantity, prev_avg_cost, prev_total_bought) "
-        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+        "prev_holding, prev_quantity, prev_avg_cost, prev_total_bought, source) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
         (item_id, name, action, advice_date, advice_signal, advice_price, exec_price, qty,
-         prev[0], prev[1], prev[2], prev[3]))
+         prev[0], prev[1], prev[2], prev[3], source))
     conn.commit()
     return cur.lastrowid
 

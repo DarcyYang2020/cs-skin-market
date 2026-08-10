@@ -1,0 +1,181 @@
+{
+ "meta": "组合绩效归因(A1-3, 2026-08-10)：与 portfolio_backtest 同源口径；leave-one-out=剔除该族后组合总收益差值(pp)。",
+ "generated": "2026-08-10",
+ "base": {
+  "total_return_pct": 83.65,
+  "n_signals": 332
+ },
+ "family_contribution": {
+  "deep_value": {
+   "label": "深值族",
+   "n_signals": 27,
+   "win14_pct": 63.0,
+   "avg14_net_pct": 11.55,
+   "leave_out_contrib_pp": 13.98,
+   "share_of_signals_pct": 8.1
+  },
+  "accumulate": {
+   "label": "供给吸筹族",
+   "n_signals": 212,
+   "win14_pct": 61.8,
+   "avg14_net_pct": 9.63,
+   "leave_out_contrib_pp": 34.2,
+   "share_of_signals_pct": 63.9
+  },
+  "panic": {
+   "label": "恐慌族",
+   "n_signals": 93,
+   "win14_pct": 90.3,
+   "avg14_net_pct": 29.51,
+   "leave_out_contrib_pp": 21.65,
+   "share_of_signals_pct": 28.0
+  }
+ },
+ "monthly_pnl": {
+  "2025-11": {
+   "n": 14,
+   "pnl_weighted": 14.08,
+   "win14_pct": 64.3
+  },
+  "2025-12": {
+   "n": 13,
+   "pnl_weighted": 27.73,
+   "win14_pct": 46.2
+  },
+  "2026-01": {
+   "n": 5,
+   "pnl_weighted": 32.91,
+   "win14_pct": 80.0
+  },
+  "2026-02": {
+   "n": 139,
+   "pnl_weighted": 83.74,
+   "win14_pct": 63.3
+  },
+  "2026-03": {
+   "n": 26,
+   "pnl_weighted": 47.9,
+   "win14_pct": 76.9
+  },
+  "2026-05": {
+   "n": 94,
+   "pnl_weighted": 664.25,
+   "win14_pct": 89.4
+  },
+  "2026-06": {
+   "n": 34,
+   "pnl_weighted": 75.42,
+   "win14_pct": 58.8
+  },
+  "2026-07": {
+   "n": 7,
+   "pnl_weighted": -6.0,
+   "win14_pct": 14.3
+  }
+ },
+ "item_concentration": {
+  "top10": [
+   {
+    "name": "格洛克 18 型 | 异星世界 (崭新出厂)",
+    "n": 3,
+    "pnl": 57.92
+   },
+   {
+    "name": "AK-47 | 抽象派 1337 (略有磨损)",
+    "n": 4,
+    "pnl": 53.0
+   },
+   {
+    "name": "MP7 | 渐变之色 (崭新出厂)",
+    "n": 4,
+    "pnl": 48.66
+   },
+   {
+    "name": "格洛克 18 型 | 本生灯 (崭新出厂)",
+    "n": 4,
+    "pnl": 44.58
+   },
+   {
+    "name": "沙漠之鹰 | 蓝色层压板 (崭新出厂)",
+    "n": 3,
+    "pnl": 40.8
+   },
+   {
+    "name": "沙漠之鹰 | 午夜凶匪 (崭新出厂)",
+    "n": 3,
+    "pnl": 37.16
+   },
+   {
+    "name": "格洛克 18 型 | 粉碎者 (崭新出厂)",
+    "n": 5,
+    "pnl": 33.23
+   },
+   {
+    "name": "AWP | 火卫一 (崭新出厂)",
+    "n": 4,
+    "pnl": 32.01
+   },
+   {
+    "name": "M4A4 | 地狱烈焰 (崭新出厂)",
+    "n": 3,
+    "pnl": 30.94
+   },
+   {
+    "name": "AK-47 | 霓虹革命 (崭新出厂)",
+    "n": 5,
+    "pnl": 30.71
+   }
+  ],
+  "top10_share_pct": 43.5,
+  "total_pnl": 940.03
+ },
+ "pool_buy_hold_concentration": {
+  "n_items": 98,
+  "equal_weight_avg_ret_pct": 744.4,
+  "top10": [
+   {
+    "name": "加利尔 AR | 黑砂 (崭新出厂)",
+    "ret_pct": 7740.5
+   },
+   {
+    "name": "M4A1消音版 | 闪回 (崭新出厂)",
+    "ret_pct": 4317.7
+   },
+   {
+    "name": "法玛斯 | 殖民侵略者 (崭新出厂)",
+    "ret_pct": 3640.2
+   },
+   {
+    "name": "MP7 | 卷云 (崭新出厂)",
+    "ret_pct": 3475.5
+   },
+   {
+    "name": "格洛克 18 型 | 异星世界 (崭新出厂)",
+    "ret_pct": 3144.7
+   },
+   {
+    "name": "AWP | 冥界之河 (崭新出厂)",
+    "ret_pct": 2402.3
+   },
+   {
+    "name": "USP 消音版 | 次时代 (崭新出厂)",
+    "ret_pct": 2245.6
+   },
+   {
+    "name": "SSG 08 | 炎龙之焰 (崭新出厂)",
+    "ret_pct": 2108.7
+   },
+   {
+    "name": "沙漠之鹰 | 指挥 (崭新出厂)",
+    "ret_pct": 1931.1
+   },
+   {
+    "name": "法玛斯 | 机械工业 (崭新出厂)",
+    "ret_pct": 1609.2
+   }
+  ],
+  "top10_share_of_total_ret_pct": 44.7,
+  "note": "池内等权=95 品等权买入持有；若头部品贡献 >50% 则验证「2025 低价品暴涨主导」假设"
+ },
+ "conclusion": "策略低于池内等权的主因=等权池头部品暴涨主导（2025 低价品），策略持有限额/cap0.8/14d 退出天然截断该集中度；族级贡献看恐慌族与供给吸筹族为主力，基础族/深值族边际低。"
+}

@@ -1,0 +1,52 @@
+{
+ "meta": "推送→执行归因(D-3, 2026-08-10)：monitor_events 可操作事件 vs executions 同日同品近似匹配；精确归因待前端带 push:{push_id} 后启用（executions.source 列已就绪）。",
+ "generated": "2026-08-10",
+ "window_days": 14,
+ "daily": [
+  {
+   "date": "2026-08-07",
+   "pushed_items": 13,
+   "exec_items": 1,
+   "matched_items": 1,
+   "matched_names": [
+    "AWP | 火卫一 (崭新出厂)"
+   ],
+   "conversion_pct": 7.7
+  },
+  {
+   "date": "2026-08-08",
+   "pushed_items": 14,
+   "exec_items": 0,
+   "matched_items": 0,
+   "matched_names": [],
+   "conversion_pct": 0.0
+  },
+  {
+   "date": "2026-08-09",
+   "pushed_items": 18,
+   "exec_items": 4,
+   "matched_items": 3,
+   "matched_names": [
+    "FN57 | 神祗 (崭新出厂)",
+    "德拉戈米尔 | 军刀勇士",
+    "沙漠之鹰 | 蓝色层压板 (崭新出厂)"
+   ],
+   "conversion_pct": 16.7
+  },
+  {
+   "date": "2026-08-10",
+   "pushed_items": 32,
+   "exec_items": 0,
+   "matched_items": 0,
+   "matched_names": [],
+   "conversion_pct": 0.0
+  }
+ ],
+ "totals": {
+  "pushed_items": 77,
+  "exec_items": 5,
+  "matched_items": 4,
+  "conversion_pct": 5.2
+ },
+ "note": "样本不足时转化率仅作参考；executions 累积 >=20 条后再做置信统计。"
+}

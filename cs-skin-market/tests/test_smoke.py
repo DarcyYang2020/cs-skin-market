@@ -2059,13 +2059,16 @@ def t_monitor_push_idempotent():
     try:
         with mock.patch("notify_alert.send", return_value=200):
             r1 = _mon.push_daily(summary, events, "noon")
-            assert r1 == {"pushed": True}, r1
+            assert r1.get("pushed") is True and r1.get("push_id"), r1  # D-3: 返回 push_id 供推送归因
         r2 = _mon.push_daily(summary, events, "noon")
         assert r2 == {"pushed": False, "reason": "already_pushed"}, r2
         conn = _db.get_conn()
         try:
             v = conn.execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()
-            assert v and v["value"] == "1", v
+            import json as _json
+            assert v and v["value"] and v["value"] != "1", v  # D-3: 幂等值升级为 JSON（旧值 "1" 兼容）
+            meta = _json.loads(v["value"])
+            assert meta["push_id"] == r1["push_id"] and meta["slot"] == "noon", meta
         finally:
             conn.close()
     finally:

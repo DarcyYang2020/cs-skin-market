@@ -152,6 +152,20 @@
 
 **执行纪律**：涉及引擎决策参数的改动（A1-1、A1-2）回测先行 + 三件套（信号数/胜率/期望增量）+ 实验产物归档 + 环境变量开关；新信号族过 A2；纯展示/工程层（E-1 展示约束、D-1、C-1 等）注明信息层影响面（监控 near_buy / 自选排序 / 批量扫描排序）；改动后 tests/test_smoke.py 全量通过且不破坏 t_param_regime / t_expectancy_sync / t_replay_snapshot；产物变更走「回放同源，改产物必须重跑同步」。
 
+## 11. 落地状态（2026-08-10 更新，原始清单保留为基线）
+
+**第一批（P0，已提交 adfe6ab）**：E-1、B-1、G-1、B-5、C-2、H-1、H-2、A1-1（A/B 证实保留现状）✅。
+
+**第二批（已提交，见 decision-log「系统全貌评估第二批落地」）**：
+- A1-2 ✅（已量证，结论=不落地：sent 66-74 43 条 win74.4%，39 条深值特征中 34 条 panic 已覆盖，base 子集 9 条平庸；deep_value 放开上限边际价值低）
+- A1-3 ✅（`references/portfolio_attribution.py` → `data/portfolio_attribution.json`：供给吸筹 +34.2pp / 恐慌 +21.65pp / 深值 +13.98pp）
+- B-2 ✅（`data/_exp_pool_90d.json`：扩池仅 97 品=基线 96+1 新品，三件套与基线一致；结构性约束=新品 <90d 进不了 365d 回测，回测池维持 A 池 + 明示样本偏差）
+- B-3 ✅（`references/sale_caliber_compare.py` → `data/sale_caliber_compare.json`：末点 vs 中位/均值偏差>20% 属偶发非系统，3 品成功各 0-1 天，现行末点口径保留）
+- G-4 ✅（采集退避 1.5s + K线失败台账 kline_fail_count/names）
+- D-3 ✅（executions.source 列 + push_id 幂等 JSON + `references/push_exec_attribution.py`，转化率 5.2% 样本不足仅参考）
+
+**仍待做（第三批/数据依赖）**：C-1、C-3、C-5、D-1、D-2、E-2、F-1、F-2、F-4、G-2、G-5、A1-4（滑点校准，executions≥20）。
+
 ## 附录：与「评估指标体系第一性审计」的边界
 
 本评估直接引用、未重跑：六维权重（位置 40/周期 25/流动性 15/概率 20）、估值分位边界、供给吸筹/派发判定、评级切分（代码口径 8/6.5/4.5）、绩效口径（win14/30、net 2%）、持仓管理矩阵参数、TH/情绪/跌幅/牛熊结论、周期反转/panic 分级/概率去 z（2026-08-10 四项审计）。审计后新增的展示层改动（如 F-3.14 已止损感知）只审「改动本身」——见 E-1/E-2。

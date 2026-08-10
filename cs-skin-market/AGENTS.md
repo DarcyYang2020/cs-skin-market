@@ -31,6 +31,7 @@
 - **基准对照**：`python references/benchmark_compare.py` → `data/benchmark_compare.json`
   （策略 cap0.8 vs 池内等权买入持有 vs 大盘指数，full/active 双窗口）。2026-08-10 结论（365d 窗口，332 信号）：策略 +83.65%/-13.05%
   大幅跑赢大盘 -24.20%/-58.21%，但低于池内等权 +252.31%/-55.59% —— 引擎边际价值在风险控制（maxDD 13.05% vs 55~58%）。
+- **组合归因（A1-3，2026-08-10）**：`python references/portfolio_attribution.py` → `data/portfolio_attribution.json`（leave-one-out 族级/月度/集中度）；供给吸筹族贡献最大 +34.2pp（n=212）、恐慌族 +21.65pp（n=93）、深值族 +13.98pp（n=27）；策略低于等权主因=2025 低价品暴涨集中度（top10 占 43.5%），引擎以回撤换集中度。
 
 
 ## 数据来源与采集
@@ -44,6 +45,7 @@
 - **快照 `_keep_wear`**: 枪皮/刀仅崭新出厂、手套仅略磨+久经、无磨损品类（印花/箱/胶囊）保留。
 - **存世量**: 崭新出厂 <3000 → 不建仓（`survive_too_low`）；口径为 `info/good.statistic_list`（非 `buff_sell_num`）。
 - **每日采集**: SQL 排除「存世量过低 / 活跃池淘汰」标记品（自选/持仓豁免）；大户集中度每周一采集。
+- **K线失败台账（G-4, 2026-08-10）**: 每日台账记 `kline_fail_count`/`kline_fail_names[:10]`；可疑重试/平台切换前退避 1.5s。
 
 ## 单品分析引擎 (item_analysis.py)
 

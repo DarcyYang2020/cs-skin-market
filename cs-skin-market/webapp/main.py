@@ -1546,6 +1546,7 @@ async def api_add_execution(request: Request):
     body = await request.json()
     name = str(body.get("name", "")).strip()
     action = str(body.get("action", "")).strip()
+    source = str(body.get("source", "manual") or "manual").strip()[:64]  # D-3: push:{push_id} / manual
     try:
         qty = max(1, int(body.get("qty", 1)))
         price = float(body.get("exec_price", 0))
@@ -1577,7 +1578,8 @@ async def api_add_execution(request: Request):
             if row2:
                 item_id = row2["id"]
         eid = db.add_execution(conn, item_id, name, action, advice_date, price, qty,
-                               advice_signal=body.get("advice_signal", "") or "", advice_price=advice_price)
+                               advice_signal=body.get("advice_signal", "") or "",
+                               advice_price=advice_price, source=source)
         # 2026-08-05: 执行记录同步持仓（buy/add 摊薄均价+累计买入; reduce/sell 减数量）
         warning = ""
         if item_id > 0:

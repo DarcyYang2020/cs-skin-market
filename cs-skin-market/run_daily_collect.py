@@ -102,14 +102,17 @@ async def collect_kline_all() -> int:
     rows = conn.execute("SELECT id, good_id, name FROM items WHERE good_id > 0 AND (in_watchlist=1 OR holding=1 OR notes IS NULL OR (notes NOT LIKE '%存世量过低%' AND notes NOT LIKE '%活跃池淘汰%')) ORDER BY id").fetchall()
     conn.close()
     ok = 0
+    fails = []
     for r in rows:
         try:
             bars, _raw = await collector_csqaq.fetch_kline_90d(r["good_id"])
         except Exception as e:
             log(f"  [{r['id']}] K线异常: {e}")
+            fails.append(f"{r['name'][:28]}({str(e)[:40]})")
             continue
         if not bars:
             log(f"  [{r['id']}] K线空: {r['name'][:30]}")
+            fails.append(f"{r['name'][:28]}(空)")
             await asyncio.sleep(2)
             continue
         await asyncio.sleep(1.5)
@@ -120,8 +123,8 @@ async def collect_kline_all() -> int:
         finally:
             conn.close()
         ok += 1
-    log(f"K线全量刷新: {ok}/{len(rows)}")
-    return ok
+    log(f"K线全量刷新: {ok}/{len(rows)} 失败={len(fails)}")
+    return ok, fails
 
 
 def prune_inactive(min_avg_sale: int = 10, days: int = 7) -> int:
@@ -215,6 +218,7 @@ def main():
     from pipeline.pool_log import append_pool_log
     _health = None
     _kline_ok = 0
+    _kline_fails = []
     log("=== 每日采集开始 ===")
     collect_bind_ip()
     collect_market_index()
@@ -236,8 +240,8 @@ def main():
                 log(f"大户集中度快照任务异常: {e}")
         # P3 (2026-08-07 去量)：每日全量刷新 90 日 K 线（全品价格+在售量日更，补齐非自选品停更缺口）
         try:
-            nonlocal _kline_ok
-            _kline_ok = await collect_kline_all()
+            nonlocal _kline_ok, _kline_fails
+            _kline_ok, _kline_fails = await collect_kline_all()
         except Exception as e:
             log(f"K线任务异常: {e}")
     # 活跃池淘汰 (F-3.1, 2026-08-08): K线刷新后评估流动性，淘汰品退出每日采集（数据保留）
@@ -280,6 +284,8 @@ def main():
             "active_pool": _active,
             "pruned": _pruned,
             "kline_ok": _kline_ok,
+            "kline_fail_count": len(_kline_fails),
+            "kline_fail_names": _kline_fails[:10],  # G-4（2026-08-10）失败品入台账，便于告警排查
             "new_items_today": _new,
             "health": (_health or {}).get("status"),
             "health_fail": (_health or {}).get("fail_count"),

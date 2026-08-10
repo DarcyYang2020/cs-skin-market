@@ -54,6 +54,7 @@ discover 扩池（手动）→ 候选入库（items + 90日K线，立即落库�
 - **K 线写库（2026-08-10 B-1 增量写）**: `save_price_history_batch` 默认 `incremental`——只写「date > 库内 max(date)」的新行 + 当日最新行更新，历史行不可被覆盖（单次坏 chart 只污染当日行，防 8/9 串品事故复发）；变更记 `data/price_history_write_log.jsonl`；审计回填/串品修复用 `mode="force"` 全量覆盖（须人工确认）。
 - **活跃池淘汰（F-3.1）**: 非自选/非持仓且最近 7 天平均在售量 <10 → 标记「活跃池淘汰:在售量过低(<10)」，退出每日采集与 discover 捞回；数据保留，加回自选恢复采集。
 - **池台账（F-3.2）**: `data/pool_maintenance_log.jsonl` 一行一条 JSON（daily/prune/discover 三类），追加不清理。
+- **K线失败台账（G-4, 2026-08-10）**: `collect_kline_all` 返回失败品清单，每日台账写 `kline_fail_count` / `kline_fail_names[:10]`（品名+原因），便于告警排查；采集可疑重试/平台切换前退避 1.5s 降限流压力。
 - **健康检查**: `run_health_monitor.py` 随每日采集收尾执行，写 `health_checks`；`notify_alert.py --monitor` 在 FAIL 时推送告警。
 - **DB 备份**: `backup_db.py`（SQLite online backup → `data/backup/market_YYYYMMDD_HHMMSS.db`，保留 14 份）。
 - **J-2 监测**: 每日刷新 `data/j2_channel_status.json`（B 通道天数）。
@@ -72,12 +73,12 @@ discover 扩池（手动）→ 候选入库（items + 90日K线，立即落库�
 | monitor_rank_snapshot | 大户集中度每周 Top50 | date, item_id, rank, num |
 | monitor_events | M1 监控事件归档（近 7 天） | date, item_id, event_type, level, detail |
 | positions | 持仓记录 | item_id, buy_price, quantity, closed, close_price |
-| executions | 执行记录+复盘（F-1/F-2） | item_id, action, advice_date, exec_price, settle_14/30, pnl_14/30 |
+| executions | 执行记录+复盘（F-1/F-2） | item_id, action, advice_date, exec_price, settle_14/30, pnl_14/30, source（D-3: manual / push:{push_id}） |
 | signal_tracking | 生产 buy 信号跟踪（J-2 C 通道） | signal_date, entry_price, engine_version, fwd14/30, net14/30 |
 | health_checks | 数据源健康检查 | date, status, checks_json |
 | analysis_results | 分析报告缓存（单品/批量扫描共用，按 name 覆盖） | name, price_rmb, grade, trend_dir, trend_score, report_html |
 | backtest_results | 回测结果 | strategy, sharpe_ratio, max_drawdown_pct |
-| settings | 配置键值对 | key, value |
+| settings | 配置键值对 | key, value；monitor_push_* 幂等值升级 JSON（D-3 含 push_id/items，旧值 "1" 兼容） |
 | schema_version | schema 版本记录 | version, applied_at |
 
 ## 6. 数据质量与过滤规则（不动信号算法）

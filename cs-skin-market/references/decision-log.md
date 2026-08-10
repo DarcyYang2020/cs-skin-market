@@ -2004,3 +2004,27 @@ watch/hold 做「无按钮」处理，未区分持仓/未持仓。
 **验证**：冒烟测试 92 passed / 0 failed；`python run_data_health.py` 快照误报消除、失败品清单生效；B-1 增量语义单测通过（历史防覆盖/当日更新/force 覆盖/非法 mode）。
 
 **产物变更**：未改动回放产物（item_backtest_full_2025.json 等），无需重跑 sync；新增 `data/price_history_write_log.jsonl`（B-1 变更日志）。
+
+
+## 系统全貌评估第二批落地：A1-2 / A1-3 / B-2 / B-3 / G-4 / D-3（2026-08-10）
+
+**背景**：承接第一批，完成剩余未审查指标的量证 + 数据/工程/归因类落地。引擎决策零改动（A1-2 结论=不落地；A1-3/B-2/B-3 为归因与口径验证；G-4/D-3 为采集与执行链路）。
+
+**A1-2 sent 66-74 空区验证（结论=不改引擎）**：365d 全量 332 信号中 sent 66-74 有 43 条（win74.4% / avg14 +15.99%），**非空区**；细分后 39 条深值特征（pct≤30,z≤-1）中 **34 条为 panic 族**（win82.4%，多为 2026-05-28 恐慌日），base 子集仅 9 条且平庸（+7.33%）→ **deep_value 放开上限边际价值低，panic 已覆盖，不落地**。
+
+**A1-3 组合归因（脚本 `references/portfolio_attribution.py` → `data/portfolio_attribution.json`）**：与 portfolio_backtest 同源口径，leave-one-out 族级 + 月度 + 单品集中度 + 等权池头部。**结论：供给吸筹族贡献最大 +34.2pp（n=212 win61.8%）、恐慌族 +21.65pp（n=93 win90.3%）、深值族 +13.98pp（n=27）；策略低于等权主因 = 等权池 2025 低价品暴涨主导（top10 占 43.5%，等权池单品买入持有最高 +4211%（加利尔 AR|黑砂）），引擎以回撤换集中度**（maxDD 13.05% vs 55~58%）。
+
+**B-2 扩池回放（实验 `data/_exp_pool_90d.json`）**：活跃池中 history ≥90d 的全量回放（97 品）：
+- **结构性约束**：扩池新品历史 <90 天，实际达标的仅 97 品 = 基线 96 品 + 1 新品（运动手套（★）|树篱迷宫 久经沙场，97 天 0 信号）→ 与 A 池几乎重合，**短期无法扩回测样本**；
+- 三件套与基线一致：333 信号（n14 332）/ win14 69.9% / avg14 +15.36% / avg30 +22.6%（wavg14 20.47 / wwin14 74.4 / wavg30 23.33）；唯一统计差异 M4A4|全球攻势 5 字段（win30 2→3，回放时 DB 多 1 天末位数据，非族级差异）；
+- **结论：回测池维持 A 池口径（与 discover/高分品同源），明示样本偏差；新品积累 ≥90d 后自然纳入（下次全量回放自动含）。**
+
+**B-3 在售量三口径对比（脚本 `references/sale_caliber_compare.py` → `data/sale_caliber_compare.json`）**：末点（现行 `_chart_to_daily_ohlc` 口径）vs 当日中位数 vs 均值，偏差>20% 计口径敏感日；联网重采 5 品（30 天各）：AWP|火卫一 1 天（worst 28.3%）、沙漠之鹰|蓝色层压板 1 天（2026-07-12 last=667 vs median=534，+24.9%）、FN57|霸意大名 1 天（负向，2026-07-13 -23.4%）、AK-47|抽象派 0 天（worst 5.7%）、USP|守护者 0 天（worst 5.6%）。**结论：末点口径偏差属偶发而非系统性（与 8/9 审计「在售量错乱」归因不同——那是坏 chart 整窗覆盖，已由 B-1 增量写 + kline sanity 修复），现行末点口径保留**。
+
+**G-4 采集退避 + 失败台账（采集层）**：`fetch_kline_90d` 可疑重试/平台切换前 `asyncio.sleep(1.5)` 降上游限流压力；`collect_kline_all` 改为返回 `(ok, fails)`，失败品（品名+原因，最多 10 条）写入每日台账 `kline_fail_count` / `kline_fail_names`。
+
+**D-3 推送→执行归因（数据层+API）**：`executions` 新增 `source` 列（默认 `manual`，`push:{push_id}` 前端将来携带），惰性补列（同 advice_price 先例）；`api_add_execution` 透传 source；`monitor.push_daily` 幂等键值由 `"1"` 升级为 JSON `{push_id, slot, ts, n_events, event_types, items}`（旧值兼容，读时 truthy），返回值带 `push_id`；新脚本 `references/push_exec_attribution.py` → `data/push_exec_attribution.json`：近 14 天推送 77 品、执行 5、匹配 4、转化率 **5.2%**（样本不足仅参考，executions 累积 ≥20 条后再做置信统计）。
+
+**验证**：冒烟 92 passed / 0 failed（M2 幂等测试契约同步升级：返回值断言 push_id + 幂等值 JSON 校验）；三个归因/口径脚本产物均已生成归档 data/；pyflakes 无新增告警。
+
+**产物变更**：未改动回放基线 item_backtest_full_2025.json，无需重跑 sync；新增 data/portfolio_attribution.json / push_exec_attribution.json / sale_caliber_compare.json / _exp_pool_90d.json（实验归档）。

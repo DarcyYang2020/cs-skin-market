@@ -853,6 +853,7 @@ async def fetch_kline_90d(good_id: int):
         if ohlc and _suspect(ohlc, anchor_price, anchor_sell):
             _last_close = ohlc[-1].close if ohlc else 0
             _csq_log.warning(f"fetch_kline_90d good={good_id}: chart 与悠悠锚不符(最新价{_last_close} vs 锚{anchor_price}) → 重试一轮")
+            await asyncio.sleep(1.5)  # G-4（2026-08-10）：重试前退避，降低上游限流压力
             await _capture_once()
             anchor_price, anchor_sell = await _anchor()
             ohlc, raw = _extract_ohlc()
@@ -865,6 +866,7 @@ async def fetch_kline_90d(good_id: int):
             if ohlc:
                 break
             _csq_log.info(f"fetch_kline_90d: empty from platform=2, retry platform={fb_platform} ({fb_name}) good_id={good_id}")
+            await asyncio.sleep(1.5)  # G-4（2026-08-10）：平台切换前退避
             try:
                 captured['charts'] = []
                 await page.route('**/info/chart**', lambda r, req, p=fb_platform: _modify_chart_route(r, req, platform=p))

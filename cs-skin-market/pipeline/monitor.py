@@ -5,7 +5,7 @@
 事件规则（8 类）：买点接近 / 破位止损 / 决策翻转 / 供给突变 / 价格异动 / 大盘状态切换 / 持仓到期 / 新 buy 信号。
 消费链：run_daily_collect 收尾自动跑（当日采集后数据已最新）；Web /monitor 展示；M2 接入钉钉推送。
 """
-import io, os, sys
+import io, json, os, sys, uuid
 from datetime import datetime, timedelta, date as _date
 
 if sys.stdout is sys.__stdout__:
@@ -262,7 +262,7 @@ def push_daily(summary, events, slot="night"):
     key = f"monitor_push_{summary['date']}_{slot}"
     conn = db.get_conn()
     try:
-        if db.get_setting(conn, key, "") == "1":
+        if db.get_setting(conn, key, ""):
             return {"pushed": False, "reason": "already_pushed"}
     finally:
         conn.close()
@@ -278,13 +278,21 @@ def push_daily(summary, events, slot="night"):
         send(title, text, url)
     except Exception as e:
         return {"pushed": False, "reason": f"push_failed: {e}"}
+    # D-3（2026-08-10）推送归因：生成 push_id 并持久化（日期+slot 幂等键不变，旧值 "1" 兼容）
+    push_id = uuid.uuid4().hex[:12]
     conn = db.get_conn()
     try:
-        db.set_setting(conn, key, "1")
+        db.set_setting(conn, key, json.dumps({
+            "push_id": push_id, "slot": slot,
+            "ts": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "n_events": len(events),
+            "event_types": sorted({e.get("event_type") or "" for e in events}),
+            "items": sorted({e.get("item_name") or e.get("name") or "" for e in events if e.get("item_name") or e.get("name")}),
+        }, ensure_ascii=False))
         conn.commit()
     finally:
         conn.close()
-    return {"pushed": True}
+    return {"pushed": True, "push_id": push_id}
 
 
 def run_daily_monitor(date=None, slot="night", push=True):
@@ -343,6 +351,5 @@ def list_events(days=7):
 
 
 if __name__ == "__main__":
-    import json
     _s = run_daily_monitor()
     print(json.dumps(_s, ensure_ascii=False))
