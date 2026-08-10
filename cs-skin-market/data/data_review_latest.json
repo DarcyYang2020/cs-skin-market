@@ -1,0 +1,178 @@
+{
+ "generated": "2026-08-10 16:13:00",
+ "mode": "readonly",
+ "sample_limit": 15,
+ "items": [
+  {
+   "id": 2,
+   "name": "AWP | 火卫一 (崭新出厂)",
+   "good_id": 279,
+   "n_days": 91,
+   "med_dev_pct": 1.9,
+   "n_dev_gt20": 0,
+   "dev_days": [],
+   "med_sale_dev_pct": 60.9,
+   "status": "OK"
+  },
+  {
+   "id": 4,
+   "name": "沙漠之鹰 | 蓝色层压板 (崭新出厂)",
+   "good_id": 12196,
+   "n_days": 91,
+   "med_dev_pct": 0.0,
+   "n_dev_gt20": 0,
+   "dev_days": [],
+   "med_sale_dev_pct": 0.0,
+   "status": "OK"
+  },
+  {
+   "id": 5,
+   "name": "FN57 | 霸意大名 (崭新出厂)",
+   "good_id": 28,
+   "n_days": 91,
+   "med_dev_pct": 0.0,
+   "n_dev_gt20": 0,
+   "dev_days": [],
+   "med_sale_dev_pct": 0.0,
+   "status": "OK"
+  },
+  {
+   "id": 6,
+   "name": "USP 消音版 | 守护者 (崭新出厂)",
+   "good_id": 6554,
+   "n_days": 91,
+   "med_dev_pct": 0.0,
+   "n_dev_gt20": 0,
+   "dev_days": [],
+   "med_sale_dev_pct": 0.0,
+   "status": "OK"
+  },
+  {
+   "id": 30,
+   "name": "FN57 | 神祗 (崭新出厂)",
+   "good_id": 863,
+   "n_days": 91,
+   "med_dev_pct": 0.0,
+   "n_dev_gt20": 0,
+   "dev_days": [],
+   "med_sale_dev_pct": 0.0,
+   "status": "OK"
+  },
+  {
+   "id": 32,
+   "name": "加利尔 AR | 迷人眼 (崭新出厂)",
+   "good_id": 13263,
+   "n_days": 91,
+   "med_dev_pct": 0.0,
+   "n_dev_gt20": 0,
+   "dev_days": [],
+   "med_sale_dev_pct": 0.0,
+   "status": "OK"
+  },
+  {
+   "id": 112,
+   "name": "德拉戈米尔 | 军刀勇士",
+   "good_id": 12791,
+   "n_days": 90,
+   "med_dev_pct": 0.0,
+   "n_dev_gt20": 0,
+   "dev_days": [],
+   "med_sale_dev_pct": 0.0,
+   "status": "OK"
+  },
+  {
+   "id": 3,
+   "name": "AK-47 | 抽象派 1337 (略有磨损)",
+   "good_id": 13363,
+   "n_days": 91,
+   "med_dev_pct": 0.0,
+   "n_dev_gt20": 0,
+   "dev_days": [],
+   "med_sale_dev_pct": 0.0,
+   "status": "OK"
+  },
+  {
+   "id": 9,
+   "name": "M4A4 | 合纵 (崭新出厂)",
+   "good_id": 13373,
+   "n_days": 91,
+   "med_dev_pct": 0.0,
+   "n_dev_gt20": 0,
+   "dev_days": [],
+   "med_sale_dev_pct": 0.0,
+   "status": "OK"
+  },
+  {
+   "id": 10,
+   "name": "AWP | 冥界之河 (崭新出厂)",
+   "good_id": 9563,
+   "n_days": 91,
+   "med_dev_pct": 0.0,
+   "n_dev_gt20": 0,
+   "dev_days": [],
+   "med_sale_dev_pct": 0.0,
+   "status": "OK"
+  },
+  {
+   "id": 12,
+   "name": "USP 消音版 | 次时代 (崭新出厂)",
+   "good_id": 6543,
+   "n_days": 91,
+   "med_dev_pct": 0.0,
+   "n_dev_gt20": 0,
+   "dev_days": [],
+   "med_sale_dev_pct": 0.0,
+   "status": "OK"
+  },
+  {
+   "id": 18,
+   "name": "M4A1消音版 | 破碎铅秋 (崭新出厂)",
+   "good_id": 1262,
+   "n_days": 91,
+   "med_dev_pct": 0.0,
+   "n_dev_gt20": 0,
+   "dev_days": [],
+   "med_sale_dev_pct": 0.0,
+   "status": "OK"
+  },
+  {
+   "id": 19,
+   "name": "加利尔 AR | 冷石 (崭新出厂)",
+   "good_id": 1058,
+   "n_days": 91,
+   "med_dev_pct": 0.0,
+   "n_dev_gt20": 0,
+   "dev_days": [],
+   "med_sale_dev_pct": 0.0,
+   "status": "OK"
+  },
+  {
+   "id": 23,
+   "name": "格洛克 18 型 | 异星世界 (崭新出厂)",
+   "good_id": 1137,
+   "n_days": 91,
+   "med_dev_pct": 2.6,
+   "n_dev_gt20": 0,
+   "dev_days": [],
+   "med_sale_dev_pct": 69.4,
+   "status": "OK"
+  },
+  {
+   "id": 24,
+   "name": "沙漠之鹰 | 人造卫星 (崭新出厂)",
+   "good_id": 13342,
+   "n_days": 91,
+   "med_dev_pct": 0.0,
+   "n_dev_gt20": 0,
+   "dev_days": [],
+   "med_sale_dev_pct": 0.0,
+   "status": "OK"
+  }
+ ],
+ "summary": {
+  "total": 15,
+  "issue": 0,
+  "issue_names": [],
+  "date": "2026-08-10"
+ }
+}
