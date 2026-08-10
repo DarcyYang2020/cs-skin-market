@@ -1,0 +1,153 @@
+{
+ "source": "item_backtest_full_2025.json (v2-T4 317)",
+ "window": [
+  "2026-04-01",
+  "2026-07-31"
+ ],
+ "n_in_window": 133,
+ "monthly": {
+  "2026-05": {
+   "n": 93,
+   "win14": 90.3,
+   "avg14": 29.52,
+   "win30": 76.3,
+   "avg30": 21.56,
+   "filled14": 93,
+   "filled30": 93,
+   "flags": []
+  },
+  "2026-06": {
+   "n": 33,
+   "win14": 60.6,
+   "avg14": 13.5,
+   "win30": 42.4,
+   "avg30": 9.65,
+   "filled14": 33,
+   "filled30": 33,
+   "flags": [
+    "14d",
+    "30d"
+   ]
+  },
+  "2026-07": {
+   "n": 7,
+   "win14": 14.3,
+   "avg14": -8.57,
+   "win30": null,
+   "avg30": null,
+   "filled14": 7,
+   "filled30": 0,
+   "flags": [
+    "14d"
+   ]
+  }
+ },
+ "clusters": [
+  {
+   "start": "2026-05-22",
+   "end": "2026-05-31",
+   "n": 93,
+   "win14": 90.3,
+   "avg14": 29.52,
+   "win30": 76.3,
+   "avg30": 21.56,
+   "filled14": 93,
+   "filled30": 93,
+   "is_panic_cluster": true,
+   "month": "2026-05"
+  },
+  {
+   "start": "2026-06-12",
+   "end": "2026-06-21",
+   "n": 33,
+   "win14": 60.6,
+   "avg14": 13.5,
+   "win30": 42.4,
+   "avg30": 9.65,
+   "filled14": 33,
+   "filled30": 33,
+   "is_panic_cluster": false,
+   "month": "2026-06"
+  },
+  {
+   "start": "2026-07-11",
+   "end": "2026-07-12",
+   "n": 5,
+   "win14": 20.0,
+   "avg14": -4.17,
+   "win30": null,
+   "avg30": null,
+   "filled14": 5,
+   "filled30": 0,
+   "is_panic_cluster": false,
+   "month": "2026-07"
+  },
+  {
+   "start": "2026-07-17",
+   "end": "2026-07-17",
+   "n": 1,
+   "win14": 0.0,
+   "avg14": -29.67,
+   "win30": null,
+   "avg30": null,
+   "filled14": 1,
+   "filled30": 0,
+   "is_panic_cluster": false,
+   "month": "2026-07"
+  },
+  {
+   "start": "2026-07-22",
+   "end": "2026-07-22",
+   "n": 1,
+   "win14": 0.0,
+   "avg14": -9.45,
+   "win30": null,
+   "avg30": null,
+   "filled14": 1,
+   "filled30": 0,
+   "is_panic_cluster": false,
+   "month": "2026-07"
+  }
+ ],
+ "panic_vs_non": {
+  "panic_cluster": {
+   "n": 93,
+   "win14": 90.3,
+   "avg14": 29.52,
+   "win30": 76.3,
+   "avg30": 21.56,
+   "filled14": 93,
+   "filled30": 93
+  },
+  "non_panic_rest": {
+   "n": 40,
+   "win14": 52.5,
+   "avg14": 9.64,
+   "win30": 42.4,
+   "avg30": 9.65,
+   "filled14": 40,
+   "filled30": 33
+  }
+ },
+ "june_split": {
+  "june_all": {
+   "n": 33,
+   "win14": 60.6,
+   "avg14": 13.5,
+   "win30": 42.4,
+   "avg30": 9.65,
+   "filled14": 33,
+   "filled30": 33
+  },
+  "june_excl_panic_entry": {
+   "n": 33,
+   "win14": 60.6,
+   "avg14": 13.5,
+   "win30": 42.4,
+   "avg30": 9.65,
+   "filled14": 33,
+   "filled30": 33
+  }
+ },
+ "conclusion": "6 月 30d 胜率 <55% 触发 flag; 剔除恐慌簇后 6 月 30d 仍 <55%（n=33）→ 存在非恐慌簇劣化，需继续观察"
+}

@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
 """J-2 三通道监测（2026-08-10 解除冻结期：监测数据照常收集，不再作为禁止调参闸门）。
 
-读 item_backtest_full_2025.json（370 信号）+ signal_event_counts.json（事件计数），
+读 item_backtest_full_2025.json（317 信号 v2-T4）+ signal_event_counts.json（事件计数），
 计算三通道状态（样本完整性/胜率健康度提示项）：
   A. 独立恐慌市场事件 >=3（自然积累，不阻塞）
   B. v2 引擎样本积累 >=260 天（自 2026-08-07 v2 引擎起点，约 2027-04-25 覆盖完整牛熊循环）
   C. 胜率监测：buy 连续 2 月 14d<70% 或月度 14d<80%/30d<55%
 输出 data/j2_channel_status.json，dashboard 数据积累进度卡渲染。
-口径注意：C 通道当前为「去量 v2 370 信号回放」近似（生产实盘信号跟踪尚未建立）；
-5 月恐慌单事件簇退出集中在 6 月，低胜率月度须按事件簇纪律（±3~7 天簇限次）复核。
+口径注意：C 通道当前为「去量 v2 317 信号回放」近似（生产实盘信号跟踪尚未建立）；
+2026-08-10 事件簇纪律复核（probe_c_channel_cluster_review.py）：6 月劣化为独立簇（06-12~21）而非恐慌簇退出——
+恐慌簇(05-22~31) win30 76.3%(net 口径)/79.6%(fwd 口径) 优秀，avg 仍正；6 月簇 win30 42.4% 但 avg30 +9.65 期望仍正、单事件簇，按事件级样本不足处理。
 """
 import io
 import json
@@ -208,7 +209,7 @@ def compute():
                                        and production.get("net14") and production["net14"].get("win") is not None
                                        and production["net14"]["win"] < C14_2M)) else "未触发",
             "trigger_state": "待启动重拟合流水线" if (c["two_month_flags"] or any(r["flags"] for r in c["monthly"])) else "监测中",
-            "note": "回放口径：去量 v2 365d 窗口 332 信号，月度 n>=10 判定，去簇(±3天) n>=10 判定，5 月恐慌单事件簇退出集中在 6 月须按事件簇纪律复核；"
+            "note": "回放口径：去量 v2 365d 窗口 317 信号(v2-T4)，月度 n>=10 判定，去簇(±3天) n>=10 判定；2026-08-10 事件簇复核：6 月劣化为独立簇(06-12~21)非恐慌簇退出，恐慌簇 win30 76.3~79.6% 优秀、6 月 avg30 +9.65 期望仍正，按事件级样本不足处理；"
                     "生产实盘口径：signal_tracking 表（buy 信号 14/30 交易日后按真实价格回填，net 扣 2%），回填满 20 条后实盘胜率纳入判定；"
                     "回放告警仅提示复核，正式重拟合评估以 C 通道监测为准，触发后动作见 overall.trigger_action",
         },

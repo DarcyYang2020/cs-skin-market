@@ -2276,3 +2276,18 @@ watch/hold 做「无按钮」处理，未区分持仓/未持仓。
 **T0 挂接验证**：`references/greedy_backfill_check.py` dry-run 幂等通过（覆盖 60 天、verdict 需连续 7 个采集日样本），挂接代码与产物无异常。
 
 **产物**：`data/_exp_p2_power_analysis.json`；脚本 `references/probe_p2_power_analysis.py`。
+
+## J-2 C 通道事件簇纪律复核：6 月劣化独立于恐慌簇（2026-08-10，只读研究）
+
+**背景**：j2_channel_status.json C 通道已触发（回放口径 14d 多月 <80%、30d 2026-03/06 <55%），note 提示「5 月恐慌单事件簇退出集中在 6 月须按事件簇纪律复核」。本次在 v2-T4 标准产物（317 信号）上完成复核，产物 `data/_exp_c_channel_cluster_review.json`，脚本 `references/probe_c_channel_cluster_review.py`。引擎参数零改动。
+
+**事件簇结构（2026-04-01~07-31，133 信号 → 5 簇）**：
+- 2026-05-22~31 恐慌簇（93 条）：win14 90.3% avg +29.52、win30 76.3%（net 口径；fwd 口径 79.6%）avg +21.56——**恐慌簇退出期表现优秀**；
+- 2026-06-12~21 独立簇（33 条）：win14 60.6% avg +13.50、win30 42.4% avg +9.65——**独立劣化，与恐慌簇无关**（j2 note「恐慌簇退出集中在 6 月」前提不成立）；
+- 2026-07 三小簇（5+1+1=7 条）：win14 14.3% avg -8.57，win30 未回填——样本小（月度判定 n<10 不触发 flag），方向差，继续观察。
+
+**判定**：6 月 30d 胜率 42.4%<55% flag 属实，但为**单事件簇 + 期望仍正**（avg30 +9.65）——按事件级样本不足处理，不构成系统性劣化、不触发重拟合；7 月待 8 月内 fwd14/30 回填后合并观察。C 通道整体维持「提示项」定位：生产实盘口径 signal_tracking 仅 1 条（min 20 未达），重拟合评估的实盘依据远未达标。
+
+**落地（展示/监测层，非引擎）**：`references/j2_channel_monitor.py` docstring + C 通道 note 修正（332→317 信号 v2-T4；加入事件簇复核结论），`data/j2_channel_status.json` 已重刷。
+
+**产物**：`data/_exp_c_channel_cluster_review.json`；脚本 `references/probe_c_channel_cluster_review.py`。
