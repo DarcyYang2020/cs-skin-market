@@ -2294,6 +2294,45 @@ def t_kline_fresh():
         conn.close()
 check("F-3 db_kline_fresh 新鲜度判定", t_kline_fresh)
 
+def t_b4_fresh_hours():
+    """B-4: 单品主动分析 6h 窗口——当日已采 created_at 6h 内复用，超 6h 视为不新鲜（返回 None 走采集）。"""
+    from datetime import date, timedelta
+    from webapp.analysis_service import db_kline_fresh
+    from pipeline import db
+    conn = db.get_conn()
+    TEST = "__SMOKE_B4__"
+    try:
+        conn.execute("DELETE FROM price_history WHERE item_id IN (SELECT id FROM items WHERE name=?)", (TEST,))
+        conn.execute("DELETE FROM items WHERE name=?", (TEST,))
+        conn.commit()
+        iid = db.upsert_item(conn, TEST, good_id=999999002)
+        conn.commit()
+        today = date.today()
+        base = today - timedelta(days=90)
+        for d in range(91):  # 含今天：stale=0
+            dt = (base + timedelta(days=d)).isoformat()
+            conn.execute(
+                "INSERT INTO price_history (item_id, date, price_rmb, volume_day, volume_total, in_sale_count) VALUES (?,?,?,?,?,?)",
+                (iid, dt, 100.0 + d * 0.1, 0, 0, 500))
+        conn.commit()
+        # created_at 默认=now：6h 窗口内命中复用
+        assert db_kline_fresh(999999002, TEST, max_stale_days=0, max_stale_hours=6) is not None
+        # 最新行 created_at 改为 10 小时前 -> 超 6h 不命中（重新采集）
+        conn.execute("UPDATE price_history SET created_at=datetime('now','localtime','-10 hours') WHERE item_id=?", (iid,))
+        conn.commit()
+        assert db_kline_fresh(999999002, TEST, max_stale_days=0, max_stale_hours=6) is None
+        # 不限小时窗口（max_stale_hours=0，旧行为）仍命中
+        assert db_kline_fresh(999999002, TEST, max_stale_days=0, max_stale_hours=0) is not None
+    finally:
+        try:
+            conn.execute("DELETE FROM price_history WHERE item_id IN (SELECT id FROM items WHERE name=?)", (TEST,))
+            conn.execute("DELETE FROM items WHERE name=?", (TEST,))
+            conn.commit()
+        except Exception:
+            pass
+        conn.close()
+check("B-4 单品当日 6h 复用窗口", t_b4_fresh_hours)
+
 def t_resolve_item_reuse():
     """F-3: DB 新鲜时 resolve_item 直接复用，不触发网络采集。"""
     import asyncio

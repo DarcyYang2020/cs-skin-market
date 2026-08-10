@@ -51,6 +51,7 @@ discover 扩池（手动）→ 候选入库（items + 90日K线，立即落库�
 ## 4. 更新与维护
 
 - **K 线全量刷新（每日）**: 活跃池（自选/持仓豁免 + notes 空品）每品刷新 90 日 K 线；排除「存世量过低」「活跃池淘汰」标记品。
+- **单品分析复用（B-4, 2026-08-10）**: 主动分析当日已采且 created_at ≤6h 复用 DB（KLINE_FRESH_SINGLE_HOURS），超窗口或强制联网刷新才重新采集；批量/监控容忍 3 天（KLINE_FRESH_BATCH/DISCOVER）。
 - **K 线写库（2026-08-10 B-1 增量写）**: `save_price_history_batch` 默认 `incremental`——只写「date > 库内 max(date)」的新行 + 当日最新行更新，历史行不可被覆盖（单次坏 chart 只污染当日行，防 8/9 串品事故复发）；变更记 `data/price_history_write_log.jsonl`；审计回填/串品修复用 `mode="force"` 全量覆盖（须人工确认）。
 - **活跃池淘汰（F-3.1）**: 非自选/非持仓且最近 7 天平均在售量 <10 → 标记「活跃池淘汰:在售量过低(<10)」，退出每日采集与 discover 捞回；数据保留，加回自选恢复采集。
 - **池台账（F-3.2）**: `data/pool_maintenance_log.jsonl` 一行一条 JSON（daily/prune/discover 三类），追加不清理。

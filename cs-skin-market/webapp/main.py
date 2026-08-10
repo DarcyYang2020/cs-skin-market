@@ -21,7 +21,7 @@ from pipeline.config import TZ_BJ
 from pipeline.dashboards import _j2_status
 from webapp.analysis_service import (
     AnalysisAbort, analyze_fresh, build_analysis_ctx,
-    resolve_item, KLINE_FRESH_SINGLE, KLINE_FRESH_BATCH, KLINE_FRESH_DISCOVER,
+    resolve_item, KLINE_FRESH_SINGLE, KLINE_FRESH_SINGLE_HOURS, KLINE_FRESH_BATCH, KLINE_FRESH_DISCOVER,
     anchor_override, kline_db_fallback, kline_price_sane,
     market_snapshot, recent_buy_dates, save_analysis_result, save_item_snapshot,
     _today_str,
@@ -643,7 +643,7 @@ async def api_items_search(request: Request, query: str = Form(...)):
             return HTMLResponse('<div class="card"><div class="empty-state" style="text-align:center;padding:40px;color:var(--text-muted);">未找到相关饰品，请尝试简化关键词</div></div>')
 
         # Step 2: Fetch detail
-        item = await resolve_item(good_id, page_title or query, KLINE_FRESH_SINGLE)
+        item = await resolve_item(good_id, page_title or query, KLINE_FRESH_SINGLE, max_stale_hours=KLINE_FRESH_SINGLE_HOURS)
         if item is None:
             return HTMLResponse('<div class="card"><div class="empty-state" style="text-align:center;padding:40px;color:var(--text-muted);">获取详情失败，请重试</div></div>')
 
@@ -682,7 +682,7 @@ async def api_items_analyze(
         if good_id == 0:
             return HTMLResponse(_ae("未找到物品: " + name))
 
-        item = await resolve_item(good_id, name, KLINE_FRESH_SINGLE)
+        item = await resolve_item(good_id, name, KLINE_FRESH_SINGLE, max_stale_hours=KLINE_FRESH_SINGLE_HOURS)
         if item is None:
             return HTMLResponse(_ae(f"获取详情失败: good_id={good_id}"))
         exact_name = _clean_csqaq_name(item.name or page_title or name)
@@ -693,7 +693,7 @@ async def api_items_analyze(
             if simple_q and simple_q != name:
                 gid2, _ = await collector_csqaq.search_good_id(simple_q)
                 if gid2 and gid2 != good_id:
-                    item2 = await resolve_item(gid2, simple_q, KLINE_FRESH_SINGLE)
+                    item2 = await resolve_item(gid2, simple_q, KLINE_FRESH_SINGLE, max_stale_hours=KLINE_FRESH_SINGLE_HOURS)
                     if item2 and item2.name:
                         exact_name2 = item2.name
                         if _verify_item_name(name, exact_name2):
@@ -799,7 +799,7 @@ async def api_watchlist_analyze(request: Request, item_id: int):
         if good_id == 0:
             return HTMLResponse(_ae(f"未找到: {name}"))
 
-        item = await resolve_item(good_id, name, KLINE_FRESH_SINGLE)
+        item = await resolve_item(good_id, name, KLINE_FRESH_SINGLE, max_stale_hours=KLINE_FRESH_SINGLE_HOURS)
         if item is None:
             return HTMLResponse(_ae("详情获取失败"))
 

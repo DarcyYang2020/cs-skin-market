@@ -171,7 +171,9 @@
 - F-4 ✅（口径漂移审计日志 data/caliber_override_log.jsonl）
 - G-2 ✅（钉钉加签 NOTIFY_WEBHOOK_SECRET 可选）、G-5 ✅（bind 失败台账 data/bind_fail_log.jsonl）
 
-**仍待做（分期大项/数据依赖）**：C-1（拆模块，分期）、D-1（报告分层，分期）、F-2（求购数据 90+ 天）、A1-4（滑点校准，executions≥20）、B-4（单品 6h 复用，P2 未排期）、G-2 加签后 webhook 轮换待用户配置。
+- B-4 ✅（单品分析「当日已采 6h 内复用」双轨，KLINE_FRESH_SINGLE_HOURS=6，force_refresh 不受影响）
+
+**仍待做（分期大项/数据依赖）**：C-1（拆模块，分期）、D-1（报告分层，分期；决策条溯源/术语已折叠，深层分层低优先）、F-2（求购数据 90+ 天）、A1-4（滑点校准，executions≥20）、G-2 加签后 webhook 轮换待用户配置。
 
 ## 附录：与「评估指标体系第一性审计」的边界
 

@@ -44,9 +44,10 @@ def _today_str() -> str:
 # 新鲜度 = 行数>=14 且 最新日期距今 <= max_stale_days
 # 单品主动分析要求当天数据（stale==0）；批量/积累场景容忍 3 天
 # ============================================================
-KLINE_FRESH_SINGLE = 0     # 单品主动分析（search/analyze/watchlist analyze）
+KLINE_FRESH_SINGLE = 0     # 单品主动分析（search/analyze/watchlist analyze）：当日已采 6h 内复用（B-4），否则强制当天采集
 KLINE_FRESH_BATCH = 3      # 批量扫描 / 午间监控轻量刷新
 KLINE_FRESH_DISCOVER = 3   # discover 全量/增量扫描
+KLINE_FRESH_SINGLE_HOURS = 6  # B-4（2026-08-10）单品主动分析「当日已采 6h 内复用」窗口
 
 
 def _history_to_bars(rows):
@@ -64,8 +65,11 @@ def _history_to_bars(rows):
     return bars
 
 
-def db_kline_fresh(good_id, name, max_stale_days=KLINE_FRESH_BATCH):
+def db_kline_fresh(good_id, name, max_stale_days=KLINE_FRESH_BATCH, max_stale_hours=0):
     """DB 新鲜 K 线判定：定位 items 行 -> 近 90 日价格 -> 行数>=14 且最新日期距今<=max_stale_days。
+
+    max_stale_hours（B-4, 2026-08-10）：当日数据（stale==0）时按最近采集时间再限窗口，
+    超过则视为不新鲜（单品主动分析 6h 双轨，限流预算与新鲜度折中）。
     返回 dict(bars, stale, last_date, item_id, db_name, yyyp_id) 或 None。纯读不采集。"""
     conn = db.get_conn()
     try:
@@ -84,6 +88,21 @@ def db_kline_fresh(good_id, name, max_stale_days=KLINE_FRESH_BATCH):
         stale = (datetime.now(TZ_BJ).date() - datetime.strptime(last_date, "%Y-%m-%d").date()).days
         if stale > max_stale_days:
             return None
+        # B-4（2026-08-10）：当日数据 + 最近采集不超过 max_stale_hours 小时才复用
+        if max_stale_hours > 0 and stale == 0:
+            try:
+                _ct = (rows[-1]["created_at"] or "").strip()
+            except Exception:
+                _ct = ""
+            if _ct:
+                try:
+                    # created_at 为 SQLite localtime naive 字符串；本机时区=Asia/Shanghai，用 naive now 对齐
+                    _age_h = (datetime.now() - datetime.strptime(_ct, "%Y-%m-%d %H:%M:%S")).total_seconds() / 3600.0
+                except ValueError:
+                    _age_h = float("inf")
+                if _age_h > max_stale_hours:
+                    _log.info(f"db_kline_fresh {row['name']}: 当日已采但超 {max_stale_hours}h（{_age_h:.1f}h）→ 重新采集")
+                    return None
         return {"bars": _history_to_bars(rows), "stale": stale, "last_date": last_date,
                 "item_id": row["id"], "db_name": row["name"], "yyyp_id": row["yyyp_id"] or ""}
     except Exception as _e:
@@ -117,12 +136,13 @@ def item_from_db(fresh, good_id):
     return it
 
 
-async def resolve_item(good_id, name, max_stale_days=KLINE_FRESH_BATCH, force_refresh=False):
+async def resolve_item(good_id, name, max_stale_days=KLINE_FRESH_BATCH, force_refresh=False, max_stale_hours=0):
     """复用优先入口：DB 新鲜则返回 DB ItemData（不采集）；否则走 csQAQ 采集。
     force_refresh=True 时跳过 DB 复用，强制联网采集最新数据（批量扫描「强制联网刷新」入口）。
+    max_stale_hours（B-4, 2026-08-10）透传 db_kline_fresh：当日已采超窗口视为不新鲜。
     返回 ItemData（可能 from_db=True）或 None。"""
     if not force_refresh:
-        fresh = db_kline_fresh(good_id, name, max_stale_days)
+        fresh = db_kline_fresh(good_id, name, max_stale_days, max_stale_hours)
         if fresh:
             _log.info(f"采集复用 DB {fresh['db_name']}: stale={fresh['stale']}d bars={len(fresh['bars'])}")
             return item_from_db(fresh, good_id)

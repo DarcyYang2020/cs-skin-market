@@ -2053,3 +2053,18 @@ watch/hold 做「无按钮」处理，未区分持仓/未持仓。
 **验证**：冒烟 95 passed / 0 failed（新增 G-2 签名 / F-1 未来事件 / E-2 判定 3 项测试）；pyflakes 无新增告警；py_compile 全部通过。
 
 **产物变更**：新增审计日志 `data/caliber_override_log.jsonl` / `data/bind_fail_log.jsonl`（运行时生成，未入库）；未改动回放产物与引擎参数。
+
+
+## B-4 单品分析采集复用双轨：当日已采 6h 内复用（2026-08-10，采集/数据层）
+
+**背景**：评估 §2 指出单品主动分析 `KLINE_FRESH_SINGLE=0` → 每次 search/analyze/watchlist analyze 都触发实时 Playwright 采集（30-60s），限流预算与体验紧张（与批量扫描 3 天容忍不一致）。
+
+**落地**：
+- `db_kline_fresh` / `resolve_item` 新增 `max_stale_hours` 参数（默认 0=旧行为不变）；
+- 新增 `KLINE_FRESH_SINGLE_HOURS = 6`：单品主动分析「当日已采（stale==0）且最近采集 created_at ≤6h」直接复用 DB，超 6h 才重新采集；
+- main.py 4 处单品分析入口（search / analyze / watchlist analyze）透传 6h 窗口；`force_refresh=True`（强制联网刷新）不受影响；
+- created_at 为 SQLite localtime naive 字符串，判定用本地 naive now 对齐（TZ_BJ aware 相减会抛错，已修）。
+
+**影响面**：采集层/数据层行为变更——单品分析限流压力降为约 1/（6h 窗口内重复点击），数据新鲜度由「强制当天」放宽为「当日 6h 内」（当天晚于 6h 未刷新仍会重新采集，不影响"当天数据"承诺）。引擎评分/决策零改动。
+
+**验证**：新增 t_b4_fresh_hours（6h 内命中 / 超 6h 不命中 / 不限窗口兼容）；冒烟 96 passed / 0 failed。
