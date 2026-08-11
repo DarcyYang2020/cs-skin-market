@@ -868,3 +868,9 @@
 {"ts": "2026-08-11T19:05:46+08:00", "item_id": 1000593, "mode": "incremental", "n_insert": 0, "n_update": 1, "detail": [{"op": "update", "date": "2026-08-11", "price": 344.95}]}
 {"ts": "2026-08-11T19:29:13+08:00", "item_id": 999006, "mode": "incremental", "n_insert": 0, "n_update": 1, "detail": [{"op": "update", "date": "2026-08-11", "price": 101.0}]}
 {"ts": "2026-08-11T19:29:13+08:00", "item_id": 999006, "mode": "incremental", "n_insert": 0, "n_update": 1, "detail": [{"op": "update", "date": "2026-08-11", "price": 102.0}]}
+{"ts": "2026-08-11T19:29:32+08:00", "item_id": 999015, "mode": "incremental", "n_insert": 0, "n_update": 1, "detail": [{"op": "update", "date": "2026-08-11", "price": 101.0}]}
+{"ts": "2026-08-11T19:29:32+08:00", "item_id": 999015, "mode": "incremental", "n_insert": 0, "n_update": 1, "detail": [{"op": "update", "date": "2026-08-11", "price": 102.0}]}
+{"ts": "2026-08-11T19:59:11+08:00", "item_id": 999024, "mode": "incremental", "n_insert": 0, "n_update": 1, "detail": [{"op": "update", "date": "2026-08-11", "price": 101.0}]}
+{"ts": "2026-08-11T19:59:11+08:00", "item_id": 999024, "mode": "incremental", "n_insert": 0, "n_update": 1, "detail": [{"op": "update", "date": "2026-08-11", "price": 102.0}]}
+{"ts": "2026-08-11T19:59:35+08:00", "item_id": 999033, "mode": "incremental", "n_insert": 0, "n_update": 1, "detail": [{"op": "update", "date": "2026-08-11", "price": 101.0}]}
+{"ts": "2026-08-11T19:59:35+08:00", "item_id": 999033, "mode": "incremental", "n_insert": 0, "n_update": 1, "detail": [{"op": "update", "date": "2026-08-11", "price": 102.0}]}
