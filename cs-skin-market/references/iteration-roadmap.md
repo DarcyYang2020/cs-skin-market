@@ -332,4 +332,4 @@ eferences/refit_pipeline.py → data/refit_pipeline_report.json（A2 三件套�
 - M-3 discover 发现榜 alpha 检验：**已立项（2026-08-11）**——追踪口径不扣 2%（`discover_tasks.py:494-545`）+ 市场弱过滤方向疑与「洗盘最优」张力 + 候选空间限 13 武器；检验设计见附录 E3；产出 `data/_exp_discover_alpha.json`。
 - M-4 执行复盘口径量化：**已立项（2026-08-11）**——real 日历日 vs paper 交易日结算不一致（`main.py:1010` vs `signal_tracking.py`）+ action 混用（`dashboards.py:92-126`）；依赖 executions>=20（A1-4），检验设计见附录 E4。
 - M-5 composite 展示层调整：**完成（2026-08-11）**——TH 偏移系数 1.0→-1.0（`item_analysis.py:674`，三件套：317 信号 / 反向 Q5 win14 73.4% vs 67.2% / spearman +0.015），测试断言同步（t_composite_score_fn 9.1→8.0），不落引擎。
-- M-6 discover 候选扩展（候选，未立项）：印花/贴纸/手套/刀/收藏品进发现空间，功能扩展，用户确认后立项。
+- M-6 discover 候选扩展：**阶段 1 落地（2026-08-11）**——新增 `pipeline/item_categories.py` 品类识别，池内 discover 白名单扩展（崭新出厂 ∪ 印花/武器箱/挂件/收藏品/胶囊，印花×2+箱×2+挂件×1 进发现空间，角色×3 暂不入），results/`discover_history` 存档加 `category` 字段（M-3 品类分桶基础），展示层品类列 + 热力图分桶；引擎参数零改动；阶段 2（scan-all suggest 品类搜索词）待 csQAQ 稳定，阶段 3（品类 alpha 检验）与 M-3 合并。

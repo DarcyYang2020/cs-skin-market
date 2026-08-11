@@ -20,15 +20,16 @@
   <span class="card-subtitle">已扫描 {{ ok_count }} 个饰品，展示前10{{ market_note|safe }}
     <button class="btn btn-sm btn-outline" onclick="refreshDiscover()" style="margin-left:8px;">🔄 刷新</button></span></div>
   <div class="card-body" style="padding:0;"><div class="table-wrap"><table class="data-table" style="width:100%;">
-    <thead><tr><th>#</th><th>评级</th><th>名称</th><th>价格</th><th>评分</th><th>综合</th><th>%位</th><th>周期</th><th>操作</th></tr></thead>
+    <thead><tr><th>#</th><th>评级</th><th>品类</th><th>名称</th><th>价格</th><th>评分</th><th>综合</th><th>%位</th><th>周期</th><th>操作</th></tr></thead>
     <tbody>
     {% for r in top10 %}
     {% if r.error %}
-      <tr><td colspan="9" style="color:var(--danger);padding:12px 16px;">{{ r.name }}: {{ r.error }}</td></tr>
+      <tr><td colspan="10" style="color:var(--danger);padding:12px 16px;">{{ r.name }}: {{ r.error }}</td></tr>
     {% else %}
       <tr>
         <td style="{{ r.rank_style }}">{{ r.rank }}</td>
         <td><span class="{{ r.grade_cls }}">{{ r.grade }}</span></td>
+        <td>{% if r.category %}<span style="font-size:11px;color:var(--text-muted);border:1px solid var(--border);border-radius:4px;padding:1px 6px;">{{ r.category }}</span>{% endif %}</td>
         <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><a href="javascript:void(0)" onclick="showDiscoverReport('{{ r.esc_name|safe }}')" style="color:var(--accent);text-decoration:none;cursor:pointer;" title="查看分析报告">{{ r.name }}</a></td>
         <td>¥{{ "%.2f"|format(r.price) }}</td>
         <td>{{ "%.1f"|format(r.score) }}</td>

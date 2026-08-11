@@ -11,6 +11,7 @@ from webapp.analysis_service import (
     KLINE_FRESH_DISCOVER, kline_db_fallback, market_snapshot, recent_buy_dates,
     resolve_item, save_analysis_result, save_item_snapshot, _today_str,
 )
+from pipeline.item_categories import discover_category
 from webapp.render_html import render_discover_html
 
 _web_log = logging.getLogger("webapp")
@@ -220,6 +221,7 @@ async def _run_discover_task(task_id: str, items: list):
 
             results.append(dict(
                 name=exact_name, good_id=good_id, price_rmb=price_rmb or item.price_rmb,
+                category=discover_category(exact_name),
                 grade=analysis.value.grade, score=score, composite=composite,
                 data_quality=getattr(analysis, "data_quality", "low"),
                 fd_action=fd_action, th_score=th_score,
@@ -306,9 +308,13 @@ async def _run_discover_pool_task(task_id: str):
     按综合分排序出高分品。池内 90 日 K 线每日采集已在库，纯 DB 扫描，只有过期品才触发网络补齐。"""
     conn_p = db.get_conn()
     try:
+        # M-6 (2026-08-11): 发现空间扩展——无磨损品类（印花/武器箱/挂件/收藏品/胶囊）
+        # 与崭新出厂枪皮同进发现榜；角色/特工（非以上品类）暂不入榜。
         rows = conn_p.execute(
             "SELECT i.id, i.good_id, i.name FROM items i "
-            "WHERE i.good_id>0 AND i.name LIKE '%崭新出厂%' "
+            "WHERE i.good_id>0 AND (i.name LIKE '%崭新出厂%' "
+            "OR i.name LIKE '印花 |%' OR i.name LIKE '挂件 |%' "
+            "OR i.name LIKE '%武器箱' OR i.name LIKE '%收藏品' OR i.name LIKE '%胶囊') "
             "AND (i.notes IS NULL OR (i.notes NOT LIKE '%存世量过低%' "
             "AND i.notes NOT LIKE '%活跃池淘汰%')) ORDER BY i.id"
         ).fetchall()
@@ -353,6 +359,7 @@ def _save_discover_artifacts(task_id: str):
                 'name': r.get('name', ''), 'good_id': r.get('good_id'),
                 'price_rmb': r.get('price_rmb'), 'score': r.get('score'),
                 'composite': r.get('composite'), 'pct_90d': r.get('percentile_90d'),
+                'category': discover_category(r.get('name', '')),
             } for r in _top],
         }
         (_hist_dir / ('discover_' + task_id.replace('discover_', '') + '.json')).write_text(
@@ -436,7 +443,7 @@ async def _run_discover_scan_all_task(task_id: str):
                         gid = int(sd.get("id", 0))
                         name = sd.get("value", "")
                         if gid > 0 and name and name not in seen:
-                            if "崭新出厂" in name and "StatTrak" not in name and "纪念品" not in name:
+                            if discover_category(name) != "other" and "StatTrak" not in name and "纪念品" not in name:
                                 seen.add(name)
                                 all_items.append((gid, name, 0))
                     except (ValueError, TypeError):

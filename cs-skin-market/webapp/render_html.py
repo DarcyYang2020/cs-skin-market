@@ -9,6 +9,7 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from pipeline import db
+from pipeline.item_categories import DISCOVER_CATEGORY_LABELS, discover_category
 
 # 页面级 HTML 结构统一走 Jinja（C-1 第三批，2026-08-10）：autoescape 兜底 XSS；
 # 内容渲染器（markdown->HTML / spark_svg / 单元格组件）保留 Python。
@@ -162,7 +163,11 @@ def render_discover_html(results, market_th=50):
     for r in sorted_r:
         if r.get("error"):
             continue
-        wt = r["name"].split(" |")[0] if "|" in r["name"] else "other"
+        _cat = r.get("category") or discover_category(r["name"])
+        if _cat == "skin":
+            wt = r["name"].split(" |")[0] if "|" in r["name"] else "枪皮"
+        else:
+            wt = DISCOVER_CATEGORY_LABELS.get(_cat, _cat)
         by_type[wt].append(r)
     heatmap_rows = []
     for wt, items in sorted(by_type.items(), key=lambda x: -len(x[1])):
@@ -196,6 +201,8 @@ def render_discover_html(results, market_th=50):
         rank_style = "font-weight:800;font-size:16px;" + ("color:#ffd700;" if idx == 0 else "color:var(--text-muted);")
         esc_name = r["name"].replace("'", "\\'").replace('"', '&quot;')
         rows.append({"rank": idx + 1, "rank_style": rank_style, "grade": g, "grade_cls": grade_cls,
+                     "category": DISCOVER_CATEGORY_LABELS.get(
+                         r.get("category") or discover_category(r["name"]), ""),
                      "name": r["name"], "esc_name": esc_name,
                      "price": float(r.get("price_rmb", 0) or 0),
                      "score": float(r.get("score", 0) or 0),
