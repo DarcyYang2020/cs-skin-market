@@ -1,0 +1,302 @@
+{
+ "code": 200,
+ "msg": "Success",
+ "data": [
+  {
+   "id": 20280,
+   "img": "https://market.fp.ps.netease.com/file/65fb98bbabbde141e5a2b05duU4qTqIV05",
+   "price": 70.0,
+   "rln": "非凡",
+   "short_name": "印花 | Lynn Vision（金色）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20241,
+   "img": "https://market.fp.ps.netease.com/file/65fb9649b7c1f36cb0355358yVzc3Zha05",
+   "price": 54.88,
+   "rln": "奇异",
+   "short_name": "印花 | KOI（全息）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20248,
+   "img": "https://market.fp.ps.netease.com/file/65fb982562bccb65149a2d965wj1ibNO05",
+   "price": 26.59,
+   "rln": "奇异",
+   "short_name": "印花 | Lynn Vision（全息）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20192,
+   "img": "https://market.fp.ps.netease.com/file/65fb9810a0486e04d99d5cbbf4TQ9SGN05",
+   "price": 23.31,
+   "rln": "非凡",
+   "short_name": "印花 | KOI（金色）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20095,
+   "img": "https://market.fp.ps.netease.com/file/65fb98e483f1c70ab15e25efADiTyU7N05",
+   "price": 21.88,
+   "rln": "非凡",
+   "short_name": "印花 | paiN Gaming（金色）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20136,
+   "img": "https://market.fp.ps.netease.com/file/65fb9720e0c31cc4406563501km85LoE05",
+   "price": 20.01,
+   "rln": "非凡",
+   "short_name": "印花 | ECSTATIC（金色）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20039,
+   "img": "https://market.fp.ps.netease.com/file/65fb999c309f6c1b31532b54sSqtSFxQ05",
+   "price": 18.49,
+   "rln": "奇异",
+   "short_name": "印花 | AMKAL ESPORTS（全息）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20114,
+   "img": "https://market.fp.ps.netease.com/file/65fb983443b92881efa8f555oVtePE6j05",
+   "price": 16.84,
+   "rln": "非凡",
+   "short_name": "印花 | AMKAL ESPORTS（金色）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20118,
+   "img": "https://market.fp.ps.netease.com/file/65fb967fe3332103d67a170csir34wUI05",
+   "price": 16.71,
+   "rln": "奇异",
+   "short_name": "印花 | Imperial Esports（全息）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20062,
+   "img": "https://market.fp.ps.netease.com/file/65fb9684744fe2684fcb253dxQ6Eu3jx05",
+   "price": 16.64,
+   "rln": "奇异",
+   "short_name": "印花 | ECSTATIC（全息）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20066,
+   "img": "https://market.fp.ps.netease.com/file/65fb961abdcd5cd55ece1e36vyg9Rmis05",
+   "price": 13.98,
+   "rln": "奇异",
+   "short_name": "印花 | Legacy（全息）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20168,
+   "img": "https://market.fp.ps.netease.com/file/65fb960b5de950b30a2ded6cFuCO34gf05",
+   "price": 12.84,
+   "rln": "非凡",
+   "short_name": "印花 | Legacy（金色）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20052,
+   "img": "https://market.fp.ps.netease.com/file/65fb96d559495f100b05c888TBVH4h9G05",
+   "price": 12.49,
+   "rln": "奇异",
+   "short_name": "印花 | paiN Gaming（全息）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20131,
+   "img": "https://market.fp.ps.netease.com/file/65fb967f8febe63dcac87aebM75hT21L05",
+   "price": 11.68,
+   "rln": "非凡",
+   "short_name": "印花 | The MongolZ（金色）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20021,
+   "img": "https://market.fp.ps.netease.com/file/65fb96bd38c755a9a021638bDUVmOsr005",
+   "price": 11.09,
+   "rln": "奇异",
+   "short_name": "印花 | The MongolZ（全息）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20170,
+   "img": "https://market.fp.ps.netease.com/file/65fb9a1080e28d128077ddedIyzr7vOD05",
+   "price": 9.3,
+   "rln": "非凡",
+   "short_name": "印花 | Imperial Esports（金色）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20076,
+   "img": "https://market.fp.ps.netease.com/file/65fb965460368b8d67d0658aSrvxWw0i05",
+   "price": 5.86,
+   "rln": "非凡",
+   "short_name": "印花 | PGL（金色）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20049,
+   "img": "https://market.fp.ps.netease.com/file/65fb967ec682dcbaf30658a4GWpX93WL05",
+   "price": 5.85,
+   "rln": "奇异",
+   "short_name": "印花 | PGL（全息）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20010,
+   "img": "https://market.fp.ps.netease.com/file/65fb960e16e58eaddb1ec289sPEcblYO05",
+   "price": 4.0,
+   "rln": "卓越",
+   "short_name": "印花 | KOI（闪耀）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20064,
+   "img": "https://market.fp.ps.netease.com/file/65fb960d2deb7276c57928dedmavhzNe05",
+   "price": 3.44,
+   "rln": "卓越",
+   "short_name": "印花 | Lynn Vision（闪耀）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19990,
+   "img": "https://market.fp.ps.netease.com/file/65fb9582d0e9fef3e43eeb52IOZMNKX605",
+   "price": 3.18,
+   "rln": "卓越",
+   "short_name": "印花 | Imperial Esports（闪耀）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19729,
+   "img": "https://market.fp.ps.netease.com/file/65fb94f5af4f529eb4cd37b4TdH8dNBp05",
+   "price": 1.95,
+   "rln": "普通级",
+   "short_name": "2024年哥本哈根锦标赛竞争组印花胶囊",
+   "qln": "普通"
+  },
+  {
+   "id": 19983,
+   "img": "https://market.fp.ps.netease.com/file/65fb9582fddd4f3e1e54a555OVMextvV05",
+   "price": 1.76,
+   "rln": "卓越",
+   "short_name": "印花 | ECSTATIC（闪耀）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19888,
+   "img": "https://market.fp.ps.netease.com/file/65fb961b3d75c8c9211008c6OXHkCOPR05",
+   "price": 0.84,
+   "rln": "卓越",
+   "short_name": "印花 | paiN Gaming（闪耀）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19911,
+   "img": "https://market.fp.ps.netease.com/file/65fb960d0fbb6e2cb768dddaGGLOyI9405",
+   "price": 0.83,
+   "rln": "卓越",
+   "short_name": "印花 | AMKAL ESPORTS（闪耀）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19909,
+   "img": "https://market.fp.ps.netease.com/file/65fb96627990ada71e5d453aqhJuQTFY05",
+   "price": 0.72,
+   "rln": "卓越",
+   "short_name": "印花 | Legacy（闪耀）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19879,
+   "img": "https://market.fp.ps.netease.com/file/65fb9581744fe2684fcb1be3qVzsapE605",
+   "price": 0.49,
+   "rln": "卓越",
+   "short_name": "印花 | The MongolZ（闪耀）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19957,
+   "img": "https://market.fp.ps.netease.com/file/65fb9521020a547d58e38bf0hz1kxOyI05",
+   "price": 0.29,
+   "rln": "高级",
+   "short_name": "印花 | Lynn Vision | 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19883,
+   "img": "https://market.fp.ps.netease.com/file/65fb9520e2285dbcf6888830pV1t4ooj05",
+   "price": 0.24,
+   "rln": "高级",
+   "short_name": "印花 | KOI | 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19786,
+   "img": "https://market.fp.ps.netease.com/file/65fb94e1331b3f96d8ee8c10wDccIbMp05",
+   "price": 0.24,
+   "rln": "高级",
+   "short_name": "印花 | paiN Gaming | 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19863,
+   "img": "https://market.fp.ps.netease.com/file/65fb94d3fa44c0661509a6a481CX4Lxj05",
+   "price": 0.22,
+   "rln": "高级",
+   "short_name": "印花 | Imperial Esports | 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19862,
+   "img": "https://market.fp.ps.netease.com/file/65fb94d3d01ecf1414302ceetqJ6YzQ305",
+   "price": 0.15,
+   "rln": "卓越",
+   "short_name": "印花 | PGL（闪耀）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19813,
+   "img": "https://market.fp.ps.netease.com/file/65fb94d337080553680fd8a6ZAABvtuf05",
+   "price": 0.03,
+   "rln": "高级",
+   "short_name": "印花 | AMKAL ESPORTS | 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19818,
+   "img": "https://market.fp.ps.netease.com/file/65fb94d3e9a5036c0b9e21cfOQtiR6Vp05",
+   "price": 0.03,
+   "rln": "高级",
+   "short_name": "印花 | Legacy | 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19772,
+   "img": "https://market.fp.ps.netease.com/file/65fb951f020a547d58e38bce0gwp1lmG05",
+   "price": 0.03,
+   "rln": "高级",
+   "short_name": "印花 | The MongolZ | 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19787,
+   "img": "https://market.fp.ps.netease.com/file/65fb953358ab081a0eb8b873FIgwBCly05",
+   "price": 0.02,
+   "rln": "高级",
+   "short_name": "印花 | ECSTATIC | 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19757,
+   "img": "https://market.fp.ps.netease.com/file/65fb94d485b90cc92b3740b4qqD7aEmV05",
+   "price": 0.02,
+   "rln": "高级",
+   "short_name": "印花 | PGL | 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  }
+ ]
+}

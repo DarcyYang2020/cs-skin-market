@@ -1,0 +1,302 @@
+{
+ "code": 200,
+ "msg": "Success",
+ "data": [
+  {
+   "id": 20307,
+   "img": "https://market.fp.ps.netease.com/file/65fb98a87167ce0cb6da00c4ik5LX67J05",
+   "price": 67.78,
+   "rln": "非凡",
+   "short_name": "印花 | SAW（金色）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20249,
+   "img": "https://market.fp.ps.netease.com/file/65fba0ed299b048774aa9f04lkO1PjSC05",
+   "price": 49.86,
+   "rln": "非凡",
+   "short_name": "印花 | FURIA（金色）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20270,
+   "img": "https://market.fp.ps.netease.com/file/65fb9cc8fd51407dfdfb56f5C0IJAsqB05",
+   "price": 43.88,
+   "rln": "非凡",
+   "short_name": "印花 | Eternal Fire（金色）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20246,
+   "img": "https://market.fp.ps.netease.com/file/65fb9717d683052109584792zLObWSoy05",
+   "price": 42.76,
+   "rln": "奇异",
+   "short_name": "印花 | Cloud9（全息）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20223,
+   "img": "https://market.fp.ps.netease.com/file/65fb9588fad3f2a1540beeb3Q8Ao2XY805",
+   "price": 40.97,
+   "rln": "奇异",
+   "short_name": "印花 | FURIA（全息）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20263,
+   "img": "https://market.fp.ps.netease.com/file/65fb9ae662bb41ca71a2f566C0EppqRt05",
+   "price": 39.1,
+   "rln": "非凡",
+   "short_name": "印花 | Cloud9（金色）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20185,
+   "img": "https://market.fp.ps.netease.com/file/65fb99ab274eff50f6f835f2l6XqMgoW05",
+   "price": 29.9,
+   "rln": "奇异",
+   "short_name": "印花 | Eternal Fire（全息）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20139,
+   "img": "https://market.fp.ps.netease.com/file/65fb9b478ea624819a1ab57fJmw6fkL105",
+   "price": 24.96,
+   "rln": "奇异",
+   "short_name": "印花 | GamerLegion（全息）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20130,
+   "img": "https://market.fp.ps.netease.com/file/65fb9ad02f8473cddc0d4ba0qWBTNpcB05",
+   "price": 21.6,
+   "rln": "奇异",
+   "short_name": "印花 | SAW（全息）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20101,
+   "img": "https://market.fp.ps.netease.com/file/65fb9bb69bc1564cb8a9acebzR7KtFUu05",
+   "price": 21.5,
+   "rln": "奇异",
+   "short_name": "印花 | Apeks（全息）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20175,
+   "img": "https://market.fp.ps.netease.com/file/65fb99397b26fe26a98f8b60y0jABRd205",
+   "price": 20.88,
+   "rln": "非凡",
+   "short_name": "印花 | Apeks（金色）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20056,
+   "img": "https://market.fp.ps.netease.com/file/65fb98a8ae3816fd721fe0e6EYl4g6WU05",
+   "price": 17.01,
+   "rln": "奇异",
+   "short_name": "印花 | ENCE（全息）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20161,
+   "img": "https://market.fp.ps.netease.com/file/65fba111fb3dccf6f8167e1bXUqvhiNG05",
+   "price": 15.74,
+   "rln": "非凡",
+   "short_name": "印花 | GamerLegion（金色）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20091,
+   "img": "https://market.fp.ps.netease.com/file/65fb95e908b9f7e34dc09149ijlpLB9U05",
+   "price": 15.72,
+   "rln": "奇异",
+   "short_name": "印花 | Heroic（全息）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20174,
+   "img": "https://market.fp.ps.netease.com/file/65fba09cd076bdb04c865cf5SEtRbMvv05",
+   "price": 13.99,
+   "rln": "非凡",
+   "short_name": "印花 | Heroic（金色）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20034,
+   "img": "https://market.fp.ps.netease.com/file/65fb9668ae3816fd721fbd13VUBWmQEk05",
+   "price": 13.09,
+   "rln": "卓越",
+   "short_name": "印花 | Eternal Fire（闪耀）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20107,
+   "img": "https://market.fp.ps.netease.com/file/65fba0bd08b9f7e34dc0bbb1Neit4EQf05",
+   "price": 11.69,
+   "rln": "非凡",
+   "short_name": "印花 | ENCE（金色）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20073,
+   "img": "https://market.fp.ps.netease.com/file/65fb967613557c6217db58e3q3VfEg1r05",
+   "price": 11.68,
+   "rln": "卓越",
+   "short_name": "印花 | Cloud9（闪耀）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20076,
+   "img": "https://market.fp.ps.netease.com/file/65fb965460368b8d67d0658aSrvxWw0i05",
+   "price": 5.86,
+   "rln": "非凡",
+   "short_name": "印花 | PGL（金色）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20049,
+   "img": "https://market.fp.ps.netease.com/file/65fb967ec682dcbaf30658a4GWpX93WL05",
+   "price": 5.85,
+   "rln": "奇异",
+   "short_name": "印花 | PGL（全息）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20012,
+   "img": "https://market.fp.ps.netease.com/file/65fb96403a4c3f19d7eb5dcb8jFB4LmG05",
+   "price": 3.99,
+   "rln": "卓越",
+   "short_name": "印花 | SAW（闪耀）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19949,
+   "img": "https://market.fp.ps.netease.com/file/65fb96403f5306aba74b6406TQy7sz9M05",
+   "price": 3.07,
+   "rln": "卓越",
+   "short_name": "印花 | Apeks（闪耀）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19730,
+   "img": "https://market.fp.ps.netease.com/file/65fb9506acc397272cfb92e2ZA5BSrUT05",
+   "price": 3.01,
+   "rln": "普通级",
+   "short_name": "2024年哥本哈根锦标赛挑战组印花胶囊",
+   "qln": "普通"
+  },
+  {
+   "id": 19896,
+   "img": "https://market.fp.ps.netease.com/file/65fb95346e79668f3cfcbf31oD5XWcAX05",
+   "price": 2.05,
+   "rln": "高级",
+   "short_name": "印花 | SAW | 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19962,
+   "img": "https://market.fp.ps.netease.com/file/65fb9555e2bd5c3db64083d7kycdvz9305",
+   "price": 2.02,
+   "rln": "卓越",
+   "short_name": "印花 | GamerLegion（闪耀）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19953,
+   "img": "https://market.fp.ps.netease.com/file/65fb982ca6dee5ca6ba96563IleXjma305",
+   "price": 1.77,
+   "rln": "卓越",
+   "short_name": "印花 | FURIA（闪耀）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19954,
+   "img": "https://market.fp.ps.netease.com/file/65fb963f166f685f9ea97ab9kJwiYFHz05",
+   "price": 0.85,
+   "rln": "高级",
+   "short_name": "印花 | Cloud9 | 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19920,
+   "img": "https://market.fp.ps.netease.com/file/65fb96676bb9be9c43a2a2ef9VXlMIw405",
+   "price": 0.78,
+   "rln": "高级",
+   "short_name": "印花 | Eternal Fire | 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19936,
+   "img": "https://market.fp.ps.netease.com/file/65fb97e16e79668f3cfce135shwj02i205",
+   "price": 0.56,
+   "rln": "卓越",
+   "short_name": "印花 | Heroic（闪耀）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19898,
+   "img": "https://market.fp.ps.netease.com/file/65fb96bf62bccb65149a19c21HTIc0Ed05",
+   "price": 0.51,
+   "rln": "卓越",
+   "short_name": "印花 | ENCE（闪耀）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19858,
+   "img": "https://market.fp.ps.netease.com/file/65fb955408e1e35f5afc056ftOMujBuP05",
+   "price": 0.27,
+   "rln": "高级",
+   "short_name": "印花 | Apeks | 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19859,
+   "img": "https://market.fp.ps.netease.com/file/65fb966754d41002e6cdc687EzZi1xYQ05",
+   "price": 0.21,
+   "rln": "高级",
+   "short_name": "印花 | FURIA | 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19862,
+   "img": "https://market.fp.ps.netease.com/file/65fb94d3d01ecf1414302ceetqJ6YzQ305",
+   "price": 0.15,
+   "rln": "卓越",
+   "short_name": "印花 | PGL（闪耀）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19827,
+   "img": "https://market.fp.ps.netease.com/file/65fb9554027ba66bce480ddfkwJ9v91705",
+   "price": 0.09,
+   "rln": "高级",
+   "short_name": "印花 | GamerLegion | 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19850,
+   "img": "https://market.fp.ps.netease.com/file/65fb95e608b9f7e34dc09139WbvGZqk405",
+   "price": 0.05,
+   "rln": "高级",
+   "short_name": "印花 | Heroic | 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19809,
+   "img": "https://market.fp.ps.netease.com/file/65fb956e83f1c70ab15e127duBkJUGsd05",
+   "price": 0.03,
+   "rln": "高级",
+   "short_name": "印花 | ENCE | 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19757,
+   "img": "https://market.fp.ps.netease.com/file/65fb94d485b90cc92b3740b4qqD7aEmV05",
+   "price": 0.02,
+   "rln": "高级",
+   "short_name": "印花 | PGL | 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  }
+ ]
+}

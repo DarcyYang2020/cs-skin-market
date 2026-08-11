@@ -1,0 +1,302 @@
+{
+ "code": 200,
+ "msg": "Success",
+ "data": [
+  {
+   "id": 20220,
+   "img": "https://market.fp.ps.netease.com/file/65fb9556348ca9fb4de69613Ua4Zaz4m05",
+   "price": 48.69,
+   "rln": "非凡",
+   "short_name": "印花 | FaZe Clan（金色）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20279,
+   "img": "https://market.fp.ps.netease.com/file/65fb9a18952061924674d0b1v7NKfJU605",
+   "price": 48.38,
+   "rln": "非凡",
+   "short_name": "印花 | Team Spirit（金色）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20218,
+   "img": "https://market.fp.ps.netease.com/file/65fb96cad923a7ea9ad3e60ckDuOq6ah05",
+   "price": 45.4,
+   "rln": "非凡",
+   "short_name": "印花 | Natus Vincere（金色）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20140,
+   "img": "https://market.fp.ps.netease.com/file/65fb950740bcaa748750b60d4Iih1W4105",
+   "price": 38.5,
+   "rln": "奇异",
+   "short_name": "印花 | FaZe Clan（全息）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20167,
+   "img": "https://market.fp.ps.netease.com/file/65fb96827017432faa1c6fcbTrj5HPZW05",
+   "price": 28.88,
+   "rln": "奇异",
+   "short_name": "印花 | Natus Vincere（全息）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20155,
+   "img": "https://market.fp.ps.netease.com/file/65fb95fdaedfe9709f156c67JThYQdpx05",
+   "price": 24.84,
+   "rln": "奇异",
+   "short_name": "印花 | Virtus.pro（全息）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20237,
+   "img": "https://market.fp.ps.netease.com/file/65fb966513557c6217db57cd2tz0dIiK05",
+   "price": 22.49,
+   "rln": "非凡",
+   "short_name": "印花 | G2 Esports（金色）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20225,
+   "img": "https://market.fp.ps.netease.com/file/65fb97783ff4dd7d9fc0de72cyNdSbAG05",
+   "price": 22.0,
+   "rln": "奇异",
+   "short_name": "印花 | Team Spirit（全息）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20067,
+   "img": "https://market.fp.ps.netease.com/file/65fb9845ae3816fd721fda98xfwl8CR505",
+   "price": 20.99,
+   "rln": "奇异",
+   "short_name": "印花 | Complexity Gaming（全息）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20150,
+   "img": "https://market.fp.ps.netease.com/file/65fb963438c755a9a02160c21XAT0u0W05",
+   "price": 19.6,
+   "rln": "奇异",
+   "short_name": "印花 | G2 Esports（全息）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20203,
+   "img": "https://market.fp.ps.netease.com/file/65fb959f3d75c8c92110077aEeZa0rH705",
+   "price": 18.56,
+   "rln": "奇异",
+   "short_name": "印花 | MOUZ（全息）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20196,
+   "img": "https://market.fp.ps.netease.com/file/65fb97ab09646a7e720bad02YrEM1W6205",
+   "price": 17.61,
+   "rln": "非凡",
+   "short_name": "印花 | Virtus.pro（金色）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20111,
+   "img": "https://market.fp.ps.netease.com/file/65fb960b09646a7e720b8f5054bw5HRA05",
+   "price": 16.41,
+   "rln": "奇异",
+   "short_name": "印花 | Vitality（全息）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20128,
+   "img": "https://market.fp.ps.netease.com/file/65fb99293917b7f8be28662fQzHMcQaU05",
+   "price": 15.75,
+   "rln": "非凡",
+   "short_name": "印花 | Complexity Gaming（金色）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20266,
+   "img": "https://market.fp.ps.netease.com/file/65fb9b24027ba66bce486feehoTJ283o05",
+   "price": 14.39,
+   "rln": "非凡",
+   "short_name": "印花 | MOUZ（金色）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20234,
+   "img": "https://market.fp.ps.netease.com/file/65fb95d475c2980127e45de9FrJvtLCM05",
+   "price": 13.86,
+   "rln": "非凡",
+   "short_name": "印花 | Vitality（金色）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20076,
+   "img": "https://market.fp.ps.netease.com/file/65fb965460368b8d67d0658aSrvxWw0i05",
+   "price": 5.86,
+   "rln": "非凡",
+   "short_name": "印花 | PGL（金色）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20049,
+   "img": "https://market.fp.ps.netease.com/file/65fb967ec682dcbaf30658a4GWpX93WL05",
+   "price": 5.85,
+   "rln": "奇异",
+   "short_name": "印花 | PGL（全息）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20027,
+   "img": "https://market.fp.ps.netease.com/file/65fb951a6b5579102efba3ac3DAWbafl05",
+   "price": 4.97,
+   "rln": "卓越",
+   "short_name": "印花 | Team Spirit（闪耀）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19971,
+   "img": "https://market.fp.ps.netease.com/file/65fb957f122f63456de6bac6lQVi2ukR05",
+   "price": 4.1,
+   "rln": "卓越",
+   "short_name": "印花 | FaZe Clan（闪耀）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 20004,
+   "img": "https://market.fp.ps.netease.com/file/65fb94affcfae4113dea4e577UdLK00d05",
+   "price": 3.77,
+   "rln": "卓越",
+   "short_name": "印花 | Natus Vincere（闪耀）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19731,
+   "img": "https://market.fp.ps.netease.com/file/65fb9505fa44c0661509a826pCNavdQV05",
+   "price": 2.73,
+   "rln": "普通级",
+   "short_name": "2024年哥本哈根锦标赛传奇组印花胶囊",
+   "qln": "普通"
+  },
+  {
+   "id": 19998,
+   "img": "https://market.fp.ps.netease.com/file/65fb95e111d70af816366dbedzpxmS3L05",
+   "price": 1.75,
+   "rln": "卓越",
+   "short_name": "印花 | MOUZ（闪耀）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19918,
+   "img": "https://market.fp.ps.netease.com/file/65fb958da13f9d82f0756634kNDtRXtP05",
+   "price": 1.7,
+   "rln": "卓越",
+   "short_name": "印花 | Complexity Gaming（闪耀）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19944,
+   "img": "https://market.fp.ps.netease.com/file/65fb95df6189b0dc80cc11absFyqw5JN05",
+   "price": 1.33,
+   "rln": "卓越",
+   "short_name": "印花 | Virtus.pro（闪耀）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19964,
+   "img": "https://market.fp.ps.netease.com/file/65fb9640d683052109584094dMT4Lqgl05",
+   "price": 1.27,
+   "rln": "卓越",
+   "short_name": "印花 | G2 Esports（闪耀）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19932,
+   "img": "https://market.fp.ps.netease.com/file/65fb94d2b335867fb81c1a99u6uGRjG105",
+   "price": 0.97,
+   "rln": "卓越",
+   "short_name": "印花 | Vitality（闪耀）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19928,
+   "img": "https://market.fp.ps.netease.com/file/65fb94d1ed192b551ea684b7sKqwtMsG05",
+   "price": 0.46,
+   "rln": "高级",
+   "short_name": "印花 | Team Spirit | 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19873,
+   "img": "https://market.fp.ps.netease.com/file/65fb94d1b8f273479c65200eYyyz2dvB05",
+   "price": 0.43,
+   "rln": "高级",
+   "short_name": "印花 | FaZe Clan | 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19880,
+   "img": "https://market.fp.ps.netease.com/file/65fb94d097b8498495356704IfuGGXzW05",
+   "price": 0.4,
+   "rln": "高级",
+   "short_name": "印花 | Natus Vincere | 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19779,
+   "img": "https://market.fp.ps.netease.com/file/65fb94d0c5ac3b4aa71cda20zN24DOqu05",
+   "price": 0.28,
+   "rln": "高级",
+   "short_name": "印花 | Complexity Gaming | 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19862,
+   "img": "https://market.fp.ps.netease.com/file/65fb94d3d01ecf1414302ceetqJ6YzQ305",
+   "price": 0.15,
+   "rln": "卓越",
+   "short_name": "印花 | PGL（闪耀）| 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19886,
+   "img": "https://market.fp.ps.netease.com/file/65fb94e57c344b86f2e843c2izj45YGB05",
+   "price": 0.14,
+   "rln": "高级",
+   "short_name": "印花 | MOUZ | 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19887,
+   "img": "https://market.fp.ps.netease.com/file/65fb9550d0e9fef3e43ee980dyBdR0qN05",
+   "price": 0.1,
+   "rln": "高级",
+   "short_name": "印花 | Virtus.pro | 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19869,
+   "img": "https://market.fp.ps.netease.com/file/65fb950e75c2980127e45156mlHZ6RiX05",
+   "price": 0.09,
+   "rln": "高级",
+   "short_name": "印花 | G2 Esports | 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19889,
+   "img": "https://market.fp.ps.netease.com/file/65fb94d41b511fda16e30db7SwiBV6me05",
+   "price": 0.07,
+   "rln": "高级",
+   "short_name": "印花 | Vitality | 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  },
+  {
+   "id": 19757,
+   "img": "https://market.fp.ps.netease.com/file/65fb94d485b90cc92b3740b4qqD7aEmV05",
+   "price": 0.02,
+   "rln": "高级",
+   "short_name": "印花 | PGL | 2024年哥本哈根锦标赛",
+   "qln": "普通"
+  }
+ ]
+}
