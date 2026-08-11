@@ -1589,6 +1589,15 @@ def decide_fusion_signal(
                     _apply_guards(fd, F, fam.guards)
                 break
 
+    # ---- 贴纸观察桶守卫（2026-08-12）：印花（贴纸）A2 验证前不进 buy 决策 ----
+    # 贴纸为赛事事件驱动高波动品类，周期/供给吸筹语义错配（first-principles-stickers.md 2.1）；
+    # 观察桶原则：仅 watch 积累 14/30d 追踪分桶，三件套 + A2 验证通过后才放开 buy。
+    if name.startswith("印花 |") and fd.action == "buy":
+        fd.action = "watch"
+        fd.action_label = "👀 贴纸观察（A2 验证前不进 buy）"
+        if "sticker_observation" not in fd.deduction_sources:
+            fd.deduction_sources.append("sticker_observation")
+
     # ---- 信息层：买点接近度（不参与 action 决策；被监控 near_buy 与自选排序读取） ----
     fd.proximity = compute_buy_proximity(F)
 

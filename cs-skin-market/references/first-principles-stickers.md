@@ -76,6 +76,12 @@
 - `discover_history` 已含 category 字段 → 贴纸 14/30d 追踪自动分桶（M-3 品类 alpha 检验基础）；
 - **贴纸不进 buy 决策**（观察桶原则）：不触发吸筹族/供给收缩信号，仅"低估区+大盘企稳"路径候选，落地须过 A2（walk-forward + 聚类 + 置换）。
 
+### 3.5 落地状态（2026-08-12 已执行）
+- **入库**：160 品全息战队贴纸已入库（`source='sticker'`，notes=`赛事|分组|全息`，good_id=csQAQ gid），库内 items 203→361 品；去重核验：库内原有 MOUZ/G2 2024上海 2 品复用，无重复；
+- **K 线**：158 新品的 90d K 线采集 147 品成功（86-92 根 bar/品），11 品两轮 EMPTY（限流窗口，2025 奥斯汀 6 + 布达佩斯 3 + 里约/哥本哈根各 1）留待每日任务自然补采；数据质量抽查通过（价格区间合理、无 ≤0/超高价、无长期零在售）；
+- **观察桶守卫（代码落地）**：`pipeline/item_analysis.py:decide_fusion_signal` return 前新增 `sticker_observation` 守卫——`印花 |` 前缀品强制 buy→watch 降级（覆盖基础族/恐慌升级/后置族/超跌全部 buy 路径），验证：强 buy 场景贴纸=watch+sticker_observation、枪皮=buy 不变；panic_resonance 族原有印花排除保留（双保险）；
+- **口径记录**：csQAQ `rln` 稀有度字段随赛事漂移（2021=全息/2022=闪耀/2024=闪亮/奥斯汀=闪亮/布达佩斯=刺绣），必须按名称「（全息）」过滤；主办方贴纸（PGL/IEM/Perfect World/BLAST.tv/StarLadder）已剔除。
+
 ### 3.4 待执行检验（A2 前置，样本积累后）
 | 检验 | 数据/方法 | 判定阈值 |
 |---|---|---|
