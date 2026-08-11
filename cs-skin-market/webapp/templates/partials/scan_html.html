@@ -1,23 +1,13 @@
 <div class="card" id="batch-result" style="margin-bottom:16px;">
   <div class="card-header" style="justify-content:space-between;"><span class="card-title">批量扫描完成</span>
-  <span style="font-size:13px;color:var(--text-muted);">{{ now_str }} | 成功 {{ n_ok }}/{{ total }} | 刷新后仍保留</span></div>
-</div>
-<div class="card" style="margin-bottom:16px;">
-  <div class="card-header"><span class="card-title">市场环境</span></div>
-  <div style="padding:10px 14px;font-size:13px;color:var(--text-secondary);">
-    {% if idx_txt %}指数 {{ idx_txt }} ｜{% endif %}大盘TH={{ th_txt }} ｜ 情绪 {{ sent_txt }}（{{ mood }}）｜ 周期 {{ cycle }}
-    ｜ <span class="regime-badge {{ regime_cls }}">{{ regime_label }}</span>
-    <br><span style="font-size:12px;color:var(--text-secondary);">策略：{{ regime_strategy }}</span>
-    {% if stats_line %}<br><span style="color:var(--accent);font-weight:600;">{{ stats_line }}</span>{% endif %}
-    {% if demand_line %}<br>{{ demand_line|safe }}{% endif %}
-    {% if breaker_line %}<br>{{ breaker_line|safe }}{% endif %}
-  </div>
+  <span style="font-size:13px;color:var(--text-muted);">{{ now_str }} | 成功 {{ n_ok }}/{{ total }} | 点击物品名查看完整报告
+    {% if stats_line %}<br><span style="color:var(--accent);font-weight:600;">{{ stats_line }}</span>{% endif %}</span></div>
 </div>
 {% if held %}
 <div class="card" style="margin-bottom:16px;">
   <div class="card-header"><span class="card-title">持仓分析 ({{ held|length }})</span></div>
   <div class="table-wrap"><table>
-    <thead><tr><th>物品</th><th>成本/现价</th><th>盈亏</th><th>评分</th><th>距买点</th><th>建议</th></tr></thead>
+    <thead><tr><th>物品</th><th>成本/现价</th><th>盈亏</th><th>评分</th><th>距买点</th><th>操作</th></tr></thead>
     <tbody>
     {% for r in held %}
       <tr><td>{{ r.name_cell|safe }}</td>
@@ -25,7 +15,7 @@
       <td class="{{ r.pnl_cls }}">{{ "%.1f"|format(r.pnl_pct) }}%</td>
       <td>{{ r.badge|safe }}</td>
       <td>{{ r.bd_cell|safe }}</td>
-      <td>{{ r.advice_cell|safe }}</td></tr>
+      <td>{{ r.refresh_btn|safe }}</td></tr>
     {% endfor %}
     </tbody>
   </table></div>
@@ -35,7 +25,7 @@
 <div class="card" style="margin-bottom:16px;">
   <div class="card-header"><span class="card-title">关注列表 ({{ unheld|length }})</span></div>
   <div class="table-wrap"><table>
-    <thead><tr><th>物品</th><th>现价</th><th>评分</th><th>估值</th><th>距买点</th><th>建议</th></tr></thead>
+    <thead><tr><th>物品</th><th>现价</th><th>评分</th><th>估值</th><th>距买点</th><th>操作</th></tr></thead>
     <tbody>
     {% for r in unheld %}
       <tr><td>{{ r.name_cell|safe }}</td>
@@ -43,7 +33,7 @@
       <td>{{ r.badge|safe }}</td>
       <td style="font-size:12px;">{{ r.valuation_tier }}<br><span style="color:var(--text-muted);">pct={{ "%.1f"|format(r.pct) }}%</span></td>
       <td>{{ r.bd_cell|safe }}</td>
-      <td>{{ r.advice_cell|safe }}</td></tr>
+      <td>{{ r.refresh_btn|safe }}</td></tr>
     {% endfor %}
     </tbody>
   </table></div>

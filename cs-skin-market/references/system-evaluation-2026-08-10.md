@@ -181,7 +181,9 @@
 - P-0/T1 ✅（2026-08-10 证据链更新）：greedy 持久化机制验证通过（60 天覆盖）；T1 探针 = 日级不一致（corr 0.26）但决策级零影响。
 - P-0/T1 扩展 ✅（2026-08-10，见 decision-log「第一性原理审计扩展执行」）：T0 每日覆盖监测已挂接每日任务；T1 第二轮同数据对照回放修正「决策级影响为零」——deep_value 族触发域受情绪口径影响实质存在（近似高估 13 条且多为负贡献，deep win 20.0% vs 11.1%），panic/accum 低敏感；deep 参数不调、外推置信度低标注维持。
 - P-2 预评估 + 功效分析 ✅（降级为观察项，2026-08-10）：高价×低在售候选被 2026-02~04 在售量断档污染（317 信号 48%=0，高价品 92/154），T3「win 53.7% 劣化」为断档伪信号——干净段（2026-05 起 133 信号）高价×低在售 n=7 win71.4% vs 高价×在售≥200 n=47 win72.3% 无差；功效估算真实差 27pp 需每组 35 条（现 7/47，速率 2.33/月）；无正向证据 → 观察项，扩池优先级让给其他候选；数据层断档标注（data-layer.md §6）保留。
-- 扩池扫描 ⚠️（外部依赖，实证 2026-08-10）：`mode=search` 试跑 candidates 0 / scanned 0；直连探测 csQAQ `search`/`search/suggest`/`info/chart`/`info` 全线服务端 500（`current_data` 正常），与当日晚间每日采集 K 线 94/177 失败同源；待 csQAQ 恢复后重试（次日 18:00 自动验证），恢复前不做 discover 扩池。
+- P-2 观察项样本加速 ✅（2026-08-11，见 decision-log「P-2 定向扩池完成」）：扩池后 P-2 样本 7/47 → 36 品（31 新增，价≥1000 × 悠悠在售 100–200），正式三件套仍待 90d K 线自然积累（新入库品仅 8/11 单日）。
+扩池扫描 ✅（2026-08-11 csQAQ 已恢复：current_data/info 200、chart 端点通；16 品 force 重采完成，见 decision-log 同日条目）→ **已完成扩池**：csQAQ get_rank_list 批量扩池 135 品（items 191→326，超 260 目标；8/11 K 线 277 品），P-2 样本 36 品，见 decision-log「P-2 定向扩池完成」；discover 搜索段加重试为后续备用。
+- 报告缓存标志改版 ✅（2026-08-11，见 decision-log「报告缓存标志改版」）：单品报告去「本次分析使用数据库缓存数据」卡片、批量扫描去 ⚠️缓存 标签，统一改为显示「数据采集于 {时间}」，纯展示层。
 
 **仍待做（数据依赖/配置）**：F-2（求购数据 90+ 天）、A1-4（滑点校准，executions≥20）。C-1 已全部完成：渲染纯函数切 `webapp/render_html.py`、任务块切 `pipeline/discover_tasks.py`+`scan_tasks.py`、页面结构迁 Jinja（`templates/partials/discover_html.html`+`scan_html.html`，保留 markdown/SVG/单元格内容渲染器），冒烟 + Playwright 端到端通过。G-2 加签后 webhook 轮换待用户配置。 ?????????2026-08-11??monitor_rank_snapshot ?????????snapshots ?????? decision-log ?????
 

@@ -666,6 +666,7 @@ async def _fetch_item_detail_once(good_id: int):
                         }
             except Exception:
                 pass
+        item.collected_at = datetime.now(TZ_BJ).strftime("%Y-%m-%d %H:%M:%S")
         return item
     finally:
         await page.close()

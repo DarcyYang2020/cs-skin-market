@@ -1246,6 +1246,12 @@ async def api_watchlist_batch_scan_selected(request: Request):
         conn.close()
     if not rows:
         return HTMLResponse('<div class="card" style="padding:20px;">\u672a\u627e\u5230\u7269\u54c1</div>')
+    return _launch_batch_scan([dict(r) for r in rows], force_refresh=force_refresh, concurrency=concurrency)
+
+
+def _launch_batch_scan(rows, force_refresh=False, concurrency=2):
+    """批量扫描启动公共逻辑（F-3.20，2026-08-11）：检查忙/生成 scan_id/后台任务/进度卡片。
+    “批量扫描已选”与结果页“刷新（强制联网）”共用。"""
     import uuid
     _prune_progress(_scan_progress)
     _busy = _active_task(_scan_progress)
@@ -1257,6 +1263,91 @@ async def api_watchlist_batch_scan_selected(request: Request):
     asyncio.create_task(_run_batch_scan_task(scan_id, rows, force_refresh=force_refresh, concurrency=concurrency))
     html = '<div class="card" id="scan-progress-{sid}" data-scanid="{sid}"><div class="card-header"><span class="card-title">\u626b\u63cf\u8fdb\u5ea6</span></div><div class="card-body" id="scan-status-{sid}"><p style="text-align:center;padding:20px;">\u6b63\u5728\u51c6\u5907\u626b\u63cf... <span class="spinner"></span></p></div></div>'.format(sid=scan_id)
     return HTMLResponse(html)
+
+
+@app.post("/api/watchlist/batch-scan-refresh")
+async def api_watchlist_batch_scan_refresh():
+    """批量扫描结果「刷新」（F-3.20，2026-08-11）：按最近一次扫描的物品强制联网重扫（绕过缓存）。"""
+    import json as _J
+    from pathlib import Path as _P
+    cache_path = _P(__file__).resolve().parent.parent / "data" / "batch_scan_latest.json"
+    if not cache_path.exists():
+        return HTMLResponse('<div class="card" style="padding:20px;color:var(--yellow);">\u6682\u65e0\u6279\u91cf\u626b\u63cf\u7f13\u5b58\uff0c\u8bf7\u5148\u6267\u884c\u4e00\u6b21\u6279\u91cf\u626b\u63cf</div>')
+    try:
+        data = _J.loads(cache_path.read_text(encoding="utf-8"))
+    except Exception:
+        return HTMLResponse('<div class="card" style="padding:20px;color:var(--red);">\u6279\u91cf\u626b\u63cf\u7f13\u5b58\u8bfb\u53d6\u5931\u8d25</div>')
+    rows = data.get("rows") or []
+    if not rows:
+        return HTMLResponse('<div class="card" style="padding:20px;color:var(--yellow);">\u7f13\u5b58\u4e2d\u65e0\u7269\u54c1\u4fe1\u606f\uff0c\u8bf7\u91cd\u65b0\u53d1\u8d77\u6279\u91cf\u626b\u63cf</div>')
+    return _launch_batch_scan(rows, force_refresh=True)
+
+
+@app.post("/api/watchlist/batch-scan-item-refresh")
+async def api_watchlist_batch_scan_item_refresh(request: Request):
+    """批量扫描结果行级强制刷新（F-3.21，2026-08-11）：
+    按名称单品行级强制联网重采+重算（与批量扫描 _scan_item 同口径），
+    更新 batch_scan_latest.json 该条结果并按综合评分重排，返回重建后的结果 HTML。"""
+    import json as _json_r
+    from pathlib import Path as _Path_r
+    body = await request.json()
+    name = (body.get("name") or "").strip()
+    if not name:
+        return JSONResponse({"ok": False, "error": "缺少物品名"})
+    from pipeline.scan_tasks import _scan_item as _scan_item_fn, _item_report_link
+    from pipeline.batch_scan import build_scan_html, sort_results
+    cache_path = _Path_r(__file__).resolve().parent.parent / "data" / "batch_scan_latest.json"
+    if not cache_path.exists():
+        return JSONResponse({"ok": False, "error": "无批量扫描缓存，请先执行一次批量扫描"})
+    try:
+        data = _json_r.loads(cache_path.read_text(encoding="utf-8"))
+    except Exception:
+        return JSONResponse({"ok": False, "error": "批量扫描缓存读取失败"})
+    results = data.get("results") or []
+    old = next((r for r in results if (r.get("name") or "") == name), None)
+    if old is None:
+        return JSONResponse({"ok": False, "error": "缓存中未找到该物品：" + name})
+    _row = next((r for r in (data.get("rows") or []) if (r.get("name") or "") == name), None)
+    if not _row:
+        _row = {"id": 0, "name": name, "holding": int(old.get("holding") or 0),
+                "avg_cost": old.get("avg_cost") or 0, "quantity": old.get("qty") or 0}
+    # 优先用库内 good_id 直接采集，避免重复搜索；无则回退搜索
+    good_id_override = None
+    if _row.get("id"):
+        _conn_g = db.get_conn()
+        try:
+            _gr = _conn_g.execute("SELECT good_id FROM items WHERE id=?", (int(_row["id"]),)).fetchone()
+            if _gr and _gr["good_id"]:
+                good_id_override = int(_gr["good_id"])
+        finally:
+            _conn_g.close()
+    ms = market_snapshot()
+    _conn_r = db.get_conn()
+    try:
+        _total_assets = float(db.get_setting(_conn_r, "total_assets", 0) or 0)
+    finally:
+        _conn_r.close()
+    _idx = await asyncio.to_thread(collector.fetch_market_index)
+    if _idx is None or getattr(_idx, "value", 0) == 0:
+        _idx = type("obj", (object,), {"value": 0, "change_7d": 0})()
+    result = await _scan_item_fn(_row, _idx, ms, ms["th"], ms["sentiment"],
+                                 total_assets=_total_assets, force_refresh=True,
+                                 good_id_override=good_id_override)
+    if result is None or result.get("error"):
+        return JSONResponse({"ok": False, "error": (result or {}).get("error") or "刷新失败"})
+    _ri = next(i for i, r in enumerate(results) if (r.get("name") or "") == name)
+    results[_ri] = result
+    results = sort_results(results)
+    now_str = datetime.now(TZ_BJ).strftime("%H:%M:%S")
+    html = build_scan_html(results, len(results), now_str=now_str, name_link=_item_report_link)
+    data["results"] = results
+    data["html"] = html
+    try:
+        cache_path.write_text(_json_r.dumps(data, ensure_ascii=False, default=str), encoding="utf-8")
+    except Exception:
+        pass
+    return JSONResponse({"ok": True, "name": result.get("name", name), "html": html,
+                         "composite": result.get("composite")})
 # ---- Batch Scan Progress Polling ----
 @app.get("/api/watchlist/batch-scan-progress/{scan_id}")
 async def api_batch_scan_progress(scan_id: str):

@@ -164,12 +164,14 @@ async def _scan_item(row, idx, ms, market_th_score, sentiment_score, total_asset
         result = dict(
             name=exact_name, holding=holding, avg_cost=avg_cost, qty=qty,
             price_rmb=item.price_rmb, grade=analysis.value.grade, score=analysis.value.score,
+            composite=item_analysis.composite_score(analysis),
             position_limit=float(_fd_lim),
             portfolio_advice=pa,
             buy_distance=summarize_buy_distance(getattr(analysis, "buy_distance", None) or {}),
             valuation_tier=getattr(analysis.position, "valuation_tier", "") if hasattr(analysis, "position") else "",
             percentile_90d=getattr(analysis.position, "percentile_90d", 50) if hasattr(analysis, "position") else 50,
             force_fallback=force_fallback,
+            collected_at=getattr(item, "collected_at", "") or "",
             error=None,
         )
         # Save to analysis_results (同步至单品报告)
@@ -195,7 +197,8 @@ async def _scan_item(row, idx, ms, market_th_score, sentiment_score, total_asset
         conn_p = db.get_conn()
         try:
             pid = db.upsert_item(conn_p, name=exact_name, good_id=good_id, yyyp_id=item.yyyp_id, in_watchlist=None)
-            db.save_price_history_batch(conn_p, pid, daily_bars)
+            db.save_price_history_batch(conn_p, pid, daily_bars,
+                                        collect_time=getattr(item, "collected_at", "") or "")
             conn_p.commit()
         finally:
             conn_p.close()
@@ -245,11 +248,9 @@ async def _run_batch_scan_task(scan_id: str, rows: list, force_refresh=False, co
         ms = market_snapshot()
         market_th_score = ms["th"]
         sentiment_score = ms["sentiment"]
-        # B1 风险预算层(2026-08-05): 组合回撤熔断状态 + 总资产(单票敞口提示)
-        from pipeline import portfolio_risk
+        # B1 风险预算层(2026-08-05): 总资产(单票敞口提示)；2026-08-11 起结果页不再展示回撤熔断条
         _conn_r = db.get_conn()
         try:
-            _dd_status = portfolio_risk.drawdown_status(_conn_r)
             _total_assets = float(db.get_setting(_conn_r, "total_assets", 0) or 0)
         finally:
             _conn_r.close()
@@ -283,14 +284,7 @@ async def _run_batch_scan_task(scan_id: str, rows: list, force_refresh=False, co
         results = sort_results(results)
 
         now_str = __import__("datetime").datetime.now().strftime("%H:%M:%S")
-        final_html = build_scan_html(
-            results, total,
-            {"th": market_th_score, "sentiment": sentiment_score, "cycle": ms["cycle"],
-             "index": getattr(idx, "value", 0), "chg30": ms.get("chg30")},
-            now_str=now_str,
-            name_link=_item_report_link,
-            risk_ctx={"drawdown": _dd_status},
-        )
+        final_html = build_scan_html(results, total, now_str=now_str, name_link=_item_report_link)
         _scan_progress[scan_id]["html"] = final_html
         _persist_scan_progress(scan_id)
         _scan_progress[scan_id]["done"] = True
@@ -300,6 +294,7 @@ async def _run_batch_scan_task(scan_id: str, rows: list, force_refresh=False, co
             "time": __import__("datetime").datetime.now().isoformat(),
             "html": final_html,
             "results": results,
+            "rows": rows,
             "market_th": market_th_score,
         }
         try:

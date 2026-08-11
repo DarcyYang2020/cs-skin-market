@@ -655,6 +655,41 @@ def compute_value_score(position, cycle, liquidity, probability):
     return val
 
 
+def composite_score(analysis):
+    """综合评分（P0-1 同口径，2026-08-11 抽公共函数）：
+    数据质量 x 估值折价 x (基础评分 + 融合决策加分 + 趋势加权)。
+    发现高分品 Top10 排序与批量扫描结果排序共用此口径；
+    纯展示层派生，不改任何引擎信号。
+    """
+    dq_factor = {"good": 1.0, "medium": 0.85, "low": 0.6, "insufficient": 0.2}.get(
+        getattr(analysis, "data_quality", "low"), 0.4)
+    fd_action = ""
+    if isinstance(getattr(analysis, "fusion_decision", None), dict):
+        fd_action = (analysis.fusion_decision or {}).get("action", "") or ""
+    action_bonus = {"buy": 1.0, "watch": 0.5, "hold": 0.0, "reduce": -0.5,
+                    "avoid": -1.0, "sell": -1.0}.get(fd_action, 0.0)
+    th_score = 50
+    if isinstance(getattr(analysis, "trend_health", None), dict):
+        th_score = (analysis.trend_health or {}).get("score", 50) or 50
+    th_bonus = (float(th_score) - 50) / 50 * 1.0
+    pct_val = 50.0
+    _pos = getattr(analysis, "position", None)
+    if _pos is not None:
+        try:
+            pct_val = float(getattr(_pos, "percentile_90d", 50) or 50)
+        except (TypeError, ValueError):
+            pct_val = 50.0
+    valuation_discount = max(0.5, 1.0 - pct_val / 200)
+    score = 0.0
+    _val = getattr(analysis, "value", None)
+    if _val is not None:
+        try:
+            score = float(getattr(_val, "score", 0) or 0)
+        except (TypeError, ValueError):
+            score = 0.0
+    return round((score + action_bonus + th_bonus) * valuation_discount * dq_factor, 1)
+
+
 # ============================================================
 #  Helper: Whale Detection (4-factor weighted)
 # ============================================================

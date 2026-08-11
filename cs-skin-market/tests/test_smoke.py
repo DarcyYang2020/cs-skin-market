@@ -566,60 +566,55 @@ def t_batch_scan_display():
     assert summarize_buy_distance(None) is None
     assert summarize_buy_distance({}) is None
     assert tranche_plan_text() == '首仓10% → 跌10%加20% → 跌15%加30%（节奏参考·回测权重；单票总敞口≤30%，批次金额按上限缩放）', tranche_plan_text()
-    # 排序(2026-08-04): 统一按距买点 gap 升序（最接近买点在前）——持仓不再按浮亏排
-    held = [dict(holding=1, avg_cost=100.0, price_rmb=130.0, name="赚", buy_distance={"gap_pct": 3.0}),
-            dict(holding=1, avg_cost=100.0, price_rmb=70.0, name="亏", buy_distance={"gap_pct": 8.0})]
-    unheld = [dict(holding=0, avg_cost=0, price_rmb=100.0, name="远", buy_distance={"gap_pct": 8.0}),
-              dict(holding=0, avg_cost=0, price_rmb=100.0, name="近", buy_distance={"gap_pct": 2.0})]
+    # 排序(2026-08-11): 按综合评分降序（与发现高分品 Top10 同口径），持仓/非持仓区块各自排序
+    held = [dict(holding=1, avg_cost=100.0, price_rmb=130.0, name="P-win", composite=6.0),
+            dict(holding=1, avg_cost=100.0, price_rmb=70.0, name="P-loss", composite=7.5)]
+    unheld = [dict(holding=0, avg_cost=0, price_rmb=100.0, name="low", composite=4.0),
+              dict(holding=0, avg_cost=0, price_rmb=100.0, name="high", composite=8.2)]
     out = sort_results(held + unheld)
-    assert [r["name"] for r in out] == ["赚", "亏", "近", "远"], [r["name"] for r in out]
-    # 同层级(止损层)时浮亏大在前（次级排序）
-    held_tie = [dict(holding=1, avg_cost=100.0, price_rmb=70.0, name="亏", buy_distance={"gap_pct": 5.0},
-                     portfolio_advice={"action": "趋势走弱，考虑止损"}),
-                dict(holding=1, avg_cost=100.0, price_rmb=130.0, name="赚", buy_distance={"gap_pct": 5.0},
-                     portfolio_advice={"action": "趋势走弱，考虑止损"})]
-    assert [r["name"] for r in sort_results(held_tie)] == ["亏", "赚"]
-    # 无 buy_distance 的品排最后
-    held_no = [dict(holding=1, avg_cost=100.0, price_rmb=130.0, name="A", buy_distance={"gap_pct": 3.0}),
+    assert [r["name"] for r in out] == ["P-loss", "P-win", "high", "low"], [r["name"] for r in out]
+    # 无 composite 回退 score
+    held_fb = [dict(holding=1, avg_cost=100.0, price_rmb=130.0, name="A", score=3.0),
+               dict(holding=1, avg_cost=100.0, price_rmb=70.0, name="B", score=6.0)]
+    assert [r["name"] for r in sort_results(held_fb)] == ["B", "A"]
+    # 两者皆无按 0（保持原相对顺序）
+    held_no = [dict(holding=1, avg_cost=100.0, price_rmb=130.0, name="A"),
                dict(holding=1, avg_cost=100.0, price_rmb=70.0, name="B")]
     assert [r["name"] for r in sort_results(held_no)] == ["A", "B"]
     # HTML 冒烟：市场条 + 距买点列 + 汇总统计
     results = [
-        dict(name="A", holding=0, price_rmb=100.0, grade="A", score=4.0, valuation_tier="低估", percentile_90d=12.0,
+        dict(name="A", holding=0, price_rmb=100.0, grade="A", score=4.0, composite=7.8, valuation_tier="低估", percentile_90d=12.0,
              buy_distance={"scenario_label": "抄底/下跌中继", "target_price": 96.0, "gap_pct": 4.0, "bar_pct": 20.0},
              portfolio_advice={"action": "观望等待机会", "suggest": "再跌 4.0%", "hold_guidance": ""}, error=None),
-        dict(name="B", holding=0, price_rmb=90.0, grade="B", score=3.0, valuation_tier="低估", percentile_90d=5.0,
+        dict(name="B", holding=0, price_rmb=90.0, grade="B", score=3.0, composite=6.2, valuation_tier="低估", percentile_90d=5.0,
              buy_distance={"scenario_label": "已到买点", "target_price": 90.0, "gap_pct": 0.0, "bar_pct": 100.0},
-             portfolio_advice={"action": "可分批建仓", "suggest": "已到建仓区，可分批建仓：首仓10% → 跌10%加20% → 跌15%加30%", "hold_guidance": ""}, error=None),
+             portfolio_advice={"action": "可分批建仓", "suggest": "", "hold_guidance": ""}, error=None),
     ]
-    html = build_scan_html(results, 2, {"th": 55, "sentiment": 70, "cycle": "bear", "index": 1566}, now_str="12:00:00")
-    assert "市场环境" in html and "大盘TH=55" in html, html
+    html = build_scan_html(results, 2, now_str="12:00:00")
     assert "距买点" in html
     assert "1 个已到买点" in html, html
-    assert "跌10%加20%" in html, html
     assert "¥96.00" in html and "¥90.00" in html
     assert "批量扫描完成" in html and "成功 2/2" in html
-    # F-3.x(2026-08-10): force 刷新回退缓存 -> 名称列可见提示
+    # 2026-08-11: 建议列已移除（用户直接点名称看报告）；评分列展示综合评分
+    assert "建议" not in html and "按建议执行" not in html, html
+    assert "综合" in html and "7.8" in html and "6.2" in html, html
+    assert "操作" in html and "refreshScanItem" in html, html
+    assert "市场环境" not in html and "大盘TH" not in html, html
+    # 2026-08-11: 不再显示缓存回退标签，改为名称列展示数据采集时间
     results_fb = [dict(name="A", holding=1, avg_cost=100.0, price_rmb=120.0, grade="A", score=4.0,
                        buy_distance={}, portfolio_advice={"action": "持有", "suggest": "", "hold_guidance": ""},
-                       force_fallback=True, error=None)]
-    html_fb = build_scan_html(results_fb, 1, {"th": 55, "sentiment": 70, "cycle": "bear", "index": 1566}, now_str="12:00:00")
-    assert "⚠️缓存" in html_fb and "强制联网采集异常" in html_fb, html_fb
-    # P2(2026-08-04): 并发建议仓位超上限 → 预警提示(展示层)
-    results_cap = [
-        dict(name="A", holding=0, price_rmb=100.0, grade="A", score=4.0, valuation_tier="低估", percentile_90d=12.0,
-             buy_distance={}, position_limit=0.3,
-             portfolio_advice={"action": "可分批建仓", "suggest": "", "hold_guidance": ""}, error=None),
-        dict(name="B", holding=0, price_rmb=90.0, grade="A", score=4.0, valuation_tier="低估", percentile_90d=10.0,
-             buy_distance={}, position_limit=0.3,
-             portfolio_advice={"action": "可分批建仓", "suggest": "", "hold_guidance": ""}, error=None),
-        dict(name="C", holding=1, avg_cost=100.0, price_rmb=85.0, grade="A", score=4.0, valuation_tier="低估", percentile_90d=12.0,
-             buy_distance={}, position_limit=0.3,
-             portfolio_advice={"action": "可分批补仓", "suggest": "", "hold_guidance": ""}, error=None),
-    ]
-    html_cap = build_scan_html(results_cap, 3, {"th": 55, "sentiment": 70, "cycle": "bear", "index": 1566}, now_str="12:00:00")
-    assert "并发建议仓位 90%" in html_cap, html_cap
-    assert "上限 80%" in html_cap, html_cap
+                       force_fallback=True, collected_at="2026-08-11 10:00:00", error=None)]
+    html_fb = build_scan_html(results_fb, 1, now_str="12:00:00")
+    assert "采集于 2026-08-11 10:00:00" in html_fb, html_fb
+    assert "⚠️缓存" not in html_fb and "强制联网采集异常" not in html_fb, html_fb
+    # 2026-08-11: 行级强制刷新按钮（每条记录右侧）；市场环境卡片已移除
+    results_row = [dict(name="X | Y (崭新出厂)", holding=0, price_rmb=100.0, grade="A", score=4.0,
+                        composite=7.8, valuation_tier="低估", percentile_90d=12.0,
+                        buy_distance={"scenario_label": "已到买点", "target_price": 100.0, "gap_pct": 0.0, "bar_pct": 100.0},
+                        portfolio_advice={"action": "可分批建仓", "suggest": "", "hold_guidance": ""}, error=None)]
+    html_row = build_scan_html(results_row, 1, now_str="12:00:00")
+    assert 'refreshScanItem' in html_row and 'data-name="X | Y (崭新出厂)"' in html_row, html_row
+    assert "市场环境" not in html_row and "大盘TH" not in html_row, html_row
 check('batch scan 距买点摘要/排序/HTML works', t_batch_scan_display)
 
 def t_advice_buy_distance_passthrough():
@@ -1342,30 +1337,45 @@ def t_buy_distance_plain():
 check('buy_distance summary 口径+stage', t_buy_distance_plain)
 
 
-def t_action_level_sort():
-    # 信号层级排序(2026-08-07): 可分批补仓 > 趋势走弱止损 > 持有观察 > 观望等待机会(最低)
-    # 观望组内按下跌最严重: 持仓浮亏大在前 / 非持仓 percentile 低(深跌)在前
+def t_composite_sort():
+    # 综合评分排序(2026-08-11): 与发现高分品 Top10 同口径
+    # 数据质量 x 估值折价 x (基础评分+融合决策+趋势加权)，持仓/非持仓区块各自降序
     from pipeline.batch_scan import sort_results
-    def mk(name, action, holding=0, pnl=None, pct=50.0, gap=5.0):
-        return dict(name=name, holding=holding, avg_cost=(100.0 if holding else 0),
-                    price_rmb=((100.0 + pnl) if holding and pnl is not None else 100.0),
-                    percentile_90d=pct, buy_distance={"gap_pct": gap},
-                    portfolio_advice={"action": action, "suggest": "", "hold_guidance": ""})
+    def mk(name, holding=0, composite=0.0):
+        return dict(name=name, holding=holding, composite=composite)
     results = [
-        mk("观望B", "观望等待机会", pct=30.0),
-        mk("观望A", "观望等待机会", pct=60.0),
-        mk("补仓", "可分批补仓", holding=1, pnl=-12.0),
-        mk("持有", "持有观察", holding=1, pnl=-5.0),
-        mk("止损", "趋势走弱，考虑止损", holding=1, pnl=-20.0),
-        mk("观望持仓2", "观望等待机会", holding=1, pnl=-8.0),
-        mk("观望持仓", "观望等待机会", holding=1, pnl=-25.0),
+        mk("low", composite=3.0),
+        mk("mid", composite=6.0),
+        mk("high", composite=9.0),
+        mk("held-low", holding=1, composite=2.0),
+        mk("held-high", holding=1, composite=8.0),
     ]
     names = [r["name"] for r in sort_results(results)]
-    # 持仓区块: 补仓(0) > 止损(1) > 持有(5) > 观望持仓(7, 浮亏大在前)
-    assert names[:5] == ["补仓", "止损", "持有", "观望持仓", "观望持仓2"], names
-    # 非持仓区块: 观望组内深跌(pct 低)在前
-    assert names[5:] == ["观望B", "观望A"], names
+    assert names[:2] == ["held-high", "held-low"], names
+    assert names[2:] == ["high", "mid", "low"], names
 
+
+def t_composite_score_fn():
+    # composite_score 口径（2026-08-11）：与发现高分品 Top10 排序一致
+    from pipeline.item_analysis import composite_score
+    from types import SimpleNamespace
+    def mk(score=6.0, action="watch", th=50, pct=50.0, dq="good"):
+        return SimpleNamespace(
+            value=SimpleNamespace(score=score),
+            fusion_decision={"action": action},
+            trend_health={"score": th},
+            position=SimpleNamespace(percentile_90d=pct),
+            data_quality=dq)
+    # 1.0 x (6.0 + 0.5 + 0.0) x (1 - 50/200=0.75) -> 4.875 -> 4.9
+    assert composite_score(mk()) == round((6.0 + 0.5) * 0.75, 1) == 4.9, composite_score(mk())
+    # buy +1.0, TH80 +0.6, 深跌低分位折价小 (1-10/200=0.95) -> 9.12 -> 9.1
+    b = mk(score=8.0, action="buy", th=80, pct=10.0, dq="good")
+    assert composite_score(b) == round((8.0 + 1.0 + 0.6) * 0.95, 1) == 9.1, composite_score(b)
+    # 数据质量 low 打 0.6 折
+    c = mk(score=6.0, action="watch", th=50, pct=50.0, dq="low")
+    assert composite_score(c) == round((6.0 + 0.5) * 0.75 * 0.6, 1) == 2.9, composite_score(c)
+check('batch_scan 综合评分排序 (2026-08-11)', t_composite_sort)
+check('composite_score 综合评分口径 (2026-08-11)', t_composite_score_fn)
 
 def t_proximity_sort():
     # proximity 排序（2026-08-05）：下跌寻底按已过低估/超跌线条数分层，条数越多越接近，层内按剩余距离升序
@@ -1378,7 +1388,8 @@ def t_proximity_sort():
     c = mk(5.7, pct_gap=0.0, z_gap=0.0)          # 估值+超跌双达标（层内最高）
     ka, kb, kc = _proximity_key(a), _proximity_key(b), _proximity_key(c)
     assert kc < kb < ka, (ka, kb, kc)
-check('batch_scan 信号层级排序 (2026-08-07)', t_action_level_sort)
+
+
 check('batch_scan 买点接近度排序（2026-08-05）', t_proximity_sort)
 
 
@@ -2816,6 +2827,57 @@ def t_render_html():
     assert spark_svg([(1, 10.0)], cost=10.2) == ""
     assert spark_svg([], 0) == ""
 check('t_render_html 渲染纯函数集中模块', t_render_html)
+
+
+def t_batch_save_collect_time():
+    """F-3.19: save_price_history_batch(collect_time=...) syncs created_at on the today-row
+    update, so batch-scan list and item report show the same collection time."""
+    from datetime import date
+    from pipeline import db
+    from types import SimpleNamespace
+    conn = db.get_conn()
+    TEST = "__SMOKE_COLLECT_TIME__"
+    try:
+        conn.execute("DELETE FROM price_history WHERE item_id IN (SELECT id FROM items WHERE name=?)", (TEST,))
+        conn.execute("DELETE FROM items WHERE name=?", (TEST,))
+        conn.commit()
+        iid = db.upsert_item(conn, TEST, good_id=999999004)
+        conn.commit()
+        today = date.today().isoformat()
+        old = "2026-08-01 08:00:00"
+        conn.execute(
+            "INSERT INTO price_history (item_id, date, price_rmb, volume_day, volume_total, in_sale_count, created_at) VALUES (?,?,?,?,?,?,?)",
+            (iid, today, 100.0, 0, 0, 500, old))
+        conn.commit()
+
+        def _bar(close, in_sale):
+            b = SimpleNamespace(date=today, close=close, high=close, low=close,
+                                volume=0, in_sale_count=in_sale, survive=0)
+            return b
+
+        # with collect_time: created_at refreshed to collection time
+        db.save_price_history_batch(conn, iid, [_bar(101.0, 520)], collect_time="2026-08-11 16:44:19")
+        row = conn.execute(
+            "SELECT price_rmb, in_sale_count, created_at FROM price_history WHERE item_id=? AND date=?",
+            (iid, today)).fetchone()
+        assert row[0] == 101.0 and row[1] == 520, row
+        assert row[2] == "2026-08-11 16:44:19", row
+
+        # without collect_time: created_at preserved
+        db.save_price_history_batch(conn, iid, [_bar(102.0, 530)])
+        row = conn.execute(
+            "SELECT price_rmb, created_at FROM price_history WHERE item_id=? AND date=?",
+            (iid, today)).fetchone()
+        assert row[0] == 102.0 and row[1] == "2026-08-11 16:44:19", row
+    finally:
+        try:
+            conn.execute("DELETE FROM price_history WHERE item_id IN (SELECT id FROM items WHERE name=?)", (TEST,))
+            conn.execute("DELETE FROM items WHERE name=?", (TEST,))
+            conn.commit()
+        except Exception:
+            pass
+        conn.close()
+check('F-3.19 batch-save collect_time sync created_at', t_batch_save_collect_time)
 
 
 print(f'=== Results: {passed} passed, {failed} failed, {skipped} skipped ===')

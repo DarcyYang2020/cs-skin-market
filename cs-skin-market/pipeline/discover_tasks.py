@@ -209,13 +209,9 @@ async def _run_discover_task(task_id: str, items: list):
             score = analysis.value.score
 
             # P0-1 (2026-08): 综合分重排 - 数据质量 x 估值折价 x (评分+融合决策+趋势加权)
-            dq_factor = {"good": 1.0, "medium": 0.85, "low": 0.6, "insufficient": 0.2}.get(getattr(analysis, "data_quality", "low"), 0.4)
+            composite = _ia.composite_score(analysis)
             fd_action = (analysis.fusion_decision or {}).get("action", "") if isinstance(analysis.fusion_decision, dict) else ""
-            action_bonus = {"buy": 1.0, "watch": 0.5, "hold": 0.0, "reduce": -0.5, "avoid": -1.0, "sell": -1.0}.get(fd_action, 0.0)
             th_score = (analysis.trend_health or {}).get("score", 50) if isinstance(analysis.trend_health, dict) else 50
-            th_bonus = (th_score - 50) / 50 * 1.0  # TH 100 -> +1.0, TH 0 -> -1.0
-            valuation_discount = max(0.5, 1.0 - pct_val / 200)
-            composite = round((score + action_bonus + th_bonus) * valuation_discount * dq_factor, 1)
 
             # P3: Market-linked filter
             if market_th < 55 and score < 6.0 and composite < 5.0:
@@ -405,6 +401,7 @@ async def _run_discover_scan_all_task(task_id: str):
         try:
             total_wt = len(DISCOVER_WEAPONS)
             for wt_idx, wt in enumerate(DISCOVER_WEAPONS):
+                js = "async(q)=>{const el=document.querySelector('#rc_select_0');if(!el)return;const fk=Object.keys(el).find(k=>k.startsWith('__reactFiber'));if(!fk)return;const f=el[fk];let n=f,t=0;while(n&&t<30){const p=n.memoizedProps;if(p&&(p.onChange||p.onSearch)){const s=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set;s.call(el,q);if(p.onChange)p.onChange({target:{value:q}});else if(p.onSearch)p.onSearch(q);return}n=n.return||n.stateNode;t++}}"
                 suggest = {}
                 async def _on_suggest(response):
                     if "search/suggest" in response.url and response.ok:
@@ -417,24 +414,36 @@ async def _run_discover_scan_all_task(task_id: str):
                         except Exception:
                             pass
                 page.on("response", _on_suggest)
-                await page.goto(CSQAQ_WEB, wait_until="domcontentloaded", timeout=30000)
-                await page.wait_for_timeout(1200)
-                js = "async(q)=>{const el=document.querySelector('#rc_select_0');if(!el)return;const fk=Object.keys(el).find(k=>k.startsWith('__reactFiber'));if(!fk)return;const f=el[fk];let n=f,t=0;while(n&&t<30){const p=n.memoizedProps;if(p&&(p.onChange||p.onSearch)){const s=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set;s.call(el,q);if(p.onChange)p.onChange({target:{value:q}});else if(p.onSearch)p.onSearch(q);return}n=n.return||n.stateNode;t++}}"
-                await page.evaluate(js, wt)
-                await page.wait_for_timeout(2000)
+                for _attempt in range(3):
+                    try:
+                        await page.goto(CSQAQ_WEB, wait_until="domcontentloaded", timeout=30000)
+                        await page.wait_for_timeout(1200)
+                        try:
+                            await page.wait_for_selector("#rc_select_0", timeout=6000)
+                        except Exception:
+                            pass
+                        await page.evaluate(js, wt)
+                        await page.wait_for_timeout(2500)
+                    except Exception as _e:
+                        _web_log.warning(f"Discover suggest 搜索异常 {wt} 第{_attempt+1}次: {str(_e)[:80]}")
+                    if suggest.get("items"):
+                        break
+                    await page.wait_for_timeout(2500)
+                if not suggest.get("items"):
+                    _web_log.warning(f"Discover suggest 搜索 {wt} 3 次尝试未捕获下拉（csQAQ 限流/前端不稳），跳过该武器类")
                 for sd in suggest.get("items", []):
                     try:
                         gid = int(sd.get("id", 0))
                         name = sd.get("value", "")
                         if gid > 0 and name and name not in seen:
-                            if "\u5d2d\u65b0\u51fa\u5382" in name and "StatTrak" not in name and "\u7eaa\u5ff5\u54c1" not in name:
+                            if "崭新出厂" in name and "StatTrak" not in name and "纪念品" not in name:
                                 seen.add(name)
                                 all_items.append((gid, name, 0))
                     except (ValueError, TypeError):
                         continue
                 page.remove_listener("response", _on_suggest)
                 _discover_progress[task_id]["current"] = wt_idx + 1
-                _discover_progress[task_id]["name"] = f"\u641c\u7d22: {wt} ({wt_idx+1}/{total_wt})"
+                _discover_progress[task_id]["name"] = f"搜索: {wt} ({wt_idx+1}/{total_wt})"
         finally:
             await page.close()
     except Exception as e:

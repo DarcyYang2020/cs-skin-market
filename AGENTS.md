@@ -136,7 +136,7 @@ J-2 三通道监测数据照常收集（A 独立恐慌事件≥3 / B v2 样本�
 | POST | /api/watchlist/batch-scan/selected | 批量扫描（异步） |
 | GET | /api/watchlist/batch-scan-progress/{id} | 批量扫描进度 |
 
-批量扫描结果展示为 HTML 汇总面板（`data/batch_scan_latest.json`）+ 历史归档（`data/scan_history/scan_*.json`，保留最近 30 份），含市场状态、总览表、每物品详情、持仓个性化建议；不再生成 scan_*.md 报告。
+批量扫描结果展示为 HTML 汇总面板（`data/batch_scan_latest.json`）+ 历史归档（`data/scan_history/scan_*.json`，保留最近 30 份），含总览表、每物品详情（名称行显示采集时间、评分列显示综合评分）；2026-08-11 起：结果按综合评分降序（与发现高分品 Top10 同口径）；移除“建议”列与“市场环境”卡片（用户点击物品名查看完整报告）；每条记录右侧提供行级“⚡ 刷新”（`POST /api/watchlist/batch-scan-item-refresh`，单品强制联网重采+重算后重排）；不再生成 scan_*.md 报告。
 
 ## 数据保留策略
 

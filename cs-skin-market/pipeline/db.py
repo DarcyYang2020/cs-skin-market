@@ -552,7 +552,7 @@ def upsert_item(conn, name, weapon="", skin="", wear="",
     return cur.lastrowid
 
 
-def save_price_history_batch(conn, item_id, daily_bars, mode="incremental"):
+def save_price_history_batch(conn, item_id, daily_bars, mode="incremental", collect_time=""):
     """Save 90-day K-line data (Bar objects) to price_history table.
     daily_bars: list of Bar objects with .date, .close, .volume, .in_sale_count, .survive
 
@@ -598,11 +598,18 @@ def save_price_history_batch(conn, item_id, daily_bars, mode="incremental"):
             n_ins += 1
             log.append(("insert", bar.date, round(bar.close, 2)))
         elif bar.date == today and bar.date == max_date:
-            # 当日最新行更新（晚间重采/当日修正）：仅改 price/in_sale，保留 volume/created_at
-            conn.execute(
-                "UPDATE price_history SET price_rmb=?, in_sale_count=? WHERE item_id=? AND date=?",
-                (round(bar.close, 2), int(bar.in_sale_count) if getattr(bar, "in_sale_count", 0) else 0,
-                 item_id, bar.date))
+            # 当日最新行更新（晚间重采/当日修正）：仅改 price/in_sale，保留 volume；
+            # collect_time 传入时同步刷新 created_at（F-3.19，2026-08-11）
+            if collect_time:
+                conn.execute(
+                    "UPDATE price_history SET price_rmb=?, in_sale_count=?, created_at=? WHERE item_id=? AND date=?",
+                    (round(bar.close, 2), int(bar.in_sale_count) if getattr(bar, "in_sale_count", 0) else 0,
+                     collect_time, item_id, bar.date))
+            else:
+                conn.execute(
+                    "UPDATE price_history SET price_rmb=?, in_sale_count=? WHERE item_id=? AND date=?",
+                    (round(bar.close, 2), int(bar.in_sale_count) if getattr(bar, "in_sale_count", 0) else 0,
+                     item_id, bar.date))
             n_upd += 1
             log.append(("update", bar.date, round(bar.close, 2)))
         # 其余历史行跳过：防单次坏 chart 整段覆盖落库（2026-08-08/09 串品事故根因）

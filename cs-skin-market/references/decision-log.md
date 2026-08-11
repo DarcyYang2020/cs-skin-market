@@ -2341,3 +2341,77 @@ watch/hold 做「无按钮」处理，未区分持仓/未持仓。
 2. snapshots ????????????????? snapshots ?????????????????????? report_html ??/?????
 
 **???**???????????????
+
+
+## csQAQ 恢复确认 + 16 品 force 重采完成（2026-08-11，数据修复）
+
+**背景**：csQAQ 搜索/单品 API 自 8/10 18:00 起 500 故障，8/10 已回滚 16 品污染行并留痕。今日（8/11）探测确认恢复：GET /current_data?type=init、/info/good?id=279 返回 200，POST /info/chart 返回 422（仅 body 参数格式校验，端点已通）；连续请求触发 429 限流（采集自动等待 API_RATE_LIMIT 1.1s 不受影响），/search 直连 401 为路径白名单问题（搜索走网页自动补全，非故障）。
+
+**执行（SOP §7 恢复路径，只读/数据层，引擎零改动）**：
+1. force 重采 16 品（item 2/6/9/18/23/27/33/37/44/58/60/63/68/69/82/94）：fetch_kline_90d（自带 F-3.6 串品锚校验）+ save_price_history_batch(mode="force")。首轮 incremental 仅写 8/11 新行、8/10 行未覆盖（db.py:600 只更新当日行）→ 改 force 全窗口 REPLACE；16/16 成功，8/10 行恢复真实值（价格 vs 8/9 变动 ±1.6~6.9%、在售量 ±0.3~8.0%，远低于污染特征 +40~60% / -60~-97%），8/11 行全部入库；
+2. 重分析 10 品（9 自选 + 1 持仓）刷新 8/11 快照（B-4 当日 6h 采集复用，1-3s/品）：action 全部 watch/1 avoid，score 基于真实价（如 M4A4 合纵 8.2、M4A4 全球攻势 8.2）；
+3. 复核污染期影响：8/10 16 品快照 action 全部 watch（无假 buy 信号）、signal_tracking 无污染记录；8/10 污染价高分快照为历史归档（当天已展示，不回改）。
+
+**留痕**：data/caliber_override_log.jsonl（kind=csqaq_force_resample）、data/price_history_write_log.jsonl（mode=force 16 条）。
+
+**后续**：8/10 监控事件 73 条含污染品事件（历史归档，推送已发不可撤回）；8/11 18:00 每日采集自动全量刷新活跃池；扩池扫描（discover）可在 csQAQ 稳定后重试。
+
+
+## csQAQ chart 数据服务异常 + 每小时恢复探测（2026-08-11，数据层/监控）
+
+**背景**：8/10 故障后详情（info/good）与大盘（current_data）接口恢复（200），但 /info/chart 全品空数据：直连 platform=1 返回 code=200 且 main_data/num_data 全空，platform=2 报「多普勒系列不支持」通用文案；浏览器路径 fetch_kline_90d 同源空（含早上成功过的品 279）。判断 chart 数据服务尚未恢复。
+
+**处置（监控层，不重采）**：
+1. `references/probe_csqaq_chart.py`：每小时直连探测 3 品（279/999148/6，platform=1 与 2），任一品 main_data 有效点数 >= 30 判恢复；
+2. 留痕 `data/csqaq_chart_probe.jsonl`（每次一行），恢复时写 `data/csqaq_chart_recovery.json`（recovered_at + 采样明细）；
+3. Windows 计划任务 `CS_Skin_ProbeChart`（每小时，13:30 起）。
+
+**待办（恢复后）**：A 方案 force 重采 75 品缺 8/10 行（清单 `data/_missing_0810_list.json`，全部非自选/持仓）；16+21 品已于 chart 可用窗口修复完成。
+
+**影响**：8/10 缺口为数据完整性缺口（1 天断档），引擎在线分析几乎无感；今晚 18:00 每日采集若 chart 仍空会再次大量失败（incremental 不写坏历史行，安全）。
+
+
+## csQAQ chart 恢复确认 + A 方案 75 品 force 重采完成（2026-08-11，数据修复）
+
+**背景**：16:13 探测确认 chart 数据服务恢复。关键修正：真实浏览器 chart body 为 {good_id, key:'sell_price', platform:1, period:'30', style:'all_style'}——此前探测/直连误用 style='1day' 导致误报 empty；style 必须为 'all_style'，platform=2（悠悠）与 1（Buff）均可用。探测脚本已修正（references/probe_csqaq_chart.py），csqaq_chart_recovery.json 已生成（16:13:11）。
+
+**A 方案执行（直连 force 重采）**：
+1. 缺 8/10 行的 75 品全部重采成功（75/75，锚校验 73 品，0 失败，815s）：8/10 行恢复真实值（价格/在售量均正常波动，无污染特征），8/11 行同步入库；
+2. 16 品污染品 8/10 行复核 16/16 就位（上午完成）；
+3. 剩余缺口仅 1 品（999148 MP9 致命毒药，chart 数据空个案，非自选/持仓，留待下次采集重试）；
+4. 缺 8/11 行 55 品由今晚 18:00 每日采集增量补齐。
+
+**留痕**：caliber_override_log.jsonl（kind=csqaq_force_resample）、price_history_write_log.jsonl（force 记录）、csqaq_chart_probe.jsonl + csqaq_chart_recovery.json。
+
+**经验**：直连 /info/chart 参数须与浏览器真实 body 一致（style='all_style' 为关键），否则返回空数据误判故障；探测脚本参数错误导致 13:15-16:00 区间误报 empty（实际恢复时点无法回溯确认）。
+## 报告缓存标志改版：去「本次分析使用数据库缓存数据」卡片与批量扫描 ⚠️缓存 标签，统一显示数据采集时间（2026-08-11，展示层）
+
+**背景**：用户反馈单品报告中「本次分析使用数据库缓存数据」提示卡与批量扫描物品栏「⚠️缓存」黄色标签信息噪音大——用户关心的是数据新鲜度（什么时候采集的），而非是否走了缓存。
+
+**改动（纯展示层 + 数据链路带时间，引擎参数零改动）**：
+1. 单品报告（webapp/templates/partials/analysis.html:26-27）：移除「📦 本次分析使用数据库缓存数据」卡片，改为报告顶部一行小字「数据采集于 {{ collected_at }}」；
+2. 批量扫描（pipeline/batch_scan.py:_name_cell）：移除 force_fallback 的「⚠️缓存」标签，改为名称列下方「采集于 {{ collected_at }}」小字；
+3. 数据链路：pipeline/scan_tasks.py:173 扫描结果带出 collected_at；pipeline/collector_csqaq.py:669 新鲜采集时补采集时间戳（格式与 DB created_at 一致 "%Y-%m-%d %H:%M:%S"），保证强制刷新路径同样显示采集时间；
+4. 测试同步（tests/test_smoke.py）：批量扫描 HTML 断言由「存在缓存提示」改为「显示采集时间且无缓存提示」。
+
+**保留**：kline_stale_days 分支的「csQAQ 图表采集失败，已用数据库缓存K线」警告卡——这是真实异常提示（采集失败 + 数据过期天数），不在本次需求范围内。
+
+**验证**：tests/test_smoke.py 全量 98 passed / 0 failed；pyflakes 业务文件无告警；服务重启后单品报告（DB 复用路径显示真实采集时间 2026-08-11 11:48:09）与批量扫描渲染人工核验通过。
+## P-2 定向扩池完成：csQAQ get_rank_list 批量入库 135 品（2026-08-11，数据层/扩池）
+
+**背景**：P-2 观察项（高价×低在售样本）此前 7/47、速率 2.33/月，功效估算真实差 27pp 需每组 35 条，正式立项样本不足。用户授权扩池：「能拿多少是多少，不追求 260；限流严重就改日再扩」。csQAQ 8/11 已恢复（chart 端点 16:13 确认，见同日 A 方案条目），限流明显缓解（全程约 35 分钟 0 失败）。
+
+**新能力（关键发现）**：csQAQ `get_rank_list` 接口（POST /proxies/api/v1/info/get_rank_list）支持价格带/在售量/类别筛选 + 分页（body 示例：filter={"在售最少":100,"在售最多":200,"价格最低价":1000,"类别":["★","普通"]}, page_index/page_size）。注意两点：① 接口「在售」筛选项为 **Buff 口径**（buff_sell_num），入库后必须用悠悠在售（引擎口径）实测分桶——正是脚本产出 31/135 命中 P-2 桶的原因；② 直连 fetch 缺会话返回 500，必须走 Playwright 页面 route 改写请求体（首页 /rank 打开后自动请求该接口）。
+
+**执行（references/pool_expand_p2.py，逐品提交，0 失败 0 跳过）**：
+1. 候选 150 品（价格≥1000 或 300–1000 × buff 在售 100–200，排除 StatTrak/纪念品/印花/音乐盒/收藏品，覆盖 ★ 刀/手套与普通品），串品防护 + 落库 + 分析，新增 135 品；
+2. items 表 191→326 品（超 260 规划目标）；8/11 当日 K 线 277 品；
+3. P-2 增量 **31 品**（价≥1000 × 悠悠在售 100–200），全池 P-2 样本 36 品（原 5 + 新 31）；新入库含 AWP 永恒之枪 ¥79386、AWP 巨龙传说 ¥78399、蝴蝶刀深红之网 ¥7380 等高价刀/步枪；
+4. 新 135 品评级 S28/A27/B77/C3、data_quality 全 good、fd_action avoid64/watch60/reduce8/hold2/sell1（引擎参数零改动，纯入库+展示分析）。
+
+**留痕**：data/_exp_p2_pool_candidates.json（new_added=135，results 全字段含 in_sale_latest/buff_sell_ref/yyyp_sell_ref）、data/pool_expand_p2.log、data/pool_maintenance_log.jsonl（逐品提交）。
+
+**后续**：
+- P-2 观察项样本加速：7/47 → 36 品（新增 31）；正式三件套仍待 90d K 线自然积累（新入库品仅 8/11 单日，14d 预筛会拦下部分），断档标注（data-layer.md §6）与 B-2 结构性约束（新品 <90d 进不了 365d 回测）维持；
+- B 通道覆盖面扩大（全池 326 品 vs 原 191）；
+- discover 搜索段已加 3 次重试 + 节流 + wait_for_selector（pipeline/discover_tasks.py，修复 8/10 故障恢复期 suggest 下拉不稳导致的 0 候选），本次扩池未走 discover 主路径，该修复为后续扩池备用。

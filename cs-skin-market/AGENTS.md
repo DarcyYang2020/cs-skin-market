@@ -109,6 +109,7 @@ cd cs-skin-market && python run_server.py
 | GET  | /api/watchlist/batch-scan-progress/{scan_id} | 批量扫描进度轮询 |
 | GET  | /api/watchlist/batch-scan-latest | 最近一次批量扫描缓存（结果+HTML） |
 | POST | /api/watchlist/batch-scan-latest/clear | 清除批量扫描缓存 |
+| POST | /api/watchlist/batch-scan-item-refresh | 结果行级刷新：单品强制联网重采+重算并重排 |
 | GET  | /api/watchlist/scan-history | 扫描历史归档列表 + 最近信号摘要 |
 | GET  | /api/watchlist/scan-history/{scan_id} | 历史归档详情 HTML |
 | GET  | /api/watchlist/executions | 执行记录列表（自动结算到期记录） |

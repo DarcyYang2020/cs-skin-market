@@ -591,7 +591,8 @@ async def analyze_fresh(item, good_id, exact_name, *, db_item_id=None, apply_anc
         try:
             conn_k = db.get_conn()
             try:
-                db.save_price_history_batch(conn_k, use_id, daily_bars)
+                db.save_price_history_batch(conn_k, use_id, daily_bars,
+                                             collect_time=getattr(item, "collected_at", "") or "")
                 conn_k.commit()
             finally:
                 conn_k.close()

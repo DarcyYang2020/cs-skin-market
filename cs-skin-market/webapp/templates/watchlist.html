@@ -714,33 +714,8 @@ function batchScanSelectedIds(ids, forceRefresh) {
       var doc = parser.parseFromString(xhr.responseText, 'text/html');
       var el = doc.querySelector('[data-scanid]');
       if (el) {
-        var sid = el.getAttribute('data-scanid');
         status.textContent = '扫描进度 0/' + ids.length;
-        var poll = setInterval(function() {
-          fetch('/api/watchlist/batch-scan-progress/' + sid)
-            .then(function(r) { return r.json(); })
-            .then(function(d) {
-              if (d.error) { clearInterval(poll); modal.style.display = 'none'; return; }
-              if (d.html) {
-                var sec2 = document.getElementById('batch-scan-section'); if (sec2) sec2.style.display = 'block';
-                var res2 = document.getElementById('batch-scan-result'); if (res2) res2.innerHTML = d.html;
-                clearInterval(poll);
-                modal.style.display = 'none';
-                showToast('✅ 批量扫描完成 (' + ids.length + ' 个物品)');
-                refreshScanMeta();
-              } else if (d.done) {
-                clearInterval(poll); modal.style.display = 'none';
-                showToast('批量扫描已结束但结果为空，请刷新页面查看', 'error');
-              } else {
-                status.textContent = '扫描进度 ' + d.current + '/' + d.total + ' ' + (d.name || '');
-                if (bar && d.total > 0) bar.style.width = (d.current / d.total * 100) + '%';
-              }
-            })
-            .catch(function() {
-              clearInterval(poll); modal.style.display = 'none';
-              showToast('扫描进度获取失败，请刷新页面查看结果', 'error');
-            });
-        }, 1000);
+        pollScanProgress(el.getAttribute('data-scanid'), ids.length);
       } else {
         modal.style.display = 'none';
       }
@@ -757,6 +732,60 @@ function batchScanSelectedIds(ids, forceRefresh) {
 
 
 
+
+
+function pollScanProgress(sid, total) {
+  var modal = document.getElementById('loading-modal');
+  var status = document.getElementById('loading-status');
+  var bar = document.getElementById('loading-bar');
+  var poll = setInterval(function() {
+    fetch('/api/watchlist/batch-scan-progress/' + sid)
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.error) { clearInterval(poll); if (modal) modal.style.display = 'none'; return; }
+        if (d.html) {
+          var sec2 = document.getElementById('batch-scan-section'); if (sec2) sec2.style.display = 'block';
+          var res2 = document.getElementById('batch-scan-result'); if (res2) res2.innerHTML = d.html;
+          clearInterval(poll);
+          if (modal) modal.style.display = 'none';
+          showToast('✅ 批量扫描完成' + (total ? ' (' + total + ' 个物品)' : ''));
+          refreshScanMeta();
+        } else if (d.done) {
+          clearInterval(poll); if (modal) modal.style.display = 'none';
+          showToast('批量扫描已结束但结果为空，请刷新页面查看', 'error');
+        } else {
+          if (status) status.textContent = '扫描进度 ' + d.current + '/' + d.total + ' ' + (d.name || '');
+          if (bar && d.total > 0) bar.style.width = (d.current / d.total * 100) + '%';
+        }
+      })
+      .catch(function() {
+        clearInterval(poll); if (modal) modal.style.display = 'none';
+        showToast('扫描进度获取失败，请刷新页面查看结果', 'error');
+      });
+  }, 1000);
+}
+function refreshScanItem(btn) {
+  var name = btn ? btn.getAttribute('data-name') : '';
+  if (!name) { showToast('缺少物品名', 'error'); return; }
+  btn.disabled = true;
+  btn.textContent = '刷新中...';
+  fetch('/api/watchlist/batch-scan-item-refresh', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({name: name})})
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.ok && d.html) {
+        var res = document.getElementById('batch-scan-result');
+        if (res) res.innerHTML = d.html;
+        showToast('已刷新 ' + d.name);
+      } else {
+        if (btn) { btn.disabled = false; btn.textContent = '⚡ 刷新'; }
+        showToast('刷新失败: ' + (d.error || '未知错误'), 'error');
+      }
+    })
+    .catch(function() {
+      if (btn) { btn.disabled = false; btn.textContent = '⚡ 刷新'; }
+      showToast('刷新失败（网络错误）', 'error');
+    });
+}
 
 
 // Auto-load cached batch scan results
