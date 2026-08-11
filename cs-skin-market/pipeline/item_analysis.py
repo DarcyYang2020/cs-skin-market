@@ -656,10 +656,14 @@ def compute_value_score(position, cycle, liquidity, probability):
 
 
 def composite_score(analysis):
-    """综合评分（P0-1 同口径，2026-08-11 抽公共函数）：
-    数据质量 x 估值折价 x (基础评分 + 融合决策加分 + 趋势加权)。
+    """综合评分（P0-1 同口径，2026-08-11 抽公共函数；TH 偏移 2026-08-11 M-5 反向）：
+    数据质量 x 估值折价 x (基础评分 + 融合决策加分 + 趋势加权反向)。
     发现高分品 Top10 排序与批量扫描结果排序共用此口径；
     纯展示层派生，不改任何引擎信号。
+    TH 偏移依据（M-2 消融，2026-08-11）：365d 回放 317 buy 信号，TH 与 net14 负相关
+    spearman -0.344（TH<35 win14 80.8% / TH>55 60.8%，拉升/追高段最差）；原版加分排序
+    负相关(-0.093)，反向(-1.0) 后 Q5 桶 win14 67.2%→73.4% 单调正向(spearman +0.015)，
+    见 data/_exp_composite_ablation.json。
     """
     dq_factor = {"good": 1.0, "medium": 0.85, "low": 0.6, "insufficient": 0.2}.get(
         getattr(analysis, "data_quality", "low"), 0.4)
@@ -671,7 +675,7 @@ def composite_score(analysis):
     th_score = 50
     if isinstance(getattr(analysis, "trend_health", None), dict):
         th_score = (analysis.trend_health or {}).get("score", 50) or 50
-    th_bonus = (float(th_score) - 50) / 50 * 1.0
+    th_bonus = (float(th_score) - 50) / 50 * (-1.0)
     pct_val = 50.0
     _pos = getattr(analysis, "position", None)
     if _pos is not None:

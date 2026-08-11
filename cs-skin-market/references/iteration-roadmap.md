@@ -277,7 +277,7 @@ eferences/refit_pipeline.py → data/refit_pipeline_report.json（A2 三件套�
 | 16 | 同上：事件驱动缺失（I-12 已暂缓） | **F-6** 事件驱动提示（Major/开箱/新箱，非决策） | P2（第一性） | — | 待做（观察项） |
 | 16 | 同上：推送已打通，执行可移动化 | **F-7** 钉钉卡片一键执行/移动端（二次确认+幂等） | P2（第一性） | 资金安全设计 | 待做 |
 | 17 | 四模块第一性原理审计（2026-08-11，`first-principles-modules-fit.md`）：抛压衰竭 55/70/85 阈值与 buy 接线从未回测（decision-log 0 记录） | **M-1** 抛压衰竭大盘择时检验：market_index 逐日复算 sp 分桶（sp>=85）vs 同跌幅对照（drop20<=-7 且 sp<85），三件套；涉及 `market_th.py:527-537` buy 接线参数须先过三件套 | 第三批（审计立项） | 无（market_index 现成） | 已立项待执行 |
-| 17 | 同上：composite 乘子（估值折价/TH 偏移/动作加分/数据质量）无回测，TH 偏移方向疑与「拉升/追高最差」定论相反、位置双计权 | **M-2** composite 消融检验（优先）：回放信号复算 composite 各变体分桶 14d 胜率单调性，产物 `data/_exp_composite_ablation.json` | 第三批（审计立项） | 无（回放产物 + 特征复算） | 已立项待执行（优先） |
+| 17 | 同上：composite 乘子（估值折价/TH 偏移/动作加分/数据质量）无回测，TH 偏移方向疑与「拉升/追高最差」定论相反、位置双计权 | **M-2** composite 消融检验（优先）：回放信号复算 composite 各变体分桶 14d 胜率单调性，产物 `data/_exp_composite_ablation.json` | 第三批（审计立项） | 无（回放产物 + 特征复算） | **完成（2026-08-11，TH 偏移反向落地 M-5）** |
 | 17 | 同上：discover 追踪 fwd14 不扣 2% 成本、市场弱过滤方向疑与「洗盘最优」张力、候选空间限 13 武器 | **M-3** discover 发现榜 alpha 检验：discover_history 归档结算 net2% vs 池内等权；候选扩展（印花/收藏品）另行确认 | 第三批（审计立项） | discover_history 积累（现 5+ 份，n 小） | 已立项待执行 |
 | 17 | 同上：执行复盘 real（日历日）vs paper（交易日）结算口径不一致、action 混用 | **M-4** 执行复盘口径量化：real vs paper 结算差分布 + action 分层统计 | 第三批（审计立项） | executions>=20（A1-4） | 已立项待执行（等待数据） |
 
@@ -328,8 +328,8 @@ eferences/refit_pipeline.py → data/refit_pipeline_report.json（A2 三件套�
 - F-3.6 价格串品治理：**完成（2026-08-09）**——fetch_kline_90d 悠悠锚校验 + 82 品体检修正 7 品错价，见 decision-log。
 - F-3.7 补仓/止损双路径：**完成（2026-08-09）**——五状态止损矩阵 + 倒金字塔 3:2:1 补仓（展示层建议，不触碰冻结参数），回测 data/stop_loss_backtest.json，文档 references/stop-loss-strategy.md。
 - M-1 抛压衰竭大盘择时检验：**已立项（2026-08-11）**——抛压衰竭评分构造与 55/70/85 阈值从未回测（decision-log 0 记录，`index_analysis.py:876-930` + `market_th.py:526-537`）；检验设计见 `first-principles-modules-fit.md` 附录 E1；产出 `data/_exp_selling_pressure_exhaust.json`。
-- M-2 composite 消融检验：**已立项（2026-08-11，优先）**——TH 偏移方向疑与 2026-08-10「拉升/追高最差、洗盘最优」定论相反 + 估值折价与基础分位置 40% 双计权（`item_analysis.py:658-690`）；检验设计见附录 E2；产出 `data/_exp_composite_ablation.json`；若坐实方向问题 → M-5。
+- M-2 composite 消融检验：**完成（2026-08-11）**——TH 偏移方向坐实（spearman -0.344，TH<35 win14 80.8% vs TH>55 60.8%），反向变体（-1.0）Q5 win14 73.4% 最优；探针 `references/probe_composite_ablation.py` → `data/_exp_composite_ablation.json`；估值折价双计权未坐实，动作加分/数据质量乘子在 discover 全量候选场景另检（候选）。
 - M-3 discover 发现榜 alpha 检验：**已立项（2026-08-11）**——追踪口径不扣 2%（`discover_tasks.py:494-545`）+ 市场弱过滤方向疑与「洗盘最优」张力 + 候选空间限 13 武器；检验设计见附录 E3；产出 `data/_exp_discover_alpha.json`。
 - M-4 执行复盘口径量化：**已立项（2026-08-11）**——real 日历日 vs paper 交易日结算不一致（`main.py:1010` vs `signal_tracking.py`）+ action 混用（`dashboards.py:92-126`）；依赖 executions>=20（A1-4），检验设计见附录 E4。
-- M-5 composite 展示层调整（候选，未立项）：M-2 坐实方向问题后，三件套 + 用户确认再调整发现榜排序口径，不落引擎。
+- M-5 composite 展示层调整：**完成（2026-08-11）**——TH 偏移系数 1.0→-1.0（`item_analysis.py:674`，三件套：317 信号 / 反向 Q5 win14 73.4% vs 67.2% / spearman +0.015），测试断言同步（t_composite_score_fn 9.1→8.0），不落引擎。
 - M-6 discover 候选扩展（候选，未立项）：印花/贴纸/手套/刀/收藏品进发现空间，功能扩展，用户确认后立项。

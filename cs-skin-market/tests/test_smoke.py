@@ -1368,9 +1368,9 @@ def t_composite_score_fn():
             data_quality=dq)
     # 1.0 x (6.0 + 0.5 + 0.0) x (1 - 50/200=0.75) -> 4.875 -> 4.9
     assert composite_score(mk()) == round((6.0 + 0.5) * 0.75, 1) == 4.9, composite_score(mk())
-    # buy +1.0, TH80 +0.6, 深跌低分位折价小 (1-10/200=0.95) -> 9.12 -> 9.1
+    # buy +1.0, TH80 -0.6（2026-08-11 M-5 TH 偏移反向，M-2 消融依据）, 折价 (1-10/200=0.95) -> 7.98 -> 8.0
     b = mk(score=8.0, action="buy", th=80, pct=10.0, dq="good")
-    assert composite_score(b) == round((8.0 + 1.0 + 0.6) * 0.95, 1) == 9.1, composite_score(b)
+    assert composite_score(b) == round((8.0 + 1.0 - 0.6) * 0.95, 1) == 8.0, composite_score(b)
     # 数据质量 low 打 0.6 折
     c = mk(score=6.0, action="watch", th=50, pct=50.0, dq="low")
     assert composite_score(c) == round((6.0 + 0.5) * 0.75 * 0.6, 1) == 2.9, composite_score(c)
