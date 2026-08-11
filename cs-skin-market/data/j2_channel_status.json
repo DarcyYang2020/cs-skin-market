@@ -131,7 +131,7 @@
     "note": "回放口径告警（信息级提示，非正式重拟合触发）"
    },
    "production": {
-    "n_total": 1,
+    "n_total": 0,
     "n_filled14": 0,
     "n_filled30": 0,
     "net14": {
@@ -144,8 +144,8 @@
      "win": null,
      "avg": null
     },
-    "earliest_open": "2026-08-09",
-    "latest": "2026-08-09"
+    "earliest_open": null,
+    "latest": null
    },
    "production_gate": {
     "min_filled14": 20,

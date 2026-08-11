@@ -187,6 +187,7 @@
 扩池扫描 ✅（2026-08-11 csQAQ 已恢复：current_data/info 200、chart 端点通；16 品 force 重采完成，见 decision-log 同日条目）→ **已完成扩池**：csQAQ get_rank_list 批量扩池 135 品（items 191→326，超 260 目标；8/11 K 线 277 品），P-2 样本 36 品，见 decision-log「P-2 定向扩池完成」；discover 搜索段加重试为后续备用。
 - 报告缓存标志改版 ✅（2026-08-11，见 decision-log「报告缓存标志改版」）：单品报告去「本次分析使用数据库缓存数据」卡片、批量扫描去 ⚠️缓存 标签，统一改为显示「数据采集于 {时间}」，纯展示层。
 
+- 四模块第一性原理审计立项 ✅（2026-08-11，见 `references/first-principles-modules-fit.md` + iteration-roadmap 状态追踪 M-1~M-6）：抛压衰竭择时（M-1）/ composite 消融（M-2，优先）/ discover alpha（M-3）/ 执行复盘口径（M-4）已立项待执行；M-5/M-6 为候选未立项。
 **仍待做（数据依赖/配置）**：F-2（求购数据 90+ 天）、A1-4（滑点校准，executions≥20）。C-1 已全部完成：渲染纯函数切 `webapp/render_html.py`、任务块切 `pipeline/discover_tasks.py`+`scan_tasks.py`、页面结构迁 Jinja（`templates/partials/discover_html.html`+`scan_html.html`，保留 markdown/SVG/单元格内容渲染器），冒烟 + Playwright 端到端通过。G-2 加签后 webhook 轮换待用户配置。 ?????????2026-08-11??monitor_rank_snapshot ?????????snapshots ?????? decision-log ?????
 
 - P-2 正式分桶回测阶段 0 预跑 ✅（2026-08-11，见 decision-log「P-2 分桶回放阶段 0 预跑」+ `references/p2_backtest_plan.md`）：价≥1000 的 56 品只读回放 150 信号，P-2 桶 n=6 win14 83.3% vs 对照（365d）68.8% / 基线 71.0%，方向符合 H 但 n<30 不判定；进入阶段 1 积累期（单桶 n≥30 门槛）。
