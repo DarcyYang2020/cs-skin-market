@@ -5,7 +5,7 @@
   <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
     <h2 style="margin:0;font-size:20px;">📊 信号复盘</h2>
     <span style="font-size:12px;color:var(--text-muted);">新版引擎 503 个 buy 信号（K-2 回放 2025-01-01~2026-08-05，item_backtest_full_2025.json）的 14d/21d/30d 表现，最新价由数据库实时补充</span>
-    <button class="btn btn-sm btn-outline" onclick="loadReplay()" style="margin-left:auto;">🔄 刷新</button>
+    <button class="btn btn-sm btn-outline" onclick="loadReplay()" style="margin-left:auto;"><span id="replay-spinner" class="htmx-indicator">⏳</span> 🔄 刷新</button>
   </div>
   <div id="replay-stats" style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;"></div>
   <div class="card" style="padding:0;">
@@ -41,10 +41,14 @@ function fmtPct(v, suffix) {
   var c = v > 0 ? 'var(--green)' : (v < 0 ? 'var(--red)' : 'var(--text-muted)');
   return '<span style="color:' + c + ';font-weight:600;">' + (v > 0 ? '+' : '') + v + suffix + '</span>';
 }
+function _spinShow(id) { var el = document.getElementById(id); if (el) el.style.display = 'inline'; }
+function _spinHide(id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; }
 function loadReplay() {
+  _spinShow("replay-spinner");
   fetch("/api/signals/replay")
   .then(function(r) { return r.json(); })
   .then(function(d) {
+    _spinHide("replay-spinner");
     var statsEl = document.getElementById("replay-stats");
     var body = document.getElementById("replay-body");
     if (!d.found) { body.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--text-muted);">未找到回测基准数据</td></tr>'; return; }
@@ -98,7 +102,8 @@ function loadReplay() {
         + '</tr>';
     }).join('');
     body.innerHTML = rows || '<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--text-muted);">无信号</td></tr>';
-  });
+  })
+  .catch(function() { _spinHide("replay-spinner"); });
 }
 loadReplay();
 </script>

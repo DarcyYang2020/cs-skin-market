@@ -58,7 +58,7 @@
   <div class="card-header">
     <span class="card-title">🩺 数据健康</span>
     <span id="health-time" style="font-size:12px;color:var(--text-muted);"></span>
-    <button class="btn btn-outline btn-sm" onclick="loadHealth()" style="margin-left:auto;">🔄 刷新</button>
+    <button class="btn btn-outline btn-sm" onclick="loadHealth()" style="margin-left:auto;"><span id="health-spinner" class="htmx-indicator">⏳</span> 🔄 刷新</button>
   </div>
   <div id="health-body" style="padding:10px 14px;font-size:13px;"></div>
 </div>
@@ -117,12 +117,16 @@ function renderHealth(d) {
   html += '</tbody></table></div>';
   document.getElementById("health-body").innerHTML = html;
 }
+function _spinShow(id) { var el = document.getElementById(id); if (el) el.style.display = 'inline'; }
+function _spinHide(id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; }
 function loadHealth() {
+  _spinShow("health-spinner");
   var card = document.getElementById("health-card");
-  if (!card) return;
+  if (!card) { _spinHide("health-spinner"); return; }
   fetch("/api/health/status")
   .then(function(r) { return r.json(); })
   .then(function(d) {
+    _spinHide("health-spinner");
     card.style.display = "block";
     if (!d.found) {
       document.getElementById("health-time").textContent = "";
@@ -133,6 +137,7 @@ function loadHealth() {
     renderHealth(d);
   })
   .catch(function(e) {
+    _spinHide("health-spinner");
     card.style.display = "block";
     document.getElementById("health-time").textContent = "";
     document.getElementById("health-body").innerHTML = '<div style="color:var(--red);">健康检查接口暂不可用：' + e + '</div>';

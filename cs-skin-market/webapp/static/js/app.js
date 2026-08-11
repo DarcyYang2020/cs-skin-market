@@ -36,6 +36,10 @@ function closeModal(id) {
   if (!el) return;
   // 允许随时关闭弹窗：分析继续在后台进行，完成后结果保存至报告/分析结果
   el.style.display = 'none';
+  if (id === 'scan-modal') {
+    if (window._monitorSkipHide) { window._monitorSkipHide = false; }
+    else if (typeof hideMonitorSpin === 'function') { hideMonitorSpin(); }
+  }
   if (__lastFocused && __lastFocused.focus && __lastFocused.isConnected) {
     __lastFocused.focus();
     __lastFocused = null;

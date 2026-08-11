@@ -39,9 +39,11 @@
 <div class="card" style="margin-bottom:12px;border-color:rgba(245,158,11,0.35);">
   <div class="card-header" style="padding:8px 14px;">
     <span class="card-title">🔔 监控提醒</span>
-    <button class="btn btn-outline btn-sm" onclick="openScanModal()" style="margin-left:auto;">📊 刷新全部数据</button>
+    <span style="font-size:11px;color:var(--text-muted);margin-left:6px;">{{ monitor.near_buys|length + monitor.broken|length }} 条</span>
+    <button type="button" class="btn btn-outline btn-sm" onclick="toggleMonitor()" id="monitor-toggle" style="margin-left:8px;">▶ 展开</button>
+    <button class="btn btn-outline btn-sm" onclick="monitorRefresh()" style="margin-left:auto;"><span id="monitor-spinner" class="htmx-indicator">⏳</span> 📊 刷新全部数据</button>
   </div>
-  <div style="padding:8px 14px;font-size:12px;color:var(--text-secondary);display:flex;gap:16px;flex-wrap:wrap;">
+  <div id="monitor-body" style="display:none;padding:8px 14px;font-size:12px;color:var(--text-secondary);gap:16px;flex-wrap:wrap;">
     {% for it in monitor.near_buys %}
     <span>🎯 <b>{{ it.name }}</b> 接近买点 <b style="color:var(--green);">{{ it.proximity.score }}%</b>（{{ it.proximity.nearest }}）</span>
     {% endfor %}
@@ -189,7 +191,7 @@
     <div style="display:flex;gap:10px;align-items:center;">
       <span style="font-size:11px;color:var(--text-muted);">14/30 天到期自动按收盘价结算（净收益扣 2% 双边成本）</span>
       <button type="button" class="btn btn-primary btn-sm" onclick="openExecManual()">＋ 手动录入</button>
-      <button type="button" class="btn btn-outline btn-sm" onclick="loadExecutions()">🔄 刷新</button>
+      <button type="button" class="btn btn-outline btn-sm" onclick="loadExecutions()"><span id="exec-spinner" class="htmx-indicator">⏳</span> 🔄 刷新</button>
     </div>
   </div>
   <div id="exec-summary" style="padding:8px 14px 0;font-size:12px;color:var(--text-secondary);"></div>
@@ -591,6 +593,23 @@ function batchDeleteSelected() {
 // ---- Batch scan: modal multi-select ----
 var allWatchlistItems = {{ all_items_json|safe }};
 var scanSelectedMap = {};
+
+// ---- 监控提醒 折叠 + 刷新漏斗 ----
+var _monitorOpen = false;
+function _spinShow(id) { var el = document.getElementById(id); if (el) el.style.display = 'inline'; }
+function _spinHide(id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; }
+function toggleMonitor() {
+  _monitorOpen = !_monitorOpen;
+  var body = document.getElementById('monitor-body');
+  var btn = document.getElementById('monitor-toggle');
+  if (body) body.style.display = _monitorOpen ? 'flex' : 'none';
+  if (btn) btn.textContent = _monitorOpen ? '▼ 收起' : '▶ 展开';
+}
+function monitorRefresh() {
+  _spinShow('monitor-spinner');
+  openScanModal();
+}
+function hideMonitorSpin() { _spinHide('monitor-spinner'); }
 function openScanModal() {
   scanSelectedMap = {};
   var inp = document.getElementById('scan-search'); if (inp) inp.value = '';
@@ -676,6 +695,7 @@ function updateScanCount() {
 function startBatchScan() {
   var ids = Object.keys(scanSelectedMap).map(Number);
   if (ids.length === 0) { showToast('请先勾选要扫描的饰品'); return; }
+  window._monitorSkipHide = true;
   closeModal('scan-modal');
   var force = document.getElementById('scan-force-refresh') && document.getElementById('scan-force-refresh').checked;
   batchScanSelectedIds(ids, force);
@@ -721,10 +741,11 @@ function batchScanSelectedIds(ids, forceRefresh) {
       }
     } else {
       modal.style.display = 'none';
+      hideMonitorSpin();
       showToast('❌ 扫描失败: ' + xhr.status);
     }
   };
-  xhr.onerror = function() { modal.style.display = 'none'; showToast('❌ 网络失败'); };
+  xhr.onerror = function() { modal.style.display = 'none'; hideMonitorSpin(); showToast('❌ 网络失败'); };
   xhr.timeout = 60000;
   xhr.send(JSON.stringify({ids: ids, force_refresh: !!forceRefresh}));
 }
@@ -742,16 +763,17 @@ function pollScanProgress(sid, total) {
     fetch('/api/watchlist/batch-scan-progress/' + sid)
       .then(function(r) { return r.json(); })
       .then(function(d) {
-        if (d.error) { clearInterval(poll); if (modal) modal.style.display = 'none'; return; }
+        if (d.error) { clearInterval(poll); hideMonitorSpin(); if (modal) modal.style.display = 'none'; return; }
         if (d.html) {
           var sec2 = document.getElementById('batch-scan-section'); if (sec2) sec2.style.display = 'block';
           var res2 = document.getElementById('batch-scan-result'); if (res2) res2.innerHTML = d.html;
           clearInterval(poll);
+          hideMonitorSpin();
           if (modal) modal.style.display = 'none';
           showToast('✅ 批量扫描完成' + (total ? ' (' + total + ' 个物品)' : ''));
           refreshScanMeta();
         } else if (d.done) {
-          clearInterval(poll); if (modal) modal.style.display = 'none';
+          clearInterval(poll); hideMonitorSpin(); if (modal) modal.style.display = 'none';
           showToast('批量扫描已结束但结果为空，请刷新页面查看', 'error');
         } else {
           if (status) status.textContent = '扫描进度 ' + d.current + '/' + d.total + ' ' + (d.name || '');
@@ -759,7 +781,7 @@ function pollScanProgress(sid, total) {
         }
       })
       .catch(function() {
-        clearInterval(poll); if (modal) modal.style.display = 'none';
+        clearInterval(poll); hideMonitorSpin(); if (modal) modal.style.display = 'none';
         showToast('扫描进度获取失败，请刷新页面查看结果', 'error');
       });
   }, 1000);
@@ -942,9 +964,11 @@ function editExec(eid) {
   openModal('exec-modal');
 }
 function loadExecutions() {
+  _spinShow('exec-spinner');
   fetch('/api/watchlist/executions')
   .then(function(r) { return r.json(); })
   .then(function(d) {
+    _spinHide('exec-spinner');
     var sec = document.getElementById('exec-section');
     var tb = document.getElementById('exec-tbody');
     var empty = document.getElementById('exec-empty');
@@ -993,7 +1017,8 @@ function loadExecutions() {
         + '<button class="btn btn-danger btn-sm" onclick="deleteExec(' + e.id + ')">删除</button></td>'
         + '</tr>';
     }).join('');
-  });
+  })
+  .catch(function() { _spinHide('exec-spinner'); });
 }
 loadExecReview();
 loadExecutions();
