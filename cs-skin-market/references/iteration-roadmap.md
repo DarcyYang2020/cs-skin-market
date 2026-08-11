@@ -327,7 +327,7 @@ eferences/refit_pipeline.py → data/refit_pipeline_report.json（A2 三件套�
 - F-3.5 高分品模块治理：**完成（2026-08-08）**——磨损过滤（仅崭新出厂）+ 流动性闸门（supply_depth<15 降级 buy），非 FN 品标记淘汰，见 decision-log。
 - F-3.6 价格串品治理：**完成（2026-08-09）**——fetch_kline_90d 悠悠锚校验 + 82 品体检修正 7 品错价，见 decision-log。
 - F-3.7 补仓/止损双路径：**完成（2026-08-09）**——五状态止损矩阵 + 倒金字塔 3:2:1 补仓（展示层建议，不触碰冻结参数），回测 data/stop_loss_backtest.json，文档 references/stop-loss-strategy.md。
-- M-1 抛压衰竭大盘择时检验：**已立项（2026-08-11）**——抛压衰竭评分构造与 55/70/85 阈值从未回测（decision-log 0 记录，`index_analysis.py:876-930` + `market_th.py:526-537`）；检验设计见 `first-principles-modules-fit.md` 附录 E1；产出 `data/_exp_selling_pressure_exhaust.json`。
+- M-1 抛压衰竭大盘择时检验：**阶段 0 完成（2026-08-11）**——触发桶 sp>=85（n=18，去簇 7）win14 44.4% 与对照桶（drop20<=-7，n=54）完全相同，无区分度；触发集中于 2 个独立恐慌事件；n<30 只报告不判定，`market_th.py:526-537` 暂不调整，待独立事件>=3 复验；探针 `references/probe_selling_pressure_exhaust.py` → `data/_exp_selling_pressure_exhaust.json`。
 - M-2 composite 消融检验：**完成（2026-08-11）**——TH 偏移方向坐实（spearman -0.344，TH<35 win14 80.8% vs TH>55 60.8%），反向变体（-1.0）Q5 win14 73.4% 最优；探针 `references/probe_composite_ablation.py` → `data/_exp_composite_ablation.json`；估值折价双计权未坐实，动作加分/数据质量乘子在 discover 全量候选场景另检（候选）。
 - M-3 discover 发现榜 alpha 检验：**已立项（2026-08-11）**——追踪口径不扣 2%（`discover_tasks.py:494-545`）+ 市场弱过滤方向疑与「洗盘最优」张力 + 候选空间限 13 武器；检验设计见附录 E3；产出 `data/_exp_discover_alpha.json`。
 - M-4 执行复盘口径量化：**已立项（2026-08-11）**——real 日历日 vs paper 交易日结算不一致（`main.py:1010` vs `signal_tracking.py`）+ action 混用（`dashboards.py:92-126`）；依赖 executions>=20（A1-4），检验设计见附录 E4。

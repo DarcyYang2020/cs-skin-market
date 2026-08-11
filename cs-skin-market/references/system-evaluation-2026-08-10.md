@@ -189,6 +189,7 @@
 
 - 四模块第一性原理审计立项 ✅（2026-08-11，见 `references/first-principles-modules-fit.md` + iteration-roadmap 状态追踪 M-1~M-6）：抛压衰竭择时（M-1）/ composite 消融（M-2）/ discover alpha（M-3）/ 执行复盘口径（M-4）已立项；M-6 候选未立项。
 - M-2 composite 消融检验 + M-5 TH 偏移反向 ✅（2026-08-11，见 decision-log「M-2 composite 消融检验 + M-5 TH 偏移反向落地」）：TH 与 net14 负相关 -0.344 坐实加分方向错误，`item_analysis.py:674` TH 偏移系数 1.0→-1.0（展示层排序，不落引擎），反向变体 Q5 win14 67.2%→73.4%；探针 `references/probe_composite_ablation.py` → `data/_exp_composite_ablation.json`。
+- M-1 抛压衰竭大盘择时阶段 0 预跑 ✅（2026-08-11，见 decision-log「M-1 抛压衰竭大盘择时检验 · 阶段 0 预跑」）：触发桶（sp>=85，n=18）win14 44.4% 与对照桶（drop20<=-7，n=54）完全相同，无择时区分度，触发集中于 2 个独立恐慌事件；n<30 只报告不判定，`market_th.py:527-537` 暂不调整，待独立事件>=3 复验。
 **仍待做（数据依赖/配置）**：F-2（求购数据 90+ 天）、A1-4（滑点校准，executions≥20）。C-1 已全部完成：渲染纯函数切 `webapp/render_html.py`、任务块切 `pipeline/discover_tasks.py`+`scan_tasks.py`、页面结构迁 Jinja（`templates/partials/discover_html.html`+`scan_html.html`，保留 markdown/SVG/单元格内容渲染器），冒烟 + Playwright 端到端通过。G-2 加签后 webhook 轮换待用户配置。 ?????????2026-08-11??monitor_rank_snapshot ?????????snapshots ?????? decision-log ?????
 
 - P-2 正式分桶回测阶段 0 预跑 ✅（2026-08-11，见 decision-log「P-2 分桶回放阶段 0 预跑」+ `references/p2_backtest_plan.md`）：价≥1000 的 56 品只读回放 150 信号，P-2 桶 n=6 win14 83.3% vs 对照（365d）68.8% / 基线 71.0%，方向符合 H 但 n<30 不判定；进入阶段 1 积累期（单桶 n≥30 门槛）。
