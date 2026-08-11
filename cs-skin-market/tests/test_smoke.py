@@ -2632,7 +2632,6 @@ def t_http_api_smoke():
             ("/", "dashboard-content"),
             ("/watchlist", "wl-table"),
             ("/checkup", "J-2"),
-            ("/monitor", "M1"),
         ]:
             r = client.get(url)
             assert r.status_code == 200, (url, r.status_code)

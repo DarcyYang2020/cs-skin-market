@@ -170,14 +170,14 @@
   </div>
 </div>
 {% endif %}
-{# ====== 关键指标条（D-1 报告分层：默认折叠，摘要一行；展开看明细） ====== #}
-<details style="margin-bottom:12px;">
-  <summary style="cursor:pointer;font-weight:700;color:var(--text-primary);font-size:14px;">📊 关键指标：
+{# ====== 关键指标条（D-1 报告分层：常显不折叠） ====== #}
+<div style="margin-bottom:12px;">
+  <div style="font-weight:700;color:var(--text-primary);font-size:14px;">📊 关键指标：
     趋势TH <b style="color:var(--text-primary);">{{ trend_health.score if trend_health else '-' }}</b>
     · 90日分位 <b style="color:var(--text-primary);">{{ "%.1f"|format(position.percentile_90d) if position else '-' }}%</b>
     {% if position and position.valuation_tier %}<span style="font-size:12px;color:var(--text-muted);">（{{ {'undervalued':'低估','fair':'合理','overvalued':'高估','bubble':'泡沫'}.get(position.valuation_tier, position.valuation_tier) }}）</span>{% endif %}
     · Z-Score <b style="color:var(--text-primary);">{{ "%+.2f"|format(position.zscore_90d) if position else '-' }}</b>
-  </summary>
+  </div>
   <div style="margin-top:8px;">
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
   <div class="card" style="padding:10px;text-align:center;">
@@ -209,7 +209,7 @@
     <div style="font-size:11px;color:var(--text-muted);">当前价</div>
   </div>
   </div>
-</details>
+</div>
 
 ﻿{# ====== 供给 · 流动性 · 庄家（去量 v2 引擎核心） ====== #}
 {% if supply_analysis or liquidity or whale %}

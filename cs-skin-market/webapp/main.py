@@ -1377,35 +1377,6 @@ async def page_checkup(request: Request):
     })
 
 
-# ---- M1 监控模式页面 (2026-08-08): 每日自选品异动事件 + 历史归档（纯展示） ----
-@app.get("/monitor", response_class=HTMLResponse)
-async def page_monitor(request: Request, days: int = Query(default=7)):
-    from pipeline.monitor import list_events, _TYPE_LABEL
-    events = list_events(days=days)
-    by_date = {}
-    for _e in events:
-        _key = (_e["date"], _e.get("slot", "night"))
-        by_date.setdefault(_key, []).append(_e)
-    return templates.TemplateResponse(request, "monitor.html", {
-        "active_page": "monitor",
-        "days": days,
-        "events": events,
-        "by_date": by_date,
-        "type_label": _TYPE_LABEL,
-        "counts": {
-            "danger": sum(1 for e in events if e["level"] == "danger"),
-            "warn": sum(1 for e in events if e["level"] == "warn"),
-            "info": sum(1 for e in events if e["level"] == "info"),
-        },
-    })
-
-
-@app.get("/api/monitor/events")
-async def api_monitor_events(days: int = Query(default=7)):
-    from pipeline.monitor import list_events
-    return {"events": list_events(days=days)}
-
-
 @app.get("/replay", response_class=HTMLResponse)
 async def page_replay(request: Request):
     """\u4fe1\u53f7\u590d\u76d8\uff1a\u5386\u53f2 buy \u4fe1\u53f7\u7684 14d/30d \u8868\u73b0\u56de\u653e\u3002"""

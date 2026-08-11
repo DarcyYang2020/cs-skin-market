@@ -3,7 +3,7 @@
 
 纯提醒/展示层：只读引擎输出（run_item_analysis 不落库），不产生新信号、不触碰引擎参数。
 事件规则（8 类）：买点接近 / 破位止损 / 决策翻转 / 供给突变 / 价格异动 / 大盘状态切换 / 持仓到期 / 新 buy 信号。
-消费链：run_daily_collect 收尾自动跑（当日采集后数据已最新）；Web /monitor 展示；M2 接入钉钉推送。
+消费链：run_daily_collect 收尾自动跑（当日采集后数据已最新）；M2 接入钉钉推送。
 """
 import io, json, os, sys, uuid
 from datetime import datetime, timedelta, date as _date
