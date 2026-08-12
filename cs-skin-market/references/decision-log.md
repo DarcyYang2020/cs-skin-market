@@ -2835,3 +2835,17 @@ Fluxo 25→280 约 11 倍），尖顶后 3 天 -86~94%，与枪皮统计反转�
 **待办**：B-1 展示层接入（A 线前端任务）；Q7 advice_id 回链暂缓（executions 仅 8 行，≥20 行再审）；A 通道市场层恐慌事件台账（P2，用户确认后实施，见本日早前条目）。
 
 **学到的新思路**：① 外键级联（ON DELETE CASCADE）在「主表重排/物理删除」场景是数据静默丢失源——涉及引用表的批量操作必须带备份对账；② 监测数据「0 行」先分「链路断 vs 无事件」再处置，本次实证是后者占主因（近 8 天无 fusion buy）；③ 回放产物已含 regime 三输入字段，状态分层聚合无需重跑回放，展示口径扩展成本可以很低。
+## B-1 展示层落地：期望条按市场状态分层徽章（2026-08-12）
+
+**背景**：B-1 立项（见本日「生产信号跟踪恢复 + 对账挂接 + B-1 regime 分层聚合」条目）只读聚合产物 `data/_exp_expectancy_by_regime.json` 已产出；本次接入报告期望条展示层。
+
+**实现**（纯展示层，零决策参数，不触发回测）：
+- `webapp/analysis_service.py`：新增 `_load_expectancy_by_regime()`（mtime 缓存只读加载 B-1 产物）；`_expectancy_badge(action_label, state_bucket)` 在全局族徽章基础上追加 regime 分层——同族在当前市场状态桶（`fd.state_bucket`，引擎六态口径）下的 n/win14/avg14/win30/avg30，n>=5 展示，n<5 标 `insufficient`，产物缺失静默降级；`build_analysis_ctx` 传入 `fd.state_bucket`。
+- `templates/partials/analysis.html`：决策条新增「🧪 当前【状态桶】14d xx% · 30d +xx%」紫色系徽章（与全局绿徽章区分），title 注明分层样本 n 与 net 已扣 2% 口径；样本不足时显示「样本 n=x 不足」灰标。
+- `tests/test_smoke.py`：`t_expectancy_regime` 覆盖产物加载 / 正常分层（中性企稳 accumulate n=150）/ 无 state_bucket 降级 / 恐慌浅跌 insufficient 四路径。
+
+**验证**：冒烟 102 passed / 0 failed；pyflakes 新增代码 0 告警；模板三分支渲染实测；`build_analysis_ctx` 集成验证（深值×中性企稳 n=13 win14 84.6% avg30 +44.94）；服务重启生效（PID 33456）。
+
+**注意**：≤6h 已缓存报告（`analysis_results` 静态 HTML）在缓存过期前仍显示旧徽章，重建/强制刷新后带新徽章——展示层缓存语义（2026-08-12 报告弹窗优化引入）下的正常行为。
+
+**学到的新思路**：展示层只读聚合产物（`_exp_*.json`）与 config 单源（`ITEM_EXPECTANCY_STATS`）双轨共存是安全的——只要新口径不触碰 `t_expectancy_sync` 硬校验、产物由独立脚本生成并 mtime 缓存，即可零成本扩展展示维度。

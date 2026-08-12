@@ -1695,6 +1695,25 @@ def t_expectancy_sync():
                 f'改回放产物后必须重跑 references/sync_expectancy_config.py')
 check('期望统计单一事实源: config == 回放计算值（全字段）', t_expectancy_sync)
 
+def t_expectancy_regime():
+    from pathlib import Path as _P
+    from webapp.analysis_service import _expectancy_badge, _load_expectancy_by_regime
+    _prod = _P(__file__).resolve().parent.parent / 'data' / '_exp_expectancy_by_regime.json'
+    assert _prod.exists(), 'B-1 产物缺失'
+    _data = _load_expectancy_by_regime()
+    assert _data and _data.get('total_signals') == 317, (_data or {}).get('total_signals')
+    # 中性企稳 + accumulate（n=150）-> regime 分层正常
+    r = _expectancy_badge('🟢 供给收缩·启动前吸筹·分批建仓', '中性企稳')
+    assert r and r['regime']['bucket'] == '中性企稳' and r['regime']['n'] >= 5, r
+    assert r['regime']['win14'] is not None and r['regime']['avg30'] is not None, r
+    # 无 state_bucket -> 全局徽章不受影响、无 regime 键
+    r2 = _expectancy_badge('🟢 深值·大盘企稳·分批建仓', None)
+    assert r2 and 'regime' not in r2 and r2['win14'] > 0, r2
+    # 恐慌浅跌 无样本 -> insufficient 标记（n=0）
+    r3 = _expectancy_badge('🟢 恐慌共振·分批建仓', '恐慌浅跌')
+    assert r3 and r3['regime'].get('insufficient') is True and r3['regime']['n'] == 0, r3
+check('B-1 期望 regime 分层徽章: 产物加载/正常/降级路径', t_expectancy_regime)
+
 def t_benchmark():
     import json as _J
     from pathlib import Path

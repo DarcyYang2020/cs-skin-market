@@ -716,15 +716,46 @@ _SOURCE_LABELS = {
 }
 
 
-def _expectancy_badge(action_label):
-    """决策条回测徽章（纯展示层）：按 ITEM_EXPECTANCY_STATS 口径匹配（含「恐慌」→panic / 含「深值」→deep_value / 其余→accumulate）。"""
+_EXP_REGIME_CACHE = {"mtime": 0.0, "data": None}
+
+
+def _load_expectancy_by_regime():
+    """只读加载 B-1 状态分层聚合产物（data/_exp_expectancy_by_regime.json），mtime 缓存。
+
+    产物由 references/expectancy_by_regime.py 生成（六态×族 n/win14/avg14/win30/avg30，net 已扣 2%）；
+    文件缺失/解析失败返回 None，展示层静默降级为仅全局徽章。纯展示口径，不参与引擎决策。
+    """
+    _p = Path(__file__).resolve().parent.parent / "data" / "_exp_expectancy_by_regime.json"
+    try:
+        _mtime = _p.stat().st_mtime
+    except OSError:
+        return None
+    if _EXP_REGIME_CACHE["mtime"] == _mtime:
+        return _EXP_REGIME_CACHE["data"]
+    try:
+        with io.open(_p, "r", encoding="utf-8") as _f:
+            _data = json.load(_f)
+    except Exception:
+        _EXP_REGIME_CACHE.update(mtime=_mtime, data=None)
+        return None
+    _EXP_REGIME_CACHE.update(mtime=_mtime, data=_data)
+    return _data
+
+
+def _expectancy_badge(action_label, state_bucket=None):
+    """决策条回测徽章（纯展示层）：全局族口径（ITEM_EXPECTANCY_STATS）+ B-1 当前 regime 分层（2026-08-12）。
+
+    全局口径：含「恐慌」→panic / 含「深值」→deep_value / 其余→accumulate；
+    regime 分层：同族在当前市场状态桶下的 n/win14/avg14/win30/avg30——n>=5 展示，否则 insufficient 标记，
+    产物缺失时静默降级。不触发回测、不触碰 t_expectancy_sync。
+    """
     if not action_label:
         return None
     key = "panic" if "恐慌" in action_label else ("deep_value" if "深值" in action_label else "accumulate")
     st = _config.ITEM_EXPECTANCY_STATS.get(key)
     if not st:
         return None
-    return {
+    out = {
         "label": st.get("label", key),
         "n": st.get("n"),
         "events": st.get("events"),
@@ -735,6 +766,22 @@ def _expectancy_badge(action_label):
         "ci14_lo": st.get("ci14_lo"),
         "ci14_hi": st.get("ci14_hi"),
     }
+    if state_bucket:
+        _reg = _load_expectancy_by_regime()
+        if _reg:
+            _rb = (_reg.get("regimes") or {}).get(state_bucket)
+            if _rb:
+                _fam = (_rb.get("family") or {}).get(key)
+                if _fam and _fam.get("n", 0) >= 5:
+                    out["regime"] = {
+                        "bucket": state_bucket, "key": key,
+                        "n": _fam["n"], "win14": _fam["win14"], "avg14": _fam["avg14"],
+                        "win30": _fam["win30"], "avg30": _fam["avg30"],
+                    }
+                elif _fam is not None:
+                    out["regime"] = {"bucket": state_bucket, "key": key,
+                                     "n": _fam.get("n", 0), "insufficient": True}
+    return out
 
 
 def _position_pct(position):
@@ -953,7 +1000,7 @@ def build_analysis_ctx(analysis, kline_stale_days=None, kline_stale_date="",
             holding_action = {"action": "hold", "label": "观望", "signal": _ha,
                               "price": _cur, "qty": 0}
     fd = dict(analysis.fusion_decision or {})
-    fd["expectancy"] = _expectancy_badge(fd.get("action_label"))
+    fd["expectancy"] = _expectancy_badge(fd.get("action_label"), fd.get("state_bucket"))
     _src_labels = [_SOURCE_LABELS.get(str(s), str(s)) for s in (fd.get("deduction_sources") or [])]
     fd["trace"] = {
         "zone": fd.get("zone_label", ""),

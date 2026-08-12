@@ -209,6 +209,8 @@
 
 - 生产信号跟踪恢复 + 对账 + B-1 regime 分层聚合 ✅（2026-08-12，见 decision-log「生产信号跟踪恢复 + 对账挂接 + B-1 regime 分层聚合」）：A-1 实证=链路双挂接（`analysis_service.py:646` / `scan_tasks.py:187`）均通，0 行系 2026-08-11 items 重排级联删除（commit `1060af7` 后 1→0，备份可证）；已回填 1 行（id 59→44）+ `reconcile_production_signals` 每日对账（jsonl 留痕）+ data-layer 防护说明；B-1 升 A 线并落地只读聚合（`references/expectancy_by_regime.py` → `data/_exp_expectancy_by_regime.json`，六态×族分层，字段齐备免重跑回放，`t_expectancy_sync` 未触碰）；Q7 暂缓（executions 仅 8 行）。冒烟 101/0/0。
 
+- B-1 展示层落地 ✅（2026-08-12，见 decision-log「B-1 展示层落地：期望条按市场状态分层徽章」）：报告期望条新增「当前【状态桶】14d/30d」分层徽章（`_exp_expectancy_by_regime.json` 六态×族，n≥5 展示、不足标注、缺失降级）；`_expectancy_badge` 增加 state_bucket 注入，纯展示层零决策参数；冒烟 102/0/0，服务已重启。
+
 ## 附录：与「评估指标体系第一性审计」的边界
 
 本评估直接引用、未重跑：六维权重（位置 40/周期 25/流动性 15/概率 20）、估值分位边界、供给吸筹/派发判定、评级切分（代码口径 8/6.5/4.5）、绩效口径（win14/30、net 2%）、持仓管理矩阵参数、TH/情绪/跌幅/牛熊结论、周期反转/panic 分级/概率去 z（2026-08-10 四项审计）。审计后新增的展示层改动（如 F-3.14 已止损感知）只审「改动本身」——见 E-1/E-2。
