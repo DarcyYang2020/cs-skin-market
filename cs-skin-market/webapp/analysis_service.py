@@ -5,7 +5,7 @@
 api_watchlist_analyze 三条约 90% 重复的分析路径；批量扫描 _scan_item 因
 「价格校验先行 + 参数子集 + 结果结构不同」暂保留原流程（调用本模块助手函数）。
 """
-import asyncio, copy, io, json, logging, sys
+import asyncio, copy, io, json, logging, statistics, sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -787,11 +787,16 @@ def sticker_whale_fingerprint(name):
     _after14 = _prices[_i_hi + 1:_i_hi + 15]
     _max_gain = _hi / _lo - 1
     _gains = []
-    for _pts in _load_sticker_deep().values():
+    _batch_gains = None
+    _batch = name.split("|")[-1].strip() if "|" in name else None
+    for _bn, _pts in _load_sticker_deep().items():
         _lo2 = min(v for _, v in _pts)
         _hi2 = max(v for _, v in _pts)
         if _lo2 > 0 and _hi2 > 0:
             _gains.append(_hi2 / _lo2 - 1)
+            if _batch and _bn.split("|")[-1].strip() == _batch:
+                _batch_gains = _batch_gains or []
+                _batch_gains.append(_hi2 / _lo2 - 1)
     _rank = (sum(1 for g in _gains if g >= _max_gain) / len(_gains) * 100) if _gains else None
     return {
         "max_gain": _max_gain,
@@ -803,6 +808,10 @@ def sticker_whale_fingerprint(name):
         "peak_date": _series[_i_hi][0],
         "issue_price": _prices[0],
         "n": len(_gains),
+        "batch": _batch,
+        "batch_median": statistics.median(_batch_gains) if _batch_gains else None,
+        "batch_max": max(_batch_gains) if _batch_gains else None,
+        "batch_n": len(_batch_gains) if _batch_gains else 0,
     }
 
 
@@ -823,6 +832,15 @@ def render_sticker_whale_block(fp):
                  '（尖顶崩塌预测 H1 回测验证中，未进决策）。</div>')
     _rank = fp.get("gain_rank_pct")
     _rank_txt = ("（%d 品中前 %.0f%%）" % (fp.get("n") or 0, _rank)) if _rank is not None else "（样本不足）"
+    _batch_line = ""
+    if fp.get("batch_n"):
+        _bm = fp.get("batch_median") or 0
+        _ratio = fp.get("max_gain") / _bm if _bm else None
+        _tag = "（个别品巨幅 = 选品坐庄特征）" if _ratio and _ratio >= 3 else "（同届普涨，非庄盘特征）"
+        _batch_line = ('同届分化（%s，%d 品）：中位 %+.0f%%%% / 最大 %+.0f%%%%；该品 = 中位 ×%.1f%s<br>'
+                       % (fp.get("batch") or "—", fp.get("batch_n"), _bm * 100,
+                          (fp.get("batch_max") or 0) * 100, _ratio or 0, _tag))
+        _batch_line = _batch_line.replace("%", "%%")
     return (
         '<details style="margin-top:10px;font-size:12px;color:var(--text-secondary);">'
         '<summary style="cursor:pointer;font-weight:700;color:var(--text-primary);font-size:14px;">'
@@ -831,8 +849,9 @@ def render_sticker_whale_block(fp):
         '历史脉冲：区间最高涨幅 <b>%+.0f%%</b>%s<br>'
         '尖顶形态：峰后 3d %s / 14d %s<br>'
         '距历史峰值（%s）：现价 = 峰值的 %s（回落 %s）<br>'
-        '现价 vs 深历史起点（2025-01 ≈ 发行价）：%s'
-        + _warn +
+        '现价 vs 深历史起点（2025-01 ≈ 发行价）：%s<br>'
+        + _batch_line +
+        _warn +
         '</div></details>'
     ) % (
         fp["max_gain"] * 100, _rank_txt,

@@ -113,6 +113,9 @@ EVENT_CALENDAR = [
     {"name": "纪念品炼金", "date": "2025-05-25", "impact_days": 30, "type": "souvenir_recipe"},
     {"name": "黄盾", "date": "2025-07-16", "impact_days": 30, "type": "collection"},
     {"name": "五合一崩盘", "date": "2025-10-24", "impact_days": 35, "type": "crash"},
+    # 2025 双 Major（S-5 收尾 2026-08-12）：历史事件仅用于回测外生冲击标注；贴纸与 Major 已脱钩（S-2 证伪），不作买点依赖
+    {"name": "2025 奥斯汀 Major", "date": "2025-06-03", "impact_days": 20, "type": "major"},
+    {"name": "2025 布达佩斯 Major", "date": "2025-11-24", "impact_days": 21, "type": "major"},
 ]
 
 ITEM_EXPECTANCY_STATS = {

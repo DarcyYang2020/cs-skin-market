@@ -1371,3 +1371,12 @@
 {"ts": "2026-08-12T13:14:27+08:00", "item_id": 999745, "mode": "incremental", "n_insert": 0, "n_update": 1, "detail": [{"op": "update", "date": "2026-08-12", "price": 102.0}]}
 {"ts": "2026-08-12T13:14:46+08:00", "item_id": 999754, "mode": "incremental", "n_insert": 0, "n_update": 1, "detail": [{"op": "update", "date": "2026-08-12", "price": 101.0}]}
 {"ts": "2026-08-12T13:14:46+08:00", "item_id": 999754, "mode": "incremental", "n_insert": 0, "n_update": 1, "detail": [{"op": "update", "date": "2026-08-12", "price": 102.0}]}
+{"ts": "2026-08-12T13:15:06+08:00", "item_id": 999763, "mode": "incremental", "n_insert": 0, "n_update": 1, "detail": [{"op": "update", "date": "2026-08-12", "price": 101.0}]}
+{"ts": "2026-08-12T13:15:06+08:00", "item_id": 999763, "mode": "incremental", "n_insert": 0, "n_update": 1, "detail": [{"op": "update", "date": "2026-08-12", "price": 102.0}]}
+{"ts": "2026-08-12T13:19:11+08:00", "item_id": 178, "mode": "incremental", "n_insert": 0, "n_update": 1, "detail": [{"op": "update", "date": "2026-08-12", "price": 444.99}]}
+{"ts": "2026-08-12T13:19:20+08:00", "item_id": 106, "mode": "incremental", "n_insert": 0, "n_update": 1, "detail": [{"op": "update", "date": "2026-08-12", "price": 116.9}]}
+{"ts": "2026-08-12T13:19:33+08:00", "item_id": 24, "mode": "incremental", "n_insert": 0, "n_update": 1, "detail": [{"op": "update", "date": "2026-08-12", "price": 453.0}]}
+{"ts": "2026-08-12T13:19:49+08:00", "item_id": 44, "mode": "incremental", "n_insert": 0, "n_update": 1, "detail": [{"op": "update", "date": "2026-08-12", "price": 678.3}]}
+{"ts": "2026-08-12T13:20:05+08:00", "item_id": 96, "mode": "incremental", "n_insert": 0, "n_update": 1, "detail": [{"op": "update", "date": "2026-08-12", "price": 28398.99}]}
+{"ts": "2026-08-12T13:22:06+08:00", "item_id": 999772, "mode": "incremental", "n_insert": 0, "n_update": 1, "detail": [{"op": "update", "date": "2026-08-12", "price": 101.0}]}
+{"ts": "2026-08-12T13:22:06+08:00", "item_id": 999772, "mode": "incremental", "n_insert": 0, "n_update": 1, "detail": [{"op": "update", "date": "2026-08-12", "price": 102.0}]}
