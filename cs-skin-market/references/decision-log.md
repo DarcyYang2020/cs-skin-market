@@ -2575,3 +2575,14 @@ watch/hold 做「无按钮」处理，未区分持仓/未持仓。
 
 **验证**：冒烟 100 passed / pyflakes 0；结构契约测试登记 `dedup` + `family_monitor` 字段快照；`/api/data/progress` 与 dashboard 页面渲染均已验证。
 
+
+## 贴纸板块阶段 1 收尾（2026-08-12）：11 品 K 线手动补采 + discover 分桶启动 + 表述修正
+
+**11 品 K 线补采**：首轮 147/158 后遗留 11 品（奥斯汀 6 / 布达佩斯 3 / 里约 1 / 哥本哈根 1）限流 EMPTY，2026-08-12 手动重采（`fetch_kline_90d` + 3 次退避重试）11/11 成功、各 91 bar——**158/158 贴纸 K 线全量落库**；留痕 `data/_sticker_backfill_11.log`（一次性脚本已删）。
+
+**discover 分桶启动（阶段 2 起点）**：触发 `POST /api/discover/scan-all`（pool 模式，356 品含 158 贴纸，候选 SQL `discover_tasks.py:316` 含 `印花 |%`）→ `discover_history` 首次写入贴纸条目（印花 | MOUZ 2021 斯德哥尔摩 composite 9.0 进 top10）——贴纸 14/30d 分桶追踪开始积累（M-3 品类 alpha 检验基础；discover 任务非每日自动跑，后续如需每日积累应加挂每日任务）。
+
+**表述修正**：`iteration-roadmap.md` / `first-principles-stickers.md` 原「贴纸专用化：周期因子禁用、供给吸筹族禁用」**超前于代码**——实际为观察桶守卫净效果禁用（`item_analysis.py:1616` buy→watch 降级 + `:1022` panic_resonance 排除印花），周期因子/供给吸筹对贴纸仍计分；按 §3.4 待 A2 检验（无区分度/无不正期望）后决定代码层禁用，已改文档表述。
+
+**验证**：冒烟 100 passed / pyflakes 0；贴纸在售量全部 ≥10 无活跃池误淘汰风险。
+

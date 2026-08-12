@@ -78,7 +78,7 @@
 
 ### 3.5 落地状态（2026-08-12 已执行）
 - **入库**：160 品全息战队贴纸已入库（`source='sticker'`，notes=`赛事|分组|全息`，good_id=csQAQ gid），库内 items 203→361 品；去重核验：库内原有 MOUZ/G2 2024上海 2 品复用，无重复；
-- **K 线**：158 新品的 90d K 线采集 147 品成功（86-92 根 bar/品），11 品两轮 EMPTY（限流窗口，2025 奥斯汀 6 + 布达佩斯 3 + 里约/哥本哈根各 1）留待每日任务自然补采；数据质量抽查通过（价格区间合理、无 ≤0/超高价、无长期零在售）；
+- **K 线**：158 新品 90d K 线**已全部落库**（86-92 根 bar/品）——首轮采集 147 品成功，11 品两轮 EMPTY（限流窗口，2025 奥斯汀 6 + 布达佩斯 3 + 里约/哥本哈根各 1）已于 2026-08-12 手动补采完成（`fetch_kline_90d` + 退避重试，各 91 bar，留痕 `data/_sticker_backfill_11.log`）；数据质量抽查通过（价格区间合理、无 ≤0/超高价、无长期零在售）；
 - **观察桶守卫（代码落地）**：`pipeline/item_analysis.py:decide_fusion_signal` return 前新增 `sticker_observation` 守卫——`印花 |` 前缀品强制 buy→watch 降级（覆盖基础族/恐慌升级/后置族/超跌全部 buy 路径），验证：强 buy 场景贴纸=watch+sticker_observation、枪皮=buy 不变；panic_resonance 族原有印花排除保留（双保险）；
 - **口径记录**：csQAQ `rln` 稀有度字段随赛事漂移（2021=全息/2022=闪耀/2024=闪亮/奥斯汀=闪亮/布达佩斯=刺绣），必须按名称「（全息）」过滤；主办方贴纸（PGL/IEM/Perfect World/BLAST.tv/StarLadder）已剔除。
 
