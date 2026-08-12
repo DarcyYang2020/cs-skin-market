@@ -360,3 +360,6 @@ eferences/refit_pipeline.py → data/refit_pipeline_report.json（A2 三件套�
   - S-3 ❌（2026-08-12 关闭）：战队竞技 proxy + sell-the-news 离场——Major 脱钩 + W-1 离场证伪后无立足点，不立项；
   - H2：庄盘拉抬判别探索版已并入 W-3B（90d 拉升承接三组全负证伪），正式版待历史在售量积累；
   - 数据修复 ✅（2026-08-12）：S-1 深历史遗留 seed 短名 2 品（G2/MOUZ 2024 上海）重命名为标准全名，庄盘指纹块对该 2 品恢复显示；
+- A 通道计数口径核对（**2026-08-12，信息层**，见 decision-log「A 通道计数口径核对」）——`j2_channel_status.json` A.value=1 vs note「2 个独立事件」分叉的根因：A 计数源 = 回放信号派生事件簇（365d 窗口，2025-10 五合一滑出窗口），note 为手写死文本未同步；已改双口径标注（信号派生簇 1 / 市场独立事件 2）并重跑刷新状态文件，`A.value` 维持与 `display_keys.panic.events` 同源（t_j2_channel_status 硬校验）；**待办（P2 监测层，用户确认后实施）**：市场层恐慌事件台账（monitor_events 加 panic 类型 / EVENT_CALENDAR 补 2026-05 条目 + A 通道改读台账）。
+- M-5 遗漏修复（**2026-08-12**
+- 主引擎口径审计 + 评级线 th_boost 移除（**2026-08-12**，见 decision-log「主引擎口径审计 + 评级线 th_boost 移除」）——全仓核对：评级切分/TH 三区/market_weak 45/半山腰/hold21/7天去重/去簇 gap 均一致；唯一真不一致 = value.score 后处理 th_boost（TH 高加分）与 M-5 反向定论矛盾且与 composite 对冲；回测先行（`probe_th_boost_grade.py`，317 信号：Q5 73.4→76.6%、spearman +0.087→+0.142、前后半段一致、置换 p=0.10）后**移除 th_boost**——TH 展示层仅由 composite_score th_bonus 反向单计；纯展示层，分级仓位/回放产物零影响；冒烟 100/0/0。，见 decision-log「M-5 遗漏修复：discover 行级刷新 TH 偏移同步反向」）——`webapp/main.py:1537` 内联复刻的 composite 公式 TH 偏移 `*1.0` → `*(-1.0)`，与 `item_analysis.composite_score` 对齐（M-5 反向定论）；discover 行级刷新与全扫/批量扫描综合分口径恢复一致；服务已重启，冒烟 100/0/0。

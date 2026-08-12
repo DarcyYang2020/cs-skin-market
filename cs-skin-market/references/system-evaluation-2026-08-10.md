@@ -200,6 +200,10 @@
 
 - 贴纸 alpha 研究立项 ✅（2026-08-12，见 decision-log「贴纸 alpha 研究立项 + 阶段 0 预跑」）：深历史验证四案例（EG/G2/MOUZ/Fluxo）确认贴纸=百倍级事件脉冲 + 尖顶形态（种子 12 品 9/12 尖顶），原「低估区反弹 14d」A2 假设不适配；阶段 0 预跑支持 Major 日历周期方向（W25 赛前 +574.7% / W26 春季 +116.5% / 回落 -35.8%）；立项 S-1 深历史全量回填（P1，数据前提）→ S-2 Major 周期三件套（P1）→ S-3 战队 proxy+离场规则（P2）→ S-4 A2 假设修正（P2）→ S-5 EVENT_CALENDAR 补赛程（P2，用户配置）。零引擎参数改动，产物 `data/_exp_sticker_deep_seed.json` / `data/_exp_sticker_season0.json`。
 
+- A 通道计数口径核对 ✅（2026-08-12，见 decision-log「A 通道计数口径核对」）：`j2_channel_monitor.py` A note 改双口径标注（信号派生事件簇 1 vs 市场独立事件 2），消除值-文案分叉；`A.value` 维持与 `display_keys.panic.events` 同源（t_j2_channel_status 硬校验）；待办=市场层恐慌事件台账（P2 监测层）。
+- M-5 遗漏修复 ✅（2026-08-12
+- 主引擎口径审计 + 评级线 th_boost 移除 ✅（2026-08-12，见 decision-log 同条目）：回测先行（317 信号：Q5 73.4→76.6%、spearman +0.087→+0.142、前后半段一致）后移除 `item_analysis.py` value.score 后处理 th_boost——TH 展示层仅由 composite_score 反向单计，消除评级线与综合分的对冲与方向矛盾；纯展示层，分级仓位/回放产物零影响。，见 decision-log「M-5 遗漏修复：discover 行级刷新 TH 偏移同步反向」）：`webapp/main.py:1537` TH 偏移 `*1.0`→`*(-1.0)`，discover 行级刷新综合分口径与 `composite_score` 恢复一致（纯展示层，零决策参数）。
+
 ## 附录：与「评估指标体系第一性审计」的边界
 
 本评估直接引用、未重跑：六维权重（位置 40/周期 25/流动性 15/概率 20）、估值分位边界、供给吸筹/派发判定、评级切分（代码口径 8/6.5/4.5）、绩效口径（win14/30、net 2%）、持仓管理矩阵参数、TH/情绪/跌幅/牛熊结论、周期反转/panic 分级/概率去 z（2026-08-10 四项审计）。审计后新增的展示层改动（如 F-3.14 已止损感知）只审「改动本身」——见 E-1/E-2。

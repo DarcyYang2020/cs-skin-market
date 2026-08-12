@@ -1799,9 +1799,11 @@ def run_item_analysis(
     elif fd.action == "reduce":
         value.score = max(0, value.score - 1.0)
 
-    # Adjust by corrected trend health
-    th_boost = round((th.score - 50) / 50 * 2.0, 1)
-    value.score = round(max(0, min(10, value.score + th_boost)), 1)
+    # TH 偏移 2026-08-12 移除（原 th_boost = (TH-50)/50*2.0，TH 高加分）：与 M-5 反向定论矛盾
+    # （TH 与 net14 负相关 spearman -0.344，TH<35 win14 80.8% vs TH>55 60.8%），且与 composite_score
+    # 的反向 th_bonus 对冲；移除后 TH 在展示层仅由 composite_score th_bonus 反向单计（探针
+    # data/_exp_th_boost_grade.json：Q5 win14 73.4→76.6%、spearman +0.087→+0.142、前后半段一致）。
+    # 纯展示层（评级/position_advice）：分级仓位读 decide_fusion_signal 传入的基础 value.score，不受影响。
 
     # Re-calculate grade
     if value.score >= 8:

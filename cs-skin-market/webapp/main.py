@@ -1534,7 +1534,7 @@ async def api_discover_refresh_item(request: Request):
         fd_action = (analysis.fusion_decision or {}).get("action", "") if isinstance(analysis.fusion_decision, dict) else ""
         action_bonus = {"buy": 1.0, "watch": 0.5, "hold": 0.0, "reduce": -0.5, "avoid": -1.0, "sell": -1.0}.get(fd_action, 0.0)
         th_score = (analysis.trend_health or {}).get("score", 50) if isinstance(analysis.trend_health, dict) else 50
-        th_bonus = (th_score - 50) / 50 * 1.0
+        th_bonus = (th_score - 50) / 50 * (-1.0)
         valuation_discount = max(0.5, 1.0 - pct_val / 200)
         composite = round((score + action_bonus + th_bonus) * valuation_discount * dq_factor, 1)
         new_res = dict(

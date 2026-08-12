@@ -3,7 +3,9 @@
 
 读 item_backtest_full_2025.json（317 信号 v2-T4）+ signal_event_counts.json（事件计数），
 计算三通道状态（样本完整性/胜率健康度提示项）：
-  A. 独立恐慌市场事件 >=3（自然积累，不阻塞）
+  A. 独立恐慌市场事件 >=3（自然积累，不阻塞）；计数源=signal_event_counts.json display_keys.panic.events
+     （信号派生事件簇口径：365d 回放窗口内 action_label 含「恐慌」信号 ±3 天去簇；2025-10 五合一已滑出窗口不计，
+       市场独立事件实为 2 个，2026-08-12 核对，见 decision-log 同条目）
   B. v2 引擎样本积累 >=260 天（自 2026-08-07 v2 引擎起点，约 2027-04-25 覆盖完整牛熊循环）
   C. 胜率监测：buy 连续 2 月 14d<70% 或月度 14d<80%/30d<55%
 输出 data/j2_channel_status.json，dashboard 数据积累进度卡渲染。
@@ -246,7 +248,7 @@ def compute():
             "value": panic_events, "threshold": A_THRESHOLD,
             "progress_pct": a_pct,
             "status": "已达标" if panic_events >= A_THRESHOLD else "积累中",
-            "note": "事件不可控，自然积累不阻塞；当前 2025-10 五合一 / 2026-05 恐慌深跌 2 个独立事件",
+            "note": "事件不可控，自然积累不阻塞；本值=信号派生事件簇口径（365d 回放窗口，仅 2026-05 恐慌深跌 1 簇；2025-10 五合一已滑出窗口未计）；市场独立事件 2 个（2025-10 五合一 / 2026-05 恐慌深跌），口径见 decision-log 2026-08-12",
         },
         "B": {
             "label": "v2 引擎样本积累",

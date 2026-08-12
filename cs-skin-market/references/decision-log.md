@@ -2736,3 +2736,42 @@ Fluxo 25→280 约 11 倍），尖顶后 3 天 -86~94%，与枪皮统计反转�
 **J-2 三通道（2026-08-12 刷新）**：A 1/3（`j2_channel_status.json` value=1 vs note 文案 2 个独立事件——口径待核对 `j2_channel_monitor.py:230`，不影响动作，<3 未达标）；B 5/260 天（1.9%，目标 2027-04-24）；C 状态「已触发」= **回放口径信息级告警**（2025-11+12 月度胜率低）非正式触发，production 实盘 filled14 0/20 未达门槛（20 条），重拟合不启动；族级观察 deep_dip 2026-06（30d 43.8%）/ deep_value 2026-07（14d 20.0%）弱样本仅提示，panic 族 100%/87.5%、supply_accum 76.1% 健康。
 
 **数据健康（health_checks）**：2026-08-11 全 PASS（203/203 覆盖 + 在售量）；2026-08-10 csQAQ 故障 FAIL 已恢复。
+
+## A 通道计数口径核对：信号派生 vs 市场事件（2026-08-12）
+
+**现象**：`data/j2_channel_status.json` A.value=1 与 note 文案「2 个独立事件」分叉（值-文案打架）。
+
+**根因**（git 已验证 32dbe2b→afc8a20）：A 计数源 = `signal_event_counts.json display_keys.panic.events`（`j2_channel_monitor.py:230`），口径 = **引擎回放信号派生事件簇**（365d 回放窗口内 action_label 含「恐慌」信号 ±3 天去簇）。2026-08-07 去量 v2（370 信号长窗口）时 events=2（覆盖 2025-10 五合一）；2026-08-10 四项审计改 365d 基线后回放信号最早仅 2025-11-14，**2025-10-24 五合一崩盘滑出窗口** → events 2→1；note 为手写死文本未随窗口变更同步。`monitor_events` 表无 panic 类型事件台账（仅 market_state/near_buy/price_spike/supply_shift/stop_loss/new_buy_signal），市场独立事件目前无可编程计数源。
+
+**处置**（信息层，零决策参数/零引擎改动）：
+- `j2_channel_monitor.py` docstring + A note 改为双口径标注：本值=信号派生事件簇 1（2026-05 恐慌深跌）/ 市场独立事件 2（2025-10 五合一 + 2026-05 恐慌深跌）；重跑刷新 `data/j2_channel_status.json`。
+- A 通道语义不变（提示项，<3 不阻塞）；`t_j2_channel_status`（值-事件文件同源硬校验）继续通过；`A.value` 仍与 `display_keys.panic.events` 同源，避免口径再次漂移。
+
+**待办（P2 监测层，用户确认后实施）**：建市场层恐慌事件台账（monitor_events 加 panic 类型 或 EVENT_CALENDAR 补 2026-05 条目 + A 通道改读台账），使 A 通道回归「市场独立恐慌事件」语义；属监测口径变更，涉及 test/文档同步。
+
+**学到的新思路**：① 监测器「值」与「说明文案」若不同源，必须由生成脚本统一构造或纳入测试硬校验——死文本必然漂移（本次即 note 未随 365d 基线更新）；② 回放窗口变更会静默缩小事件层样本，事件类监测计数源若依赖回放产物需标注窗口边界。
+
+## M-5 遗漏修复：discover 行级刷新 TH 偏移同步反向（2026-08-12）
+
+**背景**：用户问综合评分构成时核对发现 `webapp/main.py:1539`（discover 行级⚡刷新内联复刻的 composite 公式）TH 偏移系数仍为 `* 1.0`，未随 M-5（`70f664d`，2026-08-11）反向为 `-1.0`——两处公式复制点口径分裂。
+
+**影响面**：discover 列表「⚡ 刷新」后该品综合分与全扫（`discover_tasks.py:213`）及批量扫描（`scan_tasks.py:167`，均走 `item_analysis.composite_score`）同品不同分，排名重排口径分裂；TH 高的品被错误加分（与 M-5 反向定论相反）。
+
+**修复**：`webapp/main.py:1537` `th_bonus = (th_score - 50) / 50 * 1.0` → `*(-1.0)`，与 `item_analysis.py:678` 对齐（M-5 反向，依据：TH 与 net14 负相关 spearman -0.344，反向变体 Q5 win14 67.2%→73.4%）。全仓核对无其他复制点（`references/probe_composite_ablation.py` 为研究探针参数化，不受影响）。服务已重启（PID 21052），冒烟 100 passed / 0 failed，pyflakes 无告警。
+
+**学到的新思路**：展示层派生公式若被多处复制（main.py 内联 vs composite_score 公共函数），改口径时必须全仓 rg 核对复制点——本次即 M-5 只改了公共函数、漏了同日内联复制点。
+
+## 主引擎口径审计 + 评级线 th_boost 移除（2026-08-12）
+
+**背景**：用户要求检测主引擎系统口径不一致并修复。全仓核对复制点/常量多处出现，结论：评级切分 8/6.5/4.5（3 处）、TH 三区 35/55、守卫1 market_weak 45/mchg30<0、半山腰 25-40、hold21（main.py `_fs[20]` vs b1_risk_backtest_v2 `fwd[HOLD-1]`）、7 天去重、去簇 gap（j2 CLUSTER_GAP=4 vs j1 window=3）、概率 regime base_up 均一致；成本 2% 三处硬编码数值一致（未单源化，P2 工程项）。
+
+**真不一致**：`item_analysis.py` run_item_analysis 的 value.score 后处理 `th_boost=(TH-50)/50*2.0`（TH 高加分，评级线）与 M-5 反向定论矛盾（TH 与 net14 负相关 -0.344，TH<35 win14 80.8% vs TH>55 60.8%），且与 composite_score 反向 th_bonus 对冲（线上 composite TH 净影响≈0）——M-5 只改了 composite 函数本身，value.score 的 th_boost 与 main.py:1539 同性质漏改点。
+
+**回测先行**（`references/probe_th_boost_grade.py` → `data/_exp_th_boost_grade.json`，317 buy 信号 net14，只读）：
+- 三件套：k=-1（移除 th_boost）全样本 Q5 win14 73.4→76.6%、avg14 +20.3→+23.1、spearman +0.087→+0.142、Q5-Q1 差 +8.4→+11.5pp（置换 200 次 p=0.10）；k=-2（th_boost 反向双计）Q5 78.1%、spearman +0.170、p=0.08 但差异与 km1 微小且引入评级反向大改。
+- 前后半段（2026-01-01 切分）：km1 pre spearman +0.327 / post +0.122 均为正无反转（pre n=25 仅参考）。
+- **结论：落地 km1**——移除 value.score 的 th_boost，TH 在展示层仅由 composite_score th_bonus 反向单计（单一来源）。
+
+**落地**（`pipeline/item_analysis.py`，纯展示层）：删除 th_boost 应用两行 + 注释说明；分级仓位读 decide_fusion_signal 传入的基础 value.score（th_boost 应用在其后），**引擎决策/回放产物零影响**（不重跑回放，`item_backtest_full_2025.json` 不变）；评级/position_advice 不再奖励追高段。服务已重启（PID 21748），冒烟 100 passed / 0 failed，pyflakes 无告警。
+
+**学到的新思路**：M-5 这类「方向定论」落地时，同方向逻辑若存在多处复制/对冲点（composite 反向 + value 后处理正向），只改一处会让系统内两条展示线对同一因子态度相反——定论落地后应全仓 rg 同因子符号核对。
