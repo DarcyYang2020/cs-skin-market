@@ -211,10 +211,8 @@
 
 ﻿{# ====== 供给 · 流动性 · 庄家（去量 v2 引擎核心） ====== #}
 {% if supply_analysis or liquidity or whale %}
-<details style="margin-bottom:12px;">
-  <summary style="cursor:pointer;font-weight:700;color:var(--text-primary);font-size:14px;">📦 供给 · 流动性 · 庄家
-    {% if supply_analysis %}：在售 <b style="color:var(--text-primary);">{{ "{:,}".format(supply_analysis.current_supply) }}</b> 件 · 7日 <b style="color:{% if supply_analysis.supply_change_7d > 0 %}var(--red){% elif supply_analysis.supply_change_7d < 0 %}var(--green){% else %}var(--text-primary){% endif %};">{{ "%+.1f"|format(supply_analysis.supply_change_7d) }}%</b> · 30日 <b style="color:{% if supply_analysis.supply_change_30d > 0 %}var(--red){% elif supply_analysis.supply_change_30d < 0 %}var(--green){% else %}var(--text-primary){% endif %};">{{ "%+.1f"|format(supply_analysis.supply_change_30d) }}%</b> · <b style="color:var(--text-primary);">{{ supply_analysis.supply_risk_label if supply_analysis.supply_risk_label else ('吸筹' if supply_analysis.supply_risk == 'hoarding' else ('派发' if supply_analysis.supply_risk == 'dumping' else '平稳')) }}</b>{% endif %}
-  </summary>
+<div style="margin-bottom:12px;">
+  <div style="font-weight:700;color:var(--text-primary);font-size:14px;margin-bottom:6px;">📦 供给 · 流动性 · 庄家</div>
   <div style="margin-top:8px;">
   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
   {% if supply_analysis %}
@@ -244,8 +242,7 @@
   </div>
   {% endif %}
   </div>
-  </div>
-</details>
+</div>
 {% endif %}
 
 {% if data_quality %}

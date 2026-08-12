@@ -175,7 +175,7 @@
 - B-4 ✅（单品分析「当日已采 6h 内复用」双轨，KLINE_FRESH_SINGLE_HOURS=6，force_refresh 不受影响）
 - 数据质量定期复核 ✅（`references/data_quality_review.py` 每周抽样复核：持仓+自选+活跃池随机，周日自动触发；三层机制见 data-layer.md §8，决策见 decision-log「数据质量定期复核」）
 
-- D-1 ✅（2026-08-10 落地，见 decision-log「D-1 单品报告分层落地」）：关键指标条 / 供给·流动性·庄家折叠为 details（摘要一行），首屏保留动作+一句原因+操作核心，纯展示层。
+- D-1 ✅（2026-08-10 落地，2026-08-12 用户决策部分回退，见 decision-log「取消供给/流动性/庄家模块折叠」）：关键指标条常显；供给·流动性·庄家由 details 折叠改为直接展开（三卡常显），保留「为什么是这个结论」/术语速查折叠；纯展示层。
 - 组合层研究 ✅（2026-08-10，见 decision-log「组合层敏感性研究 + 出场口径对齐 hold21」）：cap 网格验证 0.8 为平衡点维持不变；组合模拟口径 hold14→hold21 对齐单品建议层，基准产物重跑（strategy +183.94%/-9.08%，maxDD 改善 4pp）。
 
 - P-1 ✅（2026-08-10 落地，见 decision-log「第一性原理测试 P-1 正式引擎 A/B + chg8 门落地」）：吸筹族新增 chg8（8 日动量）>3% 禁买门（T4 第一性原理审计候选），正式 A/B 基线 332→变体 317 信号（−26 剔除 +11 去重链解锁），win14 69.9→71.0%、wavg14 20.47→21.04、wwin14 74.4→75.4%、事件 14→15 不降、win30 不劣化，全指标改善无劣化；标准回放产物 317 信号 + 同步链重跑（sync_expectancy_config / sync_replay_snapshot / benchmark_compare / portfolio_attribution），ENGINE_VERSION v2-I13→v2-T4。
