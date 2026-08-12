@@ -218,6 +218,7 @@ def render_discover_html(results, market_th=50):
                 "category": DISCOVER_CATEGORY_LABELS.get(
                     r.get("category") or discover_category(r.get("name") or ""), ""),
                 "name": r["name"], "esc_name": esc_name,
+                "collected_at": (r.get("collected_at") or "").strip(),
                 "price": float(r.get("price_rmb", 0) or 0),
                 "score": float(r.get("score", 0) or 0),
                 "comp": float(comp or 0), "pct": float(pct or 0), "pct_clr": pct_clr,
