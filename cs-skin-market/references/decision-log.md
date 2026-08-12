@@ -2614,3 +2614,10 @@ Fluxo 25→280 约 11 倍），尖顶后 3 天 -86~94%，与枪皮统计反转�
 
 **阶段 0 产物留痕**：`data/_exp_sticker_deep_seed.json` / `data/_exp_sticker_season0.json` / `data/_sticker_deep_seed.log`。
 
+
+## 贴纸 S-1 启动 + 2025 双 Major 赛程确认（2026-08-12）
+
+**赛程确认（用户提供，S-2 回测窗口定义用）**：2025 奥斯汀 Major = 2025-06-03~06-22（美国德州奥斯汀穆迪中心）；2025 布达佩斯 Major = 2025-11-24~12-14（匈牙利布达佩斯；贴纸 2025-11-20 上市，符合赛前发售惯例）。已校正 first-principles-stickers.md §3.6 窗口。EG 2021 贴纸 2025-09-12 见顶位于两 Major 之间——独立事件脉冲（事件源待确认）。
+
+**S-1 启动**：160 品深历史全量回填（研究快照 `data/_exp_sticker_deep_full.jsonl`，断点续跑：每品成功即 append 一行 + 进度文件 `data/_sticker_deep_full_progress.json`，可随时中断续跑；不进 price_history、不动引擎基线）。12 品种子已覆盖（585/435/264 点验证 fetch_history_deep 正常）。
+
