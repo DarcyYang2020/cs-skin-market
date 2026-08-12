@@ -154,9 +154,15 @@ def render_discover_html(results, market_th=50):
     except Exception:
         pass
     sorted_r = sorted(results, key=lambda r: -(r.get("composite", 0) or r.get("score", 0) or 0))
-    top10 = sorted_r[:10]
+    # 2026-08-12 贴纸独立 Top10：贴纸（sticker）不与枪皮混排（事件脉冲 vs 统计反转，品类形态差异大）
+    def _is_sticker(r):
+        return (r.get("category") or discover_category(r.get("name") or "")) == "sticker"
+    top10 = [r for r in sorted_r if not _is_sticker(r)][:10]
+    sticker_sorted = [r for r in sorted_r if _is_sticker(r)]
+    sticker_top10 = sticker_sorted[:10]
     errors = [r for r in sorted_r if r.get("error")]
     ok_count = len(sorted_r) - len(errors)
+    sticker_count = len(sticker_sorted)
 
     from collections import defaultdict
     by_type = defaultdict(list)
@@ -187,11 +193,9 @@ def render_discover_html(results, market_th=50):
         market_note = (' <span style="font-size:12px;color:var(--yellow);">(大盘TH=' + str(market_th)
                        + ' 偏弱，仅展示高分低估品)</span>')
 
-    rows = []
-    for idx, r in enumerate(top10):
+    def _to_row(idx, r):
         if r.get("error"):
-            rows.append({"error": r.get("error", ""), "name": r["name"]})
-            continue
+            return {"error": r.get("error", ""), "name": r["name"]}
         g = r.get("grade", "Z")
         grade_cls = {"S": "grade-s", "A": "grade-a", "B": "grade-b", "C": "grade-c"}.get(g, "grade-z")
         cp = r.get("cycle_label", "") or r.get("cycle_phase", "")
@@ -199,14 +203,18 @@ def render_discover_html(results, market_th=50):
         pct_clr = "green" if pct <= 25 else ("yellow" if pct <= 50 else "red")
         comp = r.get("composite", 0) or r.get("score", 0)
         rank_style = "font-weight:800;font-size:16px;" + ("color:#ffd700;" if idx == 0 else "color:var(--text-muted);")
-        esc_name = r["name"].replace("'", "\\'").replace('"', '&quot;')
-        rows.append({"rank": idx + 1, "rank_style": rank_style, "grade": g, "grade_cls": grade_cls,
-                     "category": DISCOVER_CATEGORY_LABELS.get(
-                         r.get("category") or discover_category(r["name"]), ""),
-                     "name": r["name"], "esc_name": esc_name,
-                     "price": float(r.get("price_rmb", 0) or 0),
-                     "score": float(r.get("score", 0) or 0),
-                     "comp": float(comp or 0), "pct": float(pct or 0), "pct_clr": pct_clr,
-                     "cycle_label": cp, "in_wl": r["name"] in _wl_names})
+        esc_name = r["name"].replace("'", "\'").replace('"', '&quot;')
+        return {"rank": idx + 1, "rank_style": rank_style, "grade": g, "grade_cls": grade_cls,
+                "category": DISCOVER_CATEGORY_LABELS.get(
+                    r.get("category") or discover_category(r.get("name") or ""), ""),
+                "name": r["name"], "esc_name": esc_name,
+                "price": float(r.get("price_rmb", 0) or 0),
+                "score": float(r.get("score", 0) or 0),
+                "comp": float(comp or 0), "pct": float(pct or 0), "pct_clr": pct_clr,
+                "cycle_label": cp, "in_wl": r["name"] in _wl_names}
+
+    rows = [_to_row(idx, r) for idx, r in enumerate(top10)]
+    sticker_rows = [_to_row(idx, r) for idx, r in enumerate(sticker_top10)]
     return _tpl_env.get_template("partials/discover_html.html").render(
-        heatmap_rows=heatmap_rows, top10=rows, ok_count=ok_count, market_note=market_note)
+        heatmap_rows=heatmap_rows, top10=rows, sticker_top10=sticker_rows,
+        ok_count=ok_count, sticker_count=sticker_count, market_note=market_note)

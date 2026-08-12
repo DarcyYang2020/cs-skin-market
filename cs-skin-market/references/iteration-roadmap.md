@@ -347,3 +347,5 @@ eferences/refit_pipeline.py → data/refit_pipeline_report.json（A2 三件套�
   - S-3（P2，研究）：战队竞技状态 proxy + 尖顶离场规则（sell-the-news）；
   - S-4（P2，流程）：贴纸 A2 检验假设修正（低估区反弹 → 事件驱动框架）；
   - S-5（P2，配置）：EVENT_CALENDAR 补 Major 赛程（用户配置；2025-11-20 布达佩斯贴纸上市已从数据确认 Major 在 11 月）。
+
+- 发现高分品·贴纸独立 Top10（**2026-08-12 立项，P2 展示层**，见 decision-log 同条目）——结果栏「综合榜/贴纸榜」双 Tab，贴纸不与枪皮混排（sticker 108 品已占总榜，MOUZ 2021 全息 9.0 居首）；`discover_latest.json` 已含 category，纯前端过滤 + 渲染拆分，零决策参数。

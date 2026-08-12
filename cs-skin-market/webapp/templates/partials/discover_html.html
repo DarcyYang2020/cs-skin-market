@@ -15,38 +15,66 @@
   </table>
 </div>
 {% endif %}
+
+{% macro disc_table(rows) %}
+<div class="card-body" style="padding:0;"><div class="table-wrap"><table class="data-table" style="width:100%;">
+  <thead><tr><th>#</th><th>评级</th><th>品类</th><th>名称</th><th>价格</th><th>评分</th><th>综合</th><th>%位</th><th>周期</th><th>操作</th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+  {% if r.error %}
+    <tr><td colspan="10" style="color:var(--danger);padding:12px 16px;">{{ r.name }}: {{ r.error }}</td></tr>
+  {% else %}
+    <tr>
+      <td style="{{ r.rank_style }}">{{ r.rank }}</td>
+      <td><span class="{{ r.grade_cls }}">{{ r.grade }}</span></td>
+      <td>{% if r.category %}<span style="font-size:11px;color:var(--text-muted);border:1px solid var(--border);border-radius:4px;padding:1px 6px;">{{ r.category }}</span>{% endif %}</td>
+      <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><a href="javascript:void(0)" onclick="showDiscoverReport('{{ r.esc_name|safe }}')" style="color:var(--accent);text-decoration:none;cursor:pointer;" title="查看分析报告">{{ r.name }}</a></td>
+      <td>¥{{ "%.2f"|format(r.price) }}</td>
+      <td>{{ "%.1f"|format(r.score) }}</td>
+      <td style="font-weight:600;">{{ "%.1f"|format(r.comp) }}</td>
+      <td class="{{ r.pct_clr }}">{{ "%.0f"|format(r.pct) }}%</td>
+      <td style="font-size:12px;">{{ r.cycle_label }}</td>
+      <td style="white-space:nowrap;">
+      {% if r.in_wl %}
+        <button class="btn btn-xs btn-outline" disabled style="opacity:.55;cursor:default;" title="已在自选">✓ 已自选</button>
+      {% else %}
+        <button class="btn btn-xs btn-outline" onclick="addToWatchlist('{{ r.esc_name|safe }}', this)" title="加入自选">➕ 加入自选</button>
+      {% endif %}
+        <button class="btn btn-xs btn-outline" onclick="refreshDiscoverItem('{{ r.esc_name|safe }}', this)" title="强制联网重采此品并重算评分">⚡ 刷新</button>
+      </td>
+    </tr>
+  {% endif %}
+  {% endfor %}
+  </tbody>
+</table></div></div>
+{% endmacro %}
+
 <div class="card">
   <div class="card-header"><span class="card-title">🔍 Top 10 高分饰品</span>
-  <span class="card-subtitle">已扫描 {{ ok_count }} 个饰品，展示前10{{ market_note|safe }}
+    <div style="display:inline-flex;gap:6px;margin-left:12px;vertical-align:middle;" id="discover-tabs">
+      <button id="tab-btn-all" class="btn btn-sm btn-primary" onclick="switchDiscoverTab('all')">综合榜</button>
+      <button id="tab-btn-sticker" class="btn btn-sm btn-outline" onclick="switchDiscoverTab('sticker')">🏷️ 贴纸榜 ({{ sticker_count }})</button>
+    </div>
+  <span class="card-subtitle">已扫描 {{ ok_count }} 个饰品，各展示前10{{ market_note|safe }}
     <button class="btn btn-sm btn-outline" onclick="refreshDiscover()" style="margin-left:8px;">🔄 刷新</button></span></div>
-  <div class="card-body" style="padding:0;"><div class="table-wrap"><table class="data-table" style="width:100%;">
-    <thead><tr><th>#</th><th>评级</th><th>品类</th><th>名称</th><th>价格</th><th>评分</th><th>综合</th><th>%位</th><th>周期</th><th>操作</th></tr></thead>
-    <tbody>
-    {% for r in top10 %}
-    {% if r.error %}
-      <tr><td colspan="10" style="color:var(--danger);padding:12px 16px;">{{ r.name }}: {{ r.error }}</td></tr>
-    {% else %}
-      <tr>
-        <td style="{{ r.rank_style }}">{{ r.rank }}</td>
-        <td><span class="{{ r.grade_cls }}">{{ r.grade }}</span></td>
-        <td>{% if r.category %}<span style="font-size:11px;color:var(--text-muted);border:1px solid var(--border);border-radius:4px;padding:1px 6px;">{{ r.category }}</span>{% endif %}</td>
-        <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><a href="javascript:void(0)" onclick="showDiscoverReport('{{ r.esc_name|safe }}')" style="color:var(--accent);text-decoration:none;cursor:pointer;" title="查看分析报告">{{ r.name }}</a></td>
-        <td>¥{{ "%.2f"|format(r.price) }}</td>
-        <td>{{ "%.1f"|format(r.score) }}</td>
-        <td style="font-weight:600;">{{ "%.1f"|format(r.comp) }}</td>
-        <td class="{{ r.pct_clr }}">{{ "%.0f"|format(r.pct) }}%</td>
-        <td style="font-size:12px;">{{ r.cycle_label }}</td>
-        <td style="white-space:nowrap;">
-        {% if r.in_wl %}
-          <button class="btn btn-xs btn-outline" disabled style="opacity:.55;cursor:default;" title="已在自选">✓ 已自选</button>
-        {% else %}
-          <button class="btn btn-xs btn-outline" onclick="addToWatchlist('{{ r.esc_name|safe }}', this)" title="加入自选">➕ 加入自选</button>
-        {% endif %}
-          <button class="btn btn-xs btn-outline" onclick="refreshDiscoverItem('{{ r.esc_name|safe }}', this)" title="强制联网重采此品并重算评分">⚡ 刷新</button>
-        </td>
-      </tr>
-    {% endif %}
-    {% endfor %}
-    </tbody>
-  </table></div></div>
+
+  <div id="discover-tab-all">{{ disc_table(top10) }}</div>
+  <div id="discover-tab-sticker" style="display:none;">{{ disc_table(sticker_top10) }}</div>
 </div>
+
+<script>
+function switchDiscoverTab(tab) {
+  var a = document.getElementById('discover-tab-all');
+  var s = document.getElementById('discover-tab-sticker');
+  var ba = document.getElementById('tab-btn-all');
+  var bs = document.getElementById('tab-btn-sticker');
+  if (!a || !s || !ba || !bs) return;
+  if (tab === 'sticker') {
+    a.style.display = 'none'; s.style.display = '';
+    ba.className = 'btn btn-sm btn-outline'; bs.className = 'btn btn-sm btn-primary';
+  } else {
+    a.style.display = ''; s.style.display = 'none';
+    ba.className = 'btn btn-sm btn-primary'; bs.className = 'btn btn-sm btn-outline';
+  }
+}
+</script>

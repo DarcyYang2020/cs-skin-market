@@ -2621,3 +2621,12 @@ Fluxo 25→280 约 11 倍），尖顶后 3 天 -86~94%，与枪皮统计反转�
 
 **S-1 启动**：160 品深历史全量回填（研究快照 `data/_exp_sticker_deep_full.jsonl`，断点续跑：每品成功即 append 一行 + 进度文件 `data/_sticker_deep_full_progress.json`，可随时中断续跑；不进 price_history、不动引擎基线）。12 品种子已覆盖（585/435/264 点验证 fetch_history_deep 正常）。
 
+
+## 发现高分品·贴纸独立 Top10 立项（2026-08-12，纯展示层）
+
+**背景**：discover 池 237 品（skin 126 + sticker 108 + case 2 + charm 1）混合按 composite 排 Top10，贴纸已挤占总榜（MOUZ 2021 全息 9.0 居首）。贴纸与枪皮形态/驱动机制差异大（事件脉冲 vs 统计反转，见 first-principles-stickers.md §3.6），混合榜不利于枪皮与贴纸各自的高分品识别。
+
+**立项（P2，展示层零决策参数）**：发现页结果栏新增切换按钮——「综合榜 Top10」（不含贴纸品类，skin/case/charm 混合）与「贴纸榜 Top10」（仅 sticker 品类）双 Tab；热力图保持品类分桶现状。数据源 `discover_latest.json` results 已含 `category` 字段（M-6 落地），纯前端过滤 + 渲染层拆分，零引擎/零回测改动。
+
+**验证**：冒烟全量 + pyflakes 0 + 页面 Tab 切换实测。
+
