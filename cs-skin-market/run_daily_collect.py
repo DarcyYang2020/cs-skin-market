@@ -422,6 +422,25 @@ def main():
         log(f"信号跟踪回填: 更新 {_sig['updated']} 条, 累计 {_s['n_total']} 信号 / 已回填14d {_s['n_filled14']} / 30d {_s['n_filled30']}")
     except Exception as e:
         log(f"信号跟踪回填异常（不中断采集）: {e}")
+    # 生产信号对账 (2026-08-12, A-1): snapshots 当日 buy vs signal_tracking 新增, 防 C 通道生产口径静默空转
+    try:
+        import json as _json
+        from pipeline import db as _db
+        from pipeline.signal_tracking import reconcile_production_signals
+        _today_s = datetime.now(TZ_BJ).strftime("%Y-%m-%d")
+        _c_r = _db.get_conn()
+        try:
+            _rec = reconcile_production_signals(_c_r, _today_s)
+        finally:
+            _c_r.close()
+        _rec_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "signal_tracking_reconcile.jsonl")
+        with open(_rec_path, "a", encoding="utf-8") as _f:
+            _f.write(_json.dumps({**_rec, "ts": datetime.now(TZ_BJ).strftime("%Y-%m-%d %H:%M:%S")},
+                                 ensure_ascii=False) + "\n")
+        log(f"信号跟踪对账: snapshots_buy={len(_rec['snapshot_buy_items'])} tracked={len(_rec['tracked_items'])} "
+            f"missing={_rec['missing'] or '无'}")
+    except Exception as e:
+        log(f"信号跟踪对账异常（不中断采集）: {e}")
     # M1 监控模式 (2026-08-08): 自选品异动事件生成 + 日报 (纯提醒层, 只读引擎输出, 不触碰引擎参数)
     # 2026-08-08 采集提前至 18:00: 收尾仅生成事件+日报, 推送由独立任务 run_night_push.py 在 21:30 执行
     try:

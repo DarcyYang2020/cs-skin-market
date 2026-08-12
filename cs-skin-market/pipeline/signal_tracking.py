@@ -150,6 +150,28 @@ def tracking_summary(conn):
     }
 
 
+def reconcile_production_signals(conn, date):
+    """生产信号对账（2026-08-12，A-1）：snapshots 当日 buy/oversold_buy vs signal_tracking 当日新增。
+
+    防 J-2 C 通道生产口径静默空转（如 items 物理删除/重排 CASCADE 清空 signal_tracking 后无人察觉）。
+    返回 {date, snapshot_buy_items, tracked_items, missing, ok}；missing 非空 = 有 buy 信号但未落库。
+    只读，不写库；落痕由调用方（run_daily_collect.py）写 data/signal_tracking_reconcile.jsonl。
+    """
+    snap_items = [r[0] for r in conn.execute(
+        "SELECT DISTINCT item_id FROM snapshots WHERE substr(date,1,10)=? AND action IN ('buy','oversold_buy')",
+        (date,))]
+    tracked = [r[0] for r in conn.execute(
+        "SELECT DISTINCT item_id FROM signal_tracking WHERE signal_date=?", (date,))]
+    missing = sorted(set(snap_items) - set(tracked))
+    return {
+        "date": date,
+        "snapshot_buy_items": sorted(set(snap_items)),
+        "tracked_items": sorted(set(tracked)),
+        "missing": missing,
+        "ok": not missing,
+    }
+
+
 def run_backfill_once():
     """每日任务入口：回填 + 返回统计摘要。"""
     conn = db.get_conn()

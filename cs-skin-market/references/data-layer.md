@@ -61,6 +61,7 @@ discover 扩池（手动）→ 候选入库（items + 90日K线，立即落库�
 - **DB 备份**: `backup_db.py`（SQLite online backup → `data/backup/market_YYYYMMDD_HHMMSS.db`，保留 14 份）。
 - **J-2 监测**: 每日刷新 `data/j2_channel_status.json`（B 通道天数）。
 - **审计/异常台账（2026-08-10）**: `data/caliber_override_log.jsonl`（F-4 锚校正/脏价拦截留痕）、`data/bind_fail_log.jsonl`（G-5 IP 绑定失败/恢复）、`data/snapshot_error.log`（C-3 快照落库异常，统一 data/ 目录），均为追加型审计日志，随数据保留策略不主动清理。
+- **signal_tracking 级联防护 + 对账（2026-08-12）**: `signal_tracking` 外键 `items(id) ON DELETE CASCADE`——items 物理删除/重排（如 2026-08-11 id 重排）会静默清空该表（曾丢 1 行，已从 `data/market.db.bak-before-reindex-20260811` 回填）；执行 items 级批量操作前必须备份并对账。每日任务挂 `reconcile_production_signals`：snapshots 当日 buy/oversold_buy vs signal_tracking 当日新增查缺失，写 `data/signal_tracking_reconcile.jsonl`（追加不清理），异常不中断采集。
 - **保留策略（2026-08-09 落地，`pipeline/db.py:run_retention_cleanup`）**: price_history / snapshots / market_index / monitor_events 365 天；scan_*.md 旧报告 90 天；进度文件（scan_progress_*/discover_progress_*）7 天；scan_history JSON 保留最近 30 份；monitor_rank_snapshot 为研究型积累不清理。清理由批量扫描收尾与每日任务自动执行（含 VACUUM）；台账与备份按各自规则。
 
 ## 5. 数据库表（market.db）

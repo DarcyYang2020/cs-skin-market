@@ -1792,6 +1792,26 @@ def t_signal_tracking():
     m.close()
 check('生产实盘信号跟踪: 表/记录去重/回填口径', t_signal_tracking)
 
+def t_signal_reconcile():
+    import sqlite3
+    from pipeline import signal_tracking as _st
+    m = sqlite3.connect(':memory:')
+    m.row_factory = sqlite3.Row
+    _st.ensure_schema(m)
+    m.execute("CREATE TABLE snapshots (id INTEGER PRIMARY KEY AUTOINCREMENT, item_id INTEGER, date TEXT, action TEXT)")
+    m.execute("INSERT INTO snapshots (item_id, date, action) VALUES (1, '2026-08-12 10:00:00', 'buy')")
+    m.execute("INSERT INTO snapshots (item_id, date, action) VALUES (2, '2026-08-12 11:00:00', 'oversold_buy')")
+    r = _st.reconcile_production_signals(m, '2026-08-12')
+    assert r['snapshot_buy_items'] == [1, 2] and r['missing'] == [1, 2] and r['ok'] is False, r
+    _st.record_buy_signal(m, item_id=1, item_name='A', signal_date='2026-08-12',
+                          action='buy', action_label='🟢 分批建仓', entry_price=100.0, source='analyze')
+    r2 = _st.reconcile_production_signals(m, '2026-08-12')
+    assert r2['missing'] == [2] and r2['ok'] is False, r2  # item2 仍缺失
+    r3 = _st.reconcile_production_signals(m, '2026-08-13')
+    assert r3['ok'] is True and r3['missing'] == [], r3  # 无 buy 无记录 = 正常
+    m.close()
+check('生产信号对账: snapshots buy vs signal_tracking 缺失检测', t_signal_reconcile)
+
 def t_cost_sensitivity():
     import json as _J
     from pathlib import Path

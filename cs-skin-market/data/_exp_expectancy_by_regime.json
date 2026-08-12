@@ -1,0 +1,253 @@
+{
+ "generated": "2026-08-12 16:28",
+ "source": "data/item_backtest_full_2025.json",
+ "total_signals": 317,
+ "note": "B-1 状态分层聚合（只读展示口径）：regime 取 market_context.state_bucket （sent/market_th/mkt_chg30 三输入六态）；族划分同 ITEM_EXPECTANCY_STATS 展示口径（恐慌/深值/其余）；net14/net30 已扣 2% 双边成本；win = net > 0。不参与引擎决策，仅供选股/择时 alpha 状态分层评估。",
+ "families": [
+  "panic",
+  "deep_value",
+  "accumulate"
+ ],
+ "regimes": {
+  "贪婪禁入": {
+   "signals": 2,
+   "family": {
+    "panic": {
+     "n": 0,
+     "n14": 0,
+     "win14": null,
+     "avg14": null,
+     "n30": 0,
+     "win30": null,
+     "avg30": null
+    },
+    "deep_value": {
+     "n": 0,
+     "n14": 0,
+     "win14": null,
+     "avg14": null,
+     "n30": 0,
+     "win30": null,
+     "avg30": null
+    },
+    "accumulate": {
+     "n": 2,
+     "n14": 2,
+     "win14": 100.0,
+     "avg14": 44.32,
+     "n30": 2,
+     "win30": 100.0,
+     "avg30": 184.87
+    }
+   },
+   "total": {
+    "n14": 2,
+    "win14": 100.0,
+    "avg14": 44.32,
+    "n30": 2,
+    "win30": 100.0,
+    "avg30": 184.87
+   }
+  },
+  "V型底区": {
+   "signals": 40,
+   "family": {
+    "panic": {
+     "n": 40,
+     "n14": 40,
+     "win14": 100.0,
+     "avg14": 46.1,
+     "n30": 40,
+     "win30": 72.5,
+     "avg30": 35.35
+    },
+    "deep_value": {
+     "n": 0,
+     "n14": 0,
+     "win14": null,
+     "avg14": null,
+     "n30": 0,
+     "win30": null,
+     "avg30": null
+    },
+    "accumulate": {
+     "n": 0,
+     "n14": 0,
+     "win14": null,
+     "avg14": null,
+     "n30": 0,
+     "win30": null,
+     "avg30": null
+    }
+   },
+   "total": {
+    "n14": 40,
+    "win14": 100.0,
+    "avg14": 46.1,
+    "n30": 40,
+    "win30": 72.5,
+    "avg30": 35.35
+   }
+  },
+  "阴跌中继区": {
+   "signals": 6,
+   "family": {
+    "panic": {
+     "n": 4,
+     "n14": 4,
+     "win14": 100.0,
+     "avg14": 26.14,
+     "n30": 4,
+     "win30": 100.0,
+     "avg30": 16.88
+    },
+    "deep_value": {
+     "n": 0,
+     "n14": 0,
+     "win14": null,
+     "avg14": null,
+     "n30": 0,
+     "win30": null,
+     "avg30": null
+    },
+    "accumulate": {
+     "n": 2,
+     "n14": 2,
+     "win14": 0.0,
+     "avg14": -19.56,
+     "n30": 0,
+     "win30": null,
+     "avg30": null
+    }
+   },
+   "total": {
+    "n14": 6,
+    "win14": 66.7,
+    "avg14": 10.91,
+    "n30": 4,
+    "win30": 100.0,
+    "avg30": 16.88
+   }
+  },
+  "恐慌浅跌": {
+   "signals": 0,
+   "family": {
+    "panic": {
+     "n": 0,
+     "n14": 0,
+     "win14": null,
+     "avg14": null,
+     "n30": 0,
+     "win30": null,
+     "avg30": null
+    },
+    "deep_value": {
+     "n": 0,
+     "n14": 0,
+     "win14": null,
+     "avg14": null,
+     "n30": 0,
+     "win30": null,
+     "avg30": null
+    },
+    "accumulate": {
+     "n": 0,
+     "n14": 0,
+     "win14": null,
+     "avg14": null,
+     "n30": 0,
+     "win30": null,
+     "avg30": null
+    }
+   },
+   "total": {
+    "n14": 0,
+    "win14": null,
+    "avg14": null,
+    "n30": 0,
+    "win30": null,
+    "avg30": null
+   }
+  },
+  "中性企稳": {
+   "signals": 163,
+   "family": {
+    "panic": {
+     "n": 0,
+     "n14": 0,
+     "win14": null,
+     "avg14": null,
+     "n30": 0,
+     "win30": null,
+     "avg30": null
+    },
+    "deep_value": {
+     "n": 13,
+     "n14": 13,
+     "win14": 84.6,
+     "avg14": 9.82,
+     "n30": 13,
+     "win30": 61.5,
+     "avg30": 44.94
+    },
+    "accumulate": {
+     "n": 150,
+     "n14": 150,
+     "win14": 64.0,
+     "avg14": 9.8,
+     "n30": 150,
+     "win30": 58.0,
+     "avg30": 17.94
+    }
+   },
+   "total": {
+    "n14": 163,
+    "win14": 65.6,
+    "avg14": 9.8,
+    "n30": 163,
+    "win30": 58.3,
+    "avg30": 20.1
+   }
+  },
+  "弱市观望": {
+   "signals": 106,
+   "family": {
+    "panic": {
+     "n": 48,
+     "n14": 48,
+     "win14": 81.2,
+     "avg14": 16.49,
+     "n30": 48,
+     "win30": 77.1,
+     "avg30": 10.87
+    },
+    "deep_value": {
+     "n": 14,
+     "n14": 14,
+     "win14": 42.9,
+     "avg14": 13.15,
+     "n30": 9,
+     "win30": 66.7,
+     "avg30": 60.99
+    },
+    "accumulate": {
+     "n": 44,
+     "n14": 44,
+     "win14": 61.4,
+     "avg14": 10.98,
+     "n30": 44,
+     "win30": 86.4,
+     "avg30": 21.98
+    }
+   },
+   "total": {
+    "n14": 106,
+    "win14": 67.9,
+    "avg14": 13.76,
+    "n30": 101,
+    "win30": 80.2,
+    "avg30": 20.18
+   }
+  }
+ }
+}

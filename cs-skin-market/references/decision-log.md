@@ -2810,3 +2810,28 @@ Fluxo 25→280 约 11 倍），尖顶后 3 天 -86~94%，与枪皮统计反转�
 **验证**：冒烟 100 passed / 0 failed，pyflakes 无告警，服务已重启。
 
 **学到的新思路**：「查看报告」与「分析」语义分离是性能前提——报告弹窗本质是查看已生成结果，重跑引擎的实时性收益远小于等待成本；缓存必须带语义例外（持仓品保留实时建议卡片），否则展示层功能会被缓存吞掉。
+## 生产信号跟踪恢复 + 对账挂接 + B-1 regime 分层聚合（2026-08-12）
+
+**背景**：产品立项书（references/product-pm-initiation.md）A-1 声称「record_buy_signal 仅在 pipeline/scan_tasks.py:187 挂接、webapp/analysis_service.py 只 import 未挂接」导致 signal_tracking 0 行，Q1 需实证诊断；Q3 需评估回放产物能否按 market regime 分层聚合。本条目即 A-1/Q1/Q3 的落地。
+
+**Q1 诊断结论（2026-08-12 实证）**：
+1. **链路本身是通的**：`record_buy_signal` 有两个挂接点——`webapp/analysis_service.py:646`（analyze_fresh，2026-08-07）+ `pipeline/scan_tasks.py:187`（batch_scan）。PM 版判断不成立。
+2. signal_tracking **曾有 1 行**：`monitor_events` id=459（08-09 `new_buy_signal`，AK-47 轨道 Mk01，入场 ¥717.49，dedup_key 带旧 id 59）可证。
+3. **行在 2026-08-11 items id 重排后丢失**：commit `1060af7` 明确记录「同步更新 8 张引用表」；备份证据——`data/market.db.bak-before-reindex-20260811` 有 1 行；`data/market.db.bak-execadvice-20260812`（08-12 13:43）已是 0 行。
+4. 后续 0 行**正常**：08-12「已到买点」是 near_buy proximity 100%（watch 级）非 fusion buy；弱市下近 8 天无新 buy。
+5. 根因隐患：`signal_tracking` 表定义含 `ON DELETE CASCADE`（`pipeline/signal_tracking.py:26`），items 物理删除/重排是唯一清空路径。
+6. Q2 口径确认：entry=信号日 chart close、action_label=fusion action_label、engine_version=v2-I13、去重键 (item_id, signal_date, action_label)（UNIQUE 约束），与回放口径一致（恢复行实测相符）。
+
+**落地（零决策参数，数据/监测层 + 只读聚合）**：
+- **备份回填 1 行**：`data/market.db.bak-before-reindex-20260811` → 当前 `market.db`（item_id 59→44，去重键校验后插入，created_at/engine_version 保留），monitor_events 事件留存不变。
+- **级联防护**：`pipeline/signal_tracking.py` 新增 `reconcile_production_signals(conn, date)`——snapshots 当日 buy/oversold_buy vs signal_tracking 当日新增查缺失，只读返回 dict；`run_daily_collect.py` 每日任务挂接，缺失留痕 `data/signal_tracking_reconcile.jsonl`（追加不清理），异常不中断采集。
+- **data-layer.md §4** 维护清单补「items 物理删除/重排前必须检查 signal_tracking + 对账 jsonl 说明」。
+- **B-1 只读聚合**：新脚本 `references/expectancy_by_regime.py` → 产物 `data/_exp_expectancy_by_regime.json`——回放 317 信号已含 `sentiment / market_th / mkt_chg30`，直接套 `pipeline/market_context.py:161 state_bucket`（六态）× 族（panic/deep_value/accumulate，同 `ITEM_EXPECTANCY_STATS` 展示键）分层 net14/net30（已扣 2%，win=net>0）；**免重跑回放、`t_expectancy_sync` 未触碰**。B-1 由 B 线升 A 线（展示层接入属前端任务，另行排期）。
+
+**关键分层结果（V 型底区 panic n=40 win14 100% avg14 +46.1%；弱市观望 panic n=48 win14 81.2%；中性企稳 accumulate n=150 win14 64.0%；弱市观望 deep_value n=14 win14 42.9%）**：全窗口均值（win14 71%）确实掩盖 regime 差异——恐慌共振信号高度集中于 V 型底区/弱市且胜率显著更高，深值族在弱市表现弱（与 I-13「深值仅大盘企稳/修复环境触发」定论方向一致，样本层新增证据，**不动参数**）。B-1 展示口径有增量信息。
+
+**验证**：冒烟 101 passed / 0 failed（新增 `t_signal_reconcile` 缺失检测）；pyflakes 新增代码 0 告警；恢复后 signal_tracking = 1 行（44 轨道 Mk01，08-09）；服务重启生效。
+
+**待办**：B-1 展示层接入（A 线前端任务）；Q7 advice_id 回链暂缓（executions 仅 8 行，≥20 行再审）；A 通道市场层恐慌事件台账（P2，用户确认后实施，见本日早前条目）。
+
+**学到的新思路**：① 外键级联（ON DELETE CASCADE）在「主表重排/物理删除」场景是数据静默丢失源——涉及引用表的批量操作必须带备份对账；② 监测数据「0 行」先分「链路断 vs 无事件」再处置，本次实证是后者占主因（近 8 天无 fusion buy）；③ 回放产物已含 regime 三输入字段，状态分层聚合无需重跑回放，展示口径扩展成本可以很低。
