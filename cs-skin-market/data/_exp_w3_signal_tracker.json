@@ -1,657 +1,848 @@
 {
  "meta": {
-  "title": "W-3 吸筹信号跟踪（每日重跑）",
+  "title": "W-3 吸筹信号跟踪 v3（每日重跑，已挂 run_daily_collect.py）",
   "date": "2026-08-12",
-  "deep_last_date": "2026-08-11",
-  "price_history_last_date": "2026-08-12",
-  "sticker_items": 148,
-  "note": "深历史刷新后重跑本脚本即可推进落地状态"
+  "key_finding": "吸筹 alpha 仅存在于市场非暴跌期：早段市场 med -3.3% 时信号 +18.2%（alpha +21.5pp）；2026-06-13 后市场暴跌（全池 med -18.3%）信号跟随 beta（alpha~0）——市场暴跌期禁买",
+  "note": "market_med30 = deep 全池同日 30d 中位；alpha = ret30 - market_med30"
+ },
+ "status": {
+  "n_total": 66,
+  "n_done": 39,
+  "n_pending": 27,
+  "r30": {
+   "n": 39,
+   "win": 0.6923,
+   "median": 0.1821,
+   "mean_net": 0.2607
+  },
+  "alpha": {
+   "n": 39,
+   "median": 0.0857,
+   "win_gt0": 0.8205
+  },
+  "by_src": {
+   "deep": {
+    "n": 34,
+    "r30": {
+     "n": 34,
+     "win": 0.7647,
+     "median": 0.1918,
+     "mean_net": 0.3053
+    },
+    "alpha": {
+     "n": 34,
+     "median": 0.0837,
+     "win_gt0": 0.7941
+    }
+   },
+   "ph": {
+    "n": 5,
+    "r30": {
+     "n": 5,
+     "win": 0.2,
+     "median": -0.0481,
+     "mean_net": -0.0422
+    },
+    "alpha": {
+     "n": 5,
+     "median": 0.1734,
+     "win_gt0": 1.0
+    }
+   }
+  },
+  "regime": {
+   "crash(market<=-10%)": {
+    "n": 13,
+    "r30": {
+     "n": 13,
+     "win": 0.3077,
+     "median": -0.1016,
+     "mean_net": 0.3912
+    },
+    "alpha": {
+     "n": 13,
+     "median": 0.0739,
+     "win_gt0": 0.6923
+    }
+   },
+   "calm(market>-10%)": {
+    "n": 26,
+    "r30": {
+     "n": 26,
+     "win": 0.8846,
+     "median": 0.1981,
+     "mean_net": 0.1955
+    },
+    "alpha": {
+     "n": 26,
+     "median": 0.0933,
+     "win_gt0": 0.8846
+    }
+   }
+  },
+  "supply_layers_alpha_ph": {
+   "shrink": {
+    "n": 0
+   },
+   "stable": {
+    "n": 3,
+    "median": 0.1775,
+    "win_gt0": 1.0
+   },
+   "expand": {
+    "n": 2,
+    "median": 0.0476,
+    "win_gt0": 1.0
+   },
+   "na": {
+    "n": 0
+   }
+  },
+  "pending_eta": [
+   "2026-08-14",
+   "2026-08-15",
+   "2026-08-16",
+   "2026-08-17",
+   "2026-08-18",
+   "2026-08-19",
+   "2026-08-20",
+   "2026-08-22",
+   "2026-08-23",
+   "2026-08-25",
+   "2026-08-26",
+   "2026-08-27",
+   "2026-08-28",
+   "2026-08-29",
+   "2026-09-03",
+   "2026-09-09"
+  ]
  },
  "signals": [
   {
    "name": "印花 | Natus Vincere （全息） | 2021年斯德哥尔摩锦标赛",
-   "t": 348,
    "date": "2025-12-17",
-   "px": 17.68,
    "ret30": 0.1821266968325792,
-   "ret90": 0.9315610859728507
+   "src30": "deep",
+   "market_med30": 0.12301369863013711,
+   "alpha": 0.0591,
+   "ins_chg7d": null,
+   "ins_pct_rank": null,
+   "eta": null
   },
   {
    "name": "印花 | Team Liquid （全息） | 2021年斯德哥尔摩锦标赛",
-   "t": 348,
    "date": "2025-12-17",
-   "px": 31.79,
    "ret30": 0.2582573136206354,
-   "ret90": 0.32117017930166725
+   "src30": "deep",
+   "market_med30": 0.12301369863013711,
+   "alpha": 0.1352,
+   "ins_chg7d": null,
+   "ins_pct_rank": null,
+   "eta": null
   },
   {
    "name": "印花 | Copenhagen Flames （全息） | 2021年斯德哥尔摩锦标赛",
-   "t": 350,
    "date": "2025-12-19",
-   "px": 114.3,
    "ret30": 0.24129483814523178,
-   "ret90": 0.01128608923884511
+   "src30": "deep",
+   "market_med30": 0.22522321428571446,
+   "alpha": 0.0161,
+   "ins_chg7d": null,
+   "ins_pct_rank": null,
+   "eta": null
   },
   {
    "name": "印花 | paiN Gaming （全息） | 2021年斯德哥尔摩锦标赛",
-   "t": 351,
    "date": "2025-12-20",
-   "px": 29.8,
    "ret30": 0.3087248322147651,
-   "ret90": 1.7751677852348995
+   "src30": "deep",
+   "market_med30": 0.19476744186046524,
+   "alpha": 0.114,
+   "ins_chg7d": null,
+   "ins_pct_rank": null,
+   "eta": null
   },
   {
    "name": "印花 | G2 Esports （全息） | 2021年斯德哥尔摩锦标赛",
-   "t": 352,
    "date": "2025-12-21",
-   "px": 18.14,
    "ret30": 0.30650496141124584,
-   "ret90": 2.252480705622933
+   "src30": "deep",
+   "market_med30": 0.20558636270281383,
+   "alpha": 0.1009,
+   "ins_chg7d": null,
+   "ins_pct_rank": null,
+   "eta": null
   },
   {
    "name": "印花 | IHC Esports（全息）| 2022年里约热内卢锦标赛",
-   "t": 353,
    "date": "2025-12-22",
-   "px": 6.99,
    "ret30": 0.27038626609442074,
-   "ret90": 0.22317596566523612
+   "src30": "deep",
+   "market_med30": 0.11298776936517174,
+   "alpha": 0.1574,
+   "ins_chg7d": null,
+   "ins_pct_rank": null,
+   "eta": null
   },
   {
    "name": "印花 | G2 Esports（全息）| 2025年奥斯汀锦标赛",
-   "t": 225,
    "date": "2026-01-13",
-   "px": 13.27,
    "ret30": 0.425018839487566,
-   "ret90": 1.049736247174077
+   "src30": "deep",
+   "market_med30": -0.01483050847457612,
+   "alpha": 0.4398,
+   "ins_chg7d": null,
+   "ins_pct_rank": null,
+   "eta": null
   },
   {
    "name": "印花 | Lynn Vision（全息）| 2025年奥斯汀锦标赛",
-   "t": 228,
    "date": "2026-01-16",
-   "px": 69.8,
    "ret30": -0.04885386819484239,
-   "ret90": -0.37779369627507164
+   "src30": "deep",
+   "market_med30": -0.08018762564217119,
+   "alpha": 0.0313,
+   "ins_chg7d": null,
+   "ins_pct_rank": null,
+   "eta": null
   },
   {
    "name": "印花 | Team Liquid （全息） | 2021年斯德哥尔摩锦标赛",
-   "t": 385,
    "date": "2026-01-23",
-   "px": 36.72,
    "ret30": 0.17374727668845313,
-   "ret90": 0.04956427015250542
+   "src30": "deep",
+   "market_med30": 0.11214778876656095,
+   "alpha": 0.0616,
+   "ins_chg7d": null,
+   "ins_pct_rank": null,
+   "eta": null
   },
   {
    "name": "印花 | 9z Team（全息）| 2022年里约热内卢锦标赛",
-   "t": 385,
    "date": "2026-01-23",
-   "px": 23.0,
    "ret30": 0.19782608695652182,
-   "ret90": 0.21695652173913027
+   "src30": "deep",
+   "market_med30": 0.11214778876656095,
+   "alpha": 0.0857,
+   "ins_chg7d": null,
+   "ins_pct_rank": null,
+   "eta": null
   },
   {
    "name": "印花 | Natus Vincere （全息） | 2021年斯德哥尔摩锦标赛",
-   "t": 388,
    "date": "2026-01-26",
-   "px": 20.01,
    "ret30": 0.6341829085457271,
-   "ret90": 0.3088455772113943
+   "src30": "deep",
+   "market_med30": 0.08894794434891362,
+   "alpha": 0.5452,
+   "ins_chg7d": null,
+   "ins_pct_rank": null,
+   "eta": null
   },
   {
    "name": "印花 | GODSENT （全息） | 2021年斯德哥尔摩锦标赛",
-   "t": 388,
    "date": "2026-01-26",
-   "px": 63.79,
    "ret30": 0.2854679416836494,
-   "ret90": -0.1252547421225898
+   "src30": "deep",
+   "market_med30": 0.08894794434891362,
+   "alpha": 0.1965,
+   "ins_chg7d": null,
+   "ins_pct_rank": null,
+   "eta": null
   },
   {
    "name": "印花 | Vitality （全息） | 2021年斯德哥尔摩锦标赛",
-   "t": 389,
    "date": "2026-01-27",
-   "px": 27.5,
    "ret30": 0.3527272727272728,
-   "ret90": 0.16363636363636358
+   "src30": "deep",
+   "market_med30": 0.05996758508914102,
+   "alpha": 0.2928,
+   "ins_chg7d": null,
+   "ins_pct_rank": null,
+   "eta": null
   },
   {
    "name": "印花 | Team Spirit（全息）| 2022年里约热内卢锦标赛",
-   "t": 391,
    "date": "2026-01-29",
-   "px": 14.8,
    "ret30": 0.07972972972972969,
-   "ret90": 0.45270270270270263
+   "src30": "deep",
+   "market_med30": 0.07859922178988321,
+   "alpha": 0.0011,
+   "ins_chg7d": null,
+   "ins_pct_rank": null,
+   "eta": null
   },
   {
    "name": "印花 | Grayhound Gaming（全息）| 2022年里约热内卢锦标赛",
-   "t": 393,
    "date": "2026-01-31",
-   "px": 5.86,
    "ret30": 0.1382252559726962,
-   "ret90": 1.8668941979522184
+   "src30": "deep",
+   "market_med30": 0.006160164271047153,
+   "alpha": 0.1321,
+   "ins_chg7d": null,
+   "ins_pct_rank": null,
+   "eta": null
   },
   {
    "name": "印花 | IHC Esports（全息）| 2022年里约热内卢锦标赛",
-   "t": 395,
    "date": "2026-02-02",
-   "px": 9.37,
    "ret30": -0.09605122732123783,
-   "ret90": 7.271077908217716
+   "src30": "deep",
+   "market_med30": 0.008474576271186418,
+   "alpha": -0.1045,
+   "ins_chg7d": null,
+   "ins_pct_rank": null,
+   "eta": null
   },
   {
    "name": "印花 | Evil Geniuses （全息） | 2021年斯德哥尔摩锦标赛",
-   "t": 396,
    "date": "2026-02-03",
-   "px": 50.9,
    "ret30": 0.47347740667976423,
-   "ret90": -0.04145383104125733
+   "src30": "deep",
+   "market_med30": 0.07474226804123729,
+   "alpha": 0.3987,
+   "ins_chg7d": null,
+   "ins_pct_rank": null,
+   "eta": null
   },
   {
    "name": "印花 | Bad News Eagles（全息）| 2022年里约热内卢锦标赛",
-   "t": 396,
    "date": "2026-02-03",
-   "px": 8.14,
    "ret30": 0.04422604422604426,
-   "ret90": 1.0638820638820636
+   "src30": "deep",
+   "market_med30": 0.07474226804123729,
+   "alpha": -0.0305,
+   "ins_chg7d": null,
+   "ins_pct_rank": null,
+   "eta": null
   },
   {
    "name": "印花 | Team Spirit （全息） | 2021年斯德哥尔摩锦标赛",
-   "t": 402,
    "date": "2026-02-09",
-   "px": 60.0,
    "ret30": 0.19833333333333347,
-   "ret90": -0.21666666666666667
+   "src30": "deep",
+   "market_med30": 0.17467115325787708,
+   "alpha": 0.0237,
+   "ins_chg7d": null,
+   "ins_pct_rank": null,
+   "eta": null
   },
   {
    "name": "印花 | Ninjas in Pyjamas（全息）| 2022年里约热内卢锦标赛",
-   "t": 402,
    "date": "2026-02-09",
-   "px": 8.21,
    "ret30": -0.025578562728380105,
-   "ret90": 0.33739342265529837
+   "src30": "deep",
+   "market_med30": 0.17467115325787708,
+   "alpha": -0.2002,
+   "ins_chg7d": null,
+   "ins_pct_rank": null,
+   "eta": null
   },
   {
    "name": "印花 | Gambit Gaming （全息） | 2021年斯德哥尔摩锦标赛",
-   "t": 404,
    "date": "2026-02-11",
-   "px": 37.88,
    "ret30": 0.15628299894403375,
-   "ret90": -0.20274551214361147
+   "src30": "deep",
+   "market_med30": 0.07552083333333326,
+   "alpha": 0.0808,
+   "ins_chg7d": null,
+   "ins_pct_rank": null,
+   "eta": null
   },
   {
    "name": "印花 | paiN Gaming （全息） | 2021年斯德哥尔摩锦标赛",
-   "t": 409,
    "date": "2026-02-16",
-   "px": 37.8,
    "ret30": 0.7195767195767198,
-   "ret90": 0.08465608465608465
+   "src30": "deep",
+   "market_med30": 0.00746268656716409,
+   "alpha": 0.7121,
+   "ins_chg7d": null,
+   "ins_pct_rank": null,
+   "eta": null
   },
   {
    "name": "印花 | FURIA （全息） | 2021年斯德哥尔摩锦标赛",
-   "t": 410,
    "date": "2026-02-17",
-   "px": 58.38,
    "ret30": 0.017471736896197188,
-   "ret90": -0.25659472422062357
+   "src30": "deep",
+   "market_med30": 0.007623888182973326,
+   "alpha": 0.0098,
+   "ins_chg7d": null,
+   "ins_pct_rank": null,
+   "eta": null
   },
   {
    "name": "印花 | MOUZ（全息）| 2022年里约热内卢锦标赛",
-   "t": 411,
    "date": "2026-02-18",
-   "px": 12.17,
    "ret30": 0.23171733771569425,
-   "ret90": 0.3229252259654891
+   "src30": "deep",
+   "market_med30": 0.07620393521034896,
+   "alpha": 0.1555,
+   "ins_chg7d": null,
+   "ins_pct_rank": null,
+   "eta": null
   },
   {
    "name": "印花 | Lynn Vision（全息）| 2025年奥斯汀锦标赛",
-   "t": 271,
    "date": "2026-02-28",
-   "px": 66.7,
    "ret30": -0.18740629685157417,
-   "ret90": -0.4137931034482759
+   "src30": "deep",
+   "market_med30": -0.10806451612903234,
+   "alpha": -0.0793,
+   "ins_chg7d": null,
+   "ins_pct_rank": null,
+   "eta": null
   },
   {
    "name": "印花 | Vitality（全息）| 2022年里约热内卢锦标赛",
-   "t": 432,
    "date": "2026-03-11",
-   "px": 8.4,
    "ret30": 0.18571428571428572,
-   "ret90": 0.1880952380952381
+   "src30": "deep",
+   "market_med30": -0.0648936170212765,
+   "alpha": 0.2506,
+   "ins_chg7d": null,
+   "ins_pct_rank": null,
+   "eta": null
   },
   {
    "name": "印花 | Team Spirit（全息）| 2022年里约热内卢锦标赛",
-   "t": 441,
    "date": "2026-03-21",
-   "px": 14.0,
    "ret30": 0.3207142857142855,
-   "ret90": 0.2142857142857142
+   "src30": "deep",
+   "market_med30": -0.18884052127024753,
+   "alpha": 0.5096,
+   "ins_chg7d": null,
+   "ins_pct_rank": null,
+   "eta": null
   },
   {
    "name": "印花 | IHC Esports（全息）| 2022年里约热内卢锦标赛",
-   "t": 443,
    "date": "2026-03-23",
-   "px": 8.55,
    "ret30": 5.409356725146198,
-   "ret90": 24.473684210526315
+   "src30": "deep",
+   "market_med30": -0.21859197345959352,
+   "alpha": 5.6279,
+   "ins_chg7d": null,
+   "ins_pct_rank": null,
+   "eta": null
   },
   {
    "name": "印花 | Bad News Eagles（全息）| 2022年里约热内卢锦标赛",
-   "t": 446,
    "date": "2026-03-26",
-   "px": 8.5,
    "ret30": 1.0811764705882356,
-   "ret90": 0.5764705882352941
+   "src30": "deep",
+   "market_med30": -0.21343946078936693,
+   "alpha": 1.2946,
+   "ins_chg7d": null,
+   "ins_pct_rank": null,
+   "eta": null
   },
   {
    "name": "印花 | FURIA （全息） | 2021年斯德哥尔摩锦标赛",
-   "t": 451,
    "date": "2026-03-31",
-   "px": 58.0,
    "ret30": -0.12068965517241381,
-   "ret90": -0.32413793103448274
+   "src30": "deep",
+   "market_med30": -0.1946330476818281,
+   "alpha": 0.0739,
+   "ins_chg7d": null,
+   "ins_pct_rank": null,
+   "eta": null
   },
   {
    "name": "印花 | Copenhagen Flames （全息） | 2021年斯德哥尔摩锦标赛",
-   "t": 452,
    "date": "2026-04-01",
-   "px": 113.0,
    "ret30": -0.2646017699115045,
-   "ret90": -0.4663716814159292
+   "src30": "deep",
+   "market_med30": -0.2256528193220001,
+   "alpha": -0.0389,
+   "ins_chg7d": null,
+   "ins_pct_rank": null,
+   "eta": null
   },
   {
    "name": "印花 | Team Spirit （全息） | 2021年斯德哥尔摩锦标赛",
-   "t": 459,
    "date": "2026-04-08",
-   "px": 74.24,
    "ret30": -0.3547952586206896,
-   "ret90": -0.3561422413793104
+   "src30": "deep",
+   "market_med30": -0.22451835734096248,
+   "alpha": -0.1303,
+   "ins_chg7d": null,
+   "ins_pct_rank": null,
+   "eta": null
   },
   {
    "name": "印花 | AMKAL ESPORTS（全息）| 2024年哥本哈根锦标赛",
-   "t": 466,
    "date": "2026-04-15",
-   "px": 48.1,
    "ret30": -0.316008316008316,
-   "ret90": -0.5155925155925156
+   "src30": "deep",
+   "market_med30": -0.28668269230769233,
+   "alpha": -0.0293,
+   "ins_chg7d": null,
+   "ins_pct_rank": null,
+   "eta": null
   },
   {
    "name": "印花 | MOUZ （全息） | 2021年斯德哥尔摩锦标赛",
-   "t": 498,
    "date": "2026-05-17",
-   "px": 70.58,
-   "ret30": 0.005950694247662147
+   "ret30": 0.005950694247662147,
+   "src30": "deep",
+   "market_med30": -0.07560178810970758,
+   "alpha": 0.0816,
+   "ins_chg7d": null,
+   "ins_pct_rank": null,
+   "eta": null
   },
   {
    "name": "印花 | Lynn Vision（全息）| 2024年哥本哈根锦标赛",
-   "t": 517,
    "date": "2026-06-05",
-   "px": 32.2,
-   "ret30": 0.2229813664596274
+   "ret30": 0.21285627653123118,
+   "src30": "ph",
+   "market_med30": -0.1383673368815297,
+   "alpha": 0.3512,
+   "ins_chg7d": -0.0275,
+   "ins_pct_rank": 0.758,
+   "eta": null
   },
   {
    "name": "印花 | Evil Geniuses （全息） | 2021年斯德哥尔摩锦标赛",
-   "t": 519,
    "date": "2026-06-07",
-   "px": 38.9,
-   "ret30": -0.10025706940874035
+   "ret30": -0.17622355031497328,
+   "src30": "ph",
+   "market_med30": -0.1999238610230592,
+   "alpha": 0.0237,
+   "ins_chg7d": 0.0734,
+   "ins_pct_rank": 0.988,
+   "eta": null
   },
   {
    "name": "印花 | FURIA（全息）| 2024年哥本哈根锦标赛",
-   "t": 527,
    "date": "2026-06-15",
-   "px": 49.9,
-   "ret30": -0.044088176352705344
+   "ret30": -0.048096192384769476,
+   "src30": "ph",
+   "market_med30": -0.22555084745762716,
+   "alpha": 0.1775,
+   "ins_chg7d": -0.0843,
+   "ins_pct_rank": 0.44,
+   "eta": null
   },
   {
    "name": "印花 | KOI（全息）| 2024年哥本哈根锦标赛",
-   "t": 541,
    "date": "2026-06-29",
-   "px": 70.7,
-   "ret30": -0.11386138613861396
+   "ret30": -0.10157367668097295,
+   "src30": "ph",
+   "market_med30": -0.17300046756360704,
+   "alpha": 0.0714,
+   "ins_chg7d": 0.0586,
+   "ins_pct_rank": 0.769,
+   "eta": null
   },
   {
    "name": "印花 | Virtus.pro（全息）| 2024年哥本哈根锦标赛",
-   "t": 542,
    "date": "2026-06-30",
-   "px": 25.0,
-   "ret30": 0.0
+   "ret30": 0.0,
+   "src30": "ph",
+   "market_med30": -0.17340592953599349,
+   "alpha": 0.1734,
+   "ins_chg7d": -0.024,
+   "ins_pct_rank": 0.582,
+   "eta": null
   },
   {
    "name": "印花 | Team Liquid（全息）| 2024年上海锦标赛",
-   "t": 557,
    "date": "2026-07-15",
-   "px": 38.5
+   "ret30": null,
+   "src30": "pending",
+   "market_med30": null,
+   "alpha": null,
+   "ins_chg7d": -0.1047,
+   "ins_pct_rank": 0.341,
+   "eta": "2026-08-14"
   },
   {
    "name": "印花 | Eternal Fire（全息）| 2024年哥本哈根锦标赛",
-   "t": 558,
    "date": "2026-07-16",
-   "px": 30.8
+   "ret30": null,
+   "src30": "pending",
+   "market_med30": null,
+   "alpha": null,
+   "ins_chg7d": -0.2271,
+   "ins_pct_rank": 0.055,
+   "eta": "2026-08-15"
   },
   {
    "name": "印花 | Team Liquid （全息） | 2021年斯德哥尔摩锦标赛",
-   "t": 559,
    "date": "2026-07-17",
-   "px": 26.9
+   "ret30": null,
+   "src30": "pending",
+   "market_med30": null,
+   "alpha": null,
+   "ins_chg7d": -0.0211,
+   "ins_pct_rank": 0.011,
+   "eta": "2026-08-16"
   },
   {
    "name": "印花 | Vitality （全息） | 2021年斯德哥尔摩锦标赛",
-   "t": 559,
    "date": "2026-07-17",
-   "px": 21.8
+   "ret30": null,
+   "src30": "pending",
+   "market_med30": null,
+   "alpha": null,
+   "ins_chg7d": 0.027,
+   "ins_pct_rank": 0.451,
+   "eta": "2026-08-16"
   },
   {
    "name": "印花 | Team Spirit（全息）| 2022年里约热内卢锦标赛",
-   "t": 560,
    "date": "2026-07-18",
-   "px": 14.7
+   "ret30": null,
+   "src30": "pending",
+   "market_med30": null,
+   "alpha": null,
+   "ins_chg7d": 0.0794,
+   "ins_pct_rank": 0.286,
+   "eta": "2026-08-17"
   },
   {
    "name": "印花 | MOUZ（全息）| 2022年里约热内卢锦标赛",
-   "t": 560,
    "date": "2026-07-18",
-   "px": 10.7
+   "ret30": null,
+   "src30": "pending",
+   "market_med30": null,
+   "alpha": null,
+   "ins_chg7d": -0.0062,
+   "ins_pct_rank": 0.473,
+   "eta": "2026-08-17"
   },
   {
    "name": "印花 | M80（全息）| 2025年奥斯汀锦标赛",
-   "t": 410,
    "date": "2026-07-18",
-   "px": 28.7
+   "ret30": null,
+   "src30": "pending",
+   "market_med30": null,
+   "alpha": null,
+   "ins_chg7d": -0.0587,
+   "ins_pct_rank": 0.261,
+   "eta": "2026-08-17"
   },
   {
    "name": "印花 | Gambit Gaming （全息） | 2021年斯德哥尔摩锦标赛",
-   "t": 561,
    "date": "2026-07-19",
-   "px": 29.48
+   "ret30": null,
+   "src30": "pending",
+   "market_med30": null,
+   "alpha": null,
+   "ins_chg7d": -0.0252,
+   "ins_pct_rank": 0.132,
+   "eta": "2026-08-18"
   },
   {
    "name": "印花 | Team Spirit（全息）| 2025年布达佩斯锦标赛",
-   "t": 240,
    "date": "2026-07-19",
-   "px": 16.65
+   "ret30": null,
+   "src30": "pending",
+   "market_med30": null,
+   "alpha": null,
+   "ins_chg7d": -0.1254,
+   "ins_pct_rank": 0.272,
+   "eta": "2026-08-18"
   },
   {
    "name": "印花 | Team Spirit（全息）| 2025年奥斯汀锦标赛",
-   "t": 412,
    "date": "2026-07-20",
-   "px": 16.95
+   "ret30": null,
+   "src30": "pending",
+   "market_med30": null,
+   "alpha": null,
+   "ins_chg7d": -0.0305,
+   "ins_pct_rank": 0.793,
+   "eta": "2026-08-19"
   },
   {
    "name": "印花 | paiN Gaming（全息）| 2025年奥斯汀锦标赛",
-   "t": 412,
    "date": "2026-07-20",
-   "px": 13.09
+   "ret30": null,
+   "src30": "pending",
+   "market_med30": null,
+   "alpha": null,
+   "ins_chg7d": -0.0843,
+   "ins_pct_rank": 0.209,
+   "eta": "2026-08-19"
   },
   {
    "name": "印花 | FURIA （全息） | 2021年斯德哥尔摩锦标赛",
-   "t": 563,
    "date": "2026-07-21",
-   "px": 35.2
+   "ret30": null,
+   "src30": "pending",
+   "market_med30": null,
+   "alpha": null,
+   "ins_chg7d": 0.0413,
+   "ins_pct_rank": 0.846,
+   "eta": "2026-08-20"
   },
   {
    "name": "印花 | Sharks Esports （全息） | 2021年斯德哥尔摩锦标赛",
-   "t": 563,
    "date": "2026-07-21",
-   "px": 39.3
+   "ret30": null,
+   "src30": "pending",
+   "market_med30": null,
+   "alpha": null,
+   "ins_chg7d": -0.0782,
+   "ins_pct_rank": 0.176,
+   "eta": "2026-08-20"
   },
   {
    "name": "印花 | The Mongolz（全息）| 2025年奥斯汀锦标赛",
-   "t": 413,
    "date": "2026-07-21",
-   "px": 9.1
+   "ret30": null,
+   "src30": "pending",
+   "market_med30": null,
+   "alpha": null,
+   "ins_chg7d": -0.297,
+   "ins_pct_rank": 0.253,
+   "eta": "2026-08-20"
   },
   {
    "name": "印花 | paiN Gaming （全息） | 2021年斯德哥尔摩锦标赛",
-   "t": 565,
    "date": "2026-07-23",
-   "px": 30.2
+   "ret30": null,
+   "src30": "pending",
+   "market_med30": null,
+   "alpha": null,
+   "ins_chg7d": 0.0211,
+   "ins_pct_rank": 0.165,
+   "eta": "2026-08-22"
   },
   {
    "name": "印花 | G2 Esports （全息） | 2021年斯德哥尔摩锦标赛",
-   "t": 566,
    "date": "2026-07-24",
-   "px": 24.0
+   "ret30": null,
+   "src30": "pending",
+   "market_med30": null,
+   "alpha": null,
+   "ins_chg7d": 0.103,
+   "ins_pct_rank": 0.956,
+   "eta": "2026-08-23"
   },
   {
    "name": "印花 | Heroic （全息） | 2021年斯德哥尔摩锦标赛",
-   "t": 566,
    "date": "2026-07-24",
-   "px": 23.49
+   "ret30": null,
+   "src30": "pending",
+   "market_med30": null,
+   "alpha": null,
+   "ins_chg7d": 0.3342,
+   "ins_pct_rank": 0.978,
+   "eta": "2026-08-23"
   },
   {
    "name": "印花 | FURIA（全息）| 2024年哥本哈根锦标赛",
-   "t": 568,
    "date": "2026-07-26",
-   "px": 44.8
+   "ret30": null,
+   "src30": "pending",
+   "market_med30": null,
+   "alpha": null,
+   "ins_chg7d": -0.0487,
+   "ins_pct_rank": 0.538,
+   "eta": "2026-08-25"
   },
   {
    "name": "印花 | Aurora（全息）| 2025年奥斯汀锦标赛",
-   "t": 418,
    "date": "2026-07-26",
-   "px": 17.0
+   "ret30": null,
+   "src30": "pending",
+   "market_med30": null,
+   "alpha": null,
+   "ins_chg7d": -0.0503,
+   "ins_pct_rank": 0.011,
+   "eta": "2026-08-25"
   },
   {
    "name": "印花 | Lynn Vision（全息）| 2025年布达佩斯锦标赛",
-   "t": 247,
    "date": "2026-07-26",
-   "px": 14.75
+   "ret30": null,
+   "src30": "pending",
+   "market_med30": null,
+   "alpha": null,
+   "ins_chg7d": null,
+   "ins_pct_rank": null,
+   "eta": "2026-08-25"
   },
   {
    "name": "印花 | Natus Vincere （全息） | 2021年斯德哥尔摩锦标赛",
-   "t": 569,
    "date": "2026-07-27",
-   "px": 18.88
+   "ret30": null,
+   "src30": "pending",
+   "market_med30": null,
+   "alpha": null,
+   "ins_chg7d": 0.0734,
+   "ins_pct_rank": 0.725,
+   "eta": "2026-08-26"
   },
   {
    "name": "印花 | Complexity Gaming（全息）| 2025年奥斯汀锦标赛",
-   "t": 418,
    "date": "2026-07-27",
-   "px": 37.6
+   "ret30": null,
+   "src30": "pending",
+   "market_med30": null,
+   "alpha": null,
+   "ins_chg7d": -0.1328,
+   "ins_pct_rank": 0.065,
+   "eta": "2026-08-26"
   },
   {
    "name": "印花 | Natus Vincere（全息）| 2025年奥斯汀锦标赛",
-   "t": 420,
    "date": "2026-07-28",
-   "px": 9.81
+   "ret30": null,
+   "src30": "pending",
+   "market_med30": null,
+   "alpha": null,
+   "ins_chg7d": -0.1087,
+   "ins_pct_rank": 0.033,
+   "eta": "2026-08-27"
   },
   {
    "name": "印花 | FaZe Clan（全息）| 2022年里约热内卢锦标赛",
-   "t": 571,
    "date": "2026-07-29",
-   "px": 11.88
+   "ret30": null,
+   "src30": "pending",
+   "market_med30": null,
+   "alpha": null,
+   "ins_chg7d": 0.042,
+   "ins_pct_rank": 0.5,
+   "eta": "2026-08-28"
   },
   {
    "name": "印花 | TYLOO（全息）| 2025年布达佩斯锦标赛",
-   "t": 251,
    "date": "2026-07-30",
-   "px": 17.89
+   "ret30": null,
+   "src30": "pending",
+   "market_med30": null,
+   "alpha": null,
+   "ins_chg7d": null,
+   "ins_pct_rank": null,
+   "eta": "2026-08-29"
   },
   {
    "name": "印花 | Evil Geniuses （全息） | 2021年斯德哥尔摩锦标赛",
-   "t": 577,
    "date": "2026-08-04",
-   "px": 31.21
+   "ret30": null,
+   "src30": "pending",
+   "market_med30": null,
+   "alpha": null,
+   "ins_chg7d": 0.2342,
+   "ins_pct_rank": 0.407,
+   "eta": "2026-09-03"
   },
   {
    "name": "印花 | Tyloo （全息） | 2021年斯德哥尔摩锦标赛",
-   "t": 583,
    "date": "2026-08-10",
-   "px": 57.9
+   "ret30": null,
+   "src30": "pending",
+   "market_med30": null,
+   "alpha": null,
+   "ins_chg7d": null,
+   "ins_pct_rank": null,
+   "eta": "2026-09-09"
   }
- ],
- "status": {
-  "n_total": 66,
-  "n_done_30d": 39,
-  "n_pending": 27,
-  "done": {
-   "r30": {
-    "n": 39,
-    "win": 0.6923,
-    "median": 0.1821,
-    "mean": 0.2884,
-    "mean_net": 0.2627
-   },
-   "r90": {
-    "n": 33,
-    "win": 0.6667,
-    "median": 0.2143
-   }
-  },
-  "pending": {
-   "n": 27,
-   "eta_dates": [
-    "2026-07-15",
-    "2026-07-16",
-    "2026-07-17",
-    "2026-07-18",
-    "2026-07-19",
-    "2026-07-20",
-    "2026-07-21",
-    "2026-07-23",
-    "2026-07-24",
-    "2026-07-26",
-    "2026-07-27",
-    "2026-07-28",
-    "2026-07-29",
-    "2026-07-30",
-    "2026-08-04",
-    "2026-08-10"
-   ],
-   "list": [
-    {
-     "name": "印花 | Evil Geniuses （全息） | 2021年斯德哥尔摩锦标赛",
-     "date": "2026-08-04",
-     "eta": "2026-08-04"
-    },
-    {
-     "name": "印花 | Natus Vincere （全息） | 2021年斯德哥尔摩锦标赛",
-     "date": "2026-07-27",
-     "eta": "2026-07-27"
-    },
-    {
-     "name": "印花 | FaZe Clan（全息）| 2022年里约热内卢锦标赛",
-     "date": "2026-07-29",
-     "eta": "2026-07-29"
-    },
-    {
-     "name": "印花 | Team Spirit（全息）| 2025年奥斯汀锦标赛",
-     "date": "2026-07-20",
-     "eta": "2026-07-20"
-    },
-    {
-     "name": "印花 | Gambit Gaming （全息） | 2021年斯德哥尔摩锦标赛",
-     "date": "2026-07-19",
-     "eta": "2026-07-19"
-    },
-    {
-     "name": "印花 | FURIA （全息） | 2021年斯德哥尔摩锦标赛",
-     "date": "2026-07-21",
-     "eta": "2026-07-21"
-    },
-    {
-     "name": "印花 | Team Liquid （全息） | 2021年斯德哥尔摩锦标赛",
-     "date": "2026-07-17",
-     "eta": "2026-07-17"
-    },
-    {
-     "name": "印花 | G2 Esports （全息） | 2021年斯德哥尔摩锦标赛",
-     "date": "2026-07-24",
-     "eta": "2026-07-24"
-    },
-    {
-     "name": "印花 | Vitality （全息） | 2021年斯德哥尔摩锦标赛",
-     "date": "2026-07-17",
-     "eta": "2026-07-17"
-    },
-    {
-     "name": "印花 | Sharks Esports （全息） | 2021年斯德哥尔摩锦标赛",
-     "date": "2026-07-21",
-     "eta": "2026-07-21"
-    },
-    {
-     "name": "印花 | Tyloo （全息） | 2021年斯德哥尔摩锦标赛",
-     "date": "2026-08-10",
-     "eta": "2026-08-10"
-    },
-    {
-     "name": "印花 | Heroic （全息） | 2021年斯德哥尔摩锦标赛",
-     "date": "2026-07-24",
-     "eta": "2026-07-24"
-    },
-    {
-     "name": "印花 | paiN Gaming （全息） | 2021年斯德哥尔摩锦标赛",
-     "date": "2026-07-23",
-     "eta": "2026-07-23"
-    },
-    {
-     "name": "印花 | Team Spirit（全息）| 2022年里约热内卢锦标赛",
-     "date": "2026-07-18",
-     "eta": "2026-07-18"
-    },
-    {
-     "name": "印花 | MOUZ（全息）| 2022年里约热内卢锦标赛",
-     "date": "2026-07-18",
-     "eta": "2026-07-18"
-    },
-    {
-     "name": "印花 | Eternal Fire（全息）| 2024年哥本哈根锦标赛",
-     "date": "2026-07-16",
-     "eta": "2026-07-16"
-    },
-    {
-     "name": "印花 | FURIA（全息）| 2024年哥本哈根锦标赛",
-     "date": "2026-07-26",
-     "eta": "2026-07-26"
-    },
-    {
-     "name": "印花 | Team Liquid（全息）| 2024年上海锦标赛",
-     "date": "2026-07-15",
-     "eta": "2026-07-15"
-    },
-    {
-     "name": "印花 | Aurora（全息）| 2025年奥斯汀锦标赛",
-     "date": "2026-07-26",
-     "eta": "2026-07-26"
-    },
-    {
-     "name": "印花 | Natus Vincere（全息）| 2025年奥斯汀锦标赛",
-     "date": "2026-07-28",
-     "eta": "2026-07-28"
-    },
-    {
-     "name": "印花 | The Mongolz（全息）| 2025年奥斯汀锦标赛",
-     "date": "2026-07-21",
-     "eta": "2026-07-21"
-    },
-    {
-     "name": "印花 | M80（全息）| 2025年奥斯汀锦标赛",
-     "date": "2026-07-18",
-     "eta": "2026-07-18"
-    },
-    {
-     "name": "印花 | paiN Gaming（全息）| 2025年奥斯汀锦标赛",
-     "date": "2026-07-20",
-     "eta": "2026-07-20"
-    },
-    {
-     "name": "印花 | Complexity Gaming（全息）| 2025年奥斯汀锦标赛",
-     "date": "2026-07-27",
-     "eta": "2026-07-27"
-    },
-    {
-     "name": "印花 | Team Spirit（全息）| 2025年布达佩斯锦标赛",
-     "date": "2026-07-19",
-     "eta": "2026-07-19"
-    },
-    {
-     "name": "印花 | TYLOO（全息）| 2025年布达佩斯锦标赛",
-     "date": "2026-07-30",
-     "eta": "2026-07-30"
-    },
-    {
-     "name": "印花 | Lynn Vision（全息）| 2025年布达佩斯锦标赛",
-     "date": "2026-07-26",
-     "eta": "2026-07-26"
-    }
-   ]
-  }
- }
+ ]
 }

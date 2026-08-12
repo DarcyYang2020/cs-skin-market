@@ -398,6 +398,14 @@ def main():
         log(f"J-2 三通道监测刷新: exit={_r.returncode} {(_r.stdout or '').strip()}")
     except Exception as e:
         log(f"J-2 三通道监测刷新异常（不中断采集）: {e}")
+    # W-3 吸筹信号跟踪刷新 (2026-08-12): 贴纸吸筹信号 30d 落地实时推进（price_history 口径） + alpha/regime 统计（只读研究，零引擎参数）
+    try:
+        import subprocess, sys as _sys
+        _r = subprocess.run([_sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "references", "w3_signal_tracker.py")],
+                            capture_output=True, text=True, timeout=60)
+        log(f"W-3 吸筹跟踪: exit={_r.returncode} {(_r.stdout or '').strip()[-200:]}")
+    except Exception as e:
+        log(f"W-3 吸筹跟踪异常（不中断采集）: {e}")
     # T0 greedy 覆盖监测 (2026-08-10): 采集后记录 greedy_index 覆盖天数，连续 7 个采集日验证单调增长（第一性原理审计 P-0/T0）
     try:
         import subprocess, sys as _sys
