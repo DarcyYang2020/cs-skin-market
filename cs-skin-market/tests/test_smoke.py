@@ -2969,6 +2969,55 @@ def t_batch_save_collect_time():
 check('F-3.19 batch-save collect_time sync created_at', t_batch_save_collect_time)
 
 
+def t_saved_report_expectancy():
+    """2026-08-12 口径修复：save_analysis_result 快照渲染与重建同款注入
+    （期望徽章/regime 分层/决策链 trace），discover 弹窗与 6h 缓存命中报告同口径。"""
+    from types import SimpleNamespace as _NS
+    from webapp.analysis_service import save_analysis_result
+    from pipeline import db as _db
+    _name = "__expectancy_sync_test__"
+    _an = _NS(
+        name=_name, price_rmb=100.0,
+        value=_NS(grade="A"), trend_health={"direction": "up", "score": 60},
+        supply_analysis=None, position=None, aux={}, cycle={}, liquidity={},
+        probability={}, whale=None, data_quality={}, price_zones=[], buy_distance={},
+        fusion_decision={"action": "buy",
+                         "action_label": "🟢 供给收缩·启动前吸筹·分批建仓",
+                         "zone_label": "低位低估",
+                         "state_bucket": "中性企稳",
+                         "deduction_sources": ["supply_contraction_accumulation"]},
+    )
+    conn = _db.get_conn()
+    try:
+        conn.execute("DELETE FROM analysis_results WHERE name=?", (_name,))
+        conn.commit()
+    finally:
+        conn.close()
+    try:
+        save_analysis_result(_an)
+        conn = _db.get_conn()
+        try:
+            row = conn.execute(
+                "SELECT report_html FROM analysis_results WHERE name=? ORDER BY id DESC LIMIT 1",
+                (_name,)).fetchone()
+        finally:
+            conn.close()
+        assert row and row["report_html"], "快照未写入"
+        html = row["report_html"]
+        # 全局期望徽章 + regime 分层徽章（中性企稳 accumulate n=150）都随快照渲染
+        assert "回测 14d 63.1%" in html and "样本 n=198" in html, "全局期望徽章缺失"
+        assert "🧪 当前【中性企稳】14d" in html and "n=150" in html, "regime 分层徽章缺失"
+        # 决策链 trace 随快照渲染（供给收缩吸筹中文标签）
+        assert "命中·供给收缩吸筹族" in html, "trace 决策链缺失"
+    finally:
+        conn = _db.get_conn()
+        try:
+            conn.execute("DELETE FROM analysis_results WHERE name=?", (_name,))
+            conn.commit()
+        finally:
+            conn.close()
+check('2026-08-12 快照渲染口径修复: save_analysis_result 带期望徽章/regime/trace', t_saved_report_expectancy)
+
 print(f'=== Results: {passed} passed, {failed} failed, {skipped} skipped ===')
 if failures:
     print()

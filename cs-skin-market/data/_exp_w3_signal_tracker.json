@@ -500,7 +500,7 @@
    "market_med30": -0.1383673368815297,
    "alpha": 0.3512,
    "ins_chg7d": -0.0275,
-   "ins_pct_rank": 0.758,
+   "ins_pct_rank": 0.761,
    "eta": null
   },
   {
@@ -522,7 +522,7 @@
    "market_med30": -0.22555084745762716,
    "alpha": 0.1775,
    "ins_chg7d": -0.0843,
-   "ins_pct_rank": 0.44,
+   "ins_pct_rank": 0.446,
    "eta": null
   },
   {
@@ -533,7 +533,7 @@
    "market_med30": -0.17300046756360704,
    "alpha": 0.0714,
    "ins_chg7d": 0.0586,
-   "ins_pct_rank": 0.769,
+   "ins_pct_rank": 0.761,
    "eta": null
   },
   {
@@ -544,7 +544,7 @@
    "market_med30": -0.17340592953599349,
    "alpha": 0.1734,
    "ins_chg7d": -0.024,
-   "ins_pct_rank": 0.582,
+   "ins_pct_rank": 0.587,
    "eta": null
   },
   {
@@ -555,7 +555,7 @@
    "market_med30": null,
    "alpha": null,
    "ins_chg7d": -0.1047,
-   "ins_pct_rank": 0.341,
+   "ins_pct_rank": 0.337,
    "eta": "2026-08-14"
   },
   {
@@ -566,7 +566,7 @@
    "market_med30": null,
    "alpha": null,
    "ins_chg7d": -0.2271,
-   "ins_pct_rank": 0.055,
+   "ins_pct_rank": 0.054,
    "eta": "2026-08-15"
   },
   {
@@ -610,7 +610,7 @@
    "market_med30": null,
    "alpha": null,
    "ins_chg7d": -0.0062,
-   "ins_pct_rank": 0.473,
+   "ins_pct_rank": 0.467,
    "eta": "2026-08-17"
   },
   {
@@ -654,7 +654,7 @@
    "market_med30": null,
    "alpha": null,
    "ins_chg7d": -0.0305,
-   "ins_pct_rank": 0.793,
+   "ins_pct_rank": 0.795,
    "eta": "2026-08-19"
   },
   {
@@ -698,7 +698,7 @@
    "market_med30": null,
    "alpha": null,
    "ins_chg7d": -0.297,
-   "ins_pct_rank": 0.253,
+   "ins_pct_rank": 0.25,
    "eta": "2026-08-20"
   },
   {
@@ -742,7 +742,7 @@
    "market_med30": null,
    "alpha": null,
    "ins_chg7d": -0.0487,
-   "ins_pct_rank": 0.538,
+   "ins_pct_rank": 0.543,
    "eta": "2026-08-25"
   },
   {

@@ -462,10 +462,14 @@ def save_analysis_result(analysis, kline_stale_days=None, kline_stale_date="", c
         th = analysis.trend_health or {}
         trend_dir = th.get("direction", "")
         trend_score = th.get("score", 0)
+        # 2026-08-12 口径修复：快照渲染复用 build_analysis_ctx 同款展示层注入
+        # （期望徽章/regime 分层/决策链 trace/供给语义），discover 弹窗与 6h 缓存命中报告与重建口径一致。
+        fd = _fd_display(analysis.fusion_decision)
+        supply = _supply_display(getattr(analysis, "supply_analysis", None), getattr(analysis, "position", None))
         report_html = templates.get_template("partials/analysis.html").render({
             "name": analysis.name,
             "price_rmb": analysis.price_rmb,
-            "supply_analysis": analysis.supply_analysis,
+            "supply_analysis": supply,
             "position": analysis.position,
             "aux": analysis.aux,
             "cycle": analysis.cycle,
@@ -475,7 +479,7 @@ def save_analysis_result(analysis, kline_stale_days=None, kline_stale_date="", c
             "whale": analysis.whale,
             "data_quality": analysis.data_quality,
             "trend_health": analysis.trend_health,
-            "fusion_decision": analysis.fusion_decision,
+            "fusion_decision": fd,
             "error": None,
             "kline_stale_days": kline_stale_days,
             "kline_stale_date": kline_stale_date,
@@ -742,6 +746,23 @@ def _load_expectancy_by_regime():
     return _data
 
 
+def _fd_display(fd):
+    """融合决策展示层注入（期望徽章 + 决策链 trace）。纯展示，不改引擎输出。
+
+    2026-08-12 口径修复：save_analysis_result 快照渲染与 build_analysis_ctx 共用本函数，
+    保证 discover 弹窗 / 6h 缓存命中的报告与重建报告期望徽章口径一致。
+    """
+    fd = dict(fd or {})
+    fd["expectancy"] = _expectancy_badge(fd.get("action_label"), fd.get("state_bucket"))
+    _src_labels = [_SOURCE_LABELS.get(str(s), str(s)) for s in (fd.get("deduction_sources") or [])]
+    fd["trace"] = {
+        "zone": fd.get("zone_label", ""),
+        "bucket": fd.get("state_bucket", ""),
+        "sources": _src_labels,
+    }
+    return fd
+
+
 def _expectancy_badge(action_label, state_bucket=None):
     """决策条回测徽章（纯展示层）：全局族口径（ITEM_EXPECTANCY_STATS）+ B-1 当前 regime 分层（2026-08-12）。
 
@@ -999,14 +1020,7 @@ def build_analysis_ctx(analysis, kline_stale_days=None, kline_stale_date="",
         else:
             holding_action = {"action": "hold", "label": "观望", "signal": _ha,
                               "price": _cur, "qty": 0}
-    fd = dict(analysis.fusion_decision or {})
-    fd["expectancy"] = _expectancy_badge(fd.get("action_label"), fd.get("state_bucket"))
-    _src_labels = [_SOURCE_LABELS.get(str(s), str(s)) for s in (fd.get("deduction_sources") or [])]
-    fd["trace"] = {
-        "zone": fd.get("zone_label", ""),
-        "bucket": fd.get("state_bucket", ""),
-        "sources": _src_labels,
-    }
+    fd = _fd_display(analysis.fusion_decision)
     supply = _supply_display(getattr(analysis, "supply_analysis", None), getattr(analysis, "position", None))
     # F-3.16：仅用户主动加入自选——报告页按 in_watchlist 状态展示「加入自选」按钮
     _in_wl = False

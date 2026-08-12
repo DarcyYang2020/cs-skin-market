@@ -213,6 +213,8 @@
 
 - A 线落地（A-3/A-6/A-4/A-7/A-8）✅（2026-08-12，展示/监测层，见 decision-log「A 线落地」）：A-3 今日关注+买点队列（`fd.proximity.score` 主序 / bar_pct 次键 / 贴纸观察桶 / 7 日去重标签 / 采集时间，Q4 口径落地）；A-6 checkup 双口径桥接 + 执行校准「录入 N/20」进度条；A-4 replay 页头 meta 注入 + 硬编码口径清零；A-7 组合仪表盘熔断状态（drawdown_status 实测 -44.65%/breaker_active）+ 单票敞口列（30% 阈值）；A-8 推送 danger 持仓置顶 + near_buy 降噪。零决策参数，冒烟 103/0/0，pyflakes 0。A-2（Q7 暂缓）/A-5 discover 榜展示部分未做。
 
+- 快照渲染口径修复 ✅（2026-08-12，纯展示层，见 decision-log「快照渲染口径修复」）：`save_analysis_result` 快照渲染复用 `build_analysis_ctx` 同款 `_fd_display`（期望徽章/regime 分层/决策链 trace）+ `_supply_display` 供给语义，discover 弹窗与 report-view 缓存命中/回退报告与重建报告口径一致（实测 discover 弹窗 6331→7158 带徽章）；新增 `t_saved_report_expectancy`，冒烟 104/0/0，零决策参数。旧缓存快照在过期/重建前仍显示旧版（已知缓存语义）。
+
 ## 附录：与「评估指标体系第一性审计」的边界
 
 本评估直接引用、未重跑：六维权重（位置 40/周期 25/流动性 15/概率 20）、估值分位边界、供给吸筹/派发判定、评级切分（代码口径 8/6.5/4.5）、绩效口径（win14/30、net 2%）、持仓管理矩阵参数、TH/情绪/跌幅/牛熊结论、周期反转/panic 分级/概率去 z（2026-08-10 四项审计）。审计后新增的展示层改动（如 F-3.14 已止损感知）只审「改动本身」——见 E-1/E-2。

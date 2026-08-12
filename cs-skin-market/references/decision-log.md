@@ -2893,3 +2893,23 @@ Fluxo 25→280 约 11 倍），尖顶后 3 天 -86~94%，与枪皮统计反转�
 **验证**：冒烟 103 passed / 0 failed（含 t_buy_queue + t_monitor_push 4 条 near_buy 断言）；pyflakes 0 告警；服务重启（PID 17980）后 /、/watchlist（今日关注卡片）、/checkup（口径说明）、/replay（meta 注入）四页面实测正常。
 
 **待办（未纳入本批）**：A-2 执行环轻推（口径确认，Q7 暂缓）、A-5 贴纸观察桶标注的 discover 榜展示部分（引擎侧标记字段 Q5 已隐式确认，watchlist 卡片已带徽章，综合榜顶行说明未做）、B-7 队列触发→buy 兑现对照（等 A2 样本）。
+
+## 快照渲染口径修复：期望徽章随快照落库（discover/缓存命中报告与重建同口径）（2026-08-12）
+
+**背景**：用户核查报告展示口径时发现——重建路径（自选报告/分析/搜索）报告有「回测 14d」期望徽章与 B-1 regime 分层徽章，而 discover 发现高分品弹窗（`/api/discover/report`）与 `report-view` 6h 缓存命中/数据不新鲜回退路径的报告中**没有**。
+
+**根因（一处代码，两条路径受影响）**：
+- 重建路径走 `build_analysis_ctx`，会往 `fusion_decision` 注入 `expectancy`（`_expectancy_badge`）、决策链 `trace`、`holding_advice`、供给语义转换（`_supply_display`）——所以有徽章。
+- 快照落库 `save_analysis_result`（`webapp/analysis_service.py`）渲染 `analysis.html` 时直接用**原始** `analysis.fusion_decision`，从未注入 `expectancy`/`trace`，供给也未走 `_supply_display` → 存进 `analysis_results` 的 HTML 永远没有期望徽章（实测快照 ~6.3KB vs 重建 ~9.2KB）。
+- 而 `/api/discover/report` 弹窗与 `report-view` 缓存命中/回退都直接返回这份快照 → 无徽章。
+
+**修复（纯展示层，零决策参数）**：
+- 新增 `_fd_display(fd)`（`webapp/analysis_service.py`，期望徽章 + trace 决策链注入），`build_analysis_ctx` 与 `save_analysis_result` 共用——单一来源防再次漂移。
+- `save_analysis_result` 渲染前对 `fusion_decision` 走 `_fd_display`、`supply_analysis` 走 `_supply_display`，快照与重建口径一致。
+- `tests/test_smoke.py` 新增 `t_saved_report_expectancy`：mock 分析对象落库后断言快照 HTML 含全局徽章（吸筹族 63.1%/n=198）+ regime 分层徽章（中性企稳 n=150）+ trace 决策链，测试后清理该行。
+
+**验证**：冒烟 104 passed / 0 failed（新增 1）；pyflakes 新增代码 0 告警（test_smoke 存量告警行不变）；服务重启（PID 31488）后实测 `/api/discover/report`（火卫一）6331→7158 字节、全局+regime 徽章齐；`/api/watchlist/1/analyze` 与 `report-view` 重建路径不受影响。
+
+**注意（缓存语义）**：修复前生成的旧快照在缓存过期或重建前仍显示旧版（无徽章），属 2026-08-12 报告弹窗缓存优化的已知行为；触发「分析」或等待 6h 缓存过期后自动一致。
+
+**学到的新思路**：展示层增强（expectancy/trace/供给语义）必须收敛到单一 ctx 注入函数，任何「另起炉灶」渲染同一模板的路径都会造成隐性口径分叉——本次正是「渲染同模板但 ctx 不同」的典型案例。
