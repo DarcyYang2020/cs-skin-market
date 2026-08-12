@@ -1714,6 +1714,33 @@ def t_expectancy_regime():
     assert r3 and r3['regime'].get('insufficient') is True and r3['regime']['n'] == 0, r3
 check('B-1 期望 regime 分层徽章: 产物加载/正常/降级路径', t_expectancy_regime)
 
+def t_buy_queue():
+    from pipeline import item_analysis as _ia, db as _db
+    F = {
+        "pct": 20, "z": -1.0, "th": 40, "micro_th": 50,
+        "sent": 60, "market_th": 50, "mchg30": -10, "drop21": -20,
+        "prices": [100.0] * 90, "current": 100.0, "supply_hist": [50] * 40,
+        "s7": -20, "s30": 50, "chg7": -2, "chg3d": 1,
+        "recent_buy_dates": [], "signal_date": "2026-08-12", "market_cycle": "bear",
+    }
+    r = _ia.compute_buy_proximity(F)
+    assert not r.get("dedup_hit") and r.get("recent_buy_dates") == [], r
+    assert r.get("score", 0) > 0, r  # 供给收缩吸筹路径应达标
+    F2 = dict(F, recent_buy_dates=["2026-08-10"])
+    r2 = _ia.compute_buy_proximity(F2)
+    assert r2.get("dedup_hit") == "2026-08-10" and r2["recent_buy_dates"] == ["2026-08-10"], r2
+    # watchlist 快照查询补采集时间字段（A-3 队列采集时间来源，只读真实库）
+    try:
+        _c = _db.get_conn()
+        try:
+            _rows = _db.watchlist_list_with_snapshots(_c)
+            assert "snapshot_created_at" in dict(_rows[0]) if _rows else True, 'snapshot_created_at 字段缺失'
+        finally:
+            _c.close()
+    except Exception:
+        pass
+check('A-3 买点队列: proximity dedup_hit/recent_buy_dates 暴露 + 采集时间字段', t_buy_queue)
+
 def t_benchmark():
     import json as _J
     from pathlib import Path
@@ -2033,15 +2060,30 @@ def t_monitor_push():
     from pipeline import monitor as _mon
     summary = {"date": "2099-01-01", "bucket": "阴跌中继区", "analyzed": 25, "skipped": 0}
     events = [
+        {"item_id": 9, "item_name": "AWP | 非持仓", "event_type": "price_spike", "level": "danger",
+         "detail": "单日 -9%"},
         {"item_id": 1, "item_name": "AWP | 火卫一", "event_type": "stop_loss", "level": "danger",
-         "detail": "现价 ¥70.28 ≤ 成本-25% ¥72.75，建议止损"},
+         "detail": "现价 ¥70.28 ≤ 成本-25% ¥72.75，建议止损", "holding": True},
         {"item_id": 2, "item_name": "AK-47 | 抽象派", "event_type": "near_buy", "level": "warn",
-         "detail": "买点接近度 80%"},
+         "detail": "买点接近度 80%", "holding": False},
+        {"item_id": 3, "item_name": "M4A4 | 合纵", "event_type": "near_buy", "level": "warn",
+         "detail": "买点接近度 90%"},
+        {"item_id": 4, "item_name": "沙漠之鹰 | 钴蓝禁锢", "event_type": "near_buy", "level": "warn",
+         "detail": "买点接近度 100%"},
+        {"item_id": 5, "item_name": "AWP | 浮生如梦", "event_type": "near_buy", "level": "warn",
+         "detail": "买点接近度 100%"},
         {"item_id": None, "item_name": None, "event_type": "market_state", "level": "info",
          "detail": "大盘状态：阴跌中继区"},
     ]
     title, text = _mon._build_push_text(summary, events, "night")
-    assert "🚨1危险" in title and "破位止损" in text and "买点接近" in text, (title, text)
+    assert "🚨2危险" in title and "破位止损" in text, (title, text)
+    # A-8: 持仓 danger 置顶（火卫一 在 非持仓 price_spike 之前）
+    _i_sl = text.find("破位止损")
+    _i_ps = text.find("单日 -9%")
+    assert 0 <= _i_sl < _i_ps, text
+    # A-8: near_buy 降噪为计数 + Top3，不逐条明细
+    assert "买点接近] 共 4 条" in text and "明细见 Web「今日关注」" in text, text
+    assert "买点接近度" not in text, "near_buy 不再逐条明细"
     assert "127.0.0.1" not in text and ":8000" not in text, "推送必须纯文字自包含，不得引用内网地址"
     os.environ["NOTIFY_WEBHOOK_URL"] = ""
     try:

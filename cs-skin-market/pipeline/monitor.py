@@ -104,6 +104,7 @@ def _gen_item_events(date, item, res, prev_action):
             "item_id": item["id"], "item_name": item["name"],
             "event_type": etype, "level": level, "detail": detail,
             "dedup_key": f"{date}|{item['id']}|{etype}",
+            "holding": bool(item.get("holding")),  # A-8: 推送 danger 置顶排序用（展示层）
         })
 
     prox = fd.get("proximity")
@@ -228,19 +229,33 @@ def _build_push_text(summary, events, slot="night"):
     info = [e for e in events if e["level"] == "info"]
     lines = [f"大盘：{summary['bucket']} · 分析 {summary['analyzed']} 品 / 跳过 {summary['skipped']}"]
 
-    def _dump(tag, evs, limit):
+    def _dump(tag, evs, limit, near_buy_compact=False):
         if not evs:
             return
         lines.append("")
         lines.append(f"{tag} {len(evs)} 条")
+        if near_buy_compact:
+            _nb = [e for e in evs if e.get("event_type") == "near_buy"]
+            _other = [e for e in evs if e.get("event_type") != "near_buy"]
+            if _nb:
+                _names = "、".join((e.get("item_name") or "")[:20] for e in _nb[:3])
+                lines.append(f"- [买点接近] 共 {len(_nb)} 条（Top3：{_names}…，明细见 Web「今日关注」）")
+            for e in _other[:limit]:
+                lines.append(f"- [{_TYPE_LABEL.get(e['event_type'], e['event_type'])}] "
+                             f"{(e.get('item_name') or '大盘')}：{e['detail']}")
+            if len(_other) > limit:
+                lines.append(f"… 另有 {len(_other) - limit} 条")
+            return
         for e in evs[:limit]:
             lines.append(f"- [{_TYPE_LABEL.get(e['event_type'], e['event_type'])}] "
-                         f"{(e['item_name'] or '大盘')}：{e['detail']}")
+                         f"{(e.get('item_name') or '大盘')}：{e['detail']}")
         if len(evs) > limit:
             lines.append(f"… 另有 {len(evs) - limit} 条")
 
+    # A-8（2026-08-12）：持仓 danger 置顶（仅消费端排序，不改事件生成）
+    danger.sort(key=lambda e: (0 if e.get("holding") else 1, _TYPE_LABEL.get(e.get("event_type"), "")))
     _dump("🔴 危险", danger, PUSH_DETAIL_MAX)
-    _dump("🟡 提醒", warn, PUSH_DETAIL_MAX)
+    _dump("🟡 提醒", warn, PUSH_DETAIL_MAX, near_buy_compact=True)
     if info:
         _kinds = Counter(_TYPE_LABEL.get(e["event_type"], e["event_type"]) for e in info)
         _parts = "、".join(f"{k} {n} 条" for k, n in sorted(_kinds.items()))

@@ -35,19 +35,50 @@
   </div>
 </div>
 
-{% if monitor and (monitor.near_buys or monitor.broken) %}
+{% if monitor and monitor.has_focus %}
 <div class="card" style="margin-bottom:12px;border-color:rgba(245,158,11,0.35);">
   <div class="card-header" style="padding:8px 14px;">
-    <span class="card-title">🔔 监控提醒</span>
+    <span class="card-title">📌 今日关注（{{ monitor.today }}）</span>
+    <span style="font-size:11px;color:var(--text-muted);margin-left:8px;">采集时间以各行标注为准</span>
     <button class="btn btn-outline btn-sm" onclick="openScanModal()" style="margin-left:auto;">📊 刷新全部数据</button>
   </div>
-  <div style="padding:8px 14px;font-size:12px;color:var(--text-secondary);display:flex;gap:16px;flex-wrap:wrap;">
+  <div style="padding:8px 14px;font-size:12px;display:flex;flex-direction:column;gap:8px;">
+    {% for ev in monitor.buy_events %}
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <span style="font-weight:800;color:var(--green);">🟢 {{ ev.item_name }}</span>
+      <span style="color:var(--text-muted);">{{ ev.detail }}</span>
+      <span style="color:var(--text-muted);font-size:11px;">采集于 {{ ev.created_at }}</span>
+      <button class="btn btn-outline btn-sm" onclick="showItemReport('{{ ev.item_name|e }}')">📄 报告</button>
+    </div>
+    {% endfor %}
     {% for it in monitor.near_buys %}
-    <span>🎯 <b>{{ it.name }}</b> 接近买点 <b style="color:var(--green);">{{ it.proximity.score }}%</b>（{{ it.proximity.nearest }}）</span>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <span>🎯 <b>{{ it.name }}</b></span>
+      <span>接近买点 <b style="color:{% if it.score >= 90 %}var(--green){% elif it.score >= 70 %}var(--yellow){% else %}var(--text-primary){% endif %};">{{ it.score }}%</b>（{{ it.nearest }}）</span>
+      {% if it.is_sticker %}<span style="padding:1px 8px;border-radius:8px;background:rgba(139,92,246,0.12);color:var(--text-muted);font-size:11px;">🧪 观察桶 · 未进 buy</span>{% endif %}
+      {% if it.dedup_hit %}<span style="padding:1px 8px;border-radius:8px;background:rgba(245,158,11,0.12);color:var(--yellow);font-size:11px;">7 日内已买</span>{% endif %}
+      {% if it.gaps %}<span style="color:var(--text-muted);font-size:11px;">还差：{{ it.gaps[:2]|join(" · ") }}</span>{% endif %}
+      <span style="color:var(--text-muted);font-size:11px;">采集于 {{ it.collected_at }}</span>
+      <button class="btn btn-outline btn-sm" onclick="showItemReport('{{ it.name|e }}')">📄 报告</button>
+    </div>
+    {% endfor %}
+    {% for ev in monitor.warn_events %}
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <span style="color:{% if ev.event_type == 'stop_loss' %}var(--red){% else %}var(--yellow){% endif %};font-weight:600;">{{ '⚠️' if ev.event_type == 'stop_loss' else '🔥' }} {{ ev.item_name }}</span>
+      <span style="color:var(--text-secondary);">{{ ev.detail }}</span>
+      <span style="color:var(--text-muted);font-size:11px;">采集于 {{ ev.created_at }}</span>
+      <button class="btn btn-outline btn-sm" onclick="showItemReport('{{ ev.item_name|e }}')">📄 报告</button>
+    </div>
     {% endfor %}
     {% for it in monitor.broken %}
-    <span style="color:var(--red);font-weight:600;">⚠️ <b>{{ it.name }}</b> 已破止损位（现价 ¥{{ "%.2f"|format(it.latest_price) }} ≤ 成本-25% ¥{{ "%.2f"|format(it.avg_cost*0.75) }}）</span>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <span style="color:var(--red);font-weight:600;">⚠️ <b>{{ it.name }}</b></span>
+      <span>已破止损位（现价 ¥{{ "%.2f"|format(it.latest_price) }} ≤ 成本-25% ¥{{ "%.2f"|format(it.avg_cost*0.75) }}）</span>
+      <span style="color:var(--text-muted);font-size:11px;">采集于 {{ it.collected_at }}</span>
+      <button class="btn btn-outline btn-sm" onclick="showItemReport('{{ it.name|e }}')">📄 报告</button>
+    </div>
     {% endfor %}
+    <div style="font-size:11px;color:var(--text-muted);border-top:1px dashed var(--border);padding-top:6px;">⚠️ 接近买点 ≠ 买点：队列仅为「距最近 buy 信号族的达标度」，实际买卖以报告决策条为准（buy/watch/avoid）。</div>
   </div>
 </div>
 {% endif %}
@@ -86,6 +117,7 @@
 <div class="card" id="portfolio-dash" style="display:none;margin-bottom:16px;">
   <div class="card-header">
     <span class="card-title">📊 组合仓位仪表</span>
+    <span id="pd-breaker" style="font-size:12px;font-weight:700;margin-left:8px;"></span>
     <span id="portfolio-scan-time" style="font-size:11px;color:var(--text-muted);"></span>
   </div>
   <div class="row-flex" style="gap:26px;padding:12px 16px 4px;flex-wrap:wrap;">
@@ -191,6 +223,13 @@
       <button type="button" class="btn btn-primary btn-sm" onclick="openExecManual()">＋ 手动录入</button>
       <button type="button" class="btn btn-outline btn-sm" onclick="loadExecutions()"><span id="exec-spinner" class="htmx-indicator">⏳</span> 🔄 刷新</button>
     </div>
+  </div>
+  <div id="exec-calib" style="padding:8px 14px 0;font-size:12px;color:var(--text-secondary);">
+    <span>📏 滑点/胜率校准：已录入 <b id="exec-count-n" style="color:var(--text-primary);">{{ exec_count or 0 }}</b> / 20 条执行记录</span>
+    <div style="height:6px;background:rgba(15,23,42,0.08);border-radius:4px;margin-top:6px;overflow:hidden;">
+      <div id="exec-count-bar" style="height:100%;width:{{ [((exec_count or 0)/20*100), 100] | min }}%;background:{% if (exec_count or 0) >= 20 %}var(--green){% else %}var(--accent){% endif %};border-radius:4px;"></div>
+    </div>
+    <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">累计 20 条后解锁 A1-4 滑点校准与真实 vs 纸面胜率对照（当前 {{ exec_count or 0 }}/20）</div>
   </div>
   <div id="exec-summary" style="padding:8px 14px 0;font-size:12px;color:var(--text-secondary);"></div>
   <div class="table-wrap">
@@ -956,6 +995,10 @@ function loadExecutions() {
     if (!sec || !tb || !d.ok) return;
     var list = d.executions || [];
     window._execList = list;
+    var _en = document.getElementById('exec-count-n');
+    var _eb = document.getElementById('exec-count-bar');
+    if (_en) _en.textContent = list.length;
+    if (_eb) { _eb.style.width = Math.min(list.length / 20 * 100, 100) + '%'; _eb.style.background = list.length >= 20 ? 'var(--green)' : 'var(--accent)'; }
     sec.style.display = 'block';
     if (empty) empty.style.display = list.length ? 'none' : 'block';
     buildExecNameOptions();
@@ -1061,15 +1104,27 @@ function loadPortfolioDash() {
     document.getElementById('pd-max').textContent = (d.max_single || 0) + '%';
     document.getElementById('pd-top3').textContent = (d.top3 || 0) + '%';
     document.getElementById('portfolio-scan-time').textContent = s.time ? ('最近扫描 ' + String(s.time).replace('T', ' ').slice(0, 16)) : '';
+    var _dd = d.drawdown;
+    var _bk = document.getElementById('pd-breaker');
+    if (_bk) {
+      if (!_dd) { _bk.textContent = '🟡 熔断监测：数据不足（<2 天）'; _bk.style.color = 'var(--text-muted)'; }
+      else if (_dd.breaker_active) { _bk.textContent = '🔴 熔断触发：组合权益自峰值回撤 ' + _dd.drawdown_pct + '%（阈值 -' + _dd.threshold_pct + '%）'; _bk.style.color = 'var(--red)'; }
+      else { _bk.textContent = '🟢 组合回撤 ' + _dd.drawdown_pct + '%（峰值 ¥' + _dd.peak.toFixed(0) + ' → 现值 ¥' + _dd.current.toFixed(0) + '，阈值 -' + _dd.threshold_pct + '%）'; _bk.style.color = 'var(--green)'; }
+    }
     var holds = d.holdings || [];
     document.getElementById('pd-holdings').innerHTML = holds.length
       ? holds.slice(0, 8).map(function(h) {
           var w = d.holding_value > 0 ? Math.max(1, Math.round(100 * h.value / d.holding_value)) : 0;
+          var ex = h.exposure || null;
+          var exHtml = ex
+            ? '<span style="flex:0 0 110px;text-align:right;font-size:12px;' + (ex.over ? 'color:var(--red);font-weight:700;' : 'color:var(--text-muted);') + '">敞口 ' + ex.base_pct + '%' + (ex.over ? ' ⚠️超限' : '') + '</span>'
+            : '';
           return '<div style="display:flex;align-items:center;gap:8px;margin-top:6px;">'
-            + '<span style="flex:0 0 200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + h.name + '</span>'
+            + '<span style="flex:0 0 190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + h.name + '</span>'
             + '<div style="flex:1;height:6px;background:rgba(15,23,42,0.06);border-radius:3px;overflow:hidden;">'
             + '<div style="height:100%;width:' + w + '%;background:var(--accent);"></div></div>'
             + '<span style="flex:0 0 90px;text-align:right;font-size:12px;">¥' + Number(h.value).toFixed(0) + ' (' + w + '%)</span>'
+            + exHtml
             + '</div>';
         }).join('')
       : '<span style="color:var(--text-muted);">暂无持仓</span>';

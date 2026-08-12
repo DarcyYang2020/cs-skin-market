@@ -2849,3 +2849,47 @@ Fluxo 25→280 约 11 倍），尖顶后 3 天 -86~94%，与枪皮统计反转�
 **注意**：≤6h 已缓存报告（`analysis_results` 静态 HTML）在缓存过期前仍显示旧徽章，重建/强制刷新后带新徽章——展示层缓存语义（2026-08-12 报告弹窗优化引入）下的正常行为。
 
 **学到的新思路**：展示层只读聚合产物（`_exp_*.json`）与 config 单源（`ITEM_EXPECTANCY_STATS`）双轨共存是安全的——只要新口径不触碰 `t_expectancy_sync` 硬校验、产物由独立脚本生成并 mtime 缓存，即可零成本扩展展示维度。
+## Q4 引擎侧评估：买点队列排序口径（2026-08-12）
+
+**背景**：产品立项书 A-3「今日关注」卡片 + 买点队列 v0 依赖 Q4——「buy_distance proximity 输出（gap_pct/gap_rmb/scenario/z_gap/th_gap）是否足够支撑买点队列排序？是否补『最近 buy 信号日期/7 天去重』字段？」本条目给引擎侧结论并修正 A-3 主口径。
+
+**结论（只读评估，零引擎参数）**：
+1. **排序主口径改用 `fd.proximity.score`（item_analysis.py:1391 compute_buy_proximity），非立项书原指向的 buy_distance.py:190 gap 字段**——gap_pct/gap_rmb/scenario/z_gap/th_gap 是价格距离维度（距参考价多远），不含条件达标度；`fd.proximity` 才是「距最近 buy 信号族的达标度」：6 族路径（低估区建仓/恐慌共振/深值企稳/恐慌退潮/供给收缩吸筹/超跌反弹）、多条件几何均值、含 7 日去重、数据不足族自动剔除、score=0 给 zero_reason。monitor near_buy 事件（8/12 实测 4 条 100%）正是该口径触发（monitor.py:109，NEAR_BUY_MIN=60），已上线验证。
+2. **字段足够，建议补 2 个只读展示字段**：① proximity 输出加 `dedup_hit` + `recent_buy_dates`（引擎内已算未暴露，供队列打「7 日内已买」标签，成本 ~0）；② 贴纸观察桶标注（A-5 联动）——8/12 G2 贴纸 100%「供给收缩吸筹」但 buy 被观察桶守卫禁用（item_analysis.py:1616），队列不标注会误导。
+3. **不需要补「最近 buy 信号日期」字段**：7 日去重已有权威口径 `recent_buy_dates`（analysis_service.py:394，查 snapshots 近 7 天 buy/oversold_buy）——保持 snapshots 口径，不用 signal_tracking（后者有 ON DELETE CASCADE 丢失风险 + 回填滞后）。
+4. **二次排序键** = `buy_distance.bar_pct / gap_pct`（同 score 下先看更接近的）。
+5. **红线**：proximity 是达标度非预期收益（100% ≠ 会涨）；队列只聚合不接新信号；action=buy 置顶（monitor 已排除 action=buy）。
+6. **B-7**（队列触发→引擎 buy 兑现对照）：属新信号族研究，须 A2 三件套；队列上线后 `monitor_events.near_buy`（proximity≥60）自然积累事件样本，暂不排期。
+
+**落地**：立项书 A-3 主口径已修正（proximity.score 主序 + buy_distance.bar_pct 次键 + 观察桶标注 + 采集时间）；A-3 按此开工（纯展示层）。本条目无代码改动。
+
+## A 线落地：A-3 今日关注+买点队列 / A-6 双口径桥接+进度条 / A-4 文案口径清扫 / A-7 组合闸门入仪表盘 / A-8 推送分层降噪（2026-08-12）
+
+**背景**：Q4 已答（买点队列排序主口径 = `fd.proximity.score`，见上一条目）后，A-3/A-6/A-4/A-7/A-8 五个展示/监测层立项集中落地。全部零决策参数（事件生成阈值、引擎评分、闸门、组合参数均不动）。
+
+**A-3 「今日关注」卡片 + 买点队列 v0**（体验线）：
+- `pipeline/item_analysis.py:1423-1520` `compute_buy_proximity` 四个 return 分支补只读 `dedup_hit`/`recent_buy_dates` 暴露（引擎内已算，7 日去重权威口径仍为 analysis_service 的 snapshots 查询，仅展示用）。
+- `pipeline/db.py:729` `watchlist_list_with_snapshots` 补 `snapshot_created_at`，队列每行显示数据采集时间。
+- `webapp/main.py:393-437` 监控摘要重写为「今日关注」：当日 monitor_events 聚合（`new_buy_signal` 置顶 + `stop_loss`/`price_spike` 警示）+ near_buy 队列（`proximity.score>=60` 降序，`buy_distance.bar_pct` 次键；`is_sticker` 观察桶标注防误导；`dedup_hit` 打「7 日内已买」标签；采集时间列）+ 破位止损（成本-25% 红线）提示。
+- `webapp/templates/watchlist.html` 顶部「📌 今日关注（日期）」卡片 + 每行「查看报告」按钮（6h 报告缓存命中 <100ms）+ 红线提示「接近买点 ≠ 买点，以报告决策条为准」。
+- `tests/test_smoke.py` 新增 `t_buy_queue`（排序主口径 + 观察桶 + 去重标签 + 采集时间四断言）。
+
+**A-6 /checkup 双口径桥接 + 执行校准进度条**（体验线/信任线）：
+- `webapp/templates/checkup.html` 新增「ℹ️ 口径说明」：回放告警为信息级（J-2 提示项），≠ 实盘劣化，与 C 通道胜率监测区分离。
+- `webapp/main.py:440` 传 `exec_count`；`watchlist.html` 执行区「已录入 N/20」进度条 + JS 同步（A1-4 滑点校准门槛产品化，给录入动机）。
+
+**A-4 文案口径清扫**（体验线/信任线）：
+- `webapp/templates/replay.html:7` 死文本（503 信号 / 2025-01-01 起）改 `<span id="replay-meta">`，JS 由 `/api/signals/replay` meta（count/range/generated）注入。
+- 全仓 rg 扫描无残留硬编码口径文案（503/370/332/2025-01-01 等）。
+
+**A-7 组合闸门状态接入组合仪表盘**（体验线）：
+- `pipeline/dashboards.py:178-188` `portfolio_dashboard` 加 `drawdown`（`portfolio_risk.drawdown_status`：peak/current/drawdown_pct/breaker_active）+ 每持仓 `exposure`（`single_position_exposure`，阈值 30%）。
+- `watchlist.html` 仪表卡加 `pd-breaker` 熔断状态徽章 + 持仓敞口列（超 30% 提示）。实测：drawdown peak 12360.7 → current 6841.66（-44.65%），breaker_active=true 正常消费。
+
+**A-8 推送分层降噪**（体验线/消费端）：
+- `pipeline/monitor.py:107` `_gen_item_events._add` 事件补 `holding` 标记（只读，不改事件生成）。
+- `pipeline/monitor.py:232-260` `_build_push_text`：danger 持仓置顶（火卫一 stop_loss 恒在非持仓 price_spike 前）；warn near_buy 降噪 `near_buy_compact=True`——仅「共 N 条（Top3：…，明细见 Web『今日关注』）」+ 非 near_buy 事件明细，不再逐条堆明细。
+
+**验证**：冒烟 103 passed / 0 failed（含 t_buy_queue + t_monitor_push 4 条 near_buy 断言）；pyflakes 0 告警；服务重启（PID 17980）后 /、/watchlist（今日关注卡片）、/checkup（口径说明）、/replay（meta 注入）四页面实测正常。
+
+**待办（未纳入本批）**：A-2 执行环轻推（口径确认，Q7 暂缓）、A-5 贴纸观察桶标注的 discover 榜展示部分（引擎侧标记字段 Q5 已隐式确认，watchlist 卡片已带徽章，综合榜顶行说明未做）、B-7 队列触发→buy 兑现对照（等 A2 样本）。

@@ -4,7 +4,7 @@
 <div style="padding:16px 0;">
   <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
     <h2 style="margin:0;font-size:20px;">📊 信号复盘</h2>
-    <span style="font-size:12px;color:var(--text-muted);">新版引擎 503 个 buy 信号（K-2 回放 2025-01-01~2026-08-05，item_backtest_full_2025.json）的 14d/21d/30d 表现，最新价由数据库实时补充</span>
+    <span id="replay-meta" style="font-size:12px;color:var(--text-muted);">加载回放元数据…</span>
     <button class="btn btn-sm btn-outline" onclick="loadReplay()" style="margin-left:auto;"><span id="replay-spinner" class="htmx-indicator">⏳</span> 🔄 刷新</button>
   </div>
   <div id="replay-stats" style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;"></div>
@@ -54,10 +54,8 @@ function loadReplay() {
     if (!d.found) { body.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--text-muted);">未找到回测基准数据</td></tr>'; return; }
     var sigs = d.signals || [];
     if (d.meta) {
-      var metaEl = document.createElement('div');
-      metaEl.style.cssText = 'width:100%;font-size:12px;color:var(--text-muted);';
-      metaEl.textContent = '信号总数 ' + d.meta.count + ' ｜ 回放窗口 ' + (d.meta.range ? d.meta.range[0] + ' ~ ' + d.meta.range[1] : '--') + ' ｜ 生成 ' + (d.meta.generated || '--');
-      statsEl.appendChild(metaEl);
+      var metaEl = document.getElementById('replay-meta');
+      if (metaEl) metaEl.textContent = '引擎 v2 · ' + d.meta.count + ' 个 buy 信号 · 回放窗口 ' + (d.meta.range ? d.meta.range[0] + ' ~ ' + d.meta.range[1] : '--') + ' · 生成 ' + (d.meta.generated || '--') + '（item_backtest_full_2025.json）· 14d/21d/30d 表现，最新价由数据库实时补充';
     }
     var byType = {};
     sigs.forEach(function(s) {

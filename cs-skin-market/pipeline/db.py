@@ -726,7 +726,8 @@ def get_setting(conn, key, default=""):
 def watchlist_list_with_snapshots(conn):
     """Optimized: single JOIN query instead of N+1 per-item queries."""
     return conn.execute("""
-        SELECT i.*, s.price_rmb AS latest_price, s.grade AS latest_grade, s.recommendation AS latest_summary
+        SELECT i.*, s.price_rmb AS latest_price, s.grade AS latest_grade, s.recommendation AS latest_summary,
+               s.created_at AS snapshot_created_at
         FROM items i
         LEFT JOIN snapshots s ON s.item_id = i.id
             AND s.date = (SELECT MAX(date) FROM snapshots WHERE item_id = i.id)

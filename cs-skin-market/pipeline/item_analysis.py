@@ -1420,7 +1420,8 @@ def compute_buy_proximity(F):
     supply_hist = F.get("supply_hist") or []
     s7, s30 = F.get("s7"), F.get("s30")
     chg7, chg3d = F.get("chg7"), F.get("chg3d")
-    dedup = 1.0 if not _dedup_hit(F.get("recent_buy_dates"), F.get("signal_date")) else 0.0
+    _dedup_hit_flag = _dedup_hit(F.get("recent_buy_dates"), F.get("signal_date"))
+    dedup = 1.0 if not _dedup_hit_flag else 0.0
 
     # 基础族：低估区 buy（pct<=30 + 深跌确认(th 低=黄金坑) + Z 闸门）
     # 2026-08-09 回测修正（v2 引擎 369 信号，data/item_backtest_full_2025.json）：
@@ -1498,7 +1499,8 @@ def compute_buy_proximity(F):
 
     fams = [f for f in (base, panic, deep, easing, supply, oversold) if f]
     if not fams:
-        return {"score": 0, "nearest": "—", "gaps": [], "zero_reason": "数据不足，无法评估买点路径"}
+        return {"score": 0, "nearest": "—", "gaps": [], "zero_reason": "数据不足，无法评估买点路径",
+                "dedup_hit": _dedup_hit_flag, "recent_buy_dates": F.get("recent_buy_dates") or []}
     best = max(fams, key=lambda f: (f["score"], -_FAM_PRIORITY[f["key"]]))
     if best["score"] <= 0:
         _ZERO_HINT = {"7日去重": "7日内已买过", "止跌确认": "仍未见止跌",
@@ -1512,14 +1514,16 @@ def compute_buy_proximity(F):
         _top = sorted(_cnt.items(), key=lambda kv: -kv[1])[:2]
         _parts = [d + ("（" + _ZERO_HINT.get(d, "") + "）" if _ZERO_HINT.get(d) else "") for d, _c in _top]
         return {"score": 0, "nearest": "—", "gaps": [],
-                "zero_reason": "各买点路径均有硬缺口：" + "、".join(_parts) + "；暂无接近路径"}
+                "zero_reason": "各买点路径均有硬缺口：" + "、".join(_parts) + "；暂无接近路径",
+                "dedup_hit": _dedup_hit_flag, "recent_buy_dates": F.get("recent_buy_dates") or []}
     gaps = []
     for _desc, p, note in sorted(best["conds"], key=lambda c: (c[1] if c[1] is not None else 1.0)):
         if p is not None and 0 < p < 1 and note:
             gaps.append(note)
         if len(gaps) >= 2:
             break
-    return {"score": int(round(best["score"] * 100)), "nearest": best["label"], "gaps": gaps, "zero_reason": ""}
+    return {"score": int(round(best["score"] * 100)), "nearest": best["label"], "gaps": gaps, "zero_reason": "",
+            "dedup_hit": _dedup_hit_flag, "recent_buy_dates": F.get("recent_buy_dates") or []}
 
 def decide_fusion_signal(
     fd, *, position, cycle, th, value, prices, current, n, name,

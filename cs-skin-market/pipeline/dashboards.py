@@ -175,8 +175,19 @@ def portfolio_dashboard(conn):
             pass
     max_single = round(100.0 * vals[0]["value"] / holding_value, 1) if vals and holding_value > 0 else 0.0
     top3 = round(100.0 * sum(v["value"] for v in vals[:3]) / holding_value, 1) if holding_value > 0 else 0.0
+    # A-7 (2026-08-12): 组合闸门状态接入仪表盘——熔断状态 + 单票敞口提示（纯展示，参数不动）
+    try:
+        from .portfolio_risk import drawdown_status, single_position_exposure
+        _dd = drawdown_status(conn)
+        for _h in vals:
+            _ex = single_position_exposure(_h["value"], 0.0, assets)
+            if _ex:
+                _h["exposure"] = _ex
+    except Exception:
+        _dd = None
     return {
         "total_assets": round(assets, 2), "holding_value": round(holding_value, 2),
         "position_ratio": ratio, "cash_ratio": round(max(0.0, 100.0 - ratio), 1),
         "holdings": vals, "max_single": max_single, "top3": top3, "scan": scan,
+        "drawdown": _dd,
     }

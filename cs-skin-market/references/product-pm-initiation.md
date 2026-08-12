@@ -20,12 +20,12 @@
 |---|---|---|---|---|---|
 | A-1 | 生产 buy 信号记录链路核验与补挂 | A | 口径确认 + 诊断（已落地） | Q1/Q2 ✅ | 2026-08-12 |
 | A-2 | 执行环轻推（已记录状态/7天提醒/参考价一键确认） | A | 口径确认 | Q7 可选 | 2-3 天 |
-| A-3 | 「今日关注」卡片 + 买点队列 v0 | A | 字段确认 | Q4 | 2-3 天 |
-| A-4 | 文案口径清扫（replay 页头数据化 + 硬编码扫描） | A | meta 字段清单 | 无 | 0.5-1 天 |
+| A-3 | 「今日关注」卡片 + 买点队列 v0 | A | 字段确认 + 已落地 | Q4 ✅ | 2026-08-12 |
+| A-4 | 文案口径清扫（replay 页头数据化 + 硬编码扫描） | A | meta 字段清单 | 无 | 2026-08-12 |
 | A-5 | 贴纸「观察桶·禁 buy」隔离标注 | A | 标记字段确认 | Q5 | 0.5 天 |
-| A-6 | /checkup 双口径桥接 + 执行校准进度条 | A | 无（复用现有产物） | 无 | 1 天 |
-| A-7 | 组合闸门状态接入组合仪表盘 | A | 字段确认 | Q6 | 1 天 |
-| A-8 | 推送分层降噪（消费端） | A | 无（阈值不动） | Q8 可选 | 1 天 |
+| A-6 | /checkup 双口径桥接 + 执行校准进度条 | A | 无（复用现有产物） | 无 | 2026-08-12 |
+| A-7 | 组合闸门状态接入组合仪表盘 | A | 字段确认 + 已落地 | Q6 ✅ | 2026-08-12 |
+| A-8 | 推送分层降噪（消费端） | A | 无（阈值不动） | Q8 可选 | 2026-08-12 |
 | B-1 | 期望条按 market regime 分层展示 | A（原 B 升线） | 只读聚合脚本（已落地） | Q3 ✅ | 2026-08-12 |
 | B-2 | 求购因子验证与展示（F-2） | B | 90+ 天样本后三件套 | 样本积累 | 待 F-2 |
 | B-3 | 贴纸吸筹正式 A2（W-3） | B | n 积累 + regime 分层 A2 | 时间簇≥3 | 积累中 |
@@ -62,15 +62,15 @@
 - **验收**：录入 1 笔 buy 后报告按钮变「已记录」；7 天未录的 buy 建议在自选页有标记。
 - **预估**：2-3 天。
 
-### A-3 「今日关注」卡片 + 买点队列 v0（体验线）
+### A-3 「今日关注」卡片 + 买点队列 v0（体验线）—— ✅ 已落地（2026-08-12，Q4 口径：proximity.score 主序 + bar_pct 次键 + 观察桶/去重标签 + 采集时间）
 - **目标**：把 8/12 出现的 4 条 near_buy 100% 事件（data/market.db monitor_events）变成「今天该看谁」的一屏；填补 monitor 只读提醒 → Web 找品的断层。
-- **内容**：① watchlist/dashboard 顶部「📌 今日关注」卡片：当日 near_buy/stop_loss/price_spike 事件聚合 + 一键打开报告（6h 报告缓存命中 <100ms）；② 队列排序主口径 = proximity（buy_distance.py:190 已产出 gap_pct/gap_rmb/scenario/z_gap/th_gap），buy 信号置顶，每行带采集时间。
-- **引擎侧任务**：确认 proximity 输出结构是否足够支撑队列排序；评估是否补「最近 buy 信号日期/7 天去重」字段（Q4）。
+- **内容**：① watchlist/dashboard 顶部「📌 今日关注」卡片：当日 near_buy/stop_loss/price_spike/new_buy_signal 事件聚合 + 一键打开报告（6h 报告缓存命中 <100ms）；② 队列排序主口径 = **`fd.proximity.score` 降序（Q4 修正，原指向 buy_distance gap 字段不适用）**，buy 信号置顶，同 score 次键 `buy_distance.bar_pct/gap_pct`，每行带采集时间 + 观察桶标注（贴纸禁 buy 提示）。
+- **引擎侧任务**（Q4 ✅ 已答，2026-08-12）：字段足够——proximity 已覆盖 6 族达标度 + 7 日去重 + zero_reason；建议补只读字段 `dedup_hit/recent_buy_dates` 暴露（供「7 日内已买」标签）与贴纸观察桶标注（A-5 联动）。
 - **红线**：队列只聚合展示 fusion_decision/proximity 输出，**不接线新信号**；「接近买点 ≠ 买点，以报告决策条为准」提示必须保留。
 - **验收**：队列排序与批量扫描/报告口径一致（t_buy_queue 冒烟）；每行显示采集时间；点击报告 <100ms。
 - **预估**：2-3 天。
 
-### A-4 文案口径清扫（体验线/信任线）
+### A-4 文案口径清扫（体验线/信任线）—— ✅ 已落地（2026-08-12，replay 页头 meta 注入 + 全仓硬编码口径清零）
 - **目标**：消除死文本口径漂移（replay.html:7「503 个 buy 信号 / 2025-01-01~2026-08-05」vs 现状 317 信号 / 365d 窗口）。
 - **内容**：replay 页头改由 /api/signals/replay 的 meta（count/range/generated）注入；全仓 rg 扫「503|370|332|2025-01-01」等硬编码口径文案。
 - **引擎侧任务**：给出官方口径常量清单（REPLAY 窗口 / 信号数 / ENGINE_VERSION / 成本 2%），供展示层引用；若已有 t_ 校验则沿用。
@@ -84,21 +84,21 @@
 - **验收**：贴纸行有观察桶标注；综合榜与贴纸榜口径说明清晰。
 - **预估**：0.5 天（不含引擎侧字段新增）。
 
-### A-6 /checkup 双口径桥接 + 执行校准进度条（体验线/信任线）
+### A-6 /checkup 双口径桥接 + 执行校准进度条（体验线/信任线）—— ✅ 已落地（2026-08-12，口径说明 + 录入 N/20 进度条）
 - **目标**：① 解释「回放告警（信息级）≠ 实盘劣化」；② 把 A1-4 门槛（executions≥20）产品化为进度条，给录入动机。
 - **内容**：C 通道区块固定一行桥接说明；watchlist 执行区显示「录入 N/20 解锁滑点/胜率校准」进度（dashboards.py execution_review 同源）。
 - **引擎侧任务**：无（复用 j2_channel_monitor.py 产物与 executions 统计）。
 - **验收**：checkup 两口径解释清晰；进度条 N 与实际一致。
 - **预估**：1 天。
 
-### A-7 组合闸门状态接入组合仪表盘（体验线）
+### A-7 组合闸门状态接入组合仪表盘（体验线）—— ✅ 已落地（2026-08-12，熔断状态卡 + 敞口列）
 - **目标**：熔断 10% / 单票敞口 30% 提示（B1 层参数已有，纯提示）在 UI 可见。
 - **内容**：组合仪表盘（/api/portfolio/dashboard）加熔断状态卡（读 portfolio_risk.drawdown_status，已产出 peak/current/drawdown_pct/breaker_active）+ 单票敞口提示列（single_position_exposure，阈值 30%）。
 - **引擎侧任务**：确认 drawdown_status 字段语义与单票敞口计算口径（Q6）；**参数本身不动**。
 - **验收**：仪表盘显示组合回撤与熔断状态；敞口超 30% 的单品有提示徽章。
 - **预估**：1 天。
 
-### A-8 推送分层降噪（体验线）
+### A-8 推送分层降噪（体验线）—— ✅ 已落地（2026-08-12，danger 持仓置顶 + near_buy 降噪）
 - **目标**：单次推送 37-51 条事件噪音下降；高价值事件（新 buy / 持仓破位）不被淹没。
 - **内容**：持仓 danger 置顶；near_buy 降为「仅计数 + Top3 品名」；只动 monitor.py _build_push_text 消费端。
 - **引擎侧任务**：无（事件生成阈值 near_buy 60 / stop_loss 0.75 / supply_shift 区间本次不动；若评估该调，走 B-6）。
@@ -158,9 +158,9 @@
 | Q1 | signal_tracking 0 行：scan_tasks.py:187 记录分支为何未产生记录？（buy 稀缺 vs 分支异常 vs 事务问题） | A-1 | ✅ 已答（2026-08-12）：链路双挂接均通，行为重排级联删除丢失，已回填+对账 |
 | Q2 | record_buy_signal 口径（entry/action_label/engine_version/去重键）与回放是否一致？analyze_fresh 补挂对 C 通道统计有无影响？ | A-1 | 口径确认 + 影响评估 |
 | Q3 | 回放产物 item_backtest_full_2025.json 能否按 regime 分层聚合 14/30d 胜率？若需补 regime 列，重跑回放 + sync 链成本/风险？ | B-1 | ✅ 已答（2026-08-12）：字段齐备免重跑，B-1 只读聚合已落地 |
-| Q4 | buy_distance proximity 输出（gap_pct/gap_rmb/scenario/z_gap/th_gap）是否足够支撑买点队列排序？是否补「最近 buy 信号日期/7 天去重」字段？ | A-3 / B-7 | 字段确认 |
+| Q4 | buy_distance proximity 输出（gap_pct/gap_rmb/scenario/z_gap/th_gap）是否足够支撑买点队列排序？是否补「最近 buy 信号日期/7 天去重」字段？ | A-3 / B-7 | ✅ 已答（2026-08-12）：排序主口径改用 fd.proximity.score（6 族达标度+7日去重，字段足够）；补 dedup_hit/观察桶标注 2 只读字段；B-7 等 A2 样本 |
 | Q5 | 贴纸「观察桶·禁 buy」有无权威标记字段可暴露给展示层？（当前守卫隐式实现） | A-5 | 字段方案（可选） |
-| Q6 | portfolio_risk.drawdown_status（breaker_active 等）与 single_position_exposure 30% 语义确认，展示层直接消费是否 OK？ | A-7 | 确认 |
+| Q6 | portfolio_risk.drawdown_status（breaker_active 等）与 single_position_exposure 30% 语义确认，展示层直接消费是否 OK？ | A-7 | ✅ 已确认（2026-08-12，A-7 落地直接消费，实测 breaker_active/-44.65% 正常） |
 | Q7 | executions.advice_signal 为自由文本无法回链 signal_tracking：加 advice_id/信号 ID 是否值得？（表结构变更，评估收益/成本） | A-2 / B-4 | ⏸ 暂缓（2026-08-12）：executions 仅 8 行，样本不足以评估回链收益，待 ≥20 行再审 |
 | Q8 | monitor 提醒层阈值（near_buy 60 等）是否要评审调整？若不调，仅消费端降噪（A-8） | A-8 / B-6 | 结论 |
 

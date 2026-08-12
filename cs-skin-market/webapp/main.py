@@ -390,22 +390,53 @@ async def page_watchlist(request: Request):
         net_assets = total_assets + total_pnl
         position_ratio = (total_buy_cost / total_assets * 100) if total_assets > 0 else 0
 
-        # ---- 监控摘要（纯展示）：接近买点 Top + 破位止损 ----
+        # ---- 今日关注（A-3，2026-08-12）：当日事件聚合 + proximity 买点队列 + 破位止损 ----
+        _today_str = datetime.now(TZ_BJ).strftime("%Y-%m-%d")
+        _ev_rows = conn.execute(
+            "SELECT item_id, item_name, event_type, level, detail, created_at FROM monitor_events "
+            "WHERE date=? ORDER BY id DESC", (_today_str,)).fetchall()
+        _buy_ev = []
+        _warn_ev = []
+        for _er in _ev_rows:
+            _et = _er["event_type"]
+            if _et == "new_buy_signal":
+                _buy_ev.append(dict(_er))
+            elif _et in ("stop_loss", "price_spike"):
+                _warn_ev.append(dict(_er))
         _near = []
         _broken = []
         for _it in filtered:
             _prox = _it.get("proximity")
-            _act = (_it.get("wl_summary") or {}).get("fusion_action")
+            _wsum = _it.get("wl_summary") or {}
+            _act = _wsum.get("fusion_action")
+            _sources = _wsum.get("deduction_sources") or []
+            _is_sticker = bool((_it.get("name") or "").startswith("印花 |")) or "sticker_observation" in _sources
             if _prox and isinstance(_prox, dict) and _prox.get("score", 0) >= 60 and _act != "buy":
-                _near.append(_it)
+                _near.append({
+                    "item_id": _it["id"], "name": _it["name"],
+                    "score": _prox.get("score", 0), "nearest": _prox.get("nearest", ""),
+                    "gaps": _prox.get("gaps") or [], "dedup_hit": bool(_prox.get("dedup_hit")),
+                    "is_sticker": _is_sticker, "collected_at": _it.get("snapshot_created_at") or "",
+                })
             if _it.get("holding") and _it.get("avg_cost", 0) > 0 and _it.get("latest_price"):
                 if _it["latest_price"] <= _it["avg_cost"] * 0.75:
-                    _broken.append(_it)
-        _near.sort(key=lambda x: (x.get("proximity") or {}).get("score", 0), reverse=True)
+                    _broken.append({
+                        "item_id": _it["id"], "name": _it["name"],
+                        "latest_price": _it["latest_price"], "avg_cost": _it["avg_cost"],
+                        "collected_at": _it.get("snapshot_created_at") or "",
+                    })
+        _near.sort(key=lambda x: x["score"], reverse=True)
         monitor = {
-            "near_buys": _near[:3],
+            "near_buys": _near[:5],
             "broken": _broken[:5],
+            "buy_events": _buy_ev[:5],
+            "warn_events": _warn_ev[:5],
+            "has_focus": bool(_buy_ev or _near or _broken or _warn_ev),
+            "today": _today_str,
         }
+
+        # ---- A1-4 执行校准进度（A-6, 2026-08-12）：executions 计数供「录入 N/20」进度条 ----
+        _exec_count = conn.execute("SELECT COUNT(*) AS c FROM executions").fetchone()["c"]
 
         # ---- pagination on filtered list ----
         PAGE_SIZE = 10
@@ -496,6 +527,7 @@ async def page_watchlist(request: Request):
             "wl_q": wq,
             "wl_sort": ws,
             "monitor": monitor,
+            "exec_count": _exec_count,
             "all_items_json": json.dumps(
                 [{"id": i["id"], "name": i["name"], "holding": bool(i.get("holding"))} for i in all_items],
                 ensure_ascii=False),
