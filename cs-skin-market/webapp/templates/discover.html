@@ -19,7 +19,7 @@
   <h2>🔍 发现高分品</h2>
   <p>从池内活跃品中扫描（DB 新鲜 K 线复用，无需网络采集），按综合分排序筛出高分低估机会；可加入自选进入监控</p>
   <div style="margin-top:22px;">
-    <button id="btn-main-scan" class="btn btn-primary btn-scan" onclick="startScan()">🚀 扫描池内高分品</button>
+    <button id="btn-main-scan" class="btn btn-primary btn-scan" onclick="startScan('all')" title="全池扫描：综合榜 + 贴纸榜一起刷新">🚀 扫描池内高分品（全部）</button>
   </div>
   
 </div>
@@ -101,9 +101,10 @@ function loadDiscoverHistory() {
   });
 }
 
-function refreshDiscover() { startScan(); }
+function refreshDiscover(scope) { startScan(scope || "all"); }
 
-function startScan() {
+function startScan(scope) {
+  scope = scope || "all";
   var mainBtn = document.getElementById("btn-main-scan");
   var progress = document.getElementById("discover-progress");
   var status = document.getElementById("discover-status");
@@ -112,10 +113,10 @@ function startScan() {
   var results = document.getElementById("discover-results");
   if (mainBtn) { mainBtn.disabled = true; mainBtn.textContent = "扫描中..."; }
   progress.style.display = "block";
-  status.textContent = "正在搜索热门武器类型...";
+  status.textContent = "正在扫描" + (scope === "sticker" ? "贴纸榜" : (scope === "skin" ? "综合榜" : "全部品类")) + "...";
   bar.style.width = "0%";
   results.innerHTML = "";
-  fetch("/api/discover/scan-all", {method:"POST"})
+  fetch("/api/discover/scan-all?scope=" + encodeURIComponent(scope), {method:"POST"})
   .then(function(r) { return r.json(); })
   .then(function(d) {
     if (d.error) { status.textContent = "❌ " + d.error; if (mainBtn) { mainBtn.disabled = false; mainBtn.textContent = "🔄 刷新扫描"; } return; }

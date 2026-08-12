@@ -28,7 +28,7 @@
       <td style="{{ r.rank_style }}">{{ r.rank }}</td>
       <td><span class="{{ r.grade_cls }}">{{ r.grade }}</span></td>
       <td>{% if r.category %}<span style="font-size:11px;color:var(--text-muted);border:1px solid var(--border);border-radius:4px;padding:1px 6px;">{{ r.category }}</span>{% endif %}</td>
-      <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><a href="javascript:void(0)" onclick="showDiscoverReport('{{ r.esc_name|safe }}')" style="color:var(--accent);text-decoration:none;cursor:pointer;" title="查看分析报告">{{ r.name }}</a></td>
+      <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><a href="javascript:void(0)" onclick="showDiscoverReport('{{ r.esc_name|safe }}')" style="color:var(--accent);text-decoration:none;cursor:pointer;" title="查看分析报告">{{ r.name }}</a>{% if r.collected_at %}<br><span style="font-size:10px;color:var(--text-muted);">采集于 {{ r.collected_at }}</span>{% endif %}</td>
       <td>¥{{ "%.2f"|format(r.price) }}</td>
       <td>{{ "%.1f"|format(r.score) }}</td>
       <td style="font-weight:600;">{{ "%.1f"|format(r.comp) }}</td>
@@ -56,7 +56,8 @@
       <button id="tab-btn-sticker" class="btn btn-sm btn-outline" onclick="switchDiscoverTab('sticker')">🏷️ 贴纸榜 ({{ sticker_count }})</button>
     </div>
   <span class="card-subtitle">已扫描 {{ ok_count }} 个饰品，各展示前10{{ market_note|safe }}
-    <button class="btn btn-sm btn-outline" onclick="refreshDiscover()" style="margin-left:8px;">🔄 刷新</button></span></div>
+    <button class="btn btn-sm btn-outline" onclick="refreshDiscover('skin')" style="margin-left:8px;" title="仅重扫综合榜（非贴纸品类），贴纸榜不动">🔄 刷新综合榜</button>
+    <button class="btn btn-sm btn-outline" onclick="refreshDiscover('sticker')" title="仅重扫贴纸榜，综合榜不动">🔄 刷新贴纸榜</button></span></div>
 
   <div id="discover-tab-all">{{ disc_table(top10) }}</div>
   <div id="discover-tab-sticker" style="display:none;">{{ disc_table(sticker_top10) }}</div>

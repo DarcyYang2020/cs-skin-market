@@ -2775,3 +2775,23 @@ Fluxo 25→280 约 11 倍），尖顶后 3 天 -86~94%，与枪皮统计反转�
 **落地**（`pipeline/item_analysis.py`，纯展示层）：删除 th_boost 应用两行 + 注释说明；分级仓位读 decide_fusion_signal 传入的基础 value.score（th_boost 应用在其后），**引擎决策/回放产物零影响**（不重跑回放，`item_backtest_full_2025.json` 不变）；评级/position_advice 不再奖励追高段。服务已重启（PID 21748），冒烟 100 passed / 0 failed，pyflakes 无告警。
 
 **学到的新思路**：M-5 这类「方向定论」落地时，同方向逻辑若存在多处复制/对冲点（composite 反向 + value 后处理正向），只改一处会让系统内两条展示线对同一因子态度相反——定论落地后应全仓 rg 同因子符号核对。
+
+## 发现高分品结果行加数据采集时间（2026-08-12）
+
+**背景**：用户评估「发现高分品是否需要全量强制联网搜索」后结论=不需要（纯 DB 池内扫描 + 3 天复用窗口对慢变量指标失真小 + 限流风险 + 已有行级⚡刷新/单品分析强制出口）；但发现 `discover_latest.json` 结果行无 `collected_at`（批量扫描/单品报告均已显示采集时间，discover 是唯一漏掉的展示面），列为小缺口并落地。
+
+**落地**（纯展示层，零决策参数）：`pipeline/discover_tasks.py` results.append 加 `collected_at`（DB 复用取 `item.collected_at`，联网采集由 `collector_csqaq.py:669` 注入；串品重取路径 item 已更新）；`webapp/main.py` 行级⚡刷新 `new_res` 同步带 `collected_at`；`webapp/render_html.py` `_to_row` 透传；`templates/partials/discover_html.html` 名称列下「采集于 {时间}」（与批量扫描 `batch_scan.py:748` 同款 10px 灰字）。前端 JS 无需改（行级刷新后 `loadDiscoverLatest`、全扫轮询均整表重渲染）。冒烟 100 passed / 0 failed，pyflakes 无告警，服务已重启（PID 22416）。
+
+**学到的新思路**：「时效可见性」是数据复用策略的必要配套——只要存在复用窗口（KLINE_FRESH_DISCOVER=3），展示面就必须让用户看到数据是什么时候的，否则新鲜度策略无法被信任。
+
+
+## Top10 高分饰品·双榜独立刷新（2026-08-12，展示层/功能）
+
+**需求**：Top10 卡片头部「🔄 刷新」原为全池扫描（综合榜 + 贴纸榜一起刷新），改为可选择性刷新。
+
+**实现**（零引擎参数，纯展示层 + 池内扫描 scope）：
+- `POST /api/discover/scan-all` 新增 `scope` 参数（pool 模式生效）：`all`=全池（默认，行为不变）/ `skin`=综合榜（非贴纸品类）/ `sticker`=贴纸榜；
+- `pipeline/discover_tasks.py`：`_run_discover_pool_task(task_id, scope)` 按 scope 过滤池内 SQL（`印花 |%` 归属贴纸）；`_save_discover_artifacts(task_id, scope)` 非 all 时将本次 scope 结果按 name 合并回 `discover_latest.json`（另一榜旧行保留、同名替换、新行追加），用合并后完整 results 重渲染两榜 HTML 并同步回进度对象（轮询结束即见完整榜），**跳过 discover_history 快照**（避免覆盖当天全量扫描快照，追踪口径仍由 all 扫描驱动），台账留痕 `note=completed scope=xx`；
+- 前端：Top10 卡片头部「🔄 刷新」拆为「🔄 刷新综合榜」「🔄 刷新贴纸榜」两个按钮（分别 POST `scope=skin/sticker`，title 注明另一榜不动）；页面顶部主按钮改为「🚀 扫描池内高分品（全部）」（`scope=all`，两榜一起刷）。
+
+**验证**：合并逻辑实测通过（sticker/skin 两向合并、all 整体覆写、另一榜保留、progress html 同步完整渲染；测试后恢复真实 cache 与 history 快照）；冒烟 100 passed / 0 failed；`pyflakes webapp pipeline` 0 告警。服务模板/代码已改，需重启生效（`reload=False`）。

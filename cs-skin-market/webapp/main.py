@@ -1539,6 +1539,7 @@ async def api_discover_refresh_item(request: Request):
         composite = round((score + action_bonus + th_bonus) * valuation_discount * dq_factor, 1)
         new_res = dict(
             name=exact_name, good_id=good_id,
+            collected_at=getattr(item, "collected_at", "") or "",
             price_rmb=prices[-1] or getattr(item, "price_rmb", 0) or 0,
             grade=analysis.value.grade, score=score, composite=composite,
             data_quality=getattr(analysis, "data_quality", "low"),
@@ -1571,9 +1572,10 @@ async def api_discover_refresh_item(request: Request):
 
 @app.post("/api/items/discover")
 @app.post("/api/discover/scan-all")
-async def api_discover_scan_all(request: Request, mode: str = Query("pool")):
+async def api_discover_scan_all(request: Request, mode: str = Query("pool"), scope: str = Query("all")):
     """发现高分品扫描（F-3.4, 2026-08-08）：默认 pool 模式——从池内活跃品跑（DB 新鲜 K 线复用，
-    不依赖 csQAQ 搜索 suggest，规避滑块验证码）；mode=search 保留原全网搜索扩池路径。"""
+    不依赖 csQAQ 搜索 suggest，规避滑块验证码）；mode=search 保留原全网搜索扩池路径。
+    scope（2026-08-12 双榜独立刷新，pool 模式生效）：all=全池 / skin=综合榜（非贴纸）/ sticker=贴纸榜。"""
     import time as _time
     _prune_progress(_discover_progress)
     _busy = _active_task(_discover_progress)
@@ -1584,7 +1586,9 @@ async def api_discover_scan_all(request: Request, mode: str = Query("pool")):
     if mode == "search":
         asyncio.create_task(_run_discover_scan_all_task(task_id))
     else:
-        asyncio.create_task(_run_discover_pool_task(task_id))
+        if scope not in ("all", "skin", "sticker"):
+            scope = "all"
+        asyncio.create_task(_run_discover_pool_task(task_id, scope))
     return {"task_id": task_id}
 
 

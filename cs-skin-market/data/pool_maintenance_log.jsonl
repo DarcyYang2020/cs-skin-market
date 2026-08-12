@@ -39,3 +39,6 @@
 {"type": "discover", "task_id": "discover_1786508145", "note": "completed", "candidates": 356, "ok": 237, "error": 0, "skipped": 119, "market_th": 37, "pool_size_now": 361, "ts": "2026-08-12 12:15:50"}
 {"type": "discover", "task_id": "discover_1786508224", "note": "completed", "candidates": 356, "ok": 237, "error": 0, "skipped": 119, "market_th": 37, "pool_size_now": 361, "ts": "2026-08-12 12:17:10"}
 {"type": "discover", "task_id": "discover_1786514028", "note": "completed", "candidates": 356, "ok": 237, "error": 0, "skipped": 119, "market_th": 37, "pool_size_now": 361, "ts": "2026-08-12 13:53:59"}
+{"type": "discover", "task_id": "discover_1786516843", "note": "completed", "candidates": 356, "ok": 315, "error": 0, "skipped": 41, "market_th": 37, "pool_size_now": 361, "ts": "2026-08-12 14:40:48"}
+{"type": "discover", "task_id": "discover_1786517239", "note": "completed scope=sticker", "candidates": 160, "ok": 153, "error": 0, "skipped": 7, "market_th": 37, "pool_size_now": 361, "ts": "2026-08-12 14:47:23"}
+{"type": "discover", "task_id": "discover_1786517390", "note": "completed scope=sticker", "candidates": 160, "ok": 153, "error": 0, "skipped": 7, "market_th": 37, "pool_size_now": 361, "ts": "2026-08-12 14:49:54"}

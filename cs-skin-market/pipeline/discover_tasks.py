@@ -221,6 +221,7 @@ async def _run_discover_task(task_id: str, items: list):
 
             results.append(dict(
                 name=exact_name, good_id=good_id, price_rmb=price_rmb or item.price_rmb,
+                collected_at=getattr(item, "collected_at", "") or "",
                 category=discover_category(exact_name),
                 grade=analysis.value.grade, score=score, composite=composite,
                 data_quality=getattr(analysis, "data_quality", "low"),
@@ -312,20 +313,26 @@ async def _run_discover_task(task_id: str, items: list):
     except Exception:
         pass
 
-async def _run_discover_pool_task(task_id: str):
+async def _run_discover_pool_task(task_id: str, scope: str = "all"):
     """从池内跑 discover（F-3.4, 2026-08-08）：加载活跃池品，DB 新鲜 K 线复用优先，
-    按综合分排序出高分品。池内 90 日 K 线每日采集已在库，纯 DB 扫描，只有过期品才触发网络补齐。"""
+    按综合分排序出高分品。池内 90 日 K 线每日采集已在库，纯 DB 扫描，只有过期品才触发网络补齐。
+    scope（2026-08-12 双榜独立刷新）：all=全池 / skin=综合榜（非贴纸）/ sticker=贴纸榜，仅刷新对应品类。"""
     conn_p = db.get_conn()
     try:
         # M-6 (2026-08-11): 发现空间扩展——无磨损品类（印花/武器箱/挂件/收藏品/胶囊）
         # 与崭新出厂枪皮同进发现榜；角色/特工（非以上品类）暂不入榜。
+        _scope_sql = ""
+        if scope == "sticker":
+            _scope_sql = " AND i.name LIKE '印花 |%'"
+        elif scope == "skin":
+            _scope_sql = " AND i.name NOT LIKE '印花 |%'"
         rows = conn_p.execute(
             "SELECT i.id, i.good_id, i.name FROM items i "
             "WHERE i.good_id>0 AND (i.name LIKE '%崭新出厂%' "
             "OR i.name LIKE '印花 |%' OR i.name LIKE '挂件 |%' "
             "OR i.name LIKE '%武器箱' OR i.name LIKE '%收藏品' OR i.name LIKE '%胶囊') "
             "AND (i.notes IS NULL OR (i.notes NOT LIKE '%存世量过低%' "
-            "AND i.notes NOT LIKE '%活跃池淘汰%')) ORDER BY i.id"
+            "AND i.notes NOT LIKE '%活跃池淘汰%'))" + _scope_sql + " ORDER BY i.id"
         ).fetchall()
     finally:
         conn_p.close()
@@ -339,24 +346,59 @@ async def _run_discover_pool_task(task_id: str):
     _discover_progress[task_id]["current"] = 0
     _discover_progress[task_id]["name"] = "池内扫描准备中"
     await _run_discover_task(task_id, items)
-    _save_discover_artifacts(task_id)
+    _save_discover_artifacts(task_id, scope)
 
-def _save_discover_artifacts(task_id: str):
+def _save_discover_artifacts(task_id: str, scope: str = "all"):
     """discover 完成产物统一落盘（F-3.4, 2026-08-08）：latest cache + top10 历史存档 + 池维护台账。
-    pool/search 两条路径共用，避免尾部逻辑漂移。"""
+    pool/search 两条路径共用，避免尾部逻辑漂移。
+    scope（2026-08-12 双榜独立刷新）：非 all 时结果合并回现有 cache（另一榜保留）、
+    重渲染两榜完整 HTML、不写 discover_history（快照仅由全量扫描驱动）。"""
     import json as _json_cache
     from pathlib import Path as _Path_cache
     _cache_path = _Path_cache(__file__).resolve().parent.parent / 'data' / 'discover_latest.json'
     _cache_path.parent.mkdir(parents=True, exist_ok=True)
+    _results = _discover_progress[task_id].get('results', [])
+    _market_th = _discover_progress[task_id].get('market_th', None)
+    _skip_history = False
+    if scope != "all":
+        # 2026-08-12 双榜独立刷新：scope 结果合并回现有 cache（另一榜旧行保留），
+        # 合并后重渲染两榜完整 HTML（进度轮询取 progress.html 时榜单完整）；history 仅由全量扫描驱动
+        _skip_history = True
+        try:
+            _old = _json_cache.loads(_cache_path.read_text(encoding='utf-8')) if _cache_path.exists() else {}
+            _old_results = _old.get('results') or []
+        except Exception:
+            _old_results = []
+        _scope_rows = {r.get('name'): r for r in _results if r.get('name')}
+
+        def _is_stk(r):
+            return (r.get('category') or discover_category(r.get('name') or '')) == 'sticker'
+        if scope == "sticker":
+            _merged = [r for r in _old_results if not _is_stk(r) and r.get('name') not in _scope_rows]
+        else:  # scope == "skin"：综合榜 = 非贴纸
+            _merged = [r for r in _old_results if _is_stk(r) and r.get('name') not in _scope_rows]
+        _merged.extend(_scope_rows.get(n) for n in _scope_rows)
+        _results = _merged
+        if _market_th is None:
+            _market_th = _old.get('market_th')
+        try:
+            _new_html = render_discover_html(_results, _market_th or 50)
+            _discover_progress[task_id]["html"] = _new_html
+        except Exception:
+            _new_html = _discover_progress[task_id].get('html', '')
     _cache_data = {
         'time': __import__('datetime').datetime.now().isoformat(),
         'html': _discover_progress[task_id].get('html', ''),
-        'results': _discover_progress[task_id].get('results', []),
-        'market_th': _discover_progress[task_id].get('market_th', None),
+        'results': _results,
+        'market_th': _market_th,
     }
     _cache_path.write_text(_json_cache.dumps(_cache_data, ensure_ascii=False), encoding='utf-8')
 
     # 高分品追踪 (2026-08-05): top10 存档，14/30d 后回测表现
+    # 2026-08-12 scope 独立刷新：不写 discover_history（避免覆盖当天全量快照），台账留痕后直接结束
+    if _skip_history:
+        _finalize_discover(task_id, note="completed scope=" + scope)
+        return
     try:
         _hist_dir = _Path_cache(__file__).resolve().parent.parent / 'data' / 'discover_history'
         _hist_dir.mkdir(parents=True, exist_ok=True)
