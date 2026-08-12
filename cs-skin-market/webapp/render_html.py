@@ -141,6 +141,19 @@ def render_report_html(report_md, date, grade, total_score):
     return "\n".join(html_parts)
 
 
+
+def split_discover_top10(results):
+    """2026-08-12 贴纸独立 Top10：返回 (综合榜 top10, 贴纸榜 top10)。
+    渲染与报告落库共用同一分榜口径，避免榜单与落库漂移。"""
+    sorted_r = sorted(results, key=lambda r: -(r.get("composite", 0) or r.get("score", 0) or 0))
+
+    def _is_sticker(r):
+        return (r.get("category") or discover_category(r.get("name") or "")) == "sticker"
+    top10 = [r for r in sorted_r if not _is_sticker(r)][:10]
+    sticker_top10 = [r for r in sorted_r if _is_sticker(r)][:10]
+    return top10, sticker_top10
+
+
 def render_discover_html(results, market_th=50):
     """发现页结果 → Jinja（热力图 + Top10）。逻辑（排序/统计/JS 转义）留 Python，HTML 结构在模板。"""
     _wl_names = set()
@@ -155,11 +168,8 @@ def render_discover_html(results, market_th=50):
         pass
     sorted_r = sorted(results, key=lambda r: -(r.get("composite", 0) or r.get("score", 0) or 0))
     # 2026-08-12 贴纸独立 Top10：贴纸（sticker）不与枪皮混排（事件脉冲 vs 统计反转，品类形态差异大）
-    def _is_sticker(r):
-        return (r.get("category") or discover_category(r.get("name") or "")) == "sticker"
-    top10 = [r for r in sorted_r if not _is_sticker(r)][:10]
-    sticker_sorted = [r for r in sorted_r if _is_sticker(r)]
-    sticker_top10 = sticker_sorted[:10]
+    sticker_sorted = [r for r in sorted_r if (r.get("category") or discover_category(r.get("name") or "")) == "sticker"]
+    top10, sticker_top10 = split_discover_top10(results)
     errors = [r for r in sorted_r if r.get("error")]
     ok_count = len(sorted_r) - len(errors)
     sticker_count = len(sticker_sorted)

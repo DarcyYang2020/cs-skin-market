@@ -2630,3 +2630,10 @@ Fluxo 25→280 约 11 倍），尖顶后 3 天 -86~94%，与枪皮统计反转�
 
 **验证**：冒烟全量 + pyflakes 0 + 页面 Tab 切换实测。
 
+## 贴纸榜点击无报告修复（2026-08-12，bug fix 纯展示层）
+
+**问题**：贴纸独立 Top10 落地后，贴纸榜第 2-10 名点击名称显示「暂无报告」。根因：discover 扫描的报告落库逻辑（pipeline/discover_tasks.py）只保存综合榜前 10（results[:10]）到 analysis_results/snapshots；拆榜后贴纸第 2-10 名综合排名在 10 名开外，从未生成过报告（实测贴纸榜 10 行仅 1 行有报告）。
+
+**修复**：webapp/render_html.py 新增 split_discover_top10（综合榜/贴纸榜分榜单一口径，渲染与落库共用，防榜单与落库漂移）；pipeline/discover_tasks.py 保存循环改为双榜单可见行并集（按 name 去重、跳过 error 行）。下次扫描后两个 Tab 全部可见行均有点击报告。
+
+**验证**：冒烟 100 passed / 0 failed；pyflakes 0；缓存 results 实测并集 20 行 = 页面可见行（10 枪皮 + 10 贴纸）。

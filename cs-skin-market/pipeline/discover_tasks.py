@@ -12,7 +12,7 @@ from webapp.analysis_service import (
     resolve_item, save_analysis_result, save_item_snapshot, _today_str,
 )
 from pipeline.item_categories import discover_category
-from webapp.render_html import render_discover_html
+from webapp.render_html import render_discover_html, split_discover_top10
 
 _web_log = logging.getLogger("webapp")
 
@@ -265,9 +265,18 @@ async def _run_discover_task(task_id: str, items: list):
     _discover_progress[task_id]["done"] = True
     _persist_discover_progress(task_id)
 
-    # 保存 top10 报告到 analysis_results + snapshots（查看报告不再重新分析）
+    # 保存榜单报告到 analysis_results + snapshots（查看报告不再重新分析）
+    # 2026-08-12 贴纸独立 Top10 后：综合榜 + 贴纸榜双榜单可见行均落库
+    # （原 results[:10] 只覆盖综合榜前 10，贴纸 2-10 名无报告，点击显示「暂无报告」）
     try:
-        for _r in results[:10]:
+        _top10, _sticker_top10 = split_discover_top10(results)
+        _save_rows, _seen_names = [], set()
+        for _r in _top10 + _sticker_top10:
+            if _r.get("error") or _r.get("name") in _seen_names:
+                continue
+            _seen_names.add(_r.get("name"))
+            _save_rows.append(_r)
+        for _r in _save_rows:
             if _r.get("error"):
                 continue
             _an = analysis_objs.get(_r.get("name", ""))
