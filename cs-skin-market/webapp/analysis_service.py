@@ -5,7 +5,7 @@
 api_watchlist_analyze 三条约 90% 重复的分析路径；批量扫描 _scan_item 因
 「价格校验先行 + 参数子集 + 结果结构不同」暂保留原流程（调用本模块助手函数）。
 """
-import asyncio, copy, json, logging, sys
+import asyncio, copy, io, json, logging, sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -730,6 +730,119 @@ def _supply_display(supply_dict, position):
     return out
 
 
+# ============================================================
+#  贴纸庄盘指纹（2026-08-12 展示层，只读 S-1 深历史研究快照）
+#  依据 references/first-principles-manipulation.md：贴纸天然适合坐庄，
+#  尖顶崩塌后长期不复原（144 品：峰后 90d 中位剩 31.9%）；本块仅展示
+#  「已被爆炒过/正在回落」的事实，不产生任何决策信号（H1 回测验证中）。
+# ============================================================
+_STICKER_DEEP_CACHE = {"mtime": 0.0, "data": {}}
+
+
+def _load_sticker_deep():
+    """只读加载贴纸深历史研究快照（data/_exp_sticker_deep_full.jsonl，S-1 产物）。
+    带 mtime 缓存：S-1 回填进行中，文件变化时自动重载。"""
+    _p = Path(__file__).resolve().parent.parent / "data" / "_exp_sticker_deep_full.jsonl"
+    try:
+        _mtime = _p.stat().st_mtime
+    except OSError:
+        return {}
+    if _STICKER_DEEP_CACHE["mtime"] == _mtime:
+        return _STICKER_DEEP_CACHE["data"]
+    _data = {}
+    try:
+        with io.open(_p, "r", encoding="utf-8") as _f:
+            for _line in _f:
+                _line = _line.strip()
+                if not _line:
+                    continue
+                try:
+                    _o = json.loads(_line)
+                except Exception:
+                    continue
+                _pts = [(d, v) for d, v in _o.get("points", [])
+                        if isinstance(v, (int, float)) and v > 0]
+                if len(_pts) >= 60:
+                    _data[_o.get("name", "")] = _pts
+    except OSError:
+        return {}
+    _STICKER_DEEP_CACHE.update(mtime=_mtime, data=_data)
+    return _data
+
+
+def sticker_whale_fingerprint(name):
+    """贴纸庄盘指纹（展示层，只读）：max_gain / 全样本分位 / 尖顶形态 / 距峰值回撤。
+    非贴纸或无深历史返回 None；本函数不参与任何引擎决策。"""
+    if not name or not name.startswith("印花 |"):
+        return None
+    _series = _load_sticker_deep().get(name)
+    if not _series:
+        return None
+    _prices = [v for _, v in _series]
+    _lo, _hi = min(_prices), max(_prices)
+    if _lo <= 0 or _hi <= 0:
+        return None
+    _i_hi = _prices.index(_hi)
+    _after3 = _prices[_i_hi + 1:_i_hi + 4]
+    _after14 = _prices[_i_hi + 1:_i_hi + 15]
+    _max_gain = _hi / _lo - 1
+    _gains = []
+    for _pts in _load_sticker_deep().values():
+        _lo2 = min(v for _, v in _pts)
+        _hi2 = max(v for _, v in _pts)
+        if _lo2 > 0 and _hi2 > 0:
+            _gains.append(_hi2 / _lo2 - 1)
+    _rank = (sum(1 for g in _gains if g >= _max_gain) / len(_gains) * 100) if _gains else None
+    return {
+        "max_gain": _max_gain,
+        "gain_rank_pct": _rank,
+        "dd3": (min(_after3) / _hi - 1) * 100 if len(_after3) >= 3 else None,
+        "dd14": (min(_after14) / _hi - 1) * 100 if _after14 else None,
+        "dd_now": (_prices[-1] / _hi - 1) * 100,
+        "vs_start": (_prices[-1] / _prices[0] - 1) * 100,
+        "peak_date": _series[_i_hi][0],
+        "issue_price": _prices[0],
+        "n": len(_gains),
+    }
+
+
+def render_sticker_whale_block(fp):
+    """庄盘指纹 HTML fragment（模板变量与静态报告注入共用；纯展示层零决策）。"""
+    if not fp:
+        return ""
+
+    def _fmt(x, signed=False, suffix=""):
+        if x is None:
+            return "--"
+        return ("%+.0f%%" if signed else "%.0f%%") % x + suffix
+
+    _warn = ""
+    if fp.get("dd_now") is not None and fp["dd_now"] < -70:
+        _warn = ('<div style="margin-top:6px;font-size:11px;color:var(--yellow);">'
+                 '⚠️ 距历史峰值已回落 &gt;70%%：若已历经过一轮爆炒，非 Major 前置期勿按枪皮逻辑抄底'
+                 '（尖顶崩塌预测 H1 回测验证中，未进决策）。</div>')
+    _rank = fp.get("gain_rank_pct")
+    _rank_txt = ("（%d 品中前 %.0f%%）" % (fp.get("n") or 0, _rank)) if _rank is not None else "（样本不足）"
+    return (
+        '<details style="margin-top:10px;font-size:12px;color:var(--text-secondary);">'
+        '<summary style="cursor:pointer;font-weight:700;color:var(--text-primary);font-size:14px;">'
+        '📛 庄盘指纹（贴纸专项 · 深历史）</summary>'
+        '<div style="margin-top:6px;line-height:1.9;padding:8px 10px;background:rgba(100,116,139,0.08);border-radius:8px;">'
+        '历史脉冲：区间最高涨幅 <b>%+.0f%%</b>%s<br>'
+        '尖顶形态：峰后 3d %s / 14d %s<br>'
+        '距历史峰值（%s）：现价 = 峰值的 %s（回落 %s）<br>'
+        '现价 vs 深历史起点（2025-01 ≈ 发行价）：%s'
+        + _warn +
+        '</div></details>'
+    ) % (
+        fp["max_gain"] * 100, _rank_txt,
+        _fmt(fp.get("dd3"), signed=True), _fmt(fp.get("dd14"), signed=True),
+        fp.get("peak_date", "—"),
+        _fmt((1 + fp.get("dd_now", 0) / 100) * 100), _fmt(fp.get("dd_now"), signed=True),
+        _fmt(fp.get("vs_start"), signed=True),
+    )
+
+
 def build_analysis_ctx(analysis, kline_stale_days=None, kline_stale_date="",
                        holding_ctx=None, market_30d_change=None, market_th=None, sentiment=50.0,
                        collected_at=""):
@@ -836,4 +949,5 @@ def build_analysis_ctx(analysis, kline_stale_days=None, kline_stale_date="",
         "analysis_time": datetime.now(TZ_BJ).strftime("%Y-%m-%d %H:%M"),
         "in_watchlist": _in_wl,
         "collected_at": collected_at or "",
+        "sticker_whale_html": render_sticker_whale_block(sticker_whale_fingerprint(analysis.name)),
     }

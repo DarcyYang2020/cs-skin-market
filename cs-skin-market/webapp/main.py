@@ -23,6 +23,7 @@ from webapp.analysis_service import (
     AnalysisAbort, analyze_fresh, build_analysis_ctx,
     resolve_item, KLINE_FRESH_SINGLE, KLINE_FRESH_SINGLE_HOURS,
     kline_db_fallback, market_snapshot, recent_buy_dates, _today_str,
+    sticker_whale_fingerprint, render_sticker_whale_block,
 )
 
 from webapp.render_html import render_report_html, render_discover_html, spark_svg
@@ -846,6 +847,21 @@ async def _report_view_rebuild(request: Request, name: str):
         return await _saved_report_response(name)
 
 
+def _sticker_whale_inject(html: str, name: str) -> str:
+    """贴纸庄盘指纹注入（静态缓存报告；实时路径走 build_analysis_ctx）。纯展示层。"""
+    try:
+        _wh = render_sticker_whale_block(sticker_whale_fingerprint(name))
+        if _wh:
+            _anchor = '<details style="margin-top:10px;font-size:12px;color:var(--text-secondary);">'
+            if _anchor in html:
+                html = html.replace(_anchor, _wh + _anchor, 1)
+            else:
+                html = html.rstrip() + "\n" + _wh
+    except Exception as _we:
+        _web_log.warning(f"sticker whale inject failed {name}: {_we}")
+    return html
+
+
 async def _saved_report_response(name: str):
     """已存报告兜底：analysis_results → snapshots → 空态提示（原 /api/discover/report 逻辑）。"""
     conn = db.get_conn()
@@ -855,7 +871,7 @@ async def _saved_report_response(name: str):
             (name,),
         ).fetchone()
         if row and row["report_html"]:
-            return HTMLResponse(row["report_html"])
+            return HTMLResponse(_sticker_whale_inject(row["report_html"], name))
         item = conn.execute("SELECT id FROM items WHERE name=?", (name,)).fetchone()
         if item:
             snap = conn.execute(

@@ -261,6 +261,11 @@
   报告时间: {{ analysis_time if analysis_time else 'N/A' }}
 </div>
 
+{# ====== 庄盘指纹（贴纸专项，2026-08-12 展示层） ====== #}
+{% if sticker_whale_html %}
+{{ sticker_whale_html|safe }}
+{% endif %}
+
 {# ====== 术语速查 ====== #}
 <details style="margin-top:10px;font-size:12px;color:var(--text-secondary);">
   <summary style="cursor:pointer;font-weight:600;">📖 术语速查</summary>
