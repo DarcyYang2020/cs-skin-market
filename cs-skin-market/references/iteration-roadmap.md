@@ -340,3 +340,10 @@ eferences/refit_pipeline.py → data/refit_pipeline_report.json（A2 三件套�
 - C 通道族级失效监测：**✅ 完成（2026-08-12）**——`j2_channel_monitor._channel_c_family` 族级月度下钻（n≥5 / 14d<60% / 30d<50% / 连续2月<70%，阈值入 `config.J2_THRESHOLDS`），输出 `j2_channel_status.json.channels.C.family_monitor` + dashboard「C 族级失效」行；当前观察 deep_dip 2026-06 与 deep_value 2026-07，仅提示不动作。
 - 单参数改动前后半段一致性制度化：**✅ 完成（2026-08-12）**——`project-principles.md` 新增节：PARAM_REGIME 改动必填 前后半段一致性对照 + 轻量置换检验（≥200 次）；流程/文档项，零代码。
 - 贴纸板块（**阶段 1 落地 2026-08-12**）——160 品全息战队贴纸清单（container_detail 全量枚举 18 胶囊）+ 158 新品入库（`source='sticker'`）+ **158 品 K 线全部落库**（11 品限流缺口 2026-08-12 手动补采完成，各 91 bar）+ 观察桶守卫落地（`item_analysis.py:decide_fusion_signal` 贴纸 buy→watch 强制降级，panic_resonance trigger 显式排除印花）；贴纸专用化**净效果**：守卫层禁 buy（周期因子/供给吸筹对贴纸仍计分，按 `first-principles-stickers.md` §3.4 待 A2 检验后决定是否代码层禁用）；阶段 2 = 品类分桶追踪积累（与 M-3 合并）→ A2 三件套后才可进 buy。
+
+- 贴纸 alpha 研究排期（**2026-08-12 立项，见 decision-log「贴纸 alpha 研究立项 + 阶段 0 预跑」**）——四案例深历史验证后确认：贴纸 = 百倍级事件脉冲 + 尖顶形态（种子 12 品 9/12 尖顶，峰值回撤 67-99%），「低估区反弹 14d」A2 假设不适配。执行序 S-1 → S-2 → S-3/S-4（并行）→ S-5：
+  - S-1（P1，数据前提）：160 品深历史全量回填研究快照 `data/_exp_sticker_deep_full.json`（**不进 price_history、不动引擎基线**；分批限流窗口 10-20 品/次，总量约 4-6 小时）；
+  - S-2（P1，回测）：Major 日历周期择时正式三件套（160 品 + 真实赛程窗口；赛事季初买入/季末离场，net 2%，walk-forward）——阶段 0 预跑方向支持（W25 赛前均值 +574.7%、W26 春季 +116.5%、回落期 -35.8%）；
+  - S-3（P2，研究）：战队竞技状态 proxy + 尖顶离场规则（sell-the-news）；
+  - S-4（P2，流程）：贴纸 A2 检验假设修正（低估区反弹 → 事件驱动框架）；
+  - S-5（P2，配置）：EVENT_CALENDAR 补 Major 赛程（用户配置；2025-11-20 布达佩斯贴纸上市已从数据确认 Major 在 11 月）。
