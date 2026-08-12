@@ -2558,3 +2558,20 @@ watch/hold 做「无按钮」处理，未区分持仓/未持仓。
 **边界**：纯元数据/展示/流程项，零决策参数；任何决策参数改动仍须回测先行 + 三件套（信号数/胜率/期望增量），新信号族过 A2。三件套：不适用（本批无决策参数）；验证 = 冒烟全量 + pyflakes 0。
 
 **联动**：贴纸板块阶段 2（品类分桶追踪，与 M-3 合并）与第四批并行积累，A2 三件套验证贴纸低估区信号（信号数≥35）通过后才放开 buy。
+
+
+## 第四批 · 量化专家框架落地（2026-08-12，治理/流程/展示层）
+
+**执行**：④ → ① → ③ → ② 全部完成，零决策参数改动；冒烟 100 passed / pyflakes 0 / 服务已重启验证。
+
+**④ 前后半段一致性制度化**：`project-principles.md` 新增「参数改动前后半段一致性制度化（2026-08-12 新增，第四批 ④）」节——PARAM_REGIME 改动必填 前后半段一致性对照 + 轻量置换检验（≥200 次）。
+
+**① 三要素元数据入册**：`SignalFamily`（`item_analysis.py:1010-1107`）新增 hypothesis / counterparty / scenario / failure_signal 4 字段，4 个 buy 族（panic_resonance / deep_value / panic_easing / supply_accum）全部填充；新建 `references/signal-family-registry.md` 注册簿（含贴纸观察桶注册 + A2 检验设计）；`PARAM_REGIME.iteration_note` 同步「新族须注册三要素」要求。
+
+**③ 去簇胜率主视图对照**：`data/cost_sensitivity.json`（2% 口径）全量 332 信号 win14 69.9%/+15.36 vs ±3 天去簇 29 信号 58.6%/+16.07（-11.3pp，多重比较教训）——`dashboards.data_progress` 新增 `dedup` 字段 + 进度卡 J-3 区块新增「全量 vs 独立事件去簇」双口径对照行，纯展示层零决策；结构契约测试同步登记 `dedup` 字段快照。
+
+**② C 通道族级失效监测**：J-2 C 通道阈值下钻到族级——`references/j2_channel_monitor.py` 新增 `_channel_c_family`（族划分复用 `j1_event_counts.assign_family` 单一事实源），族级月度 n≥5 生效、阈值 14d<60% / 30d<50% / 连续 2 月 14d<70%（写入 `config.J2_THRESHOLDS` + `PARAM_REGIME.monitors`，监测提示项非决策参数）；输出 `j2_channel_status.json` → `channels.C.family_monitor`，dashboard C 区块新增「C 族级失效」行。
+当前族级观察（2026-08-12）：deep_dip 2026-06 30d 43.8%（与 2026-08-10 事件簇复核「6 月簇 win30 42.4% 弱」一致，单事件簇样本不足不动作）；deep_value 2026-07 14d 20.0%（n=5 样本少波动大，观察不动作）；panic_resonance / panic_easing win14 100%/87.5%、supply_accum 76.1% 健康。族级 flag 与 `signal-family-registry.md` 各族 `failure_signal` 互为对照。
+
+**验证**：冒烟 100 passed / pyflakes 0；结构契约测试登记 `dedup` + `family_monitor` 字段快照；`/api/data/progress` 与 dashboard 页面渲染均已验证。
+

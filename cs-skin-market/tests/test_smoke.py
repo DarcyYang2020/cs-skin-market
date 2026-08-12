@@ -1862,8 +1862,12 @@ def t_progress_schema():
         d = _dash.data_progress(conn)
     finally:
         conn.close()
-    assert set(d) == {'index', 'price', 'supply', 'market_snapshot', 'monitor_rank', 'families', 'j2'}, (
+    assert set(d) == {'index', 'price', 'supply', 'market_snapshot', 'monitor_rank', 'families', 'dedup', 'j2'}, (
         f'/api/data/progress 顶层字段漂移: {sorted(d)}')
+    assert set(d['dedup']) == {'cost_pct', 'f14_all', 'f14_dedup', 'f30_all'}, (
+        f'dedup 字段漂移: {sorted(d["dedup"])}')
+    assert set(d['dedup']['f14_all']) == {'n', 'win_pct', 'avg'}
+    assert set(d['dedup']['f14_dedup']) == {'n', 'win_pct', 'avg'}
     assert set(d['supply']) == {'rows', 'items_with_supply', 'pct_items', 'avg_days_per_item', 'latest'}
     assert set(d['index']) == {'rows', 'start', 'end'}
     assert set(d['price']) == {'rows', 'items', 'start', 'end', 'median_days', 'pct_90d', 'pct_180d'}
@@ -1877,7 +1881,9 @@ def t_progress_schema():
     assert set(j2['channels']) == {'A', 'B', 'C'}
     assert set(j2['channels']['A']) == {'label', 'value', 'threshold', 'progress_pct', 'status', 'note'}
     assert set(j2['channels']['B']) == {'label', 'value_days', 'threshold_days', 'progress_pct', 'target_date', 'status', 'note'}
-    assert set(j2['channels']['C']) == {'label', 'monthly', 'two_month_flags', 'thresholds', 'production', 'production_gate', 'production_triggered', 'replay_alert', 'status', 'trigger_state', 'note'}
+    assert set(j2['channels']['C']) == {'label', 'monthly', 'two_month_flags', 'family_monitor', 'thresholds', 'production', 'production_gate', 'production_triggered', 'replay_alert', 'status', 'trigger_state', 'note'}
+    assert set(j2['channels']['C']['family_monitor']) == {'families', 'thresholds'}
+    assert set(j2['channels']['C']['family_monitor']['families']) >= {'panic_resonance', 'panic_easing', 'deep_value', 'supply_accum', 'base'}
     assert set(j2['overall']) == {'triggered', 'triggered_channels', 'note', 'trigger_action'}
 check('数据积累进度接口结构契约 (字段快照)', t_progress_schema)
 

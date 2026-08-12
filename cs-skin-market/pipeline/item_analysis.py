@@ -982,6 +982,11 @@ class SignalFamily:
     guards: tuple = ()
     detail: object = None
     sources: tuple = ()
+    # 三要素元数据（2026-08-12 第四批 ①，量化专家框架）：假设 / 盈利对手盘 / 适用场景 / 失效信号
+    hypothesis: str = ""
+    counterparty: str = ""
+    scenario: str = ""
+    failure_signal: str = ""
 
 
 def _dedup_hit(recent_buy_dates, signal_date):
@@ -1028,6 +1033,10 @@ SIGNAL_FAMILIES = (
             f"+短期反转(microTH={F['micro_th']})"
         ),
         sources=("panic_resonance_upgrade",),
+        hypothesis="极端恐慌(sent≥75)+深度超跌(pct≤15%,Z≤-1.5)+短期反转(microTH≥60) → V 型底区反弹；回放 44 信号 win14 100%/avg14 +44.3",
+        counterparty="恐慌抛售盘（割肉止损盘/追跌盘）",
+        scenario="独立恐慌事件后的 V 型底区；大盘 21 日跌幅≤-18% 的极端环境（洗盘期最优定论）",
+        failure_signal="恐慌后阴跌不反转（V 型失败）；44 信号=1 次事件簇（2026-05-22~27）——事件簇支撑，需独立事件复验",
     ),
     SignalFamily(
         key="deep_value",
@@ -1052,6 +1061,10 @@ SIGNAL_FAMILIES = (
             f"回测14d+14.9%/30d+52.4%(56信号14d75%胜率,轻仓0.10)·分批:首仓10%→跌10%加20%→跌15%加30%（单票敞口≤30%缩放）"
         ),
         sources=("deep_value_stable_market",),
+        hypothesis="大盘企稳/修复环境(mchg30≤-3)下低分位(pct≤20%)+低估(Z≤-0.5)品均值回归；回放 56 信号 14d 75%/avg +14.9",
+        counterparty="高位接盘/追涨盘（大盘上涨段深值失效：mchg30≥3 时 93 信号 14d 仅 44% 胜率/+2.2）",
+        scenario="大盘深跌企稳段（mchg30 -15~-3，14d 85-93% 胜率）；中性企稳/弱市观望桶",
+        failure_signal="大盘 mchg30∈[-3,3) 横盘段（期望 18-53% 已剔除）；mchg30≥3 上涨段（已剔除）；供给扩张>5%（禁买闸门）",
     ),
     SignalFamily(
         key="panic_easing",
@@ -1073,6 +1086,10 @@ SIGNAL_FAMILIES = (
             f"回测14d+19.8%/30d+15.0%(轻仓0.10)·分批:首仓10%→跌10%加20%→跌15%加30%（单票敞口≤30%缩放）"
         ),
         sources=("panic_easing_deep_bottom",),
+        hypothesis="恐慌退潮(sent 55-80)+大盘深跌未企稳(mchg30≤-15)+深跌止跌(stopped) → 修复反弹；回放 14d +19.8",
+        counterparty="恐慌期割肉盘（未企稳环境下的恐慌抛售）",
+        scenario="恐慌事件后的退潮修复段（V 型底区/阴跌中继区）",
+        failure_signal="退潮后二次探底（stopped 被证伪）；情绪反复/恐慌复发（sent 重新跌破 55）",
     ),
     SignalFamily(
         key="supply_accum",
@@ -1102,6 +1119,10 @@ SIGNAL_FAMILIES = (
             f"分批:首仓10%→跌10%加20%→跌15%加30%（单票敞口≤30%缩放）"
         ),
         sources=("supply_contraction_accumulation",),
+        hypothesis="在售量收缩(s7≤s30×0.85)+价格平稳(|chg7|≤3) = 启动前吸筹 → 拉升；回放 14d +11.2/30d +27.2，强牛段 30d +46.3",
+        counterparty="派发盘/高位出货盘（供给扩张方）",
+        scenario="供给收缩期（中性企稳/弱市观望桶）；强牛段(sent<40+大盘TH≥60)增强",
+        failure_signal="假挂单/对倒虚缩（在售量口径失真，CS 庄家操纵）；泵后横盘追高段（chg8>3% 26 信号 42.3% 胜率已剔除）；开箱/赛事事件供给突变",
     ),
 )
 

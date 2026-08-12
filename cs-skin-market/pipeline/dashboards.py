@@ -8,6 +8,7 @@ from statistics import median
 _SCAN_CACHE = Path(__file__).resolve().parent.parent / "data" / "batch_scan_latest.json"
 _SIGNAL_EVENTS = Path(__file__).resolve().parent.parent / "data" / "signal_event_counts.json"
 _J2_STATUS = Path(__file__).resolve().parent.parent / "data" / "j2_channel_status.json"
+_COST_SENS = Path(__file__).resolve().parent.parent / "data" / "cost_sensitivity.json"
 
 
 def _snapshot_days(conn, table, col):
@@ -40,6 +41,24 @@ def _signal_families():
         return json.loads(_SIGNAL_EVENTS.read_text(encoding="utf-8"))
     except Exception:
         return None
+
+
+def _dedup_monitor():
+    """????????????? ??2026-08-12??? data/cost_sensitivity.json ? 2% ??????
+    ?? {cost_pct, f14_all, f14_dedup, f30_all}?????/???? None??????????"""
+    try:
+        d = json.loads(_COST_SENS.read_text(encoding="utf-8"))
+        for r in d.get("rows", []):
+            if abs(float(r.get("cost_pct", 0)) - 2.0) < 1e-9:
+                return {
+                    "cost_pct": r["cost_pct"],
+                    "f14_all": r.get("14d_all"),
+                    "f14_dedup": r.get("14d_dedup"),
+                    "f30_all": r.get("30d_all"),
+                }
+    except Exception:
+        return None
+    return None
 
 
 def data_progress(conn):
@@ -85,6 +104,7 @@ def data_progress(conn):
         "market_snapshot": _snapshot_days(conn, "market_snapshot", "good_id"),
         "monitor_rank": _snapshot_days(conn, "monitor_rank_snapshot", "item_id"),
         "families": _signal_families(),
+        "dedup": _dedup_monitor(),
         "j2": _j2_status(),
     }
 

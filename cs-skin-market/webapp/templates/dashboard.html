@@ -181,6 +181,18 @@ fetch("/api/data/progress")
       + '<table style="width:100%;font-size:12px;"><tbody>' + famRows.map(function(r) {
         return '<tr><td style="width:130px;color:var(--text-muted);padding:2px 0;">' + r[0] + '</td><td style="padding:2px 0;">' + r[1] + '</td></tr>';
       }).join("") + '</tbody></table>'
+      // ---- 去簇胜率主视图对照 (第四批 ③, 2026-08-12): 全量 vs 独立事件去簇, 纯展示层 ----
+      var dd = d.dedup;
+      if (dd && dd.f14_all) {
+        function _winLine(x) {
+          if (!x) return '-';
+          return x.win_pct + "% / " + (x.avg >= 0 ? "+" : "") + x.avg + "% (n=" + x.n + ")";
+        }
+        html += '<div style="margin-top:6px;font-size:12px;color:var(--text-secondary);">'
+          + '去簇对照（2% 成本）：全量 14d ' + _winLine(dd.f14_all)
+          + ' · 独立事件去簇 14d ' + _winLine(dd.f14_dedup)
+          + ' · 全量 30d ' + _winLine(dd.f30_all) + '</div>';
+      }
       // ---- J-2 三通道监测: A 独立恐慌事件 / B v2 样本积累 / C 胜率监测 ----
       var j2 = d.j2;
       if (j2 && j2.channels) {
@@ -219,12 +231,24 @@ fetch("/api/data/progress")
           if (!g) return '';
           return ' · 判定门槛 回填 ' + g.filled14 + '/' + g.min_filled14;
         }
+        function _famText() {
+          var fm = ch.C.family_monitor;
+          if (!fm || !fm.families) return '-';
+          var parts = [];
+          Object.keys(fm.families).forEach(function(k) {
+            var f = fm.families[k];
+            if (f.flags && f.flags.length) parts.push(f.label + ' ' + f.flags.join('；'));
+          });
+          return parts.length ? '<span style="color:var(--red);">' + parts.join(' · ') + '</span>'
+            : '未触发（族级提示项，n≥' + fm.thresholds.min_n + ' 生效）';
+        }
         html += '<div style="margin-top:12px;border-top:1px solid rgba(15,23,42,0.08);padding-top:8px;">'
           + '<div style="color:var(--text-muted);font-size:12px;margin-bottom:4px;">重拟合触发（J-2 三通道，' + _dpFmt(j2.generated) + ' 口径）</div>'
           + '<table style="width:100%;font-size:12px;"><tbody>'
           + '<tr><td style="width:130px;color:var(--text-muted);padding:2px 0;">A 独立恐慌事件</td><td style="padding:2px 0;">' + ch.A.value + '/' + ch.A.threshold + ' · ' + _pctBar(ch.A.progress_pct) + ' · ' + _cBadge(ch.A.status) + '</td></tr>'
           + '<tr><td style="width:130px;color:var(--text-muted);padding:2px 0;">B v2 样本积累</td><td style="padding:2px 0;">' + ch.B.value_days + '/' + ch.B.threshold_days + ' 天 · ' + _pctBar(ch.B.progress_pct) + ' · ' + _cBadge(ch.B.status) + ' · 约 ' + ch.B.target_date + ' 观察点</td></tr>'
           + '<tr><td style="width:130px;color:var(--text-muted);padding:2px 0;">C 胜率监测</td><td style="padding:2px 0;">' + cText + ' · ' + _cBadge(ch.C.status) + _cTrigText(ch.C) + (cFlags.length ? ' <span style="color:var(--red);">' + cFlags.join('；') + '</span>' : '') + '</td></tr>'
+          + '<tr><td style="width:130px;color:var(--text-muted);padding:2px 0;">C 族级失效</td><td style="padding:2px 0;">' + _famText() + '</td></tr>'
           + '<tr><td style="width:130px;color:var(--text-muted);padding:2px 0;">C 生产实盘</td><td style="padding:2px 0;">' + _prodText(ch.C) + _cGateText(ch.C) + '</td></tr>'
           + '</tbody></table>'
           + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + (j2.overall ? j2.overall.note : '') + (j2.overall && j2.overall.trigger_action ? '；触发动作：' + j2.overall.trigger_action : '') + '</div></div>';

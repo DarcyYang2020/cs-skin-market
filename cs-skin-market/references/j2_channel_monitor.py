@@ -28,7 +28,9 @@ CLUSTER_GAP = 4  # 同簇定义：距上一保留信号 <4 天则跳过（±3 �
 # ---- 阈值单一事实源 (Phase 0 单源化): 全部从 pipeline.config 读取，禁止本地硬编码 ----
 # 改阈值须同步 PARAM_REGIME["monitors"] 文案，并重跑本脚本刷新 data/j2_channel_status.json
 sys.path.insert(0, str(BASE))
+sys.path.insert(0, str(BASE / "references"))
 from pipeline.config import PARAM_REGIME, J2_THRESHOLDS, ENGINE_VERSION
+import j1_event_counts as j1  # 族级划分单一事实源（action_label 关键词，与 signal_event_counts.json 同口径）
 
 MONITOR_START = PARAM_REGIME["monitor_start"]
 SAMPLE_TARGET_DAYS = PARAM_REGIME["sample_target_days"]
@@ -38,6 +40,20 @@ C14_MONTH = J2_THRESHOLDS["c14_month"]
 C30_MONTH = J2_THRESHOLDS["c30_month"]
 C14_2M = J2_THRESHOLDS["c14_2m"]
 PROD_MIN_FILLED14 = 20  # 实盘判定门槛: 回填满 20 条后实盘胜率纳入判定（Phase 2b）
+# C 通道族级失效监测（第四批 ②，2026-08-12）：族级样本稀疏，min_n 由全局 10 降至 5；阈值见 config.J2_THRESHOLDS
+FAMILY_MIN_N = J2_THRESHOLDS["family_min_n"]
+FAMILY_C14_MONTH = J2_THRESHOLDS["family_c14_month"]
+FAMILY_C30_MONTH = J2_THRESHOLDS["family_c30_month"]
+FAMILY_C14_2M = J2_THRESHOLDS["family_c14_2m"]
+
+FAMILY_LABELS = {
+    "panic_resonance": "恐慌共振",
+    "panic_easing": "恐慌退潮",
+    "deep_value": "深值·企稳",
+    "supply_accum": "供给收缩",
+    "deep_dip": "深度回调",
+    "base": "基础分批",
+}
 
 
 def _load(p):
@@ -116,6 +132,61 @@ def _channel_c(sigs):
     return {"monthly": rows, "two_month_flags": two_month}
 
 
+def _channel_c_family(sigs):
+    """C 通道族级失效监测（第四批 ②，2026-08-12）：J-2 C 通道阈值下钻到族级。
+    族划分复用 j1_event_counts.assign_family（action_label 关键词，单一事实源）；
+    各族月度胜率复用 _monthly（含 ±3 天去簇口径）；n>=FAMILY_MIN_N 生效，
+    flag 规则：14d<FAMILY_C14_MONTH / 30d<FAMILY_C30_MONTH / 连续 2 月 14d<FAMILY_C14_2M。
+    纯监测提示项（非决策参数），供 signal-family-registry 的 failure_signal 早期预警对照。"""
+    by_fam = defaultdict(list)
+    for s in sigs:
+        by_fam[j1.assign_family(s.get("action_label") or "")].append(s)
+    families = {}
+    for key in sorted(by_fam):
+        grp = by_fam[key]
+        monthly = _monthly(grp)
+        months = sorted(monthly)
+        rows = []
+        two_month = []
+        for m in months:
+            r = monthly[m]
+            flags = []
+            if r["n"] >= FAMILY_MIN_N:
+                if r["win14"] is not None and r["win14"] < FAMILY_C14_MONTH:
+                    flags.append("14d " + str(r["win14"]) + "% < " + str(int(FAMILY_C14_MONTH)) + "%")
+                if r["win30"] is not None and r["win30"] < FAMILY_C30_MONTH:
+                    flags.append("30d " + str(r["win30"]) + "% < " + str(int(FAMILY_C30_MONTH)) + "%")
+            if r["dedup_n"] >= FAMILY_MIN_N:
+                if r["dedup_win14"] is not None and r["dedup_win14"] < FAMILY_C14_MONTH:
+                    flags.append("去簇14d " + str(r["dedup_win14"]) + "% < " + str(int(FAMILY_C14_MONTH)) + "%")
+                if r["dedup_win30"] is not None and r["dedup_win30"] < FAMILY_C30_MONTH:
+                    flags.append("去簇30d " + str(r["dedup_win30"]) + "% < " + str(int(FAMILY_C30_MONTH)) + "%")
+            rows.append({"month": m, "n": r["n"], "win14": r["win14"], "win30": r["win30"],
+                         "dedup_n": r["dedup_n"], "dedup_win14": r["dedup_win14"],
+                         "dedup_win30": r["dedup_win30"], "flags": flags})
+        for i in range(1, len(months)):
+            m1, m2 = months[i - 1], months[i]
+            w1, w2 = monthly[m1]["win14"], monthly[m2]["win14"]
+            n1, n2 = monthly[m1]["n"], monthly[m2]["n"]
+            if (w1 is not None and w2 is not None and n1 >= FAMILY_MIN_N and n2 >= FAMILY_MIN_N
+                    and w1 < FAMILY_C14_2M and w2 < FAMILY_C14_2M):
+                two_month.append(m1 + "+" + m2 + " 连续2月族级14d " + str(w1) + "%/" + str(w2) + "% < " + str(int(FAMILY_C14_2M)) + "%")
+        w14, _ = _wr(grp, "fwd14")
+        families[key] = {
+            "label": FAMILY_LABELS.get(key, key),
+            "monthly": rows,
+            "flags": [f for r in rows for f in r["flags"]],
+            "two_month_flags": two_month,
+            "n_total": len(grp),
+            "win14_total": w14,
+        }
+    return {
+        "families": families,
+        "thresholds": {"min_n": FAMILY_MIN_N, "14d_month": FAMILY_C14_MONTH,
+                       "30d_month": FAMILY_C30_MONTH, "14d_2m": FAMILY_C14_2M},
+    }
+
+
 def _production_tracking():
     """生产实盘信号跟踪（2026-08-07）：读 signal_tracking 表（pipeline/signal_tracking.py 记录/回填）。
     返回 {n_total, n_filled14, n_filled30, net14, net30, earliest_open, latest}；无表/异常返回 None。
@@ -166,6 +237,7 @@ def compute():
     b_pct = round(100.0 * days / B_THRESHOLD_DAYS, 1)
 
     c = _channel_c(sigs)
+    c_family = _channel_c_family(sigs)
     production = _production_tracking()
 
     channels = {
@@ -188,6 +260,7 @@ def compute():
             "label": "胜率监测（回放告警 + 实盘判定分离，Phase 2b）",
             "monthly": c["monthly"],
             "two_month_flags": c["two_month_flags"],
+            "family_monitor": c_family,
             "thresholds": {"14d_month": C14_MONTH, "30d_month": C30_MONTH, "14d_2m": C14_2M},
             "replay_alert": {
                 "triggered": bool(c["two_month_flags"] or any(r["flags"] for r in c["monthly"])),

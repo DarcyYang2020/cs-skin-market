@@ -194,6 +194,8 @@
 **仍待做（数据依赖/配置）**：F-2（求购数据 90+ 天）、A1-4（滑点校准，executions≥20）。C-1 已全部完成：渲染纯函数切 `webapp/render_html.py`、任务块切 `pipeline/discover_tasks.py`+`scan_tasks.py`、页面结构迁 Jinja（`templates/partials/discover_html.html`+`scan_html.html`，保留 markdown/SVG/单元格内容渲染器），冒烟 + Playwright 端到端通过。G-2 加签后 webhook 轮换待用户配置。 ?????????2026-08-11??monitor_rank_snapshot ?????????snapshots ?????? decision-log ?????
 
 - P-2 正式分桶回测阶段 0 预跑 ✅（2026-08-11，见 decision-log「P-2 分桶回放阶段 0 预跑」+ `references/p2_backtest_plan.md`）：价≥1000 的 56 品只读回放 150 信号，P-2 桶 n=6 win14 83.3% vs 对照（365d）68.8% / 基线 71.0%，方向符合 H 但 n<30 不判定；进入阶段 1 积累期（单桶 n≥30 门槛）。
+- 第四批 · 量化专家框架 ✅（2026-08-12 全部落地，见 decision-log「第四批 · 量化专家框架落地」）：④ 前后半段一致性制度化（PARAM_REGIME 改动必填前后半段对照 + 轻量置换 ≥200 次）、① 三要素元数据入册（SignalFamily 4 字段 + signal-family-registry.md 注册簿）、③ 去簇胜率主视图对照（进度卡 J-3「全量 69.9% vs 去簇 58.6%」双口径行，dashboards.dedup）、② C 通道族级失效监测（j2_channel_monitor._channel_c_family，族级 n≥5/14d<60%/30d<50%/连续2月<70%，dashboard「C 族级失效」行）。零决策参数，冒烟 100 passed / pyflakes 0。
+
 ## 附录：与「评估指标体系第一性审计」的边界
 
 本评估直接引用、未重跑：六维权重（位置 40/周期 25/流动性 15/概率 20）、估值分位边界、供给吸筹/派发判定、评级切分（代码口径 8/6.5/4.5）、绩效口径（win14/30、net 2%）、持仓管理矩阵参数、TH/情绪/跌幅/牛熊结论、周期反转/panic 分级/概率去 z（2026-08-10 四项审计）。审计后新增的展示层改动（如 F-3.14 已止损感知）只审「改动本身」——见 E-1/E-2。

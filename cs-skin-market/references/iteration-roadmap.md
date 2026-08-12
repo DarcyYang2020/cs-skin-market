@@ -290,7 +290,7 @@ eferences/refit_pipeline.py → data/refit_pipeline_report.json（A2 三件套�
   P1 F-4 成本建模进回测 + F-5 组合模拟器（研究层，依赖执行数据积累）；P2 F-6 事件驱动提示 + F-7 钉钉卡片一键执行（体验层）。
   全部不触碰冻结参数（仅数据/展示/调度/采集层改动）。
 - **第三批 · 审计立项（2026-08-11）**：M-1 抛压衰竭择时（阶段 0 预跑完成，待事件积累复验）、M-2 composite 消融（完成 → M-5 落地）、M-3 discover alpha（已立项待执行，依赖 discover_history 积累）、M-4 执行复盘口径（已立项待执行，依赖 executions≥20）、M-5 TH 偏移反向（完成）、M-6 discover 候选扩展（阶段 1 落地）。**第三批闭环项 = M-3（与贴纸分桶合并）。**
-- **第四批 · 量化专家框架（2026-08-12 立项，P1）**：执行序 4 → 1 → 3（并行）→ 2——① 三要素元数据入册（0.5-1 天，贴纸 A2 注册前置）→ ② C 通道族级失效监测（1-2 天，串行依赖 ①）→ ③ 去簇胜率主视图对照（0.5 天，展示层，独立并行）→ ④ 前后半段一致性制度化（流程/文档，先行）；贴纸阶段 2（品类分桶追踪，并入 M-3）与第四批并行积累。详见 decision-log「第四批 · 量化专家框架立项」。
+- **第四批 · 量化专家框架（2026-08-12 立项，P1）**：执行序 4 → 1 → 3（并行）→ 2——① 三要素元数据入册（0.5-1 天，贴纸 A2 注册前置）→ ② C 通道族级失效监测（1-2 天，串行依赖 ①）→ ③ 去簇胜率主视图对照（0.5 天，展示层，独立并行）→ ④ 前后半段一致性制度化（流程/文档，先行）。**第四批 4 项已全部完成（2026-08-12，见 decision-log「第四批 · 量化专家框架落地」）**；贴纸阶段 2（品类分桶追踪，并入 M-3）继续并行积累。
 
 ## 状态追踪
 
@@ -335,8 +335,8 @@ eferences/refit_pipeline.py → data/refit_pipeline_report.json（A2 三件套�
 - M-4 执行复盘口径量化：**已立项（2026-08-11）**——real 日历日 vs paper 交易日结算不一致（`main.py:1010` vs `signal_tracking.py`）+ action 混用（`dashboards.py:92-126`）；依赖 executions>=20（A1-4），检验设计见附录 E4。
 - M-5 composite 展示层调整：**完成（2026-08-11）**——TH 偏移系数 1.0→-1.0（`item_analysis.py:674`，三件套：317 信号 / 反向 Q5 win14 73.4% vs 67.2% / spearman +0.015），测试断言同步（t_composite_score_fn 9.1→8.0），不落引擎。
 - M-6 discover 候选扩展：**阶段 1 落地（2026-08-11）**——新增 `pipeline/item_categories.py` 品类识别，池内 discover 白名单扩展（崭新出厂 ∪ 印花/武器箱/挂件/收藏品/胶囊，印花×2+箱×2+挂件×1 进发现空间，角色×3 暂不入），results/`discover_history` 存档加 `category` 字段（M-3 品类分桶基础），展示层品类列 + 热力图分桶；引擎参数零改动；阶段 2（scan-all suggest 品类搜索词）待 csQAQ 稳定，阶段 3（品类 alpha 检验）与 M-3 合并。
-- 三要素元数据入册（量化专家三要素框架，**已立项 2026-08-12**）——`SignalFamily`（`item_analysis.py:1010-1107`）增加「假设 / 盈利对手盘 / 适用场景 / 失效信号」字段 + PARAM_REGIME 台账 + 策略文档同步；纯元数据/文档层，零决策参数改动；为贴纸等新品类注册提供框架（贴纸是首个按该框架注册的品类）。
-- 去簇胜率主视图对照（量化专家框架「多重比较」教训，**已立项 2026-08-12**）——`data/cost_sensitivity.json`（2% 口径）全量 332 信号 win14 69.9% vs ±3 天去簇 29 信号 58.6%（-11.3pp）差异未进 UI；进度卡/仪表盘加「全量 vs 独立事件去簇」双口径胜率对照；纯展示层，不动任何排序/决策。
-- C 通道族级失效监测（量化专家框架「失效信号」落地，**已立项 2026-08-12**）——J-2 C 通道阈值由月度聚合下钻到族级（panic / deep_value / supply_accum 等），复用 `data/signal_event_counts.json` 族级统计；依赖三要素元数据，与之上同文件域（`item_analysis.py`）串行实施。
-- 单参数改动前后半段一致性制度化（量化专家框架「逻辑先行+历史稳定性」，**已立项 2026-08-12**）——PARAM_REGIME 改动模板增加「前后半段一致性 + 轻量置换检验」必填项（`project-principles.md` 现仅强制回测先行 + 新族 A2）；流程/文档项，零代码。
+- 三要素元数据入册：**✅ 完成（2026-08-12）**——`SignalFamily`（`item_analysis.py:1010-1107`）新增 hypothesis / counterparty / scenario / failure_signal 4 字段，4 个 buy 族全部填充 + 新建 `references/signal-family-registry.md` 注册簿（贴纸观察桶已按框架注册）+ PARAM_REGIME.iteration_note 同步；零决策参数。
+- 去簇胜率主视图对照：**✅ 完成（2026-08-12）**——`dashboards.data_progress.dedup`（2% 口径 332 vs 29 信号 69.9% vs 58.6%）+ 进度卡 J-3「全量 vs 独立事件去簇」对照行；纯展示层，不动任何排序/决策。
+- C 通道族级失效监测：**✅ 完成（2026-08-12）**——`j2_channel_monitor._channel_c_family` 族级月度下钻（n≥5 / 14d<60% / 30d<50% / 连续2月<70%，阈值入 `config.J2_THRESHOLDS`），输出 `j2_channel_status.json.channels.C.family_monitor` + dashboard「C 族级失效」行；当前观察 deep_dip 2026-06 与 deep_value 2026-07，仅提示不动作。
+- 单参数改动前后半段一致性制度化：**✅ 完成（2026-08-12）**——`project-principles.md` 新增节：PARAM_REGIME 改动必填 前后半段一致性对照 + 轻量置换检验（≥200 次）；流程/文档项，零代码。
 - 贴纸板块（**阶段 1 落地 2026-08-12**）——160 品全息战队贴纸清单（container_detail 全量枚举 18 胶囊）+ 158 新品入库（`source='sticker'`）+ 147 品 K 线落库（11 品限流窗口留待每日任务补采）+ 观察桶守卫落地（`item_analysis.py:decide_fusion_signal` 贴纸 buy→watch 强制降级）；贴纸专用化：周期因子禁用、供给吸筹族禁用（见 `first-principles-stickers.md`）；阶段 2 = 品类分桶追踪积累（与 M-3 合并）→ A2 三件套后才可进 buy。

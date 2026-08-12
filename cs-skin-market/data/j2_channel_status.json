@@ -120,6 +120,298 @@
    "two_month_flags": [
     "2025-11+2025-12 连续2月14d 64.3%/54.5% < 70%"
    ],
+   "family_monitor": {
+    "families": {
+     "base": {
+      "label": "基础分批",
+      "monthly": [
+       {
+        "month": "2025-11",
+        "n": 1,
+        "win14": 0.0,
+        "win30": 0.0,
+        "dedup_n": 1,
+        "dedup_win14": 0.0,
+        "dedup_win30": 0.0,
+        "flags": []
+       },
+       {
+        "month": "2025-12",
+        "n": 2,
+        "win14": 100.0,
+        "win30": 100.0,
+        "dedup_n": 2,
+        "dedup_win14": 100.0,
+        "dedup_win30": 100.0,
+        "flags": []
+       },
+       {
+        "month": "2026-02",
+        "n": 15,
+        "win14": 73.3,
+        "win30": 73.3,
+        "dedup_n": 3,
+        "dedup_win14": 100.0,
+        "dedup_win30": 100.0,
+        "flags": []
+       },
+       {
+        "month": "2026-03",
+        "n": 3,
+        "win14": 0.0,
+        "win30": 0.0,
+        "dedup_n": 2,
+        "dedup_win14": 0.0,
+        "dedup_win30": 0.0,
+        "flags": []
+       },
+       {
+        "month": "2026-06",
+        "n": 1,
+        "win14": 100.0,
+        "win30": 0.0,
+        "dedup_n": 1,
+        "dedup_win14": 100.0,
+        "dedup_win30": 0.0,
+        "flags": []
+       }
+      ],
+      "flags": [],
+      "two_month_flags": [],
+      "n_total": 22,
+      "win14_total": 63.6
+     },
+     "deep_dip": {
+      "label": "深度回调",
+      "monthly": [
+       {
+        "month": "2025-11",
+        "n": 1,
+        "win14": 100.0,
+        "win30": 100.0,
+        "dedup_n": 1,
+        "dedup_win14": 100.0,
+        "dedup_win30": 100.0,
+        "flags": []
+       },
+       {
+        "month": "2026-03",
+        "n": 1,
+        "win14": 0.0,
+        "win30": 0.0,
+        "dedup_n": 1,
+        "dedup_win14": 0.0,
+        "dedup_win30": 0.0,
+        "flags": []
+       },
+       {
+        "month": "2026-06",
+        "n": 32,
+        "win14": 71.9,
+        "win30": 43.8,
+        "dedup_n": 2,
+        "dedup_win14": 100.0,
+        "dedup_win30": 100.0,
+        "flags": [
+         "30d 43.8% < 50%"
+        ]
+       }
+      ],
+      "flags": [
+       "30d 43.8% < 50%"
+      ],
+      "two_month_flags": [],
+      "n_total": 34,
+      "win14_total": 70.6
+     },
+     "deep_value": {
+      "label": "深值·企稳",
+      "monthly": [
+       {
+        "month": "2025-11",
+        "n": 10,
+        "win14": 70.0,
+        "win30": 60.0,
+        "dedup_n": 2,
+        "dedup_win14": 100.0,
+        "dedup_win30": 100.0,
+        "flags": []
+       },
+       {
+        "month": "2025-12",
+        "n": 5,
+        "win14": 60.0,
+        "win30": 100.0,
+        "dedup_n": 1,
+        "dedup_win14": 100.0,
+        "dedup_win30": 100.0,
+        "flags": []
+       },
+       {
+        "month": "2026-01",
+        "n": 4,
+        "win14": 75.0,
+        "win30": 50.0,
+        "dedup_n": 2,
+        "dedup_win14": 50.0,
+        "dedup_win30": 0.0,
+        "flags": []
+       },
+       {
+        "month": "2026-02",
+        "n": 3,
+        "win14": 100.0,
+        "win30": 66.7,
+        "dedup_n": 1,
+        "dedup_win14": 100.0,
+        "dedup_win30": 100.0,
+        "flags": []
+       },
+       {
+        "month": "2026-07",
+        "n": 5,
+        "win14": 20.0,
+        "win30": null,
+        "dedup_n": 1,
+        "dedup_win14": 0.0,
+        "dedup_win30": null,
+        "flags": [
+         "14d 20.0% < 60%"
+        ]
+       }
+      ],
+      "flags": [
+       "14d 20.0% < 60%"
+      ],
+      "two_month_flags": [],
+      "n_total": 27,
+      "win14_total": 63.0
+     },
+     "panic_easing": {
+      "label": "恐慌退潮",
+      "monthly": [
+       {
+        "month": "2026-05",
+        "n": 48,
+        "win14": 87.5,
+        "win30": 77.1,
+        "dedup_n": 1,
+        "dedup_win14": 100.0,
+        "dedup_win30": 100.0,
+        "flags": []
+       }
+      ],
+      "flags": [],
+      "two_month_flags": [],
+      "n_total": 48,
+      "win14_total": 87.5
+     },
+     "panic_resonance": {
+      "label": "恐慌共振",
+      "monthly": [
+       {
+        "month": "2026-05",
+        "n": 44,
+        "win14": 100.0,
+        "win30": 81.8,
+        "dedup_n": 2,
+        "dedup_win14": 100.0,
+        "dedup_win30": 100.0,
+        "flags": []
+       }
+      ],
+      "flags": [],
+      "two_month_flags": [],
+      "n_total": 44,
+      "win14_total": 100.0
+     },
+     "supply_accum": {
+      "label": "供给收缩",
+      "monthly": [
+       {
+        "month": "2025-11",
+        "n": 2,
+        "win14": 50.0,
+        "win30": 100.0,
+        "dedup_n": 1,
+        "dedup_win14": 0.0,
+        "dedup_win30": 100.0,
+        "flags": []
+       },
+       {
+        "month": "2025-12",
+        "n": 4,
+        "win14": 25.0,
+        "win30": 75.0,
+        "dedup_n": 3,
+        "dedup_win14": 0.0,
+        "dedup_win30": 66.7,
+        "flags": []
+       },
+       {
+        "month": "2026-01",
+        "n": 1,
+        "win14": 100.0,
+        "win30": 100.0,
+        "dedup_n": 1,
+        "dedup_win14": 100.0,
+        "dedup_win30": 100.0,
+        "flags": []
+       },
+       {
+        "month": "2026-02",
+        "n": 115,
+        "win14": 76.5,
+        "win30": 77.4,
+        "dedup_n": 7,
+        "dedup_win14": 100.0,
+        "dedup_win30": 85.7,
+        "flags": []
+       },
+       {
+        "month": "2026-03",
+        "n": 17,
+        "win14": 94.1,
+        "win30": 64.7,
+        "dedup_n": 1,
+        "dedup_win14": 100.0,
+        "dedup_win30": 100.0,
+        "flags": []
+       },
+       {
+        "month": "2026-05",
+        "n": 1,
+        "win14": 100.0,
+        "win30": 100.0,
+        "dedup_n": 1,
+        "dedup_win14": 100.0,
+        "dedup_win30": 100.0,
+        "flags": []
+       },
+       {
+        "month": "2026-07",
+        "n": 2,
+        "win14": 0.0,
+        "win30": null,
+        "dedup_n": 2,
+        "dedup_win14": 0.0,
+        "dedup_win30": null,
+        "flags": []
+       }
+      ],
+      "flags": [],
+      "two_month_flags": [],
+      "n_total": 142,
+      "win14_total": 76.1
+     }
+    },
+    "thresholds": {
+     "min_n": 5,
+     "14d_month": 60.0,
+     "30d_month": 50.0,
+     "14d_2m": 70.0
+    }
+   },
    "thresholds": {
     "14d_month": 80.0,
     "30d_month": 55.0,
