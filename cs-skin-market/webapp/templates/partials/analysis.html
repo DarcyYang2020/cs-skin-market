@@ -38,15 +38,7 @@
     <span style="font-size:12px;color:var(--text-muted);margin-left:8px;">市场状态</span>
     <span class="regime-badge {{ {'V型底区':'regime-vbottom','阴跌中继区':'regime-risky','恐慌浅跌':'regime-panic','中性企稳':'regime-ok','弱市观望':'regime-weak','贪婪禁入':'regime-greedy'}.get(fusion_decision.state_bucket, '') }}">{{ fusion_decision.state_bucket }}</span>
     {% endif %}
-    {% if fusion_decision.expectancy %}
-    <span style="font-size:12px;margin-left:8px;padding:2px 9px;border-radius:10px;background:rgba(16,185,129,0.10);color:{% if fusion_decision.expectancy.win14 >= 80 %}var(--green){% elif fusion_decision.expectancy.win14 >= 70 %}var(--yellow){% else %}var(--red){% endif %};" title="回测样本 n={{ fusion_decision.expectancy.n }} · 独立事件 {{ fusion_decision.expectancy.events }} · 14d 95% CI {{ fusion_decision.expectancy.ci14_lo }}~{{ fusion_decision.expectancy.ci14_hi }}%">📈 回测 14d {{ fusion_decision.expectancy.win14 }}% · 30d {{ "%+.1f"|format(fusion_decision.expectancy.avg30) }}%</span>
-    {% endif %}
-    {% if fusion_decision.expectancy and fusion_decision.expectancy.regime and fusion_decision.expectancy.regime.insufficient %}
-    <span style="font-size:12px;margin-left:8px;padding:2px 9px;border-radius:10px;background:rgba(139,92,246,0.08);color:var(--text-muted);" title="当前市场状态【{{ fusion_decision.expectancy.regime.bucket }}】下该信号族历史样本仅 {{ fusion_decision.expectancy.regime.n }} 条，不足以下钻分层胜率（n&lt;5 仅标注）">🧪 当前{{ fusion_decision.expectancy.regime.bucket }}样本 n={{ fusion_decision.expectancy.regime.n }} 不足</span>
-    {% endif %}
-    {% if fusion_decision.expectancy and fusion_decision.expectancy.regime and not fusion_decision.expectancy.regime.insufficient %}
-    <span style="font-size:12px;margin-left:8px;padding:2px 9px;border-radius:10px;background:rgba(139,92,246,0.10);color:{% if fusion_decision.expectancy.regime.win14 >= 80 %}var(--green){% elif fusion_decision.expectancy.regime.win14 >= 70 %}var(--yellow){% else %}var(--red){% endif %};" title="当前市场状态【{{ fusion_decision.expectancy.regime.bucket }}】下同族 365d 回放分层（n={{ fusion_decision.expectancy.regime.n }}，net 已扣 2%）：14d 胜率 / 30d 期望">🧪 当前【{{ fusion_decision.expectancy.regime.bucket }}】14d {{ fusion_decision.expectancy.regime.win14 }}% · 30d {{ "%+.1f"|format(fusion_decision.expectancy.regime.avg30) }}%</span>
-    {% endif %}
+    {# 2026-08-12: 期望徽章（全局族 + regime 分层）已抽离为仪表盘常驻卡片 market_expectancy_card #}
   </div>
   {% if fusion_decision.action_detail %}
   <div style="padding:8px 14px;font-size:13px;line-height:1.5;color:var(--text-secondary);">

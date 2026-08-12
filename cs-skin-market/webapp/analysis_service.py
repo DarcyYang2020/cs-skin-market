@@ -746,14 +746,56 @@ def _load_expectancy_by_regime():
     return _data
 
 
-def _fd_display(fd):
-    """融合决策展示层注入（期望徽章 + 决策链 trace）。纯展示，不改引擎输出。
+def market_expectancy_card():
+    """当前市场状态 × 信号族期望（外部常驻卡片，2026-08-12 从单品报告抽离）。
 
-    2026-08-12 口径修复：save_analysis_result 快照渲染与 build_analysis_ctx 共用本函数，
-    保证 discover 弹窗 / 6h 缓存命中的报告与重建报告期望徽章口径一致。
+    市场级信息，与具体品无关：同族品、同一时期所有报告显示相同，故从单品报告
+    决策条移出，改为仪表盘常驻卡片统一展示。
+
+    纯展示：状态桶 = market_context.state_bucket（与单品报告同口径三输入）；
+    当前桶分层 = B-1 产物 _exp_expectancy_by_regime.json（六态×族 n/win14/avg30，net 已扣 2%）；
+    全局 = config.ITEM_EXPECTANCY_STATS（365d 回放单一事实源）。产物缺失静默降级。
+    """
+    ms = market_snapshot()
+    try:
+        from pipeline.market_context import state_bucket as _sb
+        bucket = _sb(ms.get("sentiment"), ms.get("th"), ms.get("chg30"))
+    except Exception:
+        bucket = ""
+    _rb = (_load_expectancy_by_regime() or {}).get("regimes") or {}
+    _bdata = _rb.get(bucket) or {}
+    _bfam = _bdata.get("family") or {}
+    _btotal = _bdata.get("total") or {}
+    families = []
+    for _key, _label in (("panic", "恐慌族"), ("deep_value", "深值企稳"), ("accumulate", "吸筹族")):
+        _g = _config.ITEM_EXPECTANCY_STATS.get(_key) or {}
+        _f = _bfam.get(_key) or {}
+        _n = _f.get("n") or 0
+        families.append({
+            "key": _key, "label": _label,
+            "n": _n,
+            "win14": _f.get("win14"), "avg30": _f.get("avg30"),
+            "insufficient": _n < 5,
+            "global_n": _g.get("n"), "global_win14": _g.get("win14"),
+            "global_avg30": _g.get("avg30"),
+        })
+    return {
+        "bucket": bucket,
+        "families": families,
+        "bucket_total": _btotal.get("n14") or _btotal.get("n") or 0,
+        "bucket_win14": _btotal.get("win14"),
+        "bucket_avg30": _btotal.get("avg30"),
+    }
+
+
+def _fd_display(fd):
+    """融合决策展示层注入（决策链 trace）。纯展示，不改引擎输出。
+
+    2026-08-12：期望徽章（全局族 + B-1 regime 分层）已从单品报告抽离为外部常驻卡片
+    market_expectancy_card()（市场级信息，同族品重复无意义）；本函数仅保留单品特有的 trace 注入，
+    build_analysis_ctx 与 save_analysis_result 共用，保证快照/重建口径一致。
     """
     fd = dict(fd or {})
-    fd["expectancy"] = _expectancy_badge(fd.get("action_label"), fd.get("state_bucket"))
     _src_labels = [_SOURCE_LABELS.get(str(s), str(s)) for s in (fd.get("deduction_sources") or [])]
     fd["trace"] = {
         "zone": fd.get("zone_label", ""),
@@ -761,49 +803,6 @@ def _fd_display(fd):
         "sources": _src_labels,
     }
     return fd
-
-
-def _expectancy_badge(action_label, state_bucket=None):
-    """决策条回测徽章（纯展示层）：全局族口径（ITEM_EXPECTANCY_STATS）+ B-1 当前 regime 分层（2026-08-12）。
-
-    全局口径：含「恐慌」→panic / 含「深值」→deep_value / 其余→accumulate；
-    regime 分层：同族在当前市场状态桶下的 n/win14/avg14/win30/avg30——n>=5 展示，否则 insufficient 标记，
-    产物缺失时静默降级。不触发回测、不触碰 t_expectancy_sync。
-    """
-    if not action_label:
-        return None
-    key = "panic" if "恐慌" in action_label else ("deep_value" if "深值" in action_label else "accumulate")
-    st = _config.ITEM_EXPECTANCY_STATS.get(key)
-    if not st:
-        return None
-    out = {
-        "label": st.get("label", key),
-        "n": st.get("n"),
-        "events": st.get("events"),
-        "win14": st.get("win14"),
-        "avg14": st.get("avg14"),
-        "win30": st.get("win30"),
-        "avg30": st.get("avg30"),
-        "ci14_lo": st.get("ci14_lo"),
-        "ci14_hi": st.get("ci14_hi"),
-    }
-    if state_bucket:
-        _reg = _load_expectancy_by_regime()
-        if _reg:
-            _rb = (_reg.get("regimes") or {}).get(state_bucket)
-            if _rb:
-                _fam = (_rb.get("family") or {}).get(key)
-                if _fam and _fam.get("n", 0) >= 5:
-                    out["regime"] = {
-                        "bucket": state_bucket, "key": key,
-                        "n": _fam["n"], "win14": _fam["win14"], "avg14": _fam["avg14"],
-                        "win30": _fam["win30"], "avg30": _fam["avg30"],
-                    }
-                elif _fam is not None:
-                    out["regime"] = {"bucket": state_bucket, "key": key,
-                                     "n": _fam.get("n", 0), "insufficient": True}
-    return out
-
 
 def _position_pct(position):
     if isinstance(position, dict):
@@ -964,7 +963,7 @@ def build_analysis_ctx(analysis, kline_stale_days=None, kline_stale_date="",
     """三条分析路径共用的模板上下文（与原 api_items_search/analyze 输出一致）。
 
     展示层增强（不参与决策，参数冻结不受影响）：
-    - fusion_decision.expectancy：决策条回测徽章（族 14d 胜率 / 30d 期望）
+    - fusion_decision.trace：决策链 trace（2026-08-12 起期望徽章已抽离为 market_expectancy_card）
     - supply_analysis：高位供给收缩语义统一（锁仓诱多嫌疑）
     """
     # F-3.7 持仓浮亏双路径（纯展示层，回测 data/stop_loss_backtest.json）：有持仓时复用批量扫描同一套建议口径

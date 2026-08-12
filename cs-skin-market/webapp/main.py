@@ -22,7 +22,7 @@ from pipeline.dashboards import _j2_status
 from webapp.analysis_service import (
     AnalysisAbort, analyze_fresh, build_analysis_ctx,
     resolve_item, KLINE_FRESH_SINGLE, KLINE_FRESH_SINGLE_HOURS,
-    kline_db_fallback, market_snapshot, bust_market_snapshot_cache,
+    kline_db_fallback, market_snapshot, bust_market_snapshot_cache, market_expectancy_card,
     recent_buy_dates, _today_str,
     sticker_whale_fingerprint, render_sticker_whale_block,
 )
@@ -267,6 +267,7 @@ async def page_dashboard(request: Request):
         "signal_density": _signal_density(),
         "engine_status": _engine_status,
         "upcoming_events": _upcoming_events(),
+        "expectancy_card": market_expectancy_card(),
     })
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     return response

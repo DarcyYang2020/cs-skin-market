@@ -5,6 +5,53 @@
 <div id="dashboard-content" class="page-dashboard">
 {% include "partials/index_card.html" %}
 {% include "partials/index_analysis.html" %}
+
+<!-- 市场状态 × 信号族期望 (2026-08-12): 期望徽章从单品报告抽离为外部常驻卡片
+     （市场级信息，同族品/同一时期所有报告显示相同，重复展示冗余） -->
+{% if expectancy_card %}
+<div class="card" style="margin-top:12px;">
+  <div class="card-header">
+    <span class="card-title">🧪 当前市场状态 × 信号族期望</span>
+    <span style="font-size:11px;color:var(--text-muted);margin-left:auto;">365d 回放 · net 已扣 2% 双边成本 · 全局 vs 当前状态桶分层</span>
+  </div>
+  <div style="padding:10px 14px;font-size:12px;">
+    <div style="margin-bottom:8px;">
+      <span style="color:var(--text-secondary);">当前市场状态：</span>
+      <span class="regime-badge {{ {'V型底区':'regime-vbottom','阴跌中继区':'regime-risky','恐慌浅跌':'regime-panic','中性企稳':'regime-ok','弱市观望':'regime-weak','贪婪禁入':'regime-greedy'}.get(expectancy_card.bucket, '') }}">{{ expectancy_card.bucket }}</span>
+      {% if expectancy_card.bucket_total %}<span style="margin-left:10px;color:var(--text-muted);">该状态下回放信号 {{ expectancy_card.bucket_total }} 条 · 14d 胜率 {{ expectancy_card.bucket_win14 }}% · 30d 期望 {{ "%+.1f"|format(expectancy_card.bucket_avg30) }}%</span>{% endif %}
+    </div>
+    <table style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr style="color:var(--text-muted);text-align:left;">
+          <th style="padding:3px 6px;">信号族</th>
+          <th style="padding:3px 6px;">当前状态桶样本</th>
+          <th style="padding:3px 6px;">当前桶 14d / 30d</th>
+          <th style="padding:3px 6px;">全局样本</th>
+          <th style="padding:3px 6px;">全局 14d / 30d</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in expectancy_card.families %}
+        <tr style="border-top:1px solid var(--border);">
+          <td style="padding:5px 6px;font-weight:600;">{{ f.label }}</td>
+          <td style="padding:5px 6px;">
+            {% if f.insufficient %}<span style="color:var(--text-muted);">n={{ f.n }} 不足</span>
+            {% else %}<span style="color:var(--text-primary);">n={{ f.n }}</span>{% endif %}
+          </td>
+          <td style="padding:5px 6px;">
+            {% if f.insufficient %}<span style="color:var(--text-muted);">样本不足，不展示</span>
+            {% else %}<span style="color:{% if f.win14 >= 80 %}var(--green){% elif f.win14 >= 70 %}var(--yellow){% else %}var(--red){% endif %};">{{ f.win14 }}%</span> · <span>{{ "%+.1f"|format(f.avg30) }}%</span>{% endif %}
+          </td>
+          <td style="padding:5px 6px;color:var(--text-primary);">n={{ f.global_n }}</td>
+          <td style="padding:5px 6px;"><span style="color:{% if f.global_win14 >= 80 %}var(--green){% elif f.global_win14 >= 70 %}var(--yellow){% else %}var(--red){% endif %};">{{ f.global_win14 }}%</span> · <span>{{ "%+.1f"|format(f.global_avg30) }}%</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div style="margin-top:6px;font-size:11px;color:var(--text-muted);">当前桶样本 &lt;5 仅标注（2 条可能 100% 或 0%，无统计意义）；以全局期望为主依据。同一时期所有单品报告显示相同，故不再逐报告展示。</div>
+  </div>
+</div>
+{% endif %}
 </div>
 
 <!-- 引擎状态 (J-2 监测, 纯展示) -->

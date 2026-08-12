@@ -1695,24 +1695,23 @@ def t_expectancy_sync():
                 f'改回放产物后必须重跑 references/sync_expectancy_config.py')
 check('期望统计单一事实源: config == 回放计算值（全字段）', t_expectancy_sync)
 
-def t_expectancy_regime():
+def t_market_expectancy_card():
+    """2026-08-12 期望徽章抽离外部卡：market_expectancy_card 数据组装
+    （当前状态桶 × 各族当前桶分层 + 全局期望，n<5 标不足）。"""
     from pathlib import Path as _P
-    from webapp.analysis_service import _expectancy_badge, _load_expectancy_by_regime
+    from webapp.analysis_service import market_expectancy_card
     _prod = _P(__file__).resolve().parent.parent / 'data' / '_exp_expectancy_by_regime.json'
     assert _prod.exists(), 'B-1 产物缺失'
-    _data = _load_expectancy_by_regime()
-    assert _data and _data.get('total_signals') == 317, (_data or {}).get('total_signals')
-    # 中性企稳 + accumulate（n=150）-> regime 分层正常
-    r = _expectancy_badge('🟢 供给收缩·启动前吸筹·分批建仓', '中性企稳')
-    assert r and r['regime']['bucket'] == '中性企稳' and r['regime']['n'] >= 5, r
-    assert r['regime']['win14'] is not None and r['regime']['avg30'] is not None, r
-    # 无 state_bucket -> 全局徽章不受影响、无 regime 键
-    r2 = _expectancy_badge('🟢 深值·大盘企稳·分批建仓', None)
-    assert r2 and 'regime' not in r2 and r2['win14'] > 0, r2
-    # 恐慌浅跌 无样本 -> insufficient 标记（n=0）
-    r3 = _expectancy_badge('🟢 恐慌共振·分批建仓', '恐慌浅跌')
-    assert r3 and r3['regime'].get('insufficient') is True and r3['regime']['n'] == 0, r3
-check('B-1 期望 regime 分层徽章: 产物加载/正常/降级路径', t_expectancy_regime)
+    card = market_expectancy_card()
+    assert card['bucket'] in ('V型底区', '阴跌中继区', '恐慌浅跌', '中性企稳', '弱市观望', '贪婪禁入'), card
+    _fam = {f['key']: f for f in card['families']}
+    assert set(_fam) == {'panic', 'deep_value', 'accumulate'}, _fam.keys()
+    for _k, _f in _fam.items():
+        assert _f['global_n'] and _f['global_win14'] is not None and _f['global_avg30'] is not None, _f
+        assert _f['insufficient'] == (_f['n'] < 5), _f
+    # 当前桶数据字段齐备（数字或 None）
+    assert 'bucket_total' in card and 'bucket_win14' in card, card
+check('2026-08-12 期望徽章抽离: market_expectancy_card 数据组装', t_market_expectancy_card)
 
 def t_buy_queue():
     from pipeline import item_analysis as _ia, db as _db
@@ -2970,8 +2969,8 @@ check('F-3.19 batch-save collect_time sync created_at', t_batch_save_collect_tim
 
 
 def t_saved_report_expectancy():
-    """2026-08-12 口径修复：save_analysis_result 快照渲染与重建同款注入
-    （期望徽章/regime 分层/决策链 trace），discover 弹窗与 6h 缓存命中报告同口径。"""
+    """2026-08-12 期望徽章抽离后：快照渲染不含期望徽章（市场级信息），
+    保留状态桶徽章 + trace 决策链；discover 弹窗与 6h 缓存命中报告与重建口径一致。"""
     from types import SimpleNamespace as _NS
     from webapp.analysis_service import save_analysis_result
     from pipeline import db as _db
@@ -3004,11 +3003,15 @@ def t_saved_report_expectancy():
             conn.close()
         assert row and row["report_html"], "快照未写入"
         html = row["report_html"]
-        # 全局期望徽章 + regime 分层徽章（中性企稳 accumulate n=150）都随快照渲染
-        assert "回测 14d 63.1%" in html and "样本 n=198" in html, "全局期望徽章缺失"
-        assert "🧪 当前【中性企稳】14d" in html and "n=150" in html, "regime 分层徽章缺失"
-        # 决策链 trace 随快照渲染（供给收缩吸筹中文标签）
+        # 2026-08-12 期望徽章已抽离为外部卡：快照/重建报告均不再逐品展示（市场级信息）
+        assert "回测 14d" not in html and "样本 n=" not in html, "期望徽章应从单品报告移除"
+        # 状态桶徽章 + 决策链 trace 保留（单品特有）
+        assert "市场状态" in html and "中性企稳" in html, "状态桶徽章缺失"
         assert "命中·供给收缩吸筹族" in html, "trace 决策链缺失"
+        # 外部常驻卡片数据可用（dashboard）
+        from webapp.analysis_service import market_expectancy_card
+        _card = market_expectancy_card()
+        assert _card["bucket"] and len(_card["families"]) == 3, _card
     finally:
         conn = _db.get_conn()
         try:
@@ -3016,7 +3019,7 @@ def t_saved_report_expectancy():
             conn.commit()
         finally:
             conn.close()
-check('2026-08-12 快照渲染口径修复: save_analysis_result 带期望徽章/regime/trace', t_saved_report_expectancy)
+check('2026-08-12 期望徽章抽离: 快照保留状态桶+trace、外部卡可用', t_saved_report_expectancy)
 
 print(f'=== Results: {passed} passed, {failed} failed, {skipped} skipped ===')
 if failures:
