@@ -6,7 +6,7 @@ if getattr(sys.stdout, "encoding", "").lower().replace("-", "") != "utf8":
 if getattr(sys.stderr, "encoding", "").lower().replace("-", "") != "utf8":
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from fastapi import FastAPI, Request, Form, Query
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
@@ -22,7 +22,8 @@ from pipeline.dashboards import _j2_status
 from webapp.analysis_service import (
     AnalysisAbort, analyze_fresh, build_analysis_ctx,
     resolve_item, KLINE_FRESH_SINGLE, KLINE_FRESH_SINGLE_HOURS,
-    kline_db_fallback, market_snapshot, recent_buy_dates, _today_str,
+    kline_db_fallback, market_snapshot, bust_market_snapshot_cache,
+    recent_buy_dates, _today_str,
     sticker_whale_fingerprint, render_sticker_whale_block,
 )
 
@@ -568,6 +569,7 @@ async def api_market_refresh(request: Request):
             conn.commit()
         finally:
             conn.close()
+        bust_market_snapshot_cache()
         mi, last_update, chart_data = _dashboard_context()
         analysis_data = index_analysis.analyze_index_full(chart_data) if chart_data else None
         # I-1 市场状态标注: 与首页 / 渲染口径一致（缺 regime_* 会导致 index_card 的「策略」徽章/提示消失）
@@ -816,12 +818,46 @@ async def api_item_report_view(request: Request, name: str = Query(...)):
     return await _report_view_rebuild(request, name)
 
 
+def _recent_report_html(name: str, max_age_hours: float = 6.0):
+    """近 N 小时内已存的完整报告（性能优化，2026-08-12）。
+
+    - 持仓品（holding=1 且 avg_cost>0）返回 None：需重建以保留补仓/止损建议卡片；
+    - 其余品命中 analysis_results（created_at>=cutoff）返回静态 HTML，
+      语义=「查看报告」近实时已足够（6h 口径与 B-4 单品分析复用同源）。
+    """
+    try:
+        conn = db.get_conn()
+        try:
+            _hr = conn.execute(
+                "SELECT holding, avg_cost FROM items WHERE name=?", (name,)).fetchone()
+            if _hr and _hr["holding"] and (_hr["avg_cost"] or 0) > 0:
+                return None
+            cutoff = (datetime.now(TZ_BJ) - timedelta(hours=max_age_hours)).strftime("%Y-%m-%d %H:%M:%S")
+            row = conn.execute(
+                "SELECT report_html FROM analysis_results WHERE name=? AND created_at>=? "
+                "ORDER BY id DESC LIMIT 1",
+                (name, cutoff),
+            ).fetchone()
+        finally:
+            conn.close()
+        if row and row["report_html"]:
+            return row["report_html"]
+    except Exception as _re:
+        _web_log.warning(f"recent report cache miss {name}: {_re}")
+    return None
+
+
 async def _report_view_rebuild(request: Request, name: str):
     """报告重建核心（F-3.7 2026-08-09；F-3.13 自选「报告」按钮同口径）：
     优先用 DB 新鲜 K 线（≤3天，F-3 采集复用口径）重建 analysis.html
     （与「分析」按钮同口径，持仓品带建议卡片）；数据不新鲜或无历史时回退已存快照报告。
+    2026-08-12 性能优化：非持仓品近 6h 已有完整报告时直接返回静态 HTML（不重跑引擎）；
+    重建路径由 analyze_fresh 内部落 analysis_results，后续点击自动秒开。
     """
     try:
+        _cached_html = _recent_report_html(name, max_age_hours=6)
+        if _cached_html is not None:
+            return HTMLResponse(_sticker_whale_inject(_cached_html, name))
         from webapp.analysis_service import db_kline_fresh, item_from_db, KLINE_FRESH_BATCH
         fresh = db_kline_fresh(None, name, max_stale_days=KLINE_FRESH_BATCH)
         if fresh and len(fresh.get("bars") or []) >= 14:

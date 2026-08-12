@@ -5,7 +5,7 @@
 api_watchlist_analyze 三条约 90% 重复的分析路径；批量扫描 _scan_item 因
 「价格校验先行 + 参数子集 + 结果结构不同」暂保留原流程（调用本模块助手函数）。
 """
-import asyncio, copy, io, json, logging, statistics, sys
+import asyncio, copy, io, json, logging, statistics, sys, threading, time
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -335,34 +335,60 @@ def anchor_override(daily_bars, anchor_price, label=""):
     return out
 
 
+# 2026-08-12 性能优化：大盘上下文整体 5min 进程内缓存（含 sentiment 拉取结果）。
+# 大盘上下文为低频变化量，批量扫描/报告弹窗/大盘页高频调用时共享同一快照，
+# 消除冷缓存时段的重复 DB 读与重复联网情绪拉取（csQAQ /current_data）。
+_MARKET_SNAP_TTL = 300.0
+_market_snap_cache = {"ts": 0.0, "data": None}
+_market_snap_lock = threading.Lock()
+
+
+def bust_market_snapshot_cache():
+    """大盘手动刷新后立即失效快照缓存（2026-08-12，性能层）。"""
+    with _market_snap_lock:
+        _market_snap_cache["ts"] = 0.0
+        _market_snap_cache["data"] = None
+
+
 def market_snapshot():
     """Market context from stored index history (pct/z/cycle/th/chg7/chg30/sentiment).
 
     指数统计复用 pipeline.market_context.market_index_stats（与监控 _market_ctx_from_db 同源）；
     情绪保持在线口径 compute_sentiment_score（10min 缓存），监控路径用 DB 口径。
+    2026-08-12 起整体结果带 5min 进程内缓存（bust_market_snapshot_cache 手动失效）。
     """
-    conn = db.get_conn()
-    try:
-        rows = conn.execute(
-            "SELECT date, value FROM market_index ORDER BY date ASC"
-        ).fetchall()
-        market_history = [(r["date"], float(r["value"])) for r in rows] if rows else []
-    finally:
-        conn.close()
-    from pipeline.market_context import market_index_stats
-    stats = market_index_stats(market_history)
-    try:
-        from pipeline.market_macro import compute_sentiment_score
-        sentiment = float(compute_sentiment_score() or 50)
-    except Exception:
-        sentiment = 50.0
-    return {
-        "history": market_history,
-        "pct": stats["pct"], "z": stats["z"], "cycle": stats["cycle"],
-        "th": stats["th"], "chg7": stats["chg7"], "chg30": stats["chg30"],
-        "drop21": stats["drop21"],
-        "sentiment": sentiment,
-    }
+    now = time.time()
+    _c = _market_snap_cache
+    if _c["data"] is not None and (now - _c["ts"]) < _MARKET_SNAP_TTL:
+        return _c["data"]
+    with _market_snap_lock:
+        if _c["data"] is not None and (time.time() - _c["ts"]) < _MARKET_SNAP_TTL:
+            return _c["data"]
+        conn = db.get_conn()
+        try:
+            rows = conn.execute(
+                "SELECT date, value FROM market_index ORDER BY date ASC"
+            ).fetchall()
+            market_history = [(r["date"], float(r["value"])) for r in rows] if rows else []
+        finally:
+            conn.close()
+        from pipeline.market_context import market_index_stats
+        stats = market_index_stats(market_history)
+        try:
+            from pipeline.market_macro import compute_sentiment_score
+            sentiment = float(compute_sentiment_score() or 50)
+        except Exception:
+            sentiment = 50.0
+        result = {
+            "history": market_history,
+            "pct": stats["pct"], "z": stats["z"], "cycle": stats["cycle"],
+            "th": stats["th"], "chg7": stats["chg7"], "chg30": stats["chg30"],
+            "drop21": stats["drop21"],
+            "sentiment": sentiment,
+        }
+        _c["data"] = result
+        _c["ts"] = time.time()
+    return result
 
 
 def recent_buy_dates(conn, item_id, days=7):
@@ -429,7 +455,7 @@ def save_item_snapshot(conn, item_id, analysis, price_rmb, today=None, order_boo
     conn.commit()
 
 
-def save_analysis_result(analysis, kline_stale_days=None, kline_stale_date=""):
+def save_analysis_result(analysis, kline_stale_days=None, kline_stale_date="", collected_at=""):
     """渲染简洁报告并 upsert 到 analysis_results（单品分析/批量扫描共用，按 name 覆盖老数据）。"""
     try:
         grade = analysis.value.grade
@@ -456,6 +482,7 @@ def save_analysis_result(analysis, kline_stale_days=None, kline_stale_date=""):
             "price_zones": analysis.price_zones,
             "buy_distance": analysis.buy_distance,
             "analysis_time": _now_str(),
+            "collected_at": collected_at or "",
         })
         conn_save = db.get_conn()
         try:
@@ -606,7 +633,8 @@ async def analyze_fresh(item, good_id, exact_name, *, db_item_id=None, apply_anc
             conn_s.close()
     except Exception as _se:
         _log.warning(f"save snapshot failed {exact_name}: {_se}")
-    save_analysis_result(analysis, kline_stale_days, kline_stale_date)
+    _collected_at = getattr(item, "collected_at", "") or ""
+    save_analysis_result(analysis, kline_stale_days, kline_stale_date, _collected_at)
 
     # 生产实盘信号跟踪 (2026-08-07 C 通道实盘化): buy 信号当日记录, 14/30 交易日后按真实价格回填
     try:
@@ -654,7 +682,7 @@ async def analyze_fresh(item, good_id, exact_name, *, db_item_id=None, apply_anc
         "kline_stale_date": kline_stale_date,
         "price_rmb": price_rmb,
         "volume_total": volume_total,
-        "collected_at": getattr(item, "collected_at", "") or "",
+        "collected_at": _collected_at,
     }
 
 

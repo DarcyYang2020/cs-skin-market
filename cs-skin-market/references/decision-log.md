@@ -2795,3 +2795,18 @@ Fluxo 25→280 约 11 倍），尖顶后 3 天 -86~94%，与枪皮统计反转�
 - 前端：Top10 卡片头部「🔄 刷新」拆为「🔄 刷新综合榜」「🔄 刷新贴纸榜」两个按钮（分别 POST `scope=skin/sticker`，title 注明另一榜不动）；页面顶部主按钮改为「🚀 扫描池内高分品（全部）」（`scope=all`，两榜一起刷）。
 
 **验证**：合并逻辑实测通过（sticker/skin 两向合并、all 整体覆写、另一榜保留、progress html 同步完整渲染；测试后恢复真实 cache 与 history 快照）；冒烟 100 passed / 0 failed；`pyflakes webapp pipeline` 0 告警。服务模板/代码已改，需重启生效（`reload=False`）。
+
+## 单品报告弹窗加载慢优化：6h 报告缓存 + 大盘上下文 5min 缓存（2026-08-12，性能层/展示层）
+
+**背景**：用户反馈「点击单品报告打开加载很慢」。定位：批量扫描/自选「报告」按钮走 `/api/items/report-view` → `_report_view_rebuild`（`webapp/main.py:819`）每次完整重跑引擎（实测 ~1.5s），大头为 `market_snapshot()` 的大盘情绪联网拉取（csQAQ `/current_data`，冷缓存 ~1.3s）；而 discover 榜点击走 `/api/discover/report` 读 `analysis_results` 静态 HTML（2-14ms）。热缓存对照确认优化空间（sentiment 10min 缓存命中时 6ms）。
+
+**落地**（性能层 + 展示层，零决策参数）：
+- **6h 报告缓存**：`_report_view_rebuild` 入口先查 `analysis_results`（`created_at>=now-6h` 且 `report_html` 非空）直接返回静态 HTML（贴纸走 `_sticker_whale_inject` 保持庄盘指纹块）；**持仓品（holding=1 且 avg_cost>0）跳过缓存**走重建，保留补仓/止损建议卡片。6h 口径与 B-4 单品分析复用同源（KLINE_FRESH_SINGLE_HOURS=6），语义=「查看报告」近实时已足够；重建路径由 analyze_fresh 内部落 analysis_results，二次点击自动秒开。
+- **大盘上下文 5min 进程内缓存**：`market_snapshot()`（`webapp/analysis_service.py:338`）整体结果加 TTL=300s 缓存 + 锁防并发击穿，批量扫描/报告弹窗/大盘页高频调用共享同一快照；`/api/market/refresh` 落库后调用 `bust_market_snapshot_cache()` 立即失效，避免手动刷新后展示旧上下文。
+- **采集时间对齐**：`save_analysis_result` 新增 `collected_at` 透传（`analyze_fresh` 传入 item.collected_at），缓存/discover 报告首次带「数据采集于」标签（此前仅重建路径有），与 2026-08-11「报告内显示数据采集时间」要求对齐。
+
+**实测**（重构后）：报告弹窗非持仓品 6h 缓存命中 3-21ms（原 ~1.5s；冷重建 2.9s 含情绪联网，重建后二次点击秒开）；持仓品保持重建（~1.4s）带建议卡片；批量扫描/大盘页 5min 内仅首个冷调用付费情绪联网，其余共享快照。
+
+**验证**：冒烟 100 passed / 0 failed，pyflakes 无告警，服务已重启。
+
+**学到的新思路**：「查看报告」与「分析」语义分离是性能前提——报告弹窗本质是查看已生成结果，重跑引擎的实时性收益远小于等待成本；缓存必须带语义例外（持仓品保留实时建议卡片），否则展示层功能会被缓存吞掉。

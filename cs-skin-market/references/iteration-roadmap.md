@@ -364,3 +364,5 @@ eferences/refit_pipeline.py → data/refit_pipeline_report.json（A2 三件套�
 - M-5 遗漏修复（**2026-08-12**
 - 主引擎口径审计 + 评级线 th_boost 移除（**2026-08-12**
 - 发现高分品结果行加数据采集时间（**2026-08-12**，见 decision-log 同条目）——`discover_latest.json` 结果行补 `collected_at`（DB 复用/联网采集/行级刷新三路径）+ 榜单名称列下「采集于」小字（与批量扫描同款）；纯展示层，冒烟 100/0/0。，见 decision-log「主引擎口径审计 + 评级线 th_boost 移除」）——全仓核对：评级切分/TH 三区/market_weak 45/半山腰/hold21/7天去重/去簇 gap 均一致；唯一真不一致 = value.score 后处理 th_boost（TH 高加分）与 M-5 反向定论矛盾且与 composite 对冲；回测先行（`probe_th_boost_grade.py`，317 信号：Q5 73.4→76.6%、spearman +0.087→+0.142、前后半段一致、置换 p=0.10）后**移除 th_boost**——TH 展示层仅由 composite_score th_bonus 反向单计；纯展示层，分级仓位/回放产物零影响；冒烟 100/0/0。，见 decision-log「M-5 遗漏修复：discover 行级刷新 TH 偏移同步反向」）——`webapp/main.py:1537` 内联复刻的 composite 公式 TH 偏移 `*1.0` → `*(-1.0)`，与 `item_analysis.composite_score` 对齐（M-5 反向定论）；discover 行级刷新与全扫/批量扫描综合分口径恢复一致；服务已重启，冒烟 100/0/0。
+
+- 单品报告弹窗加载慢优化（**2026-08-12**，性能层/展示层，见 decision-log 同条目）：`/api/items/report-view` 加 6h 报告缓存（`analysis_results` 命中直接返回，持仓品跳过保留补仓/止损卡片）+ `market_snapshot` 5min 进程内缓存（批量扫描/大盘页共享，手动刷新后 bust）；实测报告弹窗 ~1.5s → 3-21ms、冷重建后二次点击秒开；`save_analysis_result` 补 `collected_at` 使缓存/discover 报告带「数据采集于」。零决策参数，冒烟 100/0/0。

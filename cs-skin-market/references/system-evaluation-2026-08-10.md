@@ -204,6 +204,8 @@
 - M-5 遗漏修复 ✅（2026-08-12
 - 主引擎口径审计 + 评级线 th_boost 移除 ✅（2026-08-12
 - 发现高分品结果行加数据采集时间 ✅（2026-08-12，见 decision-log 同条目）：discover 榜单补「采集于」时间（三路径 collected_at 透传），与批量扫描/报告口径对齐；全量强制联网搜索评估=不需要（复用窗口 + 行级刷新已覆盖）。，见 decision-log 同条目）：回测先行（317 信号：Q5 73.4→76.6%、spearman +0.087→+0.142、前后半段一致）后移除 `item_analysis.py` value.score 后处理 th_boost——TH 展示层仅由 composite_score 反向单计，消除评级线与综合分的对冲与方向矛盾；纯展示层，分级仓位/回放产物零影响。，见 decision-log「M-5 遗漏修复：discover 行级刷新 TH 偏移同步反向」）：`webapp/main.py:1537` TH 偏移 `*1.0`→`*(-1.0)`，discover 行级刷新综合分口径与 `composite_score` 恢复一致（纯展示层，零决策参数）。
+- 单品报告弹窗加载慢优化 ✅（2026-08-12，性能层/展示层，见 decision-log 同条目）：`/api/items/report-view` 加 6h 报告缓存（非持仓品直接返回 `analysis_results` 静态 HTML，持仓品保留重建带补仓/止损卡片）；`market_snapshot` 加 5min 进程内缓存（批量扫描/大盘页共享，手动刷新后 bust）；`save_analysis_result` 补 `collected_at` 使缓存/discover 报告显示「数据采集于」。实测报告弹窗 ~1.5s → 3-21ms（缓存命中）/ 冷重建后二次点击秒开；冒烟 100/0/0，零决策参数。
+
 
 ## 附录：与「评估指标体系第一性审计」的边界
 
