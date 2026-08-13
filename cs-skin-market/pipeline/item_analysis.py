@@ -1101,7 +1101,7 @@ SIGNAL_FAMILIES = (
             and not (F["survive"] > 0 and F["survive"] < 3000)
             and F["s30"] is not None and F["s30"] > 0
             and F["s7"] is not None and F["s7"] <= F["s30"] * 0.85
-            and F["chg7"] is not None and abs(F["chg7"]) <= 3
+            and F["chg7"] is not None and abs(F["chg7"]) <= int(os.environ.get("CS_ENGINE_SUPPLY_ACCUM_CHG7_CAP", "3"))
             # T4（2026-08-10 第一性原理审计）：8 日动量门——「一周前拉涨、近7日横盘」的泵后横盘追高段禁买。
             # 实证：chg7<=3 但 chg8>3% 的 26 条信号 win14 42.3%/+4.14（2026-02 W2 反弹段集中 19 条）；
             # 只读全引擎模拟剔除后 wwin14 74.4->76.3%、wavg14 20.48->21.46、事件 14->15。
