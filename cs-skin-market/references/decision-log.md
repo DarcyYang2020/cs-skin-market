@@ -2963,3 +2963,273 @@ Fluxo 25→280 约 11 倍），尖顶后 3 天 -86~94%，与枪皮统计反转�
 - **结论：不调整**。当前权重次序（consolidation 2.5 > accumulation 2.0 > markup 1.2）与回放一致（consolidation 最高胜率+最高权重）；accumulation 胜率最低但期望非最低（+9.19 vs markup +6.36），口径矛盾量级小且对展示排序无影响，维持现状。
 
 **验证**：冒烟 104 passed / 0 failed。研究开关保留（`CS_ENGINE_SUPPLY_ACCUM_CHG7_CAP`，默认 3，用于未来复验）。
+
+## 代码/文档/数据卫生整理（2026-08-13，非决策参数）
+
+执行非破坏性健康优化，零引擎参数改动。代码：移除 backup_db.py 未使用导入；webapp/main.py discover 行级刷新复用 item_analysis.composite_score，修复 _prune_progress 对 discover 进度文件的清理路径；market_context/trend_health 两处裸 except 收窄为统计异常。文档：AGENTS/PROJECT_STRUCTURE 同步 317 信号、行数、测试 104 用例、新模块；data-layer 补充 in_sale_count NULL 口径。数据卫生：.gitignore 新增运行日志规则；run_retention_cleanup 新增 runtime jsonl 365 天保留；positions/backtest_results 按既有决策仅标记 deprecated，不物理删除。备份 market_20260813_100346.db；冒烟 98 passed / 0 failed / 6 skipped，pyflakes 0。
+
+
+
+## 量化优化三项立项排期（2026-08-13，研究立项，零决策参数）
+
+> 来源：CS 量化策略研究员 + 算法工程师第一性原理审计，按数据就绪度排期。只立项，不改代码/参数/信号族/阈值；全部 A2 通过前不进生产。
+
+### EXIT-1 · 路径依赖退出策略（P0，阶段 0 可立即启动）
+- 问题：组合模拟与 hold_guidance 使用固定 hold21；单品报告的情绪自适应 stop/take 未进组合回测。
+- 第一性逻辑：CS 饰品收益路径状态依赖，退出方式直接决定收益与回撤；固定持有期只是多个市场状态的平均。
+- 预注册假说：trailing/chandelier/regime 退出相对 hold21，OOS Calmar 提升 ≥15% 或 maxDD 改善 ≥2pp，且总收益下降 ≤5pp。
+- 判定门槛：A2 walk-forward 3 折 + 事件级 ±3 天去簇 + 置换 ≥500 次；前后半段方向一致；通过后仅进入影子退出线。
+
+### LIQ-1 · 流动性/成本感知仓位（P1，阶段 0 可启动，正式判定等数据）
+- 问题：全链路统一 2% 成本；in_sale_count 是挂单存量非成交深度；当前 spread 中位 2.7%、p90 5.88%、232/343 >2%。
+- 第一性逻辑：真实可成交成本 = 价差 + 平台费 + 冲击成本，仓位应按流动性缩放。
+- 预注册假说：分层成本 + 流动性过滤/降权相对 flat 2% + 固定 position_limit，OOS Calmar 提升 ≥20% 或 maxDD 改善 ≥2pp，且总收益下降 ≤10pp。
+- 数据门禁：spread 连续 90 天 + executions ≥20；正式判定窗口 2026-11-09~11-13。
+
+### SUPPLY-CONF-1 · 供给收缩机制分离（P2，阶段 0 只做数据盘点）
+- 问题：在售量下降被统一解释为吸筹；真吸筹 / 挂单撤走 / 下跌惜售三者后续价格含义不同。
+- 第一性逻辑：真吸筹应有收缩持续、卖盘变薄、价差收窄或大户集中度上升等第二证据。
+- 预注册假说：连续正 in_sale_count + 收缩持续 + 低 spread 的子集，事件级 win14 较全量供给吸筹 +≥8pp 或 avg14 +≥3pp。
+- 数据门禁：连续 in_sale 90 天 + spread 90 天 + monitor_rank 周频 12 周；正式判定窗口 2026-11-09~11-13。
+
+### 批次与门禁
+- 批次 1（2026-08-13~15）：立项 + 三个只读探针（EXIT-1 / LIQ-1 / SUPPLY-CONF-1），产物 data/_exp_exit_path_rules.json、data/_exp_cost_liquidity_ladder.json、data/_exp_supply_confirmation_audit.json。
+- 批次 2（2026-08-17~21）：EXIT-1 正式 A2；2026-08-24 判定。
+- 批次 3~4（2026-08-24~10-30）：LIQ-1 影子成本层 + SUPPLY-CONF-1 数据积累。
+- 批次 5（2026-11-09~13）：LIQ-1 / SUPPLY-CONF-1 正式判定。
+- G0：任何项目通过前不触碰评分、阈值、信号族、闸门、权重；不重跑或推翻 2026-08-10 四项审计。
+
+
+
+## 批次1 阶段0结果（2026-08-13，只读探针，未改引擎）
+
+### EXIT-1 阶段0
+- 数据：317 条 fwd_series；对照组 hold21 交易净收益 win 65.6% / avg +18.72%；组合口径总收益 +186.53% / maxDD -24.29% / Calmar 7.68。
+- trailing 0.10/0.15/0.20/0.25 与 regime 简单变体均低于 hold21：组合总收益 72.61~113.19%，Calmar 3.90~4.66；胜率 48.3~61.2%。
+- 解读：纯价格 trailing 会提前截断 14~21d 反弹主升段；阶段 0 方向为负。批次2 正式 A2 仍按预注册跑 walk-forward + 事件级去簇 + 置换；若无变体达到门槛，关闭 EXIT-1。
+
+### LIQ-1 阶段0
+- 2% 基线：win14 71.0% / avg +15.95%；3% 67.8% / +14.95；5% 60.3% / +12.95。
+- 流动性分桶（2%）：200+ n=140 win 77.9% / avg +26.07；50-199 n=16 win 68.8% / +9.65；zero n=149 win 65.8% / +8.21；1-49 n=1 -10.88；null n=11 63.6% / +3.39。
+- spread 快照：n=343，中位 2.7%，p90 5.8%，>2% 占比 67.6%；executions 仍 8。
+- 解读：方向支持低流动/高 spread 成本敏感性，但 1-49 桶 n=1 不可判定；正式 A2 继续等 spread 90 天 + executions≥20。
+
+### SUPPLY-CONF-1 阶段0
+- 全信号：317 条中 cur_positive 157 / zero 149 / null 11；real20+ 190；ratio≤0.85 仅 13 条。
+- 供给吸筹族：142 条中 cur_positive 仅 11 / zero 127 / null 4；real20+ 67；ratio≤0.85 且 real20+ 仅 3 条。
+- 干净段：2026-05 起 total 132 条 positive，但供给吸筹族仅 May 1 + Jul 2 共 3 条，June 无；历史供给确认严重欠样本。
+- DB：price_history 58,932 行，in_sale null 2,385 / zero 7,296；snapshots 2,797 行，spread 非空 343；monitor_rank 仅 2026-08-04~10 共 5 日、176 品。
+- 解读：正式 A2 目前不可启动，须自然积累连续 in_sale 90 天 + spread 90 天 + 周频大户 12 周。
+
+
+
+## 量化优化六项补充立项（2026-08-13，候选立项，零决策参数）
+
+> 来源：与前三项同源第一性原理审计。本轮只立项，不改代码/参数/信号族/阈值；全部仍按回测先行 + A2 三件套 + 前后半段一致性推进。
+
+### PORT-1 · 组合风险预算与资金分配（P0）
+- 问题：cap0.8 只是并发上限，仓位主要是族级固定值，没有波动率/相关性/市场状态分配。
+- 第一性逻辑：引擎已验证的边际价值在风控，组合层是把单票信号变成资金曲线的最后一公里。
+- 预注册假说：波动率目标 + 状态预算 + 单类上限，较静态 cap0.8 改善 Calmar/maxDD，而非只追求总收益。
+- 当前可做：复用 317 条 fwd_series 做只读组合模拟，不碰引擎。
+
+### PANIC-ALIGN-1 · 恐慌族回放/生产情绪一致性（P1）
+- 问题：回放 panic 族主要由价格近似情绪触发，生产由真实贪婪指数触发，两者日级相关弱。
+- 第一性逻辑：恐慌族是最强单族，但外推性最依赖情绪口径，必须先验证生产触发是否落在同一市场状态。
+- 预注册假说：生产真实贪婪指数触发的 panic 信号，14/30d 胜率与回放近似情绪口径无显著劣化。
+- 数据门禁：C 通道 production≥20；当前 1 条，只报告不判定。
+
+### BID-1 · 求购因子验证（P2）
+- 问题：bid_highest/spread_pct 已采集但未进决策，bid_count 仍是估算值。
+- 第一性逻辑：求购价比最低卖价更接近可成交价下界，是供给收缩真假的重要判别维度。
+- 预注册假说：bid 承接强 + 在售收缩 + 价格企稳，比单纯在售收缩更接近真吸筹。
+- 当前可做：每日记录候选品 bid/spread，与 SUPPLY-CONF-1 共用一个观察跟踪器；不接入 buy。
+
+### STICKER-1 · 贴纸庄盘专用策略（P2）
+- 问题：贴纸是事件脉冲 + 庄盘主导，不能直接套枪皮低估值反弹。
+- 第一性逻辑：贴纸供给冻结、池小、深度浅，庄家选品坐庄是核心机制；左侧吸筹痕迹 + 右侧尖顶离场比枪皮周期更有效。
+- 当前状态：W-3 已有探索版与每日 tracker，方向支持吸筹=相对市场选品 alpha。
+- 当前可做：继续每日跟踪，不接 buy；正式 A2 必含 regime 分层 + 在售量确认。
+
+### EVENT-1 · 外生事件日历与供给事件提示（P2）
+- 问题：开箱/新箱/Major 是供给和需求的外生冲击，当前未来事件日历为空。
+- 第一性逻辑：在售量只能看到事件后半段，事件日历补前置的供给扩张/热度切换信息。
+- 当前可做：只做提示层，不改信号；需要用户配置未来事件日历。
+
+### CROSS-1 · 跨平台价差/流动性迁移（P2）
+- 问题：当前锚价主要用悠悠，平台间 30~80% 价差被当作噪音。
+- 第一性逻辑：跨平台价差收敛/发散可能代表流动性迁移或套利资金进场，是独立信息。
+- 当前可做：先只读统计价差分布，做成展示/观察项；多平台采集须轻量化。
+
+### 整合优先级
+- 第一梯队（数据已够）：EXIT-1、PORT-1、PANIC-ALIGN-1。
+- 第二梯队（积累中）：LIQ-1、SUPPLY-CONF-1、BID-1、STICKER-1。
+- 第三梯队（等配置/低频数据）：EVENT-1、CROSS-1。
+
+
+## PORT-1 阶段0（2026-08-13，只读组合模拟，零决策参数）
+
+- 方法：复用 `data/item_backtest_full_2025.json` 317 条含 `fwd_series` 信号 + `references/b1_risk_backtest_v2.py` 的 `simulate/metrics/classify/PRIORITY`，在静态 `cap0.8` 上叠加四档预算：`baseline`、`vol`（30 日已实现波动率倒数，截断 0.4~1.0）、`regime`（恐慌≥75 / bear/distribution / TH<45 且 mchg30<0 降档）、`vol_regime`。
+- 基线：cap0.8 总收益 +201.06% / maxDD -9.13% / max_position 0.80 / n_trades 51；与 `b1_risk_backtest_v2.py` 同口径复算一致，未触碰引擎。
+- 全样本对比：`vol` +169.12% / -9.72%；`regime` +179.76% / -11.37%；`vol_regime` +164.53% / -11.21%。三档均未改善 Calmar/maxDD，方向为负。
+- 前后半段（按信号日中位数 2026-02-27 切分，pre 156 / post 161）：baseline pre +128.39%/-9.13% vs post +81.85%/-20.10%；三档预算在后半段回撤更深（vol_regime post -25.88%），无一致正向改善。
+- 置换检验：`vol` 对 Calmar，200 次打乱波动率缩放，actual 17.4 vs 置换均值 14.53，p(≥actual)=0.18，不显著。
+- 结论：PORT-1 阶段0 不进入正式 A2；静态 `cap0.8` 维持。动态波动率/状态预算目前没有风险调整后收益优势，且前后半段方向不稳定。后续若重新立项，须先等更连续的 `in_sale_count`、真实成交/滑点样本与更多独立市场事件。
+- 产物：`data/_exp_portfolio_risk_budget.json`；探针 `references/probe_portfolio_risk_budget.py`。验证：冒烟 104/104，pyflakes 0。
+
+
+## PANIC-ALIGN-1 阶段0（2026-08-13，只读对账，零决策参数）
+
+- 方法：加载 317 条回放信号的 `signal_type=panic` 子集；用 `backtest_common.approx_sentiment` 重算价格近似情绪，并对照 `macro_history.greedy_index` 经 `greedy_to_sentiment` 映射的真实情绪；同时读 `signal_tracking` 生产 panic 跟踪行。
+- 回放口径：panic 族 92 条全部集中在 2026-05-22~05-31 单事件簇；当日 `macro_history` 无真实贪婪指数，故回放 panic 的 `sentiment` 全部来自价格近似口径；重算差均值 0.024、最大 0.04，回放字段可复现。
+- 真实 vs 近似（2026-06-14~08-12 共 60 个重叠交易日）：spearman +0.118 / pearson +0.082，基本无单调关系；MAE 20.65，真实情绪系统性偏高 +16.74；`sent>=75` 阈值下真实命中 32 天、近似命中 0 天，一致率仅 46.7%。
+- 生产跟踪：`signal_tracking` 仅 1 行（2026-08-09），且 `action_label` 入库为问号乱码，无法可靠判定是否为 panic；真实情绪 90 / 近似情绪 54.86。生产 panic 可判定样本为 0，远低于门禁 production≥20。
+- 结论：PANIC-ALIGN-1 阶段0 只报告不判定。当前证据提示回放近似情绪与生产真实贪婪情绪不在同一尺度，若直接用回放 panic 外推生产，情绪触达口径存在结构性偏差；但生产样本不足，不进入正式 A2，也不改引擎。后续先修 `signal_tracking.action_label` 入库编码，再等生产 panic≥20。
+- 产物：`data/_exp_panic_alignment.json`；探针 `references/probe_panic_alignment.py`。验证：冒烟 104/104，pyflakes 0。
+
+
+## signal_tracking 乱码修复 + 供给×求购观察层（2026-08-13，零决策参数）
+
+- 乱码根因：`signal_tracking` 唯一一行是 2026-08-11 items 重排后从备份回填时写坏 `item_name`/`action_label`（当前库为问号，`market.db.bak-before-reindex-20260811` 内为正确中文）。`items` 表本身正确。
+- 修复：先备份 `data/market.db.bak-signaltracking-mojibake-20260813-123418`，仅更新 id=2 一行，`item_name` 与 `action_label` 恢复为「AK-47 | 轨道 Mk01 (崭新出厂)」/「🟢 供给收缩·启动前吸筹·分批建仓」；修复后全表 0 条问号残留。该行实际为供给吸筹族，不是 panic。
+- 观察层：新增 `references/probe_supply_bid_observer.py` → `data/_exp_supply_bid_observer.json`，对全部 snapshots 按“在售量 7/30 收缩（ratio≤0.85）+ 价格平稳（|chg7|≤3）”做影子候选，并叠加求购标签（bid_7d_chg>0=配合 / <-3=背离 / 其余=中性或无数据）。
+- 观察结果：2797 条 snapshots 中 343 条有求购字段，spread 中位 2.7% / p90 5.8%；供给×价格平稳候选共 38 条快照、4 个唯一品；最新一条唯一候选 4 品全部无求购数据，历史候选内 2 条求购配合 / 1 条中性。当前不接 `buy`，仅积累观察样本。
+- 结论：BID-1/SUPPLY-CONF-1 的第一性逻辑已转成可量化的影子信号，但当前 `in_sale_count` 干净段与求购字段重叠度仍低，正式 A2 继续等样本。引擎零改动。
+- 验证：冒烟 104/104，pyflakes 0。
+
+
+
+
+## 数据积累层审计与整理（2026-08-13，零决策参数）
+
+只读审计 + 低风险整理，不改引擎参数/阈值/信号族，不删历史价格/在售量/快照/监控事件/回放产物。
+
+- **B-1 备份清理口径**：`backup_db.py` 改用 `re.fullmatch("market_\d{8}_\d{6}.db", p.name)`，避免将 `market_audit_*` / `market_health_*` / `market_merge_*` 等非日常备份误删。dry-run 检查同日备份 13→9 份，其他名命备份保留。
+- **B-2 冗余索引**：移除 `idx_price_history_item_date` / `idx_market_snapshot_date` / `idx_monitor_snapshot_date` 三个创建调用，并在 schema 初始化中对已存库执行 `DROP INDEX IF EXISTS`（与唯一索引/autoindex 重复）。
+- **B-3 snapshots(date) 索引 + 清理查询优化**：新增 `idx_snapshots_date`，`run_retention_cleanup` 对日期列改用索引友好的 `date < ?` 而非 `substr(date,1,10) < ?`；已在库内建索引并通过冒烟。
+- **B-4 market_snapshot 保留/增长预算**：`_RETENTION_TABLE_DAYS` 加入 `"market_snapshot": 365`；`data-layer.md` 补充周度行数与增长预算，`monitor_rank_snapshot` 仍不自动清理。
+- **B-5 求购观察累积表**：新建独立只读表 `bid_observations(date, item_id, good_id, item_name, bid_highest, bid_7d_chg, bid_30d_chg, spread_pct, spread_avg, source)`，`UNIQUE(date,item_id)`；`SCHEMA_VERSION` 1→2。新增 `references/collect_bid_observations.py`（默认持仓/自选优先、`--limit` 限额、`--dry-run` 只列候选、手动网络调用），不接每日任务、不写 snapshots、不进引擎。用于 SUPPLY-CONF-1 / BID-1 的求购配合样本积累。
+- **C 文档漂移**：`cs-knowledge.md` 与 `data-source-health.md` 将全市场快照、大户集中度统一为周度（周一）口径。
+
+**验证**：`python tests/test_smoke.py` 104 passed / 0 failed / 0 skipped；`python -m pyflakes pipeline/db.py backup_db.py references/collect_bid_observations.py` 0 新告警。未 commit / 未分支 / 未 push；后续若正式启用 B-5 手动累积，再按回测先行与三件套流程执行。
+
+
+## B-5 成品评估（2026-08-13，零决策参数）
+
+- 方法：对照 SUPPLY-CONF-1 / BID-1 立项口径，`--dry-run` + 受限实采 `--limit 3`，验证端到端可用性。
+- 结果：3/3 品捕到 `order_book`，写入 `bid_observations` 成功；补上观察时点 chart 末点 `price_rmb/in_sale_count`（与 `price_history` 同口径）和 `--source`；修复 Playwright 退出时 `Event loop is closed` 的不干净日志（采集后显式关闭 browser/playwright）。
+- 样本质量：`bid_7d_chg` -13.1~-19.7，`bid_30d_chg` -45.9~-49.6（极端负值，复现 T1“30d 口径不可信”结论）；`spread_pct` 2.2~5.4，`spread_avg` 3.9~4.9。
+- 额外发现：沙漠之鹰蓝色层压板当前 chart 末点 31.96/792 与 `price_history` 今日 47.56/210 明显不一致（串品/污染嫌疑）；本次不修改库内历史，B-5 可作为 chart-vs-DB 独立交叉检查的输入。
+- 成品结论：作为观察累积器达标；作为生产信号仍不可用。收尾已加 `--mode supply_contract`（供给收缩 7/30≤0.85 + |chg7|≤3 定向采样，dry-run 当前命中 2 个贴纸候选）。仍未完成：写库前无质量守卫（按后续回测流程处理）；`bid_observations` 外键仍为 `ON DELETE CASCADE`，若 items 再重排/物理删除会清空样本（建议后续改为保留 good_id/name 的方案）。
+- 验证：`python tests/test_smoke.py` 104 passed / 0 failed / 0 skipped；`python -m pyflakes pipeline/db.py references/collect_bid_observations.py` 0 新告警。未 commit / 未分支 / 未 push。
+
+
+## B-5 收尾落地：非级联 + 质量守卫 + 周度调度（2026-08-13，零决策参数）
+
+- **非级联迁移**：`bid_observations` 重建为 `UNIQUE(date, good_id)`，移除 `item_id ON DELETE CASCADE`，保留 `good_id/item_name`；已备份 `data/backup/market_20260813_132347.db`，迁移后原有 3 行样本保留。`_migrate_bid_observations_fk` 在 schema 初始化时自动检查并用 savepoint 迁移，新库直接建新结构。
+- **写库质量守卫**：`collect_bid_observations.py` 在写库前拒绝 `highest_buy<=0`、`bid_7d_chg` 缺失、`spread_pct<=0`；增加 `quality_note`，自动标记 `bid30_extreme`、`spread_avg_zero`、`chart_db_mismatch`（chart 末点 vs `price_history` 最新行偏差 >20%/在售 >30%）。
+- **周度调度**：`run_daily_collect.py` 每周一在 K 线刷新后作为最后一个浏览器任务执行 B-5（`supply_contract`、limit 8、source=weekly）；异常不中断采集，且 `collect_bids` 结束时关闭共享 Playwright browser。
+- **文档同步**：`data-layer.md`、`AGENTS.md`、`PROJECT_STRUCTURE.md` 已更新周度链路与表结构口径。
+- **验证**：`python tests/test_smoke.py` 104 passed / 0 failed / 0 skipped；`python -m pyflakes pipeline/db.py references/collect_bid_observations.py` 0 新告警。未 commit / 未分支 / 未 push；引擎参数/阈值/信号族/闸门零改动。
+
+
+## items.id 重排 + K 线采集节流优化（2026-08-13，数据层）
+
+- **items.id 重排**：库内 361 品原 id 1..203 连续，新增贴纸/品占用 999228..999385；按 id 升序重排为 1..361，同步更新 9 张引用表（price_history/snapshots/positions/backtest_results/executions/monitor_rank_snapshot/signal_tracking/monitor_events/bid_observations）。备份 `data/backup/market_20260813_194320.db`；`PRAGMA foreign_key_check` 为空，各表孤儿引用 0，`sqlite_sequence(items)` 重置为 361。引擎参数与回放产物未动。
+- **K 线采集节流**：`run_daily_collect.collect_kline_all` 由固定成功间隔 1.5s 改为基础 0.4s（`CS_KLINE_BASE_SLEEP`），空/异常品指数退避至上限 8s（`CS_KLINE_MAX_SLEEP`），限流时自动降速，成功时自动提速。仍为串行单浏览器，未引入并发（避免触发 csQAQ 限流与 browser 竞态）。
+- **验证**：`python tests/test_smoke.py` 104 passed / 0 failed / 0 skipped；`python -m pyflakes pipeline/db.py run_daily_collect.py references/collect_bid_observations.py` 0 新告警。未 commit / 未分支 / 未 push。
+
+
+## 贴纸模块暂时放置，主引擎优先（2026-08-13，优先级调整）
+
+- 用户决策：贴纸专项暂时放置，先把主引擎搞好。
+- 放置范围：STICKER-1 / W-3 / S 系列贴纸 A2 专项暂停新投入；已上线的 W-3 每日跟踪与库内贴纸数据保留不删除，若需停止每日 tracker 再单独操作。
+- 主引擎短期优先：工程健康、错误处理、口径一致性与待数据的量化项（EXIT-1 正式 A2 窗口 2026-08-17~21）。
+
+## ??? A1-2 ?? + ???????2026-08-13???????
+
+- **??**???????????????????????????? A1-2?deep_value sent 66-74 ?????
+- **A1-2 ?? A/B**?365d ???? 2025-08-10 ??????????? price_history ?? 2025-08-13???????? 96 ????????????? control/variant??? monkeypatch deep_value ?? 65?75?????????
+  - control?309 ???win14 70.6%?avg14 +15.90?
+  - variant?312 ???win14 69.9%?avg14 +15.71?
+  - ?? 3 ????? sent 66-75?win14 0/3?avg14 -4.56??? 2026-07-23 ?????walk-forward n<5 ??????? p=1.0?
+  - **??????**?deep_value ????????????? A1-2 ????????
+  - ???`references/probe_a1_2_sent_gap.py` / `data/_exp_a1_2_sent_gap.json`?
+- **???????????????**?`item_analysis.py` ???`build_market_context` / `compute_buy_distance`??`trend_health.py` ???`CATEGORY_PARAMS`??`market_context.py` ???`compute_market_trend_health`?? `except Exception: pass` ?? `logger.warning(..., exc_info=True)` ???? fallback???????????????????
+  - ????????????? smoke ??? `market_context.build_market_context` ??? int ????? `[(date, value), ...]`??????????????????????????????????? context??????? context????????????????
+- **??**?`python tests/test_smoke.py` 104 passed / 0 failed / 0 skipped?`python -m pyflakes pipeline/item_analysis.py pipeline/trend_health.py pipeline/market_context.py references/probe_a1_2_sent_gap.py` 0 ????? commit / ??? / ? push?
+
+
+
+## 贴纸模块停采停扫降级（2026-08-13，优先级调整落地）
+
+**决策（产品侧评估 + 用户确认）**：贴纸模块由「暂时放置」升级为「停采停扫 + 保留静态研究资产 + 冻结贴纸 alpha」，回收 csQAQ 采集预算给主引擎。三条理由成立：主引擎优先 / 贴纸 160 品每日 K 线加重 csQAQ 限流压力 / 贴纸决策贡献为 0（S-2 日历择时证伪、W-3 吸筹未过 A2、观察桶禁 buy），性价比低。
+
+**执行方案（待实施，零引擎参数，数据/调度/展示层）**：
+- **停采**：印花% 共 160 品统一加「活跃池淘汰:贴纸模块停采」标记（自选贴纸豁免），退出 run_daily_collect.py:166 每日 K 线采集；price_history 数据保留不删除。
+- **停扫**：discover 贴纸榜 scope=sticker 关闭/移除（webapp/main.py:1640），贴纸不再进高分榜/品类热力图；双榜刷新收口为主引擎综合榜。
+- **冻结 alpha**：run_daily_collect.py:401 W-3 吸筹跟踪每日 subprocess 摘除；STICKER-1 / W-3 / S 系列贴纸 A2 专项标记 frozen；references/signal-family-registry.md 贴纸段标 frozen。
+- **保留静态资产（零采集）**：S-1 深历史快照 data/_exp_sticker_deep_full.jsonl、庄盘指纹块 webapp/analysis_service.py:868（读快照 mtime 缓存）、W-3 探索版产物 data/_exp_w3_accum_continuation.json、references/first-principles-manipulation.md 庄盘/脉冲形态学知识——留作未来新品类（武器箱/胶囊）复用，不主动推进、不物理删除。
+
+**回收后投向主引擎**：生产 buy 信号链路已恢复（见 2026-08-12 条目）；主引擎短期优先 = EXIT-1 正式 A2（2026-08-17~21）、工程健康、错误处理、口径一致性；采集预算转给 201 品主引擎 K 线/在售量覆盖与 G-4 失败率治理。
+
+**配套文档**：references/product-pm-initiation.md 同步——A-5 贴纸隔离标注撤销、B-3 贴纸 A2 取消、新增 A-9「贴纸停采停扫」。
+
+**验证**：本次为决策定稿 + 文档同步，无代码改动；实施时补冒烟/台账执行记录。
+
+
+## 贴纸模块降级：停采停扫 + 观察桶冻结（2026-08-13，用户决策，零引擎参数）
+
+- **结论**：贴纸模块从「每日采集 + discover 展示 + 每日 W-3 跟踪」降级为「停采停扫 + 保留静态研究资产」；不物理删除历史价格、研究快照、庄盘指纹或 W-3 tracker。
+- **现状核证**：`印花 |` 前缀品 160，其中 159 无自选/持仓、1 自选；此前每日 K 线全量覆盖，但贴纸决策贡献为 0（S-2 证伪、W-3 未过 A2、观察桶禁 buy），采集成本与决策产出不匹配。
+- **数据层**：备份 `data/backup/market_20260813_205013.db`；仅对 159 个非自选/持仓贴纸在 `items.notes` 追加 `贴纸模块停采`，自选贴纸 1 品豁免。`run_daily_collect.py:collect_kline_all` 活跃池 SQL 增加 `notes NOT LIKE '%贴纸模块停采%'` 排除，自选/持仓豁免逻辑不变。
+- **discover**：`pipeline/discover_tasks.py:_run_discover_pool_task` 基础查询移除贴纸品类，`sticker` 旧 scope 统一转 `skin`；`webapp/render_html.py:render_discover_html` 渲染前过滤 sticker，热力图与 Top10 不再混入贴纸；`webapp/main.py` API scope 校验同步收口；`discover.html` / `partials/discover_html.html` 移除贴纸榜按钮与 tab。
+- **研究侧**：摘除 `run_daily_collect.py` 每日 W-3 吸筹跟踪 subprocess；`references/w3_signal_tracker.py`、`data/_exp_sticker_*`、`webapp/analysis_service.py` 庄盘指纹均保留为只读静态资产，不采集、不接 buy。
+- **保留/回滚**：如需恢复贴纸研究，重新手动运行 W-3 tracker 或重新给相关品去标记；历史数据未删除。
+
+
+## K 线采集平台回退失效修复（2026-08-13，零决策参数，采集层 bug）
+
+- **现象**：2026-08-12/08-13 每日 K 线全量刷新约 40% 成功，其余大量 `K线空`；失败品集中在后段，单失败品耗时 20~30 秒。`platform=2`（悠悠）chart 对部分 `good_id` 返回 HTTP 429，但日志未见 Buff/C5GAME 成功回退。
+- **根因**：`collector_csqaq.py` 的两条 `info/chart` 回退路径均在已有 `page.route` 上再次 `page.route`。Playwright 的 route 会形成处理链，第一条 `platform=2` 路由始终先 `continue_`，后续 `platform=1/3` 路由不会被执行；因此当悠悠 chart 为空/429 时，实际从未切到 Buff/C5GAME。
+- **修复**：把路由改写函数中的 `platform` 从常量改为共享变量 `chart_platform`，只注册一次路由；回退循环里改 `chart_platform=1/3` 后重新 `page.goto`。等价性：正常 `platform=2` 路径请求体不变，仅空响应时才允许后续平台接管。
+- **验证**：`good_id=255` 原先返回 0 bars（直接探测 `platform=2/3` 为 429、`platform=1` 可用），修复后 `fetch_kline_90d(255)` 经 Buff 回退返回 91 bars；`67/72/13373/20838` 回归正常。`tests/test_smoke.py` 104 passed / 0 failed；`pyflakes pipeline/collector_csqaq.py run_daily_collect.py` 0 告警。不改评分/阈值/信号族，不重跑回放，不 commit。
+
+
+## K 线采集直连 API 主通道（2026-08-13，零决策参数，采集层）
+
+- **追加根因**：修复路由叠加后，重采仍见页面端全局跳 `/405?redirect=/goods/{id}`，且连续请求会触发浏览器侧反爬；同一时间直连 `/api/v1/info/chart` 仍可用。浏览器页面路径不适合每日 200 品级批量重采。
+- **方案**：`collector_csqaq.py` 新增 `fetch_kline_90d_api()`，按 `platform=2 → 1 → 3` 直连 `/info/chart`（`period=90 / key=sell_price / style=all_style`，IP 已由 `run_daily_collect.collect_bind_ip()` 绑定）；`collect_kline_all` 改为直连 API 优先、浏览器页面兜底，直连成功品节流 `max(base_delay, API_RATE_LIMIT, 1.5s)`，429 平台间等待 1.2s。
+- **本轮重采结果**：`202/202 成功，失败=0，API=202 / Browser=0`，K 线阶段约 7.8 分钟完成；上一轮浏览器路径同期约 40% 成功且单失败品 20~30 秒。
+- **验证**：`tests/test_smoke.py` 104 passed / 0 failed；`pyflakes pipeline/collector_csqaq.py run_daily_collect.py` 0 告警。不改评分/阈值/信号族，不重跑回放，不 commit。浏览器路径保留为 API 401/缺 token/直连全空时的兜底。
+
+
+## 数据储备 P0/P1 落地（v58，2026-08-13，研究层，零引擎参数）
+
+- **范围**：按 v58 数据储备排期推进 P0 与 P1 首批，只写研究层新表，不写 items/price_history，不改评分/阈值/信号族/闸门。
+- **P0 完成**：`collect_data_reserve_p0.py`；`item_fundamental_snapshot` 202 品（date=2026-08-13），`bid_history` 18,381 行（2026-05-15~至 2026-08-13，日聚合）。
+- **P1 完成**：`collect_data_reserve_p1.py`；`survive_history` 195 个有效品×180天=35,100 行（7 个武器箱/角色/挂件/印花类 API 返回空序列）；`series_snapshot` 64 行；`monitor_rank_snapshot` 自选/持仓 43 品 Top20=860 行（date=2026-08-13）。
+- **schema**：`SCHEMA_VERSION` 3→4；新增 `survive_history` / `series_snapshot` 两表，均不设 items 外键/级联。备份 `data/backup/market_20260813_231242.db`（P1）、`data/backup/market_20260813_222205.db`（P0）。
+- **覆盖口径**：自选/持仓 43 品中 39 个有效品均有 180 天序列；剩余 4 个非枪械/非皮肤品（武器箱/角色/刀/印花）的 `info/good/statistic` 本身返回空数组，不计入覆盖缺失。
+- **调度**：P0/P1 目前为手动/低峰独立任务，未接入每日 18:00 任务链；`collect_data_reserve_p1.py` 默认 dry-run，`--apply` 才落库，`--monitor` 才采大户 Top N。
+- **验证**：`python tests/test_smoke.py` 104 passed / 0 failed / 0 skipped；`python -m pyflakes pipeline/db.py collect_data_reserve_p0.py collect_data_reserve_p1.py` 0 新告警。未 commit / 未分支 / 未 push。
+
+
+## BID-1 阶段 0：求购历史回看与前瞻收益盘点（2026-08-13，只读，零引擎参数）
+
+- **数据**：`bid_history` 18,381 行 / 202 品 / 2026-05-15~至 2026-08-13；每日点数主要为 6 个 10 分钟点聚合。join `price_history` 同日价/在售量覆盖 100%。
+- **spread 口径**：悠悠求购价对当日售价的 spread 中位 3.32%、p90 10.9%、>2% 占 72.5%，与既有阶段 0的 2.7%/5.8% 口径接近但样本更全。
+- **前瞻结果（未扣成本）**：全样本 win14 34.3% / avg14 +0.89%，同期大盘指数 win14 26.0% / avg14 -0.52%；`bid_num_chg7` 分组无单调边际（cooperate 37.0% / neutral 26.2% / diverge 33.6%），五分位两端 q1/q5 同时较好、中间三桶较差，不支持简单“求购上升=看涨”因子。
+- **供给收缩+价格平稳子集**：99 条观测 / 40 个唯一品；win14 仅 24.0%、avg14 -4.59%，bid cooperate 子集 n=24 也未跑赢 noncoop，且多数落在 2026-07至 08 的近期回调段，样本不具独立性。
+- **结论**：数据层已可用，但阶段 0 未发现进入正式 A2 的单调求购信号。BID-1 维持“观察累积 + 等待更多市场状态”，不接 buy。
+- **产物**：`references/probe_bid_1_stage0.py` → `data/_exp_bid_1_stage0.json`。未改引擎/参数/阈值/信号族/闸门，未 commit。
+
+
+## CROSS-1 阶段 0 + P0/P1 数据质检 + 系列/存世量盘点（2026-08-13，只读，零引擎参数）
+
+- **CROSS-1 阶段 0**：用 `item_fundamental_snapshot` 202 品做跨平台价差分布；Buff 售价对悠悠中位 +2.52%、p90 +7.17%；C5 中位 +1.73%、p90 +5.59%；Steam 中位 +55.54%（仅参考不做锚）。Buff 购价对悠悠购价中位 -1.71%，挂单量 Buff/C5 分别中位 -60%/-75%。悠悠锚与 `price_history` 最新价中位差 -0.04%，p90 0.5%，锚校准。
+- **数据质检**：P0/P1 四张研究表平台/源标记全对，关键字段空值、负价、未来日期、孤儿引用均为 0。`survive_history` 日期与 `source_created_at` 完全一致。
+- **系列面板**：64 系列今日广度偏弱；1/7/15/30/90/180 日涨跌中位分别 -0.42/-1.52/-3.78/-5.70/-7.32/-14.88%，多空头铱谱与大盘回调一致。
+- **存世量盘点**：195 品的 `statistic` 近 7/30/90/180 日中位变化 +0.09/+0.44/+1.82/+4.56%，广泛正增长且无负向变化；这是存世量底数不断上升，与 `in_sale_count` 不是同一口径，不得混用。
+- **产物**：`references/probe_cross_1_stage0.py`、`probe_data_reserve_quality.py`、`probe_series_survive_inventory.py`；`data/_exp_cross_1_stage0.json`、`_exp_data_reserve_quality.json`、`_exp_series_survive_inventory.json`。未改引擎/参数/阈值/信号族/闸门，未 commit。
+

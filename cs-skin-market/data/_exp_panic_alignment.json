@@ -1,0 +1,186 @@
+{
+ "generated": "stage0",
+ "replay_panic": {
+  "n": 92,
+  "date_range": [
+   "2026-05-22",
+   "2026-05-31"
+  ],
+  "month_counts": {
+   "2026-05": 92
+  },
+  "stored_sentiment_ge75": 44,
+  "stored_sentiment_buckets": {
+   "58": 14,
+   "70": 34,
+   "79": 4,
+   "80": 25,
+   "85": 6,
+   "90": 9
+  },
+  "real_sentiment_available": 0,
+  "recomputed_mean_abs_diff": 0.024,
+  "recomputed_max_abs_diff": 0.04,
+  "samples": [
+   {
+    "date": "2026-05-24",
+    "name": "AWP | 火卫一 (崭新出厂)",
+    "stored_sentiment": 85.0,
+    "recomputed_approx": 85.04,
+    "diff": -0.04,
+    "real_available": false
+   },
+   {
+    "date": "2026-05-25",
+    "name": "AK-47 | 抽象派 1337 (略有磨损)",
+    "stored_sentiment": 90,
+    "recomputed_approx": 90,
+    "diff": 0,
+    "real_available": false
+   },
+   {
+    "date": "2026-05-25",
+    "name": "沙漠之鹰 | 蓝色层压板 (崭新出厂)",
+    "stored_sentiment": 90,
+    "recomputed_approx": 90,
+    "diff": 0,
+    "real_available": false
+   },
+   {
+    "date": "2026-05-28",
+    "name": "FN57 | 霸意大名 (崭新出厂)",
+    "stored_sentiment": 70.0,
+    "recomputed_approx": 70.04,
+    "diff": -0.04,
+    "real_available": false
+   },
+   {
+    "date": "2026-05-22",
+    "name": "USP 消音版 | 守护者 (崭新出厂)",
+    "stored_sentiment": 80.2,
+    "recomputed_approx": 80.22,
+    "diff": -0.02,
+    "real_available": false
+   },
+   {
+    "date": "2026-05-30",
+    "name": "USP 消音版 | 守护者 (崭新出厂)",
+    "stored_sentiment": 57.6,
+    "recomputed_approx": 57.59,
+    "diff": 0.01,
+    "real_available": false
+   },
+   {
+    "date": "2026-05-22",
+    "name": "M4A4 | 合纵 (崭新出厂)",
+    "stored_sentiment": 80.2,
+    "recomputed_approx": 80.22,
+    "diff": -0.02,
+    "real_available": false
+   },
+   {
+    "date": "2026-05-28",
+    "name": "印花 | MOUZ（全息）| 2024年上海锦标赛",
+    "stored_sentiment": 70.0,
+    "recomputed_approx": 70.04,
+    "diff": -0.04,
+    "real_available": false
+   },
+   {
+    "date": "2026-05-22",
+    "name": "M4A1消音版 | 破碎铅秋 (崭新出厂)",
+    "stored_sentiment": 80.2,
+    "recomputed_approx": 80.22,
+    "diff": -0.02,
+    "real_available": false
+   },
+   {
+    "date": "2026-05-26",
+    "name": "加利尔 AR | 冷石 (崭新出厂)",
+    "stored_sentiment": 90,
+    "recomputed_approx": 90,
+    "diff": 0,
+    "real_available": false
+   },
+   {
+    "date": "2026-05-25",
+    "name": "格洛克 18 型 | 异星世界 (崭新出厂)",
+    "stored_sentiment": 90,
+    "recomputed_approx": 90,
+    "diff": 0,
+    "real_available": false
+   },
+   {
+    "date": "2026-05-26",
+    "name": "格洛克 18 型 | 水灵 (崭新出厂)",
+    "stored_sentiment": 90,
+    "recomputed_approx": 90,
+    "diff": 0,
+    "real_available": false
+   }
+  ]
+ },
+ "real_vs_approx_alignment": {
+  "n": 60,
+  "date_range": [
+   "2026-06-14",
+   "2026-08-12"
+  ],
+  "pearson_sent_vs_approx": 0.082,
+  "spearman_sent_vs_approx": 0.118,
+  "pearson_raw_vs_approx": -0.105,
+  "spearman_raw_vs_approx": -0.123,
+  "mae_sent_vs_approx": 20.65,
+  "bias_real_minus_approx": 16.74,
+  "threshold_75": {
+   "real_pos": 32,
+   "real_neg": 28,
+   "approx_pos": 0,
+   "approx_neg": 60,
+   "agree": 28,
+   "n": 60,
+   "agree_pct": 46.7
+  },
+  "threshold_70": {
+   "real_pos": 43,
+   "real_neg": 17,
+   "approx_pos": 0,
+   "approx_neg": 60,
+   "agree": 17,
+   "n": 60,
+   "agree_pct": 28.3
+  },
+  "threshold_50": {
+   "real_pos": 56,
+   "real_neg": 4,
+   "approx_pos": 50,
+   "approx_neg": 10,
+   "agree": 46,
+   "n": 60,
+   "agree_pct": 76.7
+  }
+ },
+ "production": {
+  "n_total": 1,
+  "n_panic": 0,
+  "n_unreadable": 0,
+  "rows": [
+   {
+    "item_name": "AK-47 | 轨道 Mk01 (崭新出厂)",
+    "signal_date": "2026-08-09",
+    "action_label": "🟢 供给收缩·启动前吸筹·分批建仓",
+    "is_panic": false,
+    "label_unreadable": false,
+    "entry_price": 717.49,
+    "position_limit": 0.1,
+    "real_greedy_sentiment": 90.0,
+    "approx_sentiment": 54.86,
+    "fwd14": null,
+    "fwd30": null,
+    "net14": null,
+    "net30": null,
+    "engine_version": "v2-I13"
+   }
+  ]
+ }
+}

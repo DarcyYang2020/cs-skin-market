@@ -65,7 +65,7 @@ CS 饰品市场投资分析工具。FastAPI Web 应用，从 csQAQ 采集大盘/
 当标准融合决策无法触发 buy 时，额外检查超跌反弹：
 - pct<=15% + Z<=-2.0 + 跌速衰减(no_new_low2 + chg3d>0%) → 超跌反弹·分批建仓
 - 回测: 早期预研 2025-11~2026-07 buy 16次 / 14d 88% / +9.65%（见 `references/engine-unified.md`）
-- 数据见 `cs-skin-market/data/item_backtest_full_2025.json`（2026-08-10 去量 v2 引擎 365d 窗口 332 信号回放）；对比文件 `baseline450`（96品池原引擎）/ `devol_v1`（去量 v1）保留在 data/ 下（devol_v2 与 item_backtest_full_2025.json 内容一致，已删除）
+- 数据见 `cs-skin-market/data/item_backtest_full_2025.json`（2026-08-10 去量 v2 引擎 365d 窗口 317 信号回放）；对比文件 `baseline450`（96品池原引擎）/ `devol_v1`（去量 v1）保留在 data/ 下（devol_v2 与 item_backtest_full_2025.json 内容一致，已删除）
 
 ### 参数拟合建议
 
@@ -87,8 +87,8 @@ J-2 三通道监测数据照常收集（A 独立恐慌事件≥3 / B v2 样本�
 （`data/signal_event_counts.json`），`t_expectancy_sync` 全字段硬校验防漂移。
 
 **基准对照**：`python references/benchmark_compare.py` 产出 `data/benchmark_compare.json`
-（策略 cap0.8 vs 池内等权买入持有 vs 大盘指数，full/active 双窗口）。2026-08-10 结论（365d 窗口，332 信号，组合模拟口径 hold21——2026-08-10 对齐单品 hold_guidance，见 decision-log）：策略 +183.94%/-9.08%
-大幅跑赢大盘 -24.20%/-58.21%，但低于池内等权 +252.32%/-55.59%——引擎边际价值在风险控制（maxDD 9.08% vs 55~58%）。
+（策略 cap0.8 vs 池内等权买入持有 vs 大盘指数，full/active 双窗口）。2026-08-10 结论（365d 窗口，317 信号，组合模拟口径 hold21——2026-08-10 对齐单品 hold_guidance，见 decision-log）：策略 +200.55%/-9.13%
+大幅跑赢大盘 -24.20%/-58.21%，但低于池内等权 +252.32%/-55.59%——引擎边际价值在风险控制（maxDD 9.13% vs 55~58%）。
 
 
 ## 文件结构
@@ -102,18 +102,21 @@ J-2 三通道监测数据照常收集（A 独立恐慌事件≥3 / B v2 样本�
         collector.py           -- 大盘指数采集（HTTP）
         collector_csqaq.py     -- 单品采集（Playwright）
         db.py                  -- SQLite 存储（含数据保留清理 run_retention_cleanup）
-        item_analysis.py       -- 单品分析引擎（1963行）
+        item_analysis.py       -- 单品分析引擎（2050行）
         index_analysis.py      -- 大盘分析引擎（1192行）
-        trend_health.py        -- 趋势健康度 + 融合决策（929行）
+        trend_health.py        -- 趋势健康度 + 融合决策（932行）
         valuation.py           -- 估值分位 + 估值宫格
         supply.py              -- 供给分析
         market_th.py           -- 大盘趋势健康度
         market_macro.py        -- 市场宏观情绪
         market_context.py      -- 大盘上下文
         batch_scan.py          -- 自选批量扫描
+        scan_tasks.py          -- 批量扫描异步任务与进度
+        discover_tasks.py      -- 发现高分品异步任务
       webapp/
-        main.py                -- FastAPI 应用（2615行，路由 + 页面编排）
+        main.py                -- FastAPI 应用（1732行，路由 + 页面编排）
         analysis_service.py    -- 单品分析服务层（2026-08-07 重构）：kline兜底/脏价校验/锚价校正/大盘上下文/快照落库 + 统一分析核心 analyze_fresh
+        render_html.py         -- HTML 渲染纯函数
         templates/             -- Jinja2 模板
         static/                -- CSS/JS
       references/              -- 估值模型 + 策略手册

@@ -1,0 +1,86 @@
+{
+ "generated": "stage0",
+ "all_signals": {
+  "n": 317,
+  "cur_positive": 157,
+  "cur_zero": 149,
+  "cur_null": 11,
+  "real20_plus": 190,
+  "ratio_le_085": 13,
+  "ratio_le_085_real20": 10
+ },
+ "supply_accum_signals": {
+  "n": 142,
+  "cur_positive": 11,
+  "cur_zero": 127,
+  "cur_null": 4,
+  "real20_plus": 67,
+  "ratio_le_085": 3,
+  "ratio_le_085_real20": 3
+ },
+ "clean_positive_by_month": {
+  "2025-11": {
+   "n": 14,
+   "cur_positive": 12
+  },
+  "2025-12": {
+   "n": 11,
+   "cur_positive": 9
+  },
+  "2026-01": {
+   "n": 5,
+   "cur_positive": 4
+  },
+  "2026-02": {
+   "n": 133,
+   "cur_positive": 1
+  },
+  "2026-03": {
+   "n": 21,
+   "cur_positive": 0
+  },
+  "2026-05": {
+   "n": 93,
+   "cur_positive": 92
+  },
+  "2026-06": {
+   "n": 33,
+   "cur_positive": 32
+  },
+  "2026-07": {
+   "n": 7,
+   "cur_positive": 7
+  }
+ },
+ "db_audit": {
+  "price_history": {
+   "range": [
+    "2025-08-13",
+    "2026-08-13"
+   ],
+   "rows": 58932,
+   "items": 361,
+   "insale_null": 2385,
+   "insale_zero": 7296
+  },
+  "snapshots": {
+   "range": [
+    "2026-07-17 14:15:45",
+    "2026-08-13 09:25:30"
+   ],
+   "rows": 2797,
+   "items": 147,
+   "spread_nonnull": 343,
+   "bid_nonnull": 343
+  },
+  "monitor_rank_snapshot": {
+   "range": [
+    "2026-08-04",
+    "2026-08-10"
+   ],
+   "dates": 5,
+   "items": 176,
+   "rows": 27596
+  }
+ }
+}

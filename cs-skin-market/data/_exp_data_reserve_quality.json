@@ -1,0 +1,134 @@
+{
+ "generated": "readonly-quality-audit",
+ "checks": {
+  "table_counts": {
+   "item_fundamental_snapshot": {
+    "rows": 202,
+    "distinct_good_id": 202,
+    "date_min": "2026-08-13",
+    "date_max": "2026-08-13"
+   },
+   "bid_history": {
+    "rows": 18381,
+    "distinct_good_id": 202,
+    "date_min": "2026-05-15",
+    "date_max": "2026-08-13"
+   },
+   "survive_history": {
+    "rows": 35100,
+    "distinct_good_id": 195,
+    "date_min": "2026-02-14",
+    "date_max": "2026-08-13"
+   },
+   "series_snapshot": {
+    "rows": 64,
+    "distinct_good_id": null,
+    "date_min": "2026-08-13",
+    "date_max": "2026-08-13"
+   },
+   "monitor_rank_snapshot": {
+    "rows": 28456,
+    "distinct_good_id": 178,
+    "date_min": "2026-08-04",
+    "date_max": "2026-08-13"
+   }
+  },
+  "platform_and_source": {
+   "item_fundamental_snapshot": {
+    "sources": {
+     "csqaq_direct": 202
+    },
+    "platforms": {
+     "2": 202
+    }
+   },
+   "bid_history": {
+    "sources": {
+     "csqaq_direct": 18381
+    },
+    "platforms": {
+     "2": 18381
+    }
+   },
+   "survive_history": {
+    "sources": {
+     "csqaq_direct": 35100
+    },
+    "platforms": {
+     "2": 35100
+    }
+   },
+   "series_snapshot": {
+    "sources": {
+     "csqaq_direct": 64
+    }
+   }
+  },
+  "null_counts": {
+   "item_fundamental_snapshot": {
+    "good_id": 0,
+    "item_name": 0,
+    "yyyp_sell_price": 0,
+    "yyyp_sell_num": 0,
+    "buff_sell_price": 0,
+    "buff_sell_num": 0,
+    "c5_sell_price": 0,
+    "c5_sell_num": 0,
+    "statistic": 0
+   },
+   "bid_history": {
+    "good_id": 0,
+    "item_name": 0,
+    "buy_price_last": 0,
+    "buy_num_last": 0,
+    "point_count": 0
+   },
+   "survive_history": {
+    "good_id": 0,
+    "item_name": 0,
+    "statistic": 0,
+    "source_created_at": 0
+   },
+   "series_snapshot": {
+    "series_id": 0,
+    "series_name": 0,
+    "amount": 0,
+    "total_value": 0,
+    "sell_price_1": 0
+   }
+  },
+  "invalid_values": {
+   "bid_negative_buy_price": 0,
+   "bid_negative_buy_num": 0,
+   "bid_low_point_count": 0,
+   "survive_zero_or_negative_statistic": 0,
+   "series_negative_total_value": 0,
+   "fundamental_negative_yyyp": 0
+  },
+  "orphan_refs": {
+   "fundamental_item_id_missing": 0,
+   "bid_item_id_missing": 0,
+   "survive_item_id_missing": 0,
+   "fundamental_good_missing_in_items": 0,
+   "bid_good_missing_in_items": 0,
+   "survive_good_missing_in_items": 0
+  },
+  "date_integrity": {
+   "future_fundamental": 0,
+   "future_bid": 0,
+   "future_survive": 0,
+   "survive_date_not_equal_source": 0
+  },
+  "series_inventory": {
+   "series_count": 64,
+   "series_without_name": 0,
+   "series_amount_min": 12.0,
+   "series_amount_max": 764.0,
+   "series_total_value_sum": 6199792.0
+  }
+ },
+ "notes": [
+  "Read-only quality audit for v58 P0/P1 research tables. No data modified.",
+  "These tables are research-only and intentionally not FK-bound to items."
+ ]
+}

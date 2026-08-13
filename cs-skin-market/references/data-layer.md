@@ -27,6 +27,7 @@
   ├ 宏观情绪（HTTP）→ macro_history
   ├ 单品 K 线全量刷新（Playwright，活跃池每品价格+在售量）→ price_history
   ├ 周度(周一)：全市场快照 → market_snapshot；大户集中度 → monitor_rank_snapshot
+  ├ 周度(周一)：B-5 求购观察（supply_contract 定向采样 limit 8）→ bid_observations
   ├ 活跃池淘汰评估 prune_inactive（F-3.1）→ items.notes 标记
   ├ 健康检查 run_health_monitor → health_checks
   ├ J-2 三通道监测刷新 → data/j2_channel_status.json
@@ -39,7 +40,7 @@ discover 扩池（手动）→ 候选入库（items + 90日K线，立即落库�
 
 | 任务 | 时间 | 内容 |
 |---|---|---|
-| CS_Skin_DailyCollect | 每天 18:00 | 存量 K 线全量刷新 + 周度快照 + 淘汰评估 + 健康检查 + 台账 |
+| CS_Skin_DailyCollect | 每天 18:00 | 存量 K 线全量刷新 + 周度快照 + B-5 求购观察 + 淘汰评估 + 健康检查 + 台账 |
 | CS_Skin_NoonMonitor | 每天 12:00 | 监控事件扫描 + 午间推送 |
 | CS_Skin_NightPush | 每天 21:30 | 监控事件扫描 + 晚间推送 |
 | CS_Health_Alert | 每天 22:00 | 数据健康告警（FAIL 时钉钉） |
@@ -50,19 +51,23 @@ discover 扩池（手动）→ 候选入库（items + 90日K线，立即落库�
 
 ## 4. 更新与维护
 
-- **K 线全量刷新（每日）**: 活跃池（自选/持仓豁免 + notes 空品）每品刷新 90 日 K 线；排除「存世量过低」「活跃池淘汰」标记品。
+- **K 线全量刷新（每日）**: 活跃池（自选/持仓豁免 + notes 空品）每品刷新 90 日 K 线；排除「存世量过低」「活跃池淘汰」「贴纸模块停采」标记品。2026-08-13 起批量重采优先走直连 `/info/chart` API（platform=2→1→3），浏览器页面仅兜底；直连成功品节流 `max(base_delay, API_RATE_LIMIT, 1.5s)`。空/异常品指数退避至 `CS_KLINE_MAX_SLEEP`（默认 8s），限流时自动降速。
 - **单品分析复用（B-4, 2026-08-10）**: 主动分析当日已采且 created_at ≤6h 复用 DB（KLINE_FRESH_SINGLE_HOURS），超窗口或强制联网刷新才重新采集；批量/监控容忍 3 天（KLINE_FRESH_BATCH/DISCOVER）。
 - **K 线写库（2026-08-10 B-1 增量写）**: `save_price_history_batch` 默认 `incremental`——只写「date > 库内 max(date)」的新行 + 当日最新行更新，历史行不可被覆盖（单次坏 chart 只污染当日行，防 8/9 串品事故复发）；变更记 `data/price_history_write_log.jsonl`；审计回填/串品修复用 `mode="force"` 全量覆盖（须人工确认）。
 - **活跃池淘汰（F-3.1）**: 非自选/非持仓且最近 7 天平均在售量 <10 → 标记「活跃池淘汰:在售量过低(<10)」，退出每日采集与 discover 捞回；数据保留，加回自选恢复采集。
+- **贴纸模块停采（2026-08-13 用户决策）**: 非自选/非持仓贴纸统一追加「贴纸模块停采」，退出每日 K 线与 discover；自选贴纸豁免采集，历史数据与研究资产保留不删除。
 - **池台账（F-3.2）**: `data/pool_maintenance_log.jsonl` 一行一条 JSON（daily/prune/discover 三类），追加不清理。
 - **跨品一致性批闸门（2026-08-10 csQAQ 故障事件后新增）**: 每日 K 线批量刷新收尾执行 `_guard_batch_write`——本日 vs 上一交易日「价格跳变>20% / 在售量变化>50%」品占比超阈（3%/5%，正常基线 0.5%/1.2%）判定数据源失真，自动回滚异常品当日行至上一交易日值 + caliber 留痕 + 告警；开关 `CS_DATA_BATCH_GUARD`（默认开）。详见 decision-log「数据污染防护落地」；误伤恢复 = 人工确认后 force 重采（本节批量修复 SOP）。
-- **K线失败台账（G-4, 2026-08-10）**: `collect_kline_all` 返回失败品清单，每日台账写 `kline_fail_count` / `kline_fail_names[:10]`（品名+原因），便于告警排查；采集可疑重试/平台切换前退避 1.5s 降限流压力。
+- **K线失败台账（G-4, 2026-08-10）**: `collect_kline_all` 返回失败品清单，每日台账写 `kline_fail_count` / `kline_fail_names[:10]`（品名+原因），便于告警排查；采集可疑重试/平台切换前保持退避，外层空/异常品按 `CS_KLINE_BASE_SLEEP`/`CS_KLINE_MAX_SLEEP` 指数退避降限流压力。2026-08-13 修复平台回退路由叠加问题：`platform=2` 空/429 时 Buff/C5GAME 现在可真正接管，详见 decision-log「K 线采集平台回退失效修复」。
 - **健康检查**: `run_health_monitor.py` 随每日采集收尾执行，写 `health_checks`；`notify_alert.py --monitor` 在 FAIL 时推送告警。
 - **DB 备份**: `backup_db.py`（SQLite online backup → `data/backup/market_YYYYMMDD_HHMMSS.db`，保留 14 份）。
 - **J-2 监测**: 每日刷新 `data/j2_channel_status.json`（B 通道天数）。
+- **数据储备 P0/P1（2026-08-13，研究层，手动/低峰）**: `collect_data_reserve_p0.py --apply`（活跃池基本面+求购日聚合）；`collect_data_reserve_p1.py --apply --scope watchlist|active [--monitor --top 20]`（存世量历史/系列面板/大户 Top20）。默认 dry-run，不写 items/price_history，不接引擎。
 - **审计/异常台账（2026-08-10）**: `data/caliber_override_log.jsonl`（F-4 锚校正/脏价拦截留痕）、`data/bind_fail_log.jsonl`（G-5 IP 绑定失败/恢复）、`data/snapshot_error.log`（C-3 快照落库异常，统一 data/ 目录），均为追加型审计日志，随数据保留策略不主动清理。
 - **signal_tracking 级联防护 + 对账（2026-08-12）**: `signal_tracking` 外键 `items(id) ON DELETE CASCADE`——items 物理删除/重排（如 2026-08-11 id 重排）会静默清空该表（曾丢 1 行，已从 `data/market.db.bak-before-reindex-20260811` 回填）；执行 items 级批量操作前必须备份并对账。每日任务挂 `reconcile_production_signals`：snapshots 当日 buy/oversold_buy vs signal_tracking 当日新增查缺失，写 `data/signal_tracking_reconcile.jsonl`（追加不清理），异常不中断采集。
-- **保留策略（2026-08-09 落地，`pipeline/db.py:run_retention_cleanup`）**: price_history / snapshots / market_index / monitor_events 365 天；scan_*.md 旧报告 90 天；进度文件（scan_progress_*/discover_progress_*）7 天；scan_history JSON 保留最近 30 份；monitor_rank_snapshot 为研究型积累不清理。清理由批量扫描收尾与每日任务自动执行（含 VACUUM）；台账与备份按各自规则。
+- **保留策略（2026-08-09 落地，2026-08-13 补 market_snapshot；`pipeline/db.py:run_retention_cleanup`）**: price_history / snapshots / market_index / monitor_events / market_snapshot 365 天；scan_*.md 旧报告 90 天；进度文件（scan_progress_*/discover_progress_*）7 天；scan_history JSON 保留最近 30 份；monitor_rank_snapshot 为研究型积累不清理。清理由批量扫描收尾与每日任务自动执行（含 VACUUM）；台账与备份按各自规则。
+- **增长预算（2026-08-13）**：market_snapshot 周度约 1468 行/次、保留 365 天约 7.6 万行；monitor_rank_snapshot 周度约 5000 行/次、不自动清理、年增约 26 万行——若主库持续超过约 200MB，应归档旧 monitor_rank 分区，而不是删除或改引擎数据。
+- **求购观察累积（B-5, 2026-08-13，手动/可选）**: `references/collect_bid_observations.py --dry-run --limit N [--mode priority|supply_contract] [--source manual]` 只读列出候选；正式执行按 `(date,item_id)` 幂等写入独立表 `bid_observations`（`price_rmb/in_sale_count` 取 chart 末点，与 `price_history` 同口径）（默认持仓/自选优先、limit 8、需联网、不接每日任务、不进入 snapshots/引擎）。用于 SUPPLY-CONF-1 / BID-1 的求购配合样本积累，质量守卫与因子判定仍在 snapshots 口径与回测三件套流程内。
 
 ## 5. 数据库表（market.db）
 
@@ -74,14 +79,19 @@ discover 扩池（手动）→ 候选入库（items + 90日K线，立即落库�
 | macro_history | 每日宏观快照（贪婪指数/点卡价） | date, greedy_index, card_price |
 | snapshots | 分析报告存档 | item_id, date, grade, total_score, report_html, action |
 | market_snapshot | 全市场周度快照 | date, good_id, yyyp_sell_price, yyyp_sell_num |
+| item_fundamental_snapshot | 活跃品基本面快照（P0，研究层） | date, good_id, platform, yyyp_*/buff_*/c5_*/steam_*, turnover_*, rank_num, statistic, extra_json |
+| bid_history | 悠悠求购价/量日聚合（P0，研究层） | date, good_id, platform, buy_price_*, buy_num_*, point_count |
+| survive_history | 存世量历史（P1，研究层） | date, good_id, platform, statistic, source_created_at |
+| series_snapshot | 系列/板块面板快照（P1，研究层） | date, series_id, amount, total_value, sell_price_*, recently_data_json |
 | monitor_rank_snapshot | 大户集中度每周 Top50 | date, item_id, rank, num |
+| bid_observations | 求购断层周度观察累积（B-5，手动/可选，不影响引擎） | date, item_id, good_id, item_name, price_rmb, in_sale_count, bid_highest, bid_7d_chg, bid_30d_chg, spread_pct, spread_avg, source |
 | monitor_events | M1 监控事件归档（近 7 天） | date, item_id, event_type, level, detail |
-| positions | 持仓记录 | item_id, buy_price, quantity, closed, close_price |
+| positions | 持仓记录（deprecated；当前持仓口径 items.holding，表仅保留兼容） | item_id, buy_price, quantity, closed, close_price |
 | executions | 执行记录+复盘（F-1/F-2） | item_id, action, advice_date, exec_price, settle_14/30, pnl_14/30, source（D-3: manual / push:{push_id}） |
 | signal_tracking | 生产 buy 信号跟踪（J-2 C 通道） | signal_date, entry_price, engine_version, fwd14/30, net14/30 |
 | health_checks | 数据源健康检查 | date, status, checks_json |
 | analysis_results | 分析报告缓存（单品/批量扫描共用，按 name 覆盖） | name, price_rmb, grade, trend_dir, trend_score, report_html |
-| backtest_results | 回测结果 | strategy, sharpe_ratio, max_drawdown_pct |
+| backtest_results | 回测结果（deprecated；回放产物走 JSON，表仅保留兼容） | strategy, sharpe_ratio, max_drawdown_pct |
 | settings | 配置键值对 | key, value；monitor_push_* 幂等值升级 JSON（D-3 含 push_id/items，旧值 "1" 兼容） |
 | schema_version | schema 版本记录 | version, applied_at |
 
@@ -91,7 +101,7 @@ discover 扩池（手动）→ 候选入库（items + 90日K线，立即落库�
 - **快照 `_keep_wear`**: 枪皮/刀仅崭新出厂，手套仅略磨+久经，无磨损品类（印花/箱/胶囊）保留。
 - **存世量过低**: 崭新出厂存世量 <3000 → 不建仓（`survive_too_low`）；口径为 `info/good` 的 `statistic_list`（非 `buff_sell_num`）。
 - **串品防护**: discover 消费前用悠悠锚（DOM 价 + info/good 在售量）双重校验，不合格重取一次，再不行跳过。
-- **在售量历史断档（2026-08-10 P-2 发现，B-3 延伸）**: `price_history.in_sale_count` 在 **2026-02-01~04-30 缺失**（2026-02 仅 180/2657 行有值，03~04 全 0），2026-05 起恢复连续采集；该段 0 值 = 缺失而非真实在售量为 0。引擎免疫（supply_accum 含 s30>0 约束，断档 0 值不误触发供给收缩），但**分桶/联合闸门类研究必须排除该段**（`data/_exp_p2_hi_price_liq.json` 已实证污染 317 信号 48%，高价品 92/154）。修复前不得作为研究引用。
+- **在售量历史断档（2026-08-10 P-2 发现，B-3 延伸；2026-08-13 补充 NULL 口径）**: `price_history.in_sale_count` 在 **2026-02-01~04-30 缺失**（2026-02 仅 180/2657 行有值，03~04 全 0），2026-05 起恢复连续采集；该段 0 值 = 缺失而非真实在售量为 0。另有 36 品的历史段为 NULL（主要 2025-08~2026-05，合计 2385 行），引擎读取侧统一按 0 兜底；研究使用时须将 NULL 与 0 一同视为缺失。引擎免疫（supply_accum 含 s30>0 约束，断档 0 值不误触发供给收缩），但**分桶/联合闸门类研究必须排除该段**（`data/_exp_p2_hi_price_liq.json` 已实证污染 317 信号 48%，高价品 92/154）。修复前不得作为研究引用。
 
 ## 7. 故障 SOP
 

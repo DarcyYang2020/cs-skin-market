@@ -500,7 +500,7 @@
    "market_med30": -0.1383673368815297,
    "alpha": 0.3512,
    "ins_chg7d": -0.0275,
-   "ins_pct_rank": 0.761,
+   "ins_pct_rank": 0.763,
    "eta": null
   },
   {
@@ -522,7 +522,7 @@
    "market_med30": -0.22555084745762716,
    "alpha": 0.1775,
    "ins_chg7d": -0.0843,
-   "ins_pct_rank": 0.446,
+   "ins_pct_rank": 0.452,
    "eta": null
   },
   {
@@ -533,7 +533,7 @@
    "market_med30": -0.17300046756360704,
    "alpha": 0.0714,
    "ins_chg7d": 0.0586,
-   "ins_pct_rank": 0.761,
+   "ins_pct_rank": 0.763,
    "eta": null
   },
   {
@@ -544,7 +544,7 @@
    "market_med30": -0.17340592953599349,
    "alpha": 0.1734,
    "ins_chg7d": -0.024,
-   "ins_pct_rank": 0.587,
+   "ins_pct_rank": 0.591,
    "eta": null
   },
   {
@@ -555,7 +555,7 @@
    "market_med30": null,
    "alpha": null,
    "ins_chg7d": -0.1047,
-   "ins_pct_rank": 0.337,
+   "ins_pct_rank": 0.333,
    "eta": "2026-08-14"
   },
   {
@@ -621,7 +621,7 @@
    "market_med30": null,
    "alpha": null,
    "ins_chg7d": -0.0587,
-   "ins_pct_rank": 0.261,
+   "ins_pct_rank": 0.258,
    "eta": "2026-08-17"
   },
   {
@@ -654,7 +654,7 @@
    "market_med30": null,
    "alpha": null,
    "ins_chg7d": -0.0305,
-   "ins_pct_rank": 0.795,
+   "ins_pct_rank": 0.798,
    "eta": "2026-08-19"
   },
   {
@@ -665,7 +665,7 @@
    "market_med30": null,
    "alpha": null,
    "ins_chg7d": -0.0843,
-   "ins_pct_rank": 0.209,
+   "ins_pct_rank": 0.217,
    "eta": "2026-08-19"
   },
   {
@@ -697,8 +697,8 @@
    "src30": "pending",
    "market_med30": null,
    "alpha": null,
-   "ins_chg7d": -0.297,
-   "ins_pct_rank": 0.25,
+   "ins_chg7d": null,
+   "ins_pct_rank": null,
    "eta": "2026-08-20"
   },
   {
@@ -742,7 +742,7 @@
    "market_med30": null,
    "alpha": null,
    "ins_chg7d": -0.0487,
-   "ins_pct_rank": 0.543,
+   "ins_pct_rank": 0.548,
    "eta": "2026-08-25"
   },
   {
@@ -797,7 +797,7 @@
    "market_med30": null,
    "alpha": null,
    "ins_chg7d": -0.1087,
-   "ins_pct_rank": 0.033,
+   "ins_pct_rank": 0.032,
    "eta": "2026-08-27"
   },
   {

@@ -166,10 +166,10 @@ def render_discover_html(results, market_th=50):
             _conn_wl.close()
     except Exception:
         pass
-    sorted_r = sorted(results, key=lambda r: -(r.get("composite", 0) or r.get("score", 0) or 0))
+    sorted_r = [r for r in sorted(results, key=lambda r: -(r.get("composite", 0) or r.get("score", 0) or 0)) if (r.get("category") or discover_category(r.get("name") or "")) != "sticker"]
     # 2026-08-12 贴纸独立 Top10：贴纸（sticker）不与枪皮混排（事件脉冲 vs 统计反转，品类形态差异大）
     sticker_sorted = [r for r in sorted_r if (r.get("category") or discover_category(r.get("name") or "")) == "sticker"]
-    top10, sticker_top10 = split_discover_top10(results)
+    top10, sticker_top10 = sorted_r[:10], []
     errors = [r for r in sorted_r if r.get("error")]
     ok_count = len(sorted_r) - len(errors)
     sticker_count = len(sticker_sorted)

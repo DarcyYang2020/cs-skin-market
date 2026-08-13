@@ -983,14 +983,14 @@ async def api_watchlist_set_assets(request: Request, amount: float = Form(...)):
 # ---- Batch Scan Progress ----
 
 
-def _prune_progress(store, max_age=86400):
+def _prune_progress(store, max_age=86400, file_resolver=_scan_progress_file):
     """清理超过 max_age 秒的进度条目，防长跑任务内存无界增长。"""
     now = time.time()
     stale = [k for k, v in store.items() if isinstance(v, dict) and (now - v.get("ts", 0)) > max_age]
     for k in stale:
         store.pop(k, None)
         try:
-            _scan_progress_file(k).unlink(missing_ok=True)
+            file_resolver(k).unlink(missing_ok=True)
         except Exception:
             pass
 
@@ -1599,13 +1599,9 @@ async def api_discover_refresh_item(request: Request):
         pct_val = getattr(pos, "percentile_90d", 50) if hasattr(pos, "percentile_90d") else 50
         z_val = getattr(pos, "zscore_90d", 0) if hasattr(pos, "zscore_90d") else 0
         score = analysis.value.score
-        dq_factor = {"good": 1.0, "medium": 0.85, "low": 0.6, "insufficient": 0.2}.get(getattr(analysis, "data_quality", "low"), 0.4)
         fd_action = (analysis.fusion_decision or {}).get("action", "") if isinstance(analysis.fusion_decision, dict) else ""
-        action_bonus = {"buy": 1.0, "watch": 0.5, "hold": 0.0, "reduce": -0.5, "avoid": -1.0, "sell": -1.0}.get(fd_action, 0.0)
         th_score = (analysis.trend_health or {}).get("score", 50) if isinstance(analysis.trend_health, dict) else 50
-        th_bonus = (th_score - 50) / 50 * (-1.0)
-        valuation_discount = max(0.5, 1.0 - pct_val / 200)
-        composite = round((score + action_bonus + th_bonus) * valuation_discount * dq_factor, 1)
+        composite = _ia.composite_score(analysis)
         new_res = dict(
             name=exact_name, good_id=good_id,
             collected_at=getattr(item, "collected_at", "") or "",
@@ -1646,7 +1642,7 @@ async def api_discover_scan_all(request: Request, mode: str = Query("pool"), sco
     不依赖 csQAQ 搜索 suggest，规避滑块验证码）；mode=search 保留原全网搜索扩池路径。
     scope（2026-08-12 双榜独立刷新，pool 模式生效）：all=全池 / skin=综合榜（非贴纸）/ sticker=贴纸榜。"""
     import time as _time
-    _prune_progress(_discover_progress)
+    _prune_progress(_discover_progress, file_resolver=_discover_progress_file)
     _busy = _active_task(_discover_progress)
     if _busy:
         return {"task_id": "", "error": "已有 discover 扫描进行中（" + _busy + "），请等待完成后再发起"}
@@ -1655,7 +1651,10 @@ async def api_discover_scan_all(request: Request, mode: str = Query("pool"), sco
     if mode == "search":
         asyncio.create_task(_run_discover_scan_all_task(task_id))
     else:
-        if scope not in ("all", "skin", "sticker"):
+        # 2026-08-13 ?????sticker ?????? skin??????????
+        if scope == "sticker":
+            scope = "skin"
+        elif scope not in ("all", "skin"):
             scope = "all"
         asyncio.create_task(_run_discover_pool_task(task_id, scope))
     return {"task_id": task_id}

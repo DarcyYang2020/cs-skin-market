@@ -19,7 +19,7 @@
   <h2>🔍 发现高分品</h2>
   <p>从池内活跃品中扫描（DB 新鲜 K 线复用，无需网络采集），按综合分排序筛出高分低估机会；可加入自选进入监控</p>
   <div style="margin-top:22px;">
-    <button id="btn-main-scan" class="btn btn-primary btn-scan" onclick="startScan('all')" title="全池扫描：综合榜 + 贴纸榜一起刷新">🚀 扫描池内高分品（全部）</button>
+    <button id="btn-main-scan" class="btn btn-primary btn-scan" onclick="startScan('all')" title="扫描池内高分品（非贴纸）">🚀 扫描池内高分品</button>
   </div>
   
 </div>
@@ -113,7 +113,7 @@ function startScan(scope) {
   var results = document.getElementById("discover-results");
   if (mainBtn) { mainBtn.disabled = true; mainBtn.textContent = "扫描中..."; }
   progress.style.display = "block";
-  status.textContent = "正在扫描" + (scope === "sticker" ? "贴纸榜" : (scope === "skin" ? "综合榜" : "全部品类")) + "...";
+  status.textContent = "正在扫描" + (scope === "skin" ? "综合榜" : "全部品类") + "...";
   bar.style.width = "0%";
   results.innerHTML = "";
   fetch("/api/discover/scan-all?scope=" + encodeURIComponent(scope), {method:"POST"})
@@ -177,17 +177,7 @@ function showDiscoverReport(name) {
 
 function switchDiscoverTab(tab) {
   var a = document.getElementById('discover-tab-all');
-  var s = document.getElementById('discover-tab-sticker');
-  var ba = document.getElementById('tab-btn-all');
-  var bs = document.getElementById('tab-btn-sticker');
-  if (!a || !s || !ba || !bs) return;
-  if (tab === 'sticker') {
-    a.style.display = 'none'; s.style.display = '';
-    ba.className = 'btn btn-sm btn-outline'; bs.className = 'btn btn-sm btn-primary';
-  } else {
-    a.style.display = ''; s.style.display = 'none';
-    ba.className = 'btn btn-sm btn-primary'; bs.className = 'btn btn-sm btn-outline';
-  }
+  if (a) { a.style.display = ''; }
 }
 
 </script>

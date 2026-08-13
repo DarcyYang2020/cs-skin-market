@@ -6,7 +6,10 @@ value scoring, probability prediction, and whale manipulation detection.
 All statistical windows default to 90 days.
 """
 
+import logging
 import os, statistics
+
+logger = logging.getLogger(__name__)
 from .trend_health import compute_trend_health, trend_health_summary, compute_fusion_decision, fusion_decision_summary
 from .valuation import compute_valuation_grid, valuation_grid_summary
 from .supply import analyze_supply, supply_summary
@@ -1846,7 +1849,7 @@ def run_item_analysis(
                 prices, market_history, market_cycle, market_zscore
             )
         except Exception:
-            pass
+            logger.warning("build_market_context fallback failed for %r", name, exc_info=True)
 
     # ---- Build result ----
 
@@ -2019,6 +2022,7 @@ def run_item_analysis(
             supply=supply_dict,
         ) or {}
     except Exception:
+        logger.warning("compute_buy_distance fallback failed for %r", name, exc_info=True)
         buy_distance = {}
 
     return ItemAnalysisResult(

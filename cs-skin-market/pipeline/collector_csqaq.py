@@ -3,12 +3,12 @@
 Navigates directly to goods page and intercepts chart API.
 """
 
-import asyncio, json, re
+import asyncio, json, re, time, urllib.request, urllib.error
 import logging
 from datetime import datetime
 from typing import Optional
 
-from .config import TZ_BJ
+from .config import TZ_BJ, CSQAQ_BASE, API_TOKEN
 _csq_log = logging.getLogger(__name__)
 CSQAQ_WEB = "https://csqaq.com"
 
@@ -145,6 +145,47 @@ def _chart_to_raw(cd: dict) -> list:
             continue
         out.append([ts_arr[i], p, v])
     return out
+
+
+def _fetch_chart_api(good_id: int, platform: int, timeout: int = 25):
+    """Direct /info/chart API fallback (IP-bound ApiToken path).
+
+    Browser goods pages can be intercepted by csQAQ's 405 anti-bot page while the
+    direct API remains available; the daily bulk collector uses this path first.
+    Returns (data_dict, None) on success, or (None, reason) on failure.
+    """
+    req = urllib.request.Request(CSQAQ_BASE + "/info/chart", method="POST")
+    if API_TOKEN:
+        req.add_header("ApiToken", API_TOKEN)
+    req.add_header("Content-Type", "application/json")
+    body = {"good_id": str(good_id), "key": "sell_price", "platform": platform,
+            "period": "90", "style": "all_style"}
+    try:
+        with urllib.request.urlopen(req, data=json.dumps(body).encode("utf-8"), timeout=timeout) as resp:
+            d = json.loads(resp.read().decode("utf-8", errors="replace"))
+    except urllib.error.HTTPError as e:
+        _csq_log.warning(f"fetch_kline_90d_api good={good_id} platform={platform} HTTP {e.code}")
+        return None, f"HTTP {e.code}"
+    except Exception as e:
+        _csq_log.warning(f"fetch_kline_90d_api good={good_id} platform={platform} {type(e).__name__}: {e}")
+        return None, type(e).__name__
+    data = d.get("data")
+    if d.get("code") == 200 and isinstance(data, dict):
+        return data, None
+    return None, f"code={d.get('code')}"
+
+
+def fetch_kline_90d_api(good_id: int, platforms=(2, 1, 3), timeout: int = 25):
+    """Direct API K-line fetch; falls back across platforms in order."""
+    for platform in platforms:
+        data, reason = _fetch_chart_api(good_id, platform, timeout=timeout)
+        if data:
+            return _chart_to_daily_ohlc(data), _chart_to_raw(data)
+        if reason and reason.startswith("HTTP 401"):
+            break
+        if reason and reason.startswith("HTTP 429"):
+            time.sleep(1.2)
+    return [], []
 
 def _pick_best_chart(charts, anchor_price=0.0, anchor_sell_num=0):
     """从捕获的多个 info/chart 响应中挑选与悠悠锚最一致的 chart。
@@ -469,13 +510,14 @@ async def _fetch_item_detail_once(good_id: int):
                 try:
                     body = json.loads(request.post_data)
                     body["period"] = "90"
-                    body["platform"] = 2
+                    body["platform"] = chart_platform
                     await route.continue_(post_data=json.dumps(body))
                 except Exception as _me:
                     _csq_log.warning(f"modify_chart rewrite failed good={good_id}: {_me} (post={str(request.post_data)[:120]})")
                     await route.continue_()
             else:
                 await route.continue_()
+        chart_platform = 2
         page.on('response', on_response)
         await page.route('**/info/chart**', modify_chart)
         try:
@@ -541,7 +583,7 @@ async def _fetch_item_detail_once(good_id: int):
             _csq_log.info(f"Empty chart from platform=2, retrying with platform={fb_platform} ({fb_name}) good_id={good_id}")
             try:
                 captured['charts'] = []
-                await page.route('**/info/chart**', lambda r, req, p=fb_platform: _modify_chart_route(r, req, platform=p))
+                chart_platform = fb_platform
                 await page.goto(f'{CSQAQ_WEB}/goods/{good_id}', wait_until='domcontentloaded', timeout=25000)
                 await _wait_chart(page, captured, key='charts')
                 if captured['charts']:
@@ -774,12 +816,13 @@ async def fetch_kline_90d(good_id: int):
                     body = json.loads(request.post_data)
                     body["period"] = "90"
                     body["key"] = "sell_price"
-                    body["platform"] = 2
+                    body["platform"] = chart_platform
                     await route.continue_(post_data=json.dumps(body))
                 except Exception:
                     await route.continue_()
             else:
                 await route.continue_()
+        chart_platform = 2
         page.on('response', on_response)
         await page.route('**/info/chart**', modify_chart)
 
@@ -870,7 +913,7 @@ async def fetch_kline_90d(good_id: int):
             await asyncio.sleep(1.5)  # G-4（2026-08-10）：平台切换前退避
             try:
                 captured['charts'] = []
-                await page.route('**/info/chart**', lambda r, req, p=fb_platform: _modify_chart_route(r, req, platform=p))
+                chart_platform = fb_platform
                 await page.goto(f'{CSQAQ_WEB}/goods/{good_id}', wait_until='domcontentloaded', timeout=15000)
                 await _wait_chart(page, captured, key='charts')
                 if captured['charts']:
@@ -1003,5 +1046,3 @@ async def fetch_history_deep(good_id: int, min_date: str = "2025-01-01", start_d
     out.sort()
     _csq_log.info(f"fetch_history_deep good_id={good_id}: {len(out)} points")
     return out
-
-

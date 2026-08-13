@@ -53,12 +53,9 @@
   <div class="card-header"><span class="card-title">🔍 Top 10 高分饰品</span>
     <div style="display:inline-flex;gap:6px;margin-left:12px;vertical-align:middle;" id="discover-tabs">
       <button id="tab-btn-all" class="btn btn-sm btn-primary" onclick="switchDiscoverTab('all')">综合榜</button>
-      <button id="tab-btn-sticker" class="btn btn-sm btn-outline" onclick="switchDiscoverTab('sticker')">🏷️ 贴纸榜 ({{ sticker_count }})</button>
     </div>
   <span class="card-subtitle">已扫描 {{ ok_count }} 个饰品，各展示前10{{ market_note|safe }}
-    <button class="btn btn-sm btn-outline" onclick="refreshDiscover('skin')" style="margin-left:8px;" title="仅重扫综合榜（非贴纸品类），贴纸榜不动">🔄 刷新综合榜</button>
-    <button class="btn btn-sm btn-outline" onclick="refreshDiscover('sticker')" title="仅重扫贴纸榜，综合榜不动">🔄 刷新贴纸榜</button></span></div>
+    <button class="btn btn-sm btn-outline" onclick="refreshDiscover('skin')" style="margin-left:8px;" title="仅重扫综合榜">🔄 仅重扫综合榜</button>
 
   <div id="discover-tab-all">{{ disc_table(top10) }}</div>
-  <div id="discover-tab-sticker" style="display:none;">{{ disc_table(sticker_top10) }}</div>
 </div>

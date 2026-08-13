@@ -29,8 +29,8 @@
   `python references/sync_expectancy_config.py` 自动同步 `config.ITEM_EXPECTANCY_STATS` +
   `data/signal_event_counts.json`；`t_expectancy_sync` 全字段硬校验防漂移（改回放不重跑同步即测试失败）。
 - **基准对照**：`python references/benchmark_compare.py` → `data/benchmark_compare.json`
-  （策略 cap0.8 vs 池内等权买入持有 vs 大盘指数，full/active 双窗口）。2026-08-10 结论（365d 窗口，332 信号，组合模拟口径 hold21——2026-08-10 对齐单品 hold_guidance，见 decision-log）：策略 +183.94%/-9.08%
-  大幅跑赢大盘 -24.20%/-58.21%，但低于池内等权 +252.32%/-55.59% —— 引擎边际价值在风险控制（maxDD 9.08% vs 55~58%）。
+  （策略 cap0.8 vs 池内等权买入持有 vs 大盘指数，full/active 双窗口）。2026-08-10 结论（365d 窗口，317 信号，组合模拟口径 hold21——2026-08-10 对齐单品 hold_guidance，见 decision-log）：策略 +200.55%/-9.13%
+  大幅跑赢大盘 -24.20%/-58.21%，但低于池内等权 +252.32%/-55.59% —— 引擎边际价值在风险控制（maxDD 9.13% vs 55~58%）。
 - **组合归因（A1-3，2026-08-10）**：`python references/portfolio_attribution.py` → `data/portfolio_attribution.json`（leave-one-out 族级/月度/集中度）；供给吸筹族贡献最大 +34.2pp（n=212）、恐慌族 +21.65pp（n=93）、深值族 +13.98pp（n=27）；策略低于等权主因=2025 低价品暴涨集中度（top10 占 43.5%），引擎以回撤换集中度。
 
 
@@ -44,7 +44,7 @@
 - **StatTrak/纪念品**: 自动排除，仅分析普通版；`（★）` 普通标记不过滤（StatTrak 刀显示 `（★ StatTrak™）`）。
 - **快照 `_keep_wear`**: 枪皮/刀仅崭新出厂、手套仅略磨+久经、无磨损品类（印花/箱/胶囊）保留。
 - **存世量**: 崭新出厂 <3000 → 不建仓（`survive_too_low`）；口径为 `info/good.statistic_list`（非 `buff_sell_num`）。
-- **每日采集**: SQL 排除「存世量过低 / 活跃池淘汰」标记品（自选/持仓豁免）；大户集中度每周一采集。
+- **每日采集**: SQL 排除「存世量过低 / 活跃池淘汰 / 贴纸模块停采」标记品（自选/持仓豁免）；贴纸模块 2026-08-13 起停采停扫；大户集中度与 B-5 求购观察每周一采集。
 - **K线失败台账（G-4, 2026-08-10）**: 每日台账记 `kline_fail_count`/`kline_fail_names[:10]`；可疑重试/平台切换前退避 1.5s。
 
 ## 单品分析引擎 (item_analysis.py)
@@ -297,14 +297,16 @@ cs-skin-market/
   AGENTS.md              -- 本文件
   SKILL.md               -- Codex Skill 元数据
   run_server.py          -- Web 服务启动脚本（uvicorn）
-  run_daily_collect.py   -- 每日自动采集总调度（大盘/宏观/K线全量每日 + 全市场快照/大户每周一 + 健康 + J-2 刷新 + 信号回填 + DB 备份）
+  run_daily_collect.py   -- 每日自动采集总调度（大盘/宏观/K线全量每日 + 全市场快照/大户/B-5 求购观察每周一 + 健康 + J-2 刷新 + 信号回填 + DB 备份）
   run_data_health.py     -- 数据源健康检查（全量可采集品动态基线）
   run_health_monitor.py  -- 健康监控入口（run_monitor，退出码 0/2）
   backup_db.py           -- 每日 SQLite 备份（保留 14 份）
+  collect_data_reserve_p0.py -- P0 数据储备采集（活跃池基本面+求购日聚合，研究层）
+  collect_data_reserve_p1.py -- P1 数据储备采集（存世量+系列面板+大户Top20，研究层）
   notify_alert.py        -- 告警/监控推送（钉钉，.env NOTIFY_WEBHOOK_URL；M2 监控日报复用）
   references/scripts-archive/ -- 历史回测/回填脚本归档（run_backtest/run_item_backtest/run_item_9grid/run_item_exit/run_portfolio/run_backfill_history，2026-08-08 归档；当前回测统一走 references/refit_pipeline.py）
   data/market.db         -- SQLite 数据库
-  data/item_backtest_full_2025.json -- 标准回放基准（去量 v2，365d 窗口 332 信号）
+  data/item_backtest_full_2025.json -- 标准回放基准（去量 v2，365d 窗口 317 信号）
   pipeline/
     config.py            -- 配置（TOKEN/BASE_URL/权重/PARAM_REGIME/J2_THRESHOLDS/ENGINE_VERSION）
     collector.py         -- csQAQ HTTP 采集（大盘指数/品类/搜索）
@@ -327,17 +329,20 @@ cs-skin-market/
     backtest_common.py   -- 回测公共模块（build_market_context 等）
     backtest_methodology.py -- A2 三件套（walk-forward/聚类/置换检验）
     batch_scan.py        -- 自选批量扫描（信号提取/按建议执行按钮）
+    scan_tasks.py        -- 批量扫描异步任务与进度
+    discover_tasks.py    -- 发现高分品异步任务
     dashboards.py        -- 仪表盘数据（数据积累进度/J-2 三通道/组合仓位）
     factor_monitor.py    -- 因子衰减监控
   webapp/
     main.py              -- FastAPI 应用（含批量扫描进度落盘持久化）
+    render_html.py       -- HTML 渲染纯函数
     analysis_service.py  -- 公共分析服务层（analyze_fresh 统一核心 + 锚价/兜底助手）
     templates/           -- Jinja2 模板
     static/css/style.css -- 样式
     static/js/app.js     -- 公共 JS（Modal/导航）
   references/            -- 文档 + 研究脚本（j2_channel_monitor.py / refit_pipeline.py / portfolio_backtest.py 等）
   tests/
-    test_smoke.py        -- 冒烟测试（86 用例，支持 CS_MODEL_SKIP_NET；P1.2 起含 Web 只读 API 冒烟）
+    test_smoke.py        -- 冒烟测试（104 用例（离线基线 98 passed / 6 skipped），支持 CS_MODEL_SKIP_NET；P1.2 起含 Web 只读 API 冒烟）
     check_encoding.py    -- 编码健康检查
     snapshots/replay_v2.json -- 回放口径快照
 

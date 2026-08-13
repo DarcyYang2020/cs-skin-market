@@ -19,7 +19,10 @@ Fusion: percentile_90d + corrected trend health -> standardized action.
 
 from __future__ import annotations
 
+import logging
 import os
+
+logger = logging.getLogger(__name__)
 import statistics
 from dataclasses import dataclass, field
 from .config import THRESHOLDS as T
@@ -448,7 +451,7 @@ def _dim_anomaly(prices, mad_scale=1.0):
     if mad_val == 0:
         try:
             mad_val = statistics.stdev(rets) * 0.6745
-        except:
+        except (statistics.StatisticsError, ValueError):
             return 100, 0, "none"
 
     threshold = mad_val * 1.8 * mad_scale
@@ -508,7 +511,7 @@ def compute_trend_health(prices, supply=None,
             cat = CATEGORY_PARAMS.get(type_name, CATEGORY_PARAMS.get('_default', {}))
             mad_scale = cat.get('mad_scale', 1.0)
         except Exception:
-            pass
+            logger.warning("CATEGORY_PARAMS lookup failed for type_name=%r", type_name, exc_info=True)
 
     anom, anom_count, anom_type = _dim_anomaly(prices, mad_scale)
     th.anomaly_score  = anom

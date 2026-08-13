@@ -19,7 +19,7 @@ from datetime import datetime, timedelta
 from .config import DB_PATH, DATA_DIR, TZ_BJ
 
 
-SCHEMA_VERSION = 1  # Phase 4 schema 版本化：新增表/列时 bump（当前无存量迁移，直接建表）
+SCHEMA_VERSION = 4  # v58 P1：新增 survive_history / series_snapshot 研究层表
 
 
 def _now() -> str:
@@ -36,6 +36,58 @@ def _today() -> str:
 # 在 WAL 写竞争下每条 execute 可达 ~0.1s，导致分析链（event_risk_coefficient 等）单次连接 ~11s。
 # 改为按 DB 路径缓存：同一进程内文件库只初始化一次；:memory: 每连接都是新库，不缓存。
 _SCHEMA_INIT_PATHS: set = set()
+
+
+_BID_OBSERVATIONS_SCHEMA = """CREATE TABLE IF NOT EXISTS bid_observations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT NOT NULL,
+    item_id INTEGER,
+    good_id INTEGER NOT NULL,
+    item_name TEXT,
+    price_rmb REAL,
+    in_sale_count INTEGER,
+    bid_highest REAL,
+    bid_7d_chg REAL,
+    bid_30d_chg REAL,
+    spread_pct REAL,
+    spread_avg REAL,
+    quality_note TEXT,
+    source TEXT DEFAULT 'weekly',
+    created_at TEXT DEFAULT (datetime('now','localtime')),
+    UNIQUE(date, good_id))"""
+
+
+def _migrate_bid_observations_fk(conn):
+    """One-time migration away from item_id ON DELETE CASCADE.
+
+    items.id is not stable across pool reindex/delete operations.  A cascade
+    foreign key would silently wipe accumulated bid/spread research samples,
+    which is the same failure mode previously hit by signal_tracking.
+    """
+    try:
+        fks = conn.execute("PRAGMA foreign_key_list(bid_observations)").fetchall()
+    except sqlite3.OperationalError:
+        return
+    has_cascade = any(r[3] == "item_id" and str(r[6] or "").upper() == "CASCADE" for r in fks)
+    if not has_cascade:
+        return
+    old_cols = [r[1] for r in conn.execute("PRAGMA table_info(bid_observations)").fetchall()]
+    desired = ["date", "item_id", "good_id", "item_name", "price_rmb", "in_sale_count",
+               "bid_highest", "bid_7d_chg", "bid_30d_chg", "spread_pct", "spread_avg",
+               "quality_note", "source", "created_at"]
+    copy_cols = [c for c in desired if c in old_cols]
+    col_list = ", ".join(copy_cols)
+    conn.execute("SAVEPOINT bid_obs_migrate")
+    try:
+        conn.execute("DROP INDEX IF EXISTS idx_bid_observations_date")
+        conn.execute("ALTER TABLE bid_observations RENAME TO bid_observations_old_fk")
+        conn.execute(_BID_OBSERVATIONS_SCHEMA)
+        conn.execute(f"INSERT INTO bid_observations ({col_list}) SELECT {col_list} FROM bid_observations_old_fk")
+        conn.execute("DROP TABLE bid_observations_old_fk")
+        conn.execute("RELEASE bid_obs_migrate")
+    except Exception:
+        conn.execute("ROLLBACK TO bid_obs_migrate")
+        conn.execute("RELEASE bid_obs_migrate")
 
 
 def get_conn() -> sqlite3.Connection:
@@ -192,9 +244,6 @@ def _init_schema(conn: sqlite3.Connection) -> None:
 
         UNIQUE(item_id, date))""")
 
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_price_history_item_date ON price_history(item_id, date)")
-
-
     # 迁移：price_history 增加 in_sale_count 列（幂等，兼容旧库）
     try:
         _cols = [r[1] for r in conn.execute("PRAGMA table_info(price_history)").fetchall()]
@@ -266,6 +315,7 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         created_at TEXT DEFAULT (datetime('now','localtime')))""")
 
     conn.execute("CREATE INDEX IF NOT EXISTS idx_snapshots_item_date ON snapshots(item_id, date)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_snapshots_date ON snapshots(date)")
 
     # Migrate: add report_html if missing
     try:
@@ -397,8 +447,6 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         yyyp_sell_num INTEGER,
         created_at TEXT DEFAULT (datetime('now','localtime')),
         UNIQUE(date, good_id))""")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_market_snapshot_date ON market_snapshot(date)")
-
     # 大户集中度日常快照(2026-08-04): /monitor monitor/rank 每日采集顶头大户持有量排行, 筹码分布方向
     conn.execute("""CREATE TABLE IF NOT EXISTS monitor_rank_snapshot (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -411,7 +459,12 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         num INTEGER,                    -- 持有量
         created_at TEXT DEFAULT (datetime('now','localtime')),
         UNIQUE(date, item_id, rank))""")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_monitor_snapshot_date ON monitor_rank_snapshot(date)")
+    # 2026-08-13 B-2: 三张表的唯一约束已自带前缀索引，删除冗余普通索引以降低写入与存储开销。
+    for _redundant_idx in ("idx_price_history_item_date", "idx_market_snapshot_date", "idx_monitor_snapshot_date"):
+        try:
+            conn.execute(f"DROP INDEX IF EXISTS {_redundant_idx}")
+        except sqlite3.OperationalError:
+            pass
 
     # 数据源健康监控 (A1, 2026-08-05): 健康检查结果按日 upsert, 供 Web 展示/告警
     conn.execute("""CREATE TABLE IF NOT EXISTS health_checks (
@@ -447,6 +500,124 @@ def _init_schema(conn: sqlite3.Connection) -> None:
     except sqlite3.OperationalError:
         pass  # column already exists
     conn.execute("CREATE INDEX IF NOT EXISTS idx_signal_tracking_date ON signal_tracking(signal_date)")
+    # 2026-08-13 B-5: separate read-only bid observation accumulator (weekly manual/scheduled probe).
+    # Does not feed snapshots or the engine; keeps bid/spread samples bounded independently.
+    # No FK/cascade on item_id: items.id can change, so preserve good_id/item_name instead.
+    conn.execute(_BID_OBSERVATIONS_SCHEMA)
+    _migrate_bid_observations_fk(conn)
+    for _bid_obs_col in ("price_rmb REAL", "in_sale_count INTEGER", "quality_note TEXT"):
+        try:
+            conn.execute("ALTER TABLE bid_observations ADD COLUMN " + _bid_obs_col)
+        except sqlite3.OperationalError:
+            pass
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_bid_observations_date ON bid_observations(date)")
+
+    # v58 P0（2026-08-13）：直连 API 数据储备，研究层独立表。
+    # 不设 item_id 外键/级联，避免 items 重排时历史研究样本被误删；good_id 作为稳定键。
+    conn.execute("""CREATE TABLE IF NOT EXISTS item_fundamental_snapshot (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT NOT NULL,
+        item_id INTEGER,
+        good_id INTEGER NOT NULL,
+        item_name TEXT,
+        source TEXT NOT NULL DEFAULT 'csqaq_direct',
+        platform INTEGER NOT NULL DEFAULT 2,
+        yyyp_sell_price REAL,
+        yyyp_sell_num INTEGER,
+        yyyp_buy_price REAL,
+        yyyp_buy_num INTEGER,
+        buff_sell_price REAL,
+        buff_sell_num INTEGER,
+        buff_buy_price REAL,
+        buff_buy_num INTEGER,
+        c5_sell_price REAL,
+        c5_sell_num INTEGER,
+        steam_sell_price REAL,
+        steam_buy_price REAL,
+        turnover_number INTEGER,
+        turnover_avg_price REAL,
+        sell_price_rate_1 REAL,
+        sell_price_rate_7 REAL,
+        sell_price_rate_15 REAL,
+        sell_price_rate_30 REAL,
+        sell_price_rate_90 REAL,
+        sell_price_rate_180 REAL,
+        sell_price_rate_365 REAL,
+        rank_num INTEGER,
+        statistic INTEGER,
+        rarity_localized_name TEXT,
+        type_localized_name TEXT,
+        exterior_localized_name TEXT,
+        quality_localized_name TEXT,
+        min_float REAL,
+        max_float REAL,
+        extra_json TEXT,
+        created_at TEXT DEFAULT (datetime('now','localtime')),
+        UNIQUE(date, good_id))""")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_item_fundamental_date ON item_fundamental_snapshot(date)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_item_fundamental_good ON item_fundamental_snapshot(good_id)")
+
+    conn.execute("""CREATE TABLE IF NOT EXISTS bid_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT NOT NULL,
+        item_id INTEGER,
+        good_id INTEGER NOT NULL,
+        item_name TEXT,
+        source TEXT NOT NULL DEFAULT 'csqaq_direct',
+        platform INTEGER NOT NULL DEFAULT 2,
+        buy_price_last REAL,
+        buy_price_min REAL,
+        buy_price_max REAL,
+        buy_price_mean REAL,
+        buy_num_last REAL,
+        buy_num_min REAL,
+        buy_num_max REAL,
+        buy_num_mean REAL,
+        point_count INTEGER,
+        created_at TEXT DEFAULT (datetime('now','localtime')),
+        UNIQUE(date, good_id))""")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_bid_history_date ON bid_history(date)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_bid_history_good ON bid_history(good_id)")
+
+    # v58 P1（2026-08-13）：存世量历史 / 系列面板，研究层独立表。
+    # 同样不设 item_id 外键/级联；good_id / series_id 为稳定键。
+    conn.execute("""CREATE TABLE IF NOT EXISTS survive_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT NOT NULL,
+        item_id INTEGER,
+        good_id INTEGER NOT NULL,
+        item_name TEXT,
+        source TEXT NOT NULL DEFAULT 'csqaq_direct',
+        platform INTEGER NOT NULL DEFAULT 2,
+        statistic INTEGER,
+        source_created_at TEXT,
+        created_at TEXT DEFAULT (datetime('now','localtime')),
+        UNIQUE(date, good_id))""")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_survive_history_date ON survive_history(date)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_survive_history_good ON survive_history(good_id)")
+
+    conn.execute("""CREATE TABLE IF NOT EXISTS series_snapshot (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT NOT NULL,
+        series_id INTEGER NOT NULL,
+        series_key INTEGER,
+        series_name TEXT,
+        source TEXT NOT NULL DEFAULT 'csqaq_direct',
+        amount REAL,
+        total_value REAL,
+        sell_price_1 REAL,
+        sell_price_7 REAL,
+        sell_price_15 REAL,
+        sell_price_30 REAL,
+        sell_price_90 REAL,
+        sell_price_180 REAL,
+        recently_data_json TEXT,
+        extra_json TEXT,
+        created_at TEXT DEFAULT (datetime('now','localtime')),
+        UNIQUE(date, series_id))""")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_series_snapshot_date ON series_snapshot(date)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_series_snapshot_series ON series_snapshot(series_id)")
+
     # ???????????/???????? name ???2026-08-09 P1.2 ????????????? /api/analysis/results 500?
     conn.execute("""CREATE TABLE IF NOT EXISTS analysis_results (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1024,6 +1195,97 @@ def save_monitor_rank_snapshot(conn, date, item_id, good_id, rows):
         [(date, item_id, good_id, i + 1, r.get("steam_name"), r.get("steam_id"), r.get("num"))
          for i, r in enumerate(rows) if r.get("num")])
     conn.commit()
+
+
+def save_item_fundamental_snapshot(conn, date, row):
+    """P0 研究层：活跃品基本面快照（info/good 直连字段子集）。
+
+    row 以 good_id 为稳定键，同 (date, good_id) 幂等覆盖；不写 items/price_history，
+    不接引擎。extra_json 保留未建模字段，便于后续研究。
+    """
+    conn.execute(
+        """INSERT OR REPLACE INTO item_fundamental_snapshot
+           (date, item_id, good_id, item_name, source, platform,
+            yyyp_sell_price, yyyp_sell_num, yyyp_buy_price, yyyp_buy_num,
+            buff_sell_price, buff_sell_num, buff_buy_price, buff_buy_num,
+            c5_sell_price, c5_sell_num, steam_sell_price, steam_buy_price,
+            turnover_number, turnover_avg_price,
+            sell_price_rate_1, sell_price_rate_7, sell_price_rate_15,
+            sell_price_rate_30, sell_price_rate_90, sell_price_rate_180,
+            sell_price_rate_365, rank_num, statistic,
+            rarity_localized_name, type_localized_name, exterior_localized_name,
+            quality_localized_name, min_float, max_float, extra_json)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+        (date, row.get("item_id"), row.get("good_id"), row.get("item_name"),
+         row.get("source", "csqaq_direct"), row.get("platform", 2),
+         row.get("yyyp_sell_price"), row.get("yyyp_sell_num"),
+         row.get("yyyp_buy_price"), row.get("yyyp_buy_num"),
+         row.get("buff_sell_price"), row.get("buff_sell_num"),
+         row.get("buff_buy_price"), row.get("buff_buy_num"),
+         row.get("c5_sell_price"), row.get("c5_sell_num"),
+         row.get("steam_sell_price"), row.get("steam_buy_price"),
+         row.get("turnover_number"), row.get("turnover_avg_price"),
+         row.get("sell_price_rate_1"), row.get("sell_price_rate_7"),
+         row.get("sell_price_rate_15"), row.get("sell_price_rate_30"),
+         row.get("sell_price_rate_90"), row.get("sell_price_rate_180"),
+         row.get("sell_price_rate_365"), row.get("rank_num"), row.get("statistic"),
+         row.get("rarity_localized_name"), row.get("type_localized_name"),
+         row.get("exterior_localized_name"), row.get("quality_localized_name"),
+         row.get("min_float"), row.get("max_float"), row.get("extra_json")))
+
+
+def save_bid_history(conn, date, row):
+    """P0 研究层：悠悠求购价/求购量 10 分钟点按日聚合落库。
+
+    只落 platform=2 的日聚合，不落原始 10 分钟点；同 (date, good_id) 幂等覆盖。
+    """
+    conn.execute(
+        """INSERT OR REPLACE INTO bid_history
+           (date, item_id, good_id, item_name, source, platform,
+            buy_price_last, buy_price_min, buy_price_max, buy_price_mean,
+            buy_num_last, buy_num_min, buy_num_max, buy_num_mean, point_count)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+        (date, row.get("item_id"), row.get("good_id"), row.get("item_name"),
+         row.get("source", "csqaq_direct"), row.get("platform", 2),
+         row.get("buy_price_last"), row.get("buy_price_min"), row.get("buy_price_max"),
+         row.get("buy_price_mean"), row.get("buy_num_last"), row.get("buy_num_min"),
+         row.get("buy_num_max"), row.get("buy_num_mean"), row.get("point_count")))
+
+def save_survive_history(conn, date, row):
+    """P1 研究层：单品存世量历史点（info/good/statistic 直连）。
+
+    同 (date, good_id) 幂等覆盖；source_created_at 保留接口原始时间戳，不接引擎。
+    """
+    conn.execute(
+        """INSERT OR REPLACE INTO survive_history
+           (date, item_id, good_id, item_name, source, platform,
+            statistic, source_created_at)
+           VALUES (?,?,?,?,?,?,?,?)""",
+        (date, row.get("item_id"), row.get("good_id"), row.get("item_name"),
+         row.get("source", "csqaq_direct"), row.get("platform", 2),
+         row.get("statistic"), row.get("source_created_at")))
+
+
+def save_series_snapshot(conn, date, row):
+    """P1 研究层：系列/板块面板快照（info/get_series_list 直连）。
+
+    同 (date, series_id) 幂等覆盖；recently_data_json / extra_json 保留未建模字段。
+    """
+    conn.execute(
+        """INSERT OR REPLACE INTO series_snapshot
+           (date, series_id, series_key, series_name, source,
+            amount, total_value,
+            sell_price_1, sell_price_7, sell_price_15, sell_price_30,
+            sell_price_90, sell_price_180,
+            recently_data_json, extra_json)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+        (date, row.get("series_id"), row.get("series_key"), row.get("series_name"),
+         row.get("source", "csqaq_direct"), row.get("amount"), row.get("total_value"),
+         row.get("sell_price_1"), row.get("sell_price_7"), row.get("sell_price_15"),
+         row.get("sell_price_30"), row.get("sell_price_90"), row.get("sell_price_180"),
+         row.get("recently_data_json"), row.get("extra_json")))
+
+
 def save_health_check(conn, check_date, status, checks_json):
     """健康检查结果 upsert（A1, 2026-08-05）：按日期每天一条，重复运行覆盖。
 
@@ -1064,8 +1326,9 @@ def item_history_start(conn, item_id):
 
 
 # 数据保留策略（2026-08-09 落地，口径见 references/data-layer.md）：
-#   price_history / snapshots / market_index / monitor_events 保留 365 天；
+#   price_history / snapshots / market_index / monitor_events / market_snapshot 保留 365 天；
 #   scan_progress_*.json / discover_progress_*.json 等进度文件 7 天；scan_*.md 旧报告 90 天；
+#   runtime jsonl 日志（price_history_write_log/caliber_override_log/signal_tracking_reconcile/csqaq_chart_probe）365 天；
 #   monitor_rank_snapshot 为研究型数据积累（大户集中度），不清理。
 # 调用点：批量扫描收尾（webapp/main.py）与每日任务收尾（run_daily_collect.py）。
 # 纯运维动作，不触碰引擎参数；单表失败隔离，不影响其他表。
@@ -1074,10 +1337,18 @@ _RETENTION_TABLE_DAYS = {
     "snapshots": 365,   # date 为 YYYY-MM-DD HH:MM:SS，按日期部分比较
     "market_index": 365,
     "monitor_events": 365,
+    "market_snapshot": 365,   # 2026-08-13：全市场周度快照保留 365 天，控制研究型面板增长预算
 }
 _PROGRESS_FILE_GLOBS = ("scan_progress_*.json", "discover_progress_*.json")
 _PROGRESS_FILE_DAYS = 7
 _SCAN_MD_DAYS = 90
+_RUNTIME_LOG_NAMES = (
+    "price_history_write_log.jsonl",
+    "caliber_override_log.jsonl",
+    "signal_tracking_reconcile.jsonl",
+    "csqaq_chart_probe.jsonl",
+)
+_RUNTIME_LOG_DAYS = 365
 
 
 def run_retention_cleanup(conn=None, vacuum: bool = True) -> dict:
@@ -1093,7 +1364,7 @@ def run_retention_cleanup(conn=None, vacuum: bool = True) -> dict:
                 _cutoff = (datetime.now(TZ_BJ) - timedelta(days=_days)).strftime("%Y-%m-%d")
                 # snapshots.date 含时间部分，统一截断到日期比较（其余表纯日期不受影响）
                 _cur = _conn.execute(
-                    f"DELETE FROM {_table} WHERE substr(date,1,10) < ?", (_cutoff,))
+                    f"DELETE FROM {_table} WHERE date < ?", (_cutoff,))
                 _n = getattr(_cur, "rowcount", 0)
                 if _n:
                     stats["deleted"][_table] = _n
@@ -1116,6 +1387,15 @@ def run_retention_cleanup(conn=None, vacuum: bool = True) -> dict:
         _md_cutoff_ts = time.time() - _SCAN_MD_DAYS * 86400
         for _f in DATA_DIR.glob("scan_*.md"):
             if _f.stat().st_mtime < _md_cutoff_ts:
+                _f.unlink()
+                stats["files"] += 1
+    except Exception:
+        pass
+    try:
+        _log_cutoff_ts = time.time() - _RUNTIME_LOG_DAYS * 86400
+        for _name in _RUNTIME_LOG_NAMES:
+            _f = DATA_DIR / _name
+            if _f.exists() and _f.stat().st_mtime < _log_cutoff_ts:
                 _f.unlink()
                 stats["files"] += 1
     except Exception:

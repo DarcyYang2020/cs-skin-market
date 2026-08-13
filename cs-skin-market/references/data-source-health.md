@@ -54,8 +54,8 @@ python run_health_monitor.py --json     # JSON 输出（供告警/日志系统�
 | 单品 K 线 | 库内 price_history 覆盖 | 每日历史有在售量品（动态，当前约 103 品）≥85%，最新日期为当日/前一日 |
 | 在售量 | 库内 in_sale_count | 近7日每日 ≥90% 品有在售量（csQAQ chart 自带，无登录态依赖） |
 | 贪婪/卡价 | macro_history | greedy 60 点 / card 179 点 |
-| 全市场快照 | market_snapshot | 当日行数≈1468（磨损过滤后），无 StatTrak/纪念品残留 |
-| 大户集中度 | monitor_rank_snapshot | 100 品 4960 行，抽查与已知大户一致 |
+| 全市场快照 | market_snapshot | 周度（周一）采集，最新日行数≈1468（磨损过滤后），无 StatTrak/纪念品残留 |
+| 大户集中度 | monitor_rank_snapshot | 周度（周一）采集，最新日约 100 品 / 8234 行，抽查与已知大户一致 |
 | items 元数据 | items 表 | 无 good_id=0 的采集品，无重复 good_id，存世量过低品已打标 |
 
 ---

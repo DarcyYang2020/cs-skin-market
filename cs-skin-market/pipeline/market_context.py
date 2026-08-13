@@ -1,5 +1,8 @@
 # Market Context Anchor -- solves the 30-day item data limitation.
+import logging
 import statistics, math
+
+logger = logging.getLogger(__name__)
 from dataclasses import dataclass
 from .index_analysis import _momentum, _percentile  # reuse instead of redefining
 
@@ -76,7 +79,7 @@ def build_market_context(item_prices, market_history, market_cycle="unknown", ma
                 if var_mkt and var_mkt != 0:
                     cov = sum((ir-statistics.mean(item_ret))*(mr-statistics.mean(mkt_ret)) for ir,mr in zip(item_ret,mkt_ret))/(len(mkt_ret)-1)
                     ctx.beta = round(cov/var_mkt, 2)
-            except: ctx.beta = 1.0
+            except (statistics.StatisticsError, ValueError, ZeroDivisionError): ctx.beta = 1.0
 
     ctx.r_squared = round(ctx.correlation**2, 3)
     ar = abs(ctx.correlation)
@@ -219,6 +222,7 @@ def market_index_stats(market_history):
             _mth = compute_market_trend_health(values[-90:])
             th = _mth.corrected_score if hasattr(_mth, "corrected_score") else _mth.score
         except Exception:
+            logger.warning("compute_market_trend_health fallback failed", exc_info=True)
             th = max(0, min(100, 50 + chg30 * 3))
     return {"pct": pct, "z": z, "cycle": cycle, "th": th,
             "chg7": chg7, "chg30": chg30, "drop21": drop21}

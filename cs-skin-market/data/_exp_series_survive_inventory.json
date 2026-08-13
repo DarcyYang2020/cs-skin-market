@@ -1,0 +1,1981 @@
+{
+ "generated": "readonly-inventory",
+ "series_snapshot": {
+  "n": 64,
+  "breadth": {
+   "sell_price_1": {
+    "positive": 5,
+    "negative": 58,
+    "median": -0.42
+   },
+   "sell_price_7": {
+    "positive": 6,
+    "negative": 58,
+    "median": -1.52
+   },
+   "sell_price_15": {
+    "positive": 4,
+    "negative": 60,
+    "median": -3.78
+   },
+   "sell_price_30": {
+    "positive": 1,
+    "negative": 63,
+    "median": -5.7
+   },
+   "sell_price_90": {
+    "positive": 2,
+    "negative": 62,
+    "median": -7.32
+   },
+   "sell_price_180": {
+    "positive": 0,
+    "negative": 64,
+    "median": -14.88
+   }
+  },
+  "top_amount": [
+   {
+    "id": 62,
+    "date": "2026-08-13",
+    "series_id": 62,
+    "series_key": 62,
+    "series_name": "2025奥斯汀",
+    "source": "csqaq_direct",
+    "amount": 764.0,
+    "total_value": 5938.0,
+    "sell_price_1": -0.88,
+    "sell_price_7": -3.89,
+    "sell_price_15": -8.78,
+    "sell_price_30": -14.74,
+    "sell_price_90": -29.16,
+    "sell_price_180": -40.37,
+    "recently_data_json": "[5796.94, 5777.26, 5747.54, 5716.79, 5640.59, 5602.26, 5580.14, 5571.95, 5642.02, 5630.82, 5609.17, 5579.75, 5537.8, 5573.58, 5845.65]",
+    "extra_json": "{\"created_at\": \"2026-08-13T23:09:06\", \"color\": \"f33\", \"s_type\": 2, \"img\": \"https://market.fp.ps.netease.com/file/682fc2ad5607ac3a89211d90oBgWdoil06\"}",
+    "created_at": "2026-08-13 23:12:50"
+   },
+   {
+    "id": 33,
+    "date": "2026-08-13",
+    "series_id": 33,
+    "series_key": 33,
+    "series_name": "2022里约",
+    "source": "csqaq_direct",
+    "amount": 599.0,
+    "total_value": 8603.0,
+    "sell_price_1": -0.31,
+    "sell_price_7": -2.21,
+    "sell_price_15": -4.3,
+    "sell_price_30": -7.86,
+    "sell_price_90": -12.28,
+    "sell_price_180": -11.97,
+    "recently_data_json": "[9671.37, 9452.92, 9362.77, 9377.23, 9342.57, 9282.27, 9262.57, 9273.51, 9316.47, 9311.34, 9255.64, 9246.88, 9213.95, 9187.99, 9139.81]",
+    "extra_json": "{\"created_at\": \"2026-08-13T23:09:06\", \"color\": \"f33\", \"s_type\": 2, \"img\": \"https://g.fp.ps.netease.com/market/file/63532d326d30e95ba2ac5872QzWjpM4404\"}",
+    "created_at": "2026-08-13 23:12:50"
+   },
+   {
+    "id": 34,
+    "date": "2026-08-13",
+    "series_id": 34,
+    "series_key": 34,
+    "series_name": "2022安特卫普",
+    "source": "csqaq_direct",
+    "amount": 598.0,
+    "total_value": 8168.0,
+    "sell_price_1": -0.62,
+    "sell_price_7": -2.33,
+    "sell_price_15": -4.73,
+    "sell_price_30": -8.6,
+    "sell_price_90": -13.76,
+    "sell_price_180": -19.25,
+    "recently_data_json": "[8012.41, 7994.32, 8034.26, 8035.6, 7998.1, 7954.75, 7875.45, 7911.5, 7853.39, 7896.02, 7868.72, 7869.47, 7835.86, 7786.75, 7769.35]",
+    "extra_json": "{\"created_at\": \"2026-08-13T23:09:06\", \"color\": \"f33\", \"s_type\": 2, \"img\": \"https://g.fp.ps.netease.com/market/file/6271d0c7672a5289b11166edijXvg3Ll04\"}",
+    "created_at": "2026-08-13 23:12:50"
+   },
+   {
+    "id": 61,
+    "date": "2026-08-13",
+    "series_id": 61,
+    "series_key": 61,
+    "series_name": "2024上海",
+    "source": "csqaq_direct",
+    "amount": 580.0,
+    "total_value": 7216.0,
+    "sell_price_1": -0.68,
+    "sell_price_7": -3.89,
+    "sell_price_15": -6.45,
+    "sell_price_30": -11.54,
+    "sell_price_90": -19.99,
+    "sell_price_180": -27.51,
+    "recently_data_json": "[6935.42, 6920.41, 6899.48, 6812.29, 6868.66, 6806.72, 6866.87, 6893.72, 6924.85, 6887.46, 6838.7, 6782.3, 6733.52, 6596.54, 6631.5]",
+    "extra_json": "{\"created_at\": \"2026-08-13T23:09:06\", \"color\": \"f33\", \"s_type\": 2, \"img\": \"https://market.fp.ps.netease.com/file/6747a15fc7fddd6fdd05757bkMjy10hm05\"}",
+    "created_at": "2026-08-13 23:12:50"
+   },
+   {
+    "id": 32,
+    "date": "2026-08-13",
+    "series_id": 32,
+    "series_key": 32,
+    "series_name": "2023巴黎",
+    "source": "csqaq_direct",
+    "amount": 578.0,
+    "total_value": 2479.0,
+    "sell_price_1": -0.35,
+    "sell_price_7": -4.37,
+    "sell_price_15": -6.45,
+    "sell_price_30": -12.8,
+    "sell_price_90": -15.28,
+    "sell_price_180": -24.28,
+    "recently_data_json": "[2602.21, 2608.65, 2595.9, 2598.89, 2580.31, 2580.9, 2568.27, 2560.9, 2544.51, 2531.54, 2528.63, 2510.27, 2518.19, 2498.19, 2508.22]",
+    "extra_json": "{\"created_at\": \"2026-08-13T23:09:06\", \"color\": \"f33\", \"s_type\": 2, \"img\": \"https://g.fp.ps.netease.com/market/file/6454484b969f8911460f56ebfjvm6SR704\"}",
+    "created_at": "2026-08-13 23:12:50"
+   },
+   {
+    "id": 58,
+    "date": "2026-08-13",
+    "series_id": 58,
+    "series_key": 58,
+    "series_name": "2024哥本哈根",
+    "source": "csqaq_direct",
+    "amount": 555.0,
+    "total_value": 5662.0,
+    "sell_price_1": -0.88,
+    "sell_price_7": -1.84,
+    "sell_price_15": -2.88,
+    "sell_price_30": -9.36,
+    "sell_price_90": -15.92,
+    "sell_price_180": -28.3,
+    "recently_data_json": "[5889.79, 5841.61, 5833.78, 5825.59, 5802.91, 5769.56, 5734.5, 5704.9, 5697.15, 5717.86, 5698.62, 5758.34, 5754.07, 5734.52, 5696.67]",
+    "extra_json": "{\"created_at\": \"2026-08-13T23:09:06\", \"color\": \"f33\", \"s_type\": 2, \"img\": \"https://market.fp.ps.netease.com/file/65fb9cc8fd51407dfdfb56f5C0IJAsqB05\"}",
+    "created_at": "2026-08-13 23:12:50"
+   },
+   {
+    "id": 35,
+    "date": "2026-08-13",
+    "series_id": 35,
+    "series_key": 35,
+    "series_name": "2019柏林",
+    "source": "csqaq_direct",
+    "amount": 431.0,
+    "total_value": 15648.0,
+    "sell_price_1": 0.08,
+    "sell_price_7": -1.25,
+    "sell_price_15": -3.28,
+    "sell_price_30": -8.84,
+    "sell_price_90": -13.15,
+    "sell_price_180": -14.62,
+    "recently_data_json": "[17244.79, 17593.29, 17599.32, 17542.96, 17530.53, 17537.59, 17518.3, 17499.04, 17466.25, 17424.05, 17395.9, 17506.05, 17608.6, 17537.58, 17257.69]",
+    "extra_json": "{\"created_at\": \"2026-08-13T23:09:06\", \"color\": \"f33\", \"s_type\": 2, \"img\": \"https://g.fp.ps.netease.com/market/file/5d5449847f9d2a557a4ba7d1uFz3HhVJ02\"}",
+    "created_at": "2026-08-13 23:12:50"
+   },
+   {
+    "id": 36,
+    "date": "2026-08-13",
+    "series_id": 36,
+    "series_key": 36,
+    "series_name": "2019卡托维兹",
+    "source": "csqaq_direct",
+    "amount": 406.0,
+    "total_value": 59154.0,
+    "sell_price_1": -0.25,
+    "sell_price_7": -2.3,
+    "sell_price_15": -3.72,
+    "sell_price_30": -4.74,
+    "sell_price_90": -8.27,
+    "sell_price_180": -12.84,
+    "recently_data_json": "[40439.09, 40456.27, 40501.51, 40584.7, 39315.77, 38839.52, 40751.4, 40485.97, 40464.04, 40343.55, 40261.33, 40547.37, 40506.45, 40358.2, 43083.82]",
+    "extra_json": "{\"created_at\": \"2026-08-13T23:09:06\", \"color\": \"f33\", \"s_type\": 2, \"img\": \"https://g.fp.ps.netease.com/market/file/5c5bae486f04949828ec1b8bfAyx9v1y02\"}",
+    "created_at": "2026-08-13 23:12:50"
+   },
+   {
+    "id": 63,
+    "date": "2026-08-13",
+    "series_id": 63,
+    "series_key": 63,
+    "series_name": "挂件-奥斯汀",
+    "source": "csqaq_direct",
+    "amount": 338.0,
+    "total_value": 1980.0,
+    "sell_price_1": -1.66,
+    "sell_price_7": -16.54,
+    "sell_price_15": -28.19,
+    "sell_price_30": -33.65,
+    "sell_price_90": 7.21,
+    "sell_price_180": -24.96,
+    "recently_data_json": "[1916.64, 1917.73, 1917.32, 1911.42, 1905.8, 1920.77, 1907.59, 1900.55, 1902.59, 1900.15, 1893.84, 1896.14, 1892.71, 1894.72, 1144.71]",
+    "extra_json": "{\"created_at\": \"2026-08-13T23:09:06\", \"color\": \"f33\", \"s_type\": 3, \"img\": \"https://market.fp.ps.netease.com/file/686c87bb219b74305008a2d37LS9pAS406\"}",
+    "created_at": "2026-08-13 23:12:50"
+   },
+   {
+    "id": 38,
+    "date": "2026-08-13",
+    "series_id": 38,
+    "series_key": 38,
+    "series_name": "2018波士顿",
+    "source": "csqaq_direct",
+    "amount": 336.0,
+    "total_value": 115921.0,
+    "sell_price_1": -0.14,
+    "sell_price_7": -1.0,
+    "sell_price_15": 0.6,
+    "sell_price_30": -6.09,
+    "sell_price_90": -10.59,
+    "sell_price_180": -13.87,
+    "recently_data_json": "[44290.75, 43691.93, 43654.93, 43660.89, 43555.52, 43847.92, 43311.36, 43398.21, 43256.51, 43207.89, 43000.5, 42996.74, 42887.26, 42778.85, 43652.8]",
+    "extra_json": "{\"created_at\": \"2026-08-13T23:09:06\", \"color\": \"f33\", \"s_type\": 2, \"img\": \"https://g.fp.ps.netease.com/market/file/5a7ace24adce5f3165bc1ff9fGB98jKU\"}",
+    "created_at": "2026-08-13 23:12:50"
+   }
+  ],
+  "top_total_value": [
+   {
+    "id": 50,
+    "date": "2026-08-13",
+    "series_id": 50,
+    "series_key": 50,
+    "series_name": "运动手套",
+    "source": "csqaq_direct",
+    "amount": 60.0,
+    "total_value": 992275.0,
+    "sell_price_1": -0.26,
+    "sell_price_7": -1.38,
+    "sell_price_15": 6.14,
+    "sell_price_30": 6.11,
+    "sell_price_90": -9.82,
+    "sell_price_180": -21.76,
+    "recently_data_json": "[714962.44, 710748.06, 705901.06, 700949.38, 732551.19, 728870.12, 730300.94, 731372.56, 728427.25, 729424.69, 729972.81, 726648.75, 725589.5, 725267.38, 720168.81]",
+    "extra_json": "{\"created_at\": \"2026-08-13T23:09:06\", \"color\": \"f33\", \"s_type\": 4, \"img\": \"https://market.fp.ps.netease.com/file/662f0309363557b4e69bd729Ydg1l4B605\"}",
+    "created_at": "2026-08-13 23:12:50"
+   },
+   {
+    "id": 48,
+    "date": "2026-08-13",
+    "series_id": 48,
+    "series_key": 48,
+    "series_name": "2014卡托维兹",
+    "source": "csqaq_direct",
+    "amount": 12.0,
+    "total_value": 346901.0,
+    "sell_price_1": 0.04,
+    "sell_price_7": -0.54,
+    "sell_price_15": -3.03,
+    "sell_price_30": -9.45,
+    "sell_price_90": -3.58,
+    "sell_price_180": -13.07,
+    "recently_data_json": "[28900.0, 28900.0, 28900.0, 28900.0, 29400.0, 29400.0, 29400.0, 29300.0, 29300.0, 29255.0, 29255.0, 29255.0, 29255.0, 28745.0, 28745.0]",
+    "extra_json": "{\"created_at\": \"2026-08-13T23:09:06\", \"color\": \"f33\", \"s_type\": 2, \"img\": \"https://g.fp.ps.netease.com/market/file/5a71388d5e602776cbbe911ajyc5NIp4\"}",
+    "created_at": "2026-08-13 23:12:50"
+   },
+   {
+    "id": 51,
+    "date": "2026-08-13",
+    "series_id": 51,
+    "series_key": 51,
+    "series_name": "专业手套",
+    "source": "csqaq_direct",
+    "amount": 59.0,
+    "total_value": 286441.0,
+    "sell_price_1": -0.57,
+    "sell_price_7": -1.2,
+    "sell_price_15": -3.64,
+    "sell_price_30": -5.27,
+    "sell_price_90": -14.48,
+    "sell_price_180": -39.68,
+    "recently_data_json": "[275644.47, 273707.66, 275435.22, 272809.97, 270967.0, 270081.03, 269799.97, 271655.16, 273419.28, 272869.5, 271858.56, 269557.25, 268610.06, 267931.88, 277933.12]",
+    "extra_json": "{\"created_at\": \"2026-08-13T23:09:06\", \"color\": \"f33\", \"s_type\": 4, \"img\": \"https://market.fp.ps.netease.com/file/662f0306554f6c8358043938bpZwGKfq05\"}",
+    "created_at": "2026-08-13 23:12:50"
+   },
+   {
+    "id": 7,
+    "date": "2026-08-13",
+    "series_id": 7,
+    "series_key": 7,
+    "series_name": "渐变之色",
+    "source": "csqaq_direct",
+    "amount": 66.0,
+    "total_value": 266392.0,
+    "sell_price_1": -0.55,
+    "sell_price_7": -1.16,
+    "sell_price_15": -3.57,
+    "sell_price_30": -5.21,
+    "sell_price_90": -3.86,
+    "sell_price_180": -17.86,
+    "recently_data_json": "[246615.19, 246464.62, 248615.2, 247559.09, 247246.8, 245563.12, 246216.25, 246442.39, 246765.61, 247371.34, 245418.56, 243964.53, 244715.06, 243790.86, 244570.58]",
+    "extra_json": "{\"created_at\": \"2026-08-13T23:09:06\", \"color\": \"f33\", \"s_type\": 0, \"img\": \"https://market.fp.ps.netease.com/file/65f80b4e82da259689fbd275a6b0lAcL05\"}",
+    "created_at": "2026-08-13 23:12:50"
+   },
+   {
+    "id": 6,
+    "date": "2026-08-13",
+    "series_id": 6,
+    "series_key": 6,
+    "series_name": "屠夫",
+    "source": "csqaq_direct",
+    "amount": 92.0,
+    "total_value": 256792.0,
+    "sell_price_1": -0.13,
+    "sell_price_7": 0.49,
+    "sell_price_15": -1.08,
+    "sell_price_30": -2.52,
+    "sell_price_90": -1.68,
+    "sell_price_180": -13.36,
+    "recently_data_json": "[196815.05, 196204.19, 195864.06, 195753.78, 195088.52, 194541.69, 193435.44, 193350.02, 192436.23, 192173.44, 192260.7, 191856.5, 191746.66, 191198.8, 195188.17]",
+    "extra_json": "{\"created_at\": \"2026-08-13T23:09:06\", \"color\": \"e65870\", \"s_type\": 0, \"img\": \"https://market.fp.ps.netease.com/file/65f80f0bc575aa7979fc65c3Z3RbluQw05\"}",
+    "created_at": "2026-08-13 23:12:50"
+   },
+   {
+    "id": 39,
+    "date": "2026-08-13",
+    "series_id": 39,
+    "series_key": 39,
+    "series_name": "2017克拉科夫",
+    "source": "csqaq_direct",
+    "amount": 253.0,
+    "total_value": 237836.0,
+    "sell_price_1": -0.24,
+    "sell_price_7": -1.54,
+    "sell_price_15": -0.45,
+    "sell_price_30": -2.7,
+    "sell_price_90": -6.54,
+    "sell_price_180": -18.61,
+    "recently_data_json": "[73205.31, 73260.43, 73279.88, 73209.9, 73366.65, 73304.17, 73245.38, 84731.4, 84681.3, 84410.41, 84286.99, 84299.89, 84269.61, 84197.47, 84258.72]",
+    "extra_json": "{\"created_at\": \"2026-08-13T23:09:06\", \"color\": \"f33\", \"s_type\": 2, \"img\": \"https://g.fp.ps.netease.com/market/file/5a7ac1eaa7f2520645871404ITOvuHUC\"}",
+    "created_at": "2026-08-13 23:12:50"
+   },
+   {
+    "id": 4,
+    "date": "2026-08-13",
+    "series_id": 4,
+    "series_key": 4,
+    "series_name": "自动化",
+    "source": "csqaq_direct",
+    "amount": 75.0,
+    "total_value": 222356.0,
+    "sell_price_1": -0.32,
+    "sell_price_7": -1.54,
+    "sell_price_15": -3.45,
+    "sell_price_30": -4.04,
+    "sell_price_90": -0.78,
+    "sell_price_180": -12.39,
+    "recently_data_json": "[197215.55, 196529.64, 196626.7, 196315.56, 195042.91, 194366.17, 193931.22, 193372.41, 193106.44, 193141.36, 193243.44, 192577.95, 191481.86, 191002.45, 191285.17]",
+    "extra_json": "{\"created_at\": \"2026-08-13T23:09:06\", \"color\": \"f16161\", \"s_type\": 0, \"img\": \"https://market.fp.ps.netease.com/file/65f80a406408929febb7740c09rNMbM205\"}",
+    "created_at": "2026-08-13 23:12:50"
+   },
+   {
+    "id": 5,
+    "date": "2026-08-13",
+    "series_id": 5,
+    "series_key": 5,
+    "series_name": "传说",
+    "source": "csqaq_direct",
+    "amount": 78.0,
+    "total_value": 218138.0,
+    "sell_price_1": -0.51,
+    "sell_price_7": -0.96,
+    "sell_price_15": -2.63,
+    "sell_price_30": -3.8,
+    "sell_price_90": -4.9,
+    "sell_price_180": -13.33,
+    "recently_data_json": "[178730.7, 175389.86, 174670.41, 177005.45, 177278.2, 176854.61, 176430.95, 174765.47, 174501.56, 174624.66, 174339.36, 174072.73, 175179.34, 174275.56, 176558.14]",
+    "extra_json": "{\"created_at\": \"2026-08-13T23:09:06\", \"color\": \"ecc908\", \"s_type\": 0, \"img\": \"https://market.fp.ps.netease.com/file/65f861330738a64044bb6352qMEyz5DU05\"}",
+    "created_at": "2026-08-13 23:12:50"
+   },
+   {
+    "id": 11,
+    "date": "2026-08-13",
+    "series_id": 11,
+    "series_key": 11,
+    "series_name": "蓝钢",
+    "source": "csqaq_direct",
+    "amount": 116.0,
+    "total_value": 217697.0,
+    "sell_price_1": -0.35,
+    "sell_price_7": -0.53,
+    "sell_price_15": -2.92,
+    "sell_price_30": -5.0,
+    "sell_price_90": -2.9,
+    "sell_price_180": -9.04,
+    "recently_data_json": "[144392.19, 143717.83, 143525.89, 142906.03, 141940.81, 141948.12, 141092.12, 141707.36, 141231.73, 141521.62, 141446.84, 141270.48, 140600.84, 140637.77, 145199.64]",
+    "extra_json": "{\"created_at\": \"2026-08-13T23:09:06\", \"color\": \"f33\", \"s_type\": 0, \"img\": \"https://market.fp.ps.netease.com/file/65f8109cf67a153009643872RZ5HCjHH05\"}",
+    "created_at": "2026-08-13 23:12:50"
+   },
+   {
+    "id": 14,
+    "date": "2026-08-13",
+    "series_id": 14,
+    "series_key": 14,
+    "series_name": "致命紫罗兰",
+    "source": "csqaq_direct",
+    "amount": 111.0,
+    "total_value": 190479.0,
+    "sell_price_1": -1.26,
+    "sell_price_7": -2.48,
+    "sell_price_15": -4.05,
+    "sell_price_30": -6.44,
+    "sell_price_90": -6.18,
+    "sell_price_180": -10.8,
+    "recently_data_json": "[124449.16, 124169.68, 123526.54, 123311.63, 123091.15, 122417.56, 120205.29, 120220.4, 119549.38, 119571.1, 119693.23, 120102.63, 119310.68, 119368.84, 121066.25]",
+    "extra_json": "{\"created_at\": \"2026-08-13T23:09:06\", \"color\": \"f33\", \"s_type\": 0, \"img\": \"https://market.fp.ps.netease.com/file/65f82b54c584609854dfa789dhK7UXMY05\"}",
+    "created_at": "2026-08-13 23:12:50"
+   }
+  ],
+  "movers": {
+   "sell_price_1": {
+    "top": [
+     {
+      "series_id": 54,
+      "series_name": "手部束带",
+      "amount": 52.0,
+      "total_value": 102884.0,
+      "sell_price_1": 1.84
+     },
+     {
+      "series_id": 40,
+      "series_name": "2017亚特兰大",
+      "amount": 153.0,
+      "total_value": 39392.0,
+      "sell_price_1": 0.35
+     },
+     {
+      "series_id": 35,
+      "series_name": "2019柏林",
+      "amount": 431.0,
+      "total_value": 15648.0,
+      "sell_price_1": 0.08
+     },
+     {
+      "series_id": 44,
+      "series_name": "2015科隆",
+      "amount": 178.0,
+      "total_value": 18434.0,
+      "sell_price_1": 0.05
+     },
+     {
+      "series_id": 48,
+      "series_name": "2014卡托维兹",
+      "amount": 12.0,
+      "total_value": 346901.0,
+      "sell_price_1": 0.04
+     }
+    ],
+    "bottom": [
+     {
+      "series_id": 57,
+      "series_name": "血猎手套",
+      "amount": 14.0,
+      "total_value": 18853.0,
+      "sell_price_1": -2.29
+     },
+     {
+      "series_id": 21,
+      "series_name": "机械工业",
+      "amount": 26.0,
+      "total_value": 9004.0,
+      "sell_price_1": -2.09
+     },
+     {
+      "series_id": 63,
+      "series_name": "挂件-奥斯汀",
+      "amount": 338.0,
+      "total_value": 1980.0,
+      "sell_price_1": -1.66
+     },
+     {
+      "series_id": 30,
+      "series_name": "2020 RMR",
+      "amount": 96.0,
+      "total_value": 570.0,
+      "sell_price_1": -1.28
+     },
+     {
+      "series_id": 59,
+      "series_name": "百元主战",
+      "amount": 110.0,
+      "total_value": 61551.0,
+      "sell_price_1": -1.28
+     }
+    ]
+   },
+   "sell_price_7": {
+    "top": [
+     {
+      "series_id": 41,
+      "series_name": "2016科隆",
+      "amount": 160.0,
+      "total_value": 26577.0,
+      "sell_price_7": 2.01
+     },
+     {
+      "series_id": 54,
+      "series_name": "手部束带",
+      "amount": 52.0,
+      "total_value": 102884.0,
+      "sell_price_7": 1.48
+     },
+     {
+      "series_id": 6,
+      "series_name": "屠夫",
+      "amount": 92.0,
+      "total_value": 256792.0,
+      "sell_price_7": 0.49
+     },
+     {
+      "series_id": 46,
+      "series_name": "2014DreamHack",
+      "amount": 24.0,
+      "total_value": 21795.0,
+      "sell_price_7": 0.33
+     },
+     {
+      "series_id": 8,
+      "series_name": "渐变大理石",
+      "amount": 53.0,
+      "total_value": 153931.0,
+      "sell_price_7": 0.24
+     }
+    ],
+    "bottom": [
+     {
+      "series_id": 63,
+      "series_name": "挂件-奥斯汀",
+      "amount": 338.0,
+      "total_value": 1980.0,
+      "sell_price_7": -16.54
+     },
+     {
+      "series_id": 57,
+      "series_name": "血猎手套",
+      "amount": 14.0,
+      "total_value": 18853.0,
+      "sell_price_7": -8.14
+     },
+     {
+      "series_id": 56,
+      "series_name": "九头蛇手套",
+      "amount": 20.0,
+      "total_value": 9753.0,
+      "sell_price_7": -4.93
+     },
+     {
+      "series_id": 21,
+      "series_name": "机械工业",
+      "amount": 26.0,
+      "total_value": 9004.0,
+      "sell_price_7": -4.59
+     },
+     {
+      "series_id": 64,
+      "series_name": "电击枪",
+      "amount": 45.0,
+      "total_value": 1684.0,
+      "sell_price_7": -4.39
+     }
+    ]
+   },
+   "sell_price_15": {
+    "top": [
+     {
+      "series_id": 50,
+      "series_name": "运动手套",
+      "amount": 60.0,
+      "total_value": 992275.0,
+      "sell_price_15": 6.14
+     },
+     {
+      "series_id": 30,
+      "series_name": "2020 RMR",
+      "amount": 96.0,
+      "total_value": 570.0,
+      "sell_price_15": 3.16
+     },
+     {
+      "series_id": 38,
+      "series_name": "2018波士顿",
+      "amount": 336.0,
+      "total_value": 115921.0,
+      "sell_price_15": 0.6
+     },
+     {
+      "series_id": 46,
+      "series_name": "2014DreamHack",
+      "amount": 24.0,
+      "total_value": 21795.0,
+      "sell_price_15": 0.32
+     },
+     {
+      "series_id": 39,
+      "series_name": "2017克拉科夫",
+      "amount": 253.0,
+      "total_value": 237836.0,
+      "sell_price_15": -0.45
+     }
+    ],
+    "bottom": [
+     {
+      "series_id": 63,
+      "series_name": "挂件-奥斯汀",
+      "amount": 338.0,
+      "total_value": 1980.0,
+      "sell_price_15": -28.19
+     },
+     {
+      "series_id": 57,
+      "series_name": "血猎手套",
+      "amount": 14.0,
+      "total_value": 18853.0,
+      "sell_price_15": -14.08
+     },
+     {
+      "series_id": 60,
+      "series_name": "挂件系列",
+      "amount": 33.0,
+      "total_value": 608.0,
+      "sell_price_15": -11.11
+     },
+     {
+      "series_id": 64,
+      "series_name": "电击枪",
+      "amount": 45.0,
+      "total_value": 1684.0,
+      "sell_price_15": -10.5
+     },
+     {
+      "series_id": 62,
+      "series_name": "2025奥斯汀",
+      "amount": 764.0,
+      "total_value": 5938.0,
+      "sell_price_15": -8.78
+     }
+    ]
+   },
+   "sell_price_30": {
+    "top": [
+     {
+      "series_id": 50,
+      "series_name": "运动手套",
+      "amount": 60.0,
+      "total_value": 992275.0,
+      "sell_price_30": 6.11
+     },
+     {
+      "series_id": 37,
+      "series_name": "2018伦敦",
+      "amount": 320.0,
+      "total_value": 46475.0,
+      "sell_price_30": -1.35
+     },
+     {
+      "series_id": 43,
+      "series_name": "2015DreamHack",
+      "amount": 151.0,
+      "total_value": 22663.0,
+      "sell_price_30": -1.73
+     },
+     {
+      "series_id": 42,
+      "series_name": "2016哥伦布",
+      "amount": 187.0,
+      "total_value": 23857.0,
+      "sell_price_30": -1.78
+     },
+     {
+      "series_id": 6,
+      "series_name": "屠夫",
+      "amount": 92.0,
+      "total_value": 256792.0,
+      "sell_price_30": -2.52
+     }
+    ],
+    "bottom": [
+     {
+      "series_id": 63,
+      "series_name": "挂件-奥斯汀",
+      "amount": 338.0,
+      "total_value": 1980.0,
+      "sell_price_30": -33.65
+     },
+     {
+      "series_id": 60,
+      "series_name": "挂件系列",
+      "amount": 33.0,
+      "total_value": 608.0,
+      "sell_price_30": -21.84
+     },
+     {
+      "series_id": 64,
+      "series_name": "电击枪",
+      "amount": 45.0,
+      "total_value": 1684.0,
+      "sell_price_30": -21.02
+     },
+     {
+      "series_id": 57,
+      "series_name": "血猎手套",
+      "amount": 14.0,
+      "total_value": 18853.0,
+      "sell_price_30": -15.84
+     },
+     {
+      "series_id": 62,
+      "series_name": "2025奥斯汀",
+      "amount": 764.0,
+      "total_value": 5938.0,
+      "sell_price_30": -14.74
+     }
+    ]
+   },
+   "sell_price_90": {
+    "top": [
+     {
+      "series_id": 63,
+      "series_name": "挂件-奥斯汀",
+      "amount": 338.0,
+      "total_value": 1980.0,
+      "sell_price_90": 7.21
+     },
+     {
+      "series_id": 12,
+      "series_name": "黑色层压板",
+      "amount": 89.0,
+      "total_value": 160989.0,
+      "sell_price_90": 0.02
+     },
+     {
+      "series_id": 16,
+      "series_name": "澄澈之水",
+      "amount": 79.0,
+      "total_value": 116044.0,
+      "sell_price_90": -0.5
+     },
+     {
+      "series_id": 4,
+      "series_name": "自动化",
+      "amount": 75.0,
+      "total_value": 222356.0,
+      "sell_price_90": -0.78
+     },
+     {
+      "series_id": 6,
+      "series_name": "屠夫",
+      "amount": 92.0,
+      "total_value": 256792.0,
+      "sell_price_90": -1.68
+     }
+    ],
+    "bottom": [
+     {
+      "series_id": 64,
+      "series_name": "电击枪",
+      "amount": 45.0,
+      "total_value": 1684.0,
+      "sell_price_90": -38.93
+     },
+     {
+      "series_id": 60,
+      "series_name": "挂件系列",
+      "amount": 33.0,
+      "total_value": 608.0,
+      "sell_price_90": -37.71
+     },
+     {
+      "series_id": 62,
+      "series_name": "2025奥斯汀",
+      "amount": 764.0,
+      "total_value": 5938.0,
+      "sell_price_90": -29.16
+     },
+     {
+      "series_id": 52,
+      "series_name": "摩托手套",
+      "amount": 59.0,
+      "total_value": 184527.0,
+      "sell_price_90": -22.46
+     },
+     {
+      "series_id": 61,
+      "series_name": "2024上海",
+      "amount": 580.0,
+      "total_value": 7216.0,
+      "sell_price_90": -19.99
+     }
+    ]
+   },
+   "sell_price_180": {
+    "top": [
+     {
+      "series_id": 44,
+      "series_name": "2015科隆",
+      "amount": 178.0,
+      "total_value": 18434.0,
+      "sell_price_180": -7.35
+     },
+     {
+      "series_id": 40,
+      "series_name": "2017亚特兰大",
+      "amount": 153.0,
+      "total_value": 39392.0,
+      "sell_price_180": -7.58
+     },
+     {
+      "series_id": 20,
+      "series_name": "都市伪装",
+      "amount": 98.0,
+      "total_value": 109593.0,
+      "sell_price_180": -8.38
+     },
+     {
+      "series_id": 11,
+      "series_name": "蓝钢",
+      "amount": 116.0,
+      "total_value": 217697.0,
+      "sell_price_180": -9.04
+     },
+     {
+      "series_id": 10,
+      "series_name": "人工染色",
+      "amount": 116.0,
+      "total_value": 161004.0,
+      "sell_price_180": -9.19
+     }
+    ],
+    "bottom": [
+     {
+      "series_id": 60,
+      "series_name": "挂件系列",
+      "amount": 33.0,
+      "total_value": 608.0,
+      "sell_price_180": -64.06
+     },
+     {
+      "series_id": 64,
+      "series_name": "电击枪",
+      "amount": 45.0,
+      "total_value": 1684.0,
+      "sell_price_180": -56.77
+     },
+     {
+      "series_id": 53,
+      "series_name": "驾驶手套",
+      "amount": 58.0,
+      "total_value": 141609.0,
+      "sell_price_180": -44.02
+     },
+     {
+      "series_id": 62,
+      "series_name": "2025奥斯汀",
+      "amount": 764.0,
+      "total_value": 5938.0,
+      "sell_price_180": -40.37
+     },
+     {
+      "series_id": 51,
+      "series_name": "专业手套",
+      "amount": 59.0,
+      "total_value": 286441.0,
+      "sell_price_180": -39.68
+     }
+    ]
+   }
+  }
+ },
+ "survive_history": {
+  "n_goods": 195,
+  "changes": {
+   "7d": {
+    "n": 195,
+    "median_pct": 0.09,
+    "positive": 182,
+    "negative": 0,
+    "gt5_pct": 0,
+    "lt_minus5_pct": 0
+   },
+   "30d": {
+    "n": 195,
+    "median_pct": 0.44,
+    "positive": 192,
+    "negative": 0,
+    "gt5_pct": 1,
+    "lt_minus5_pct": 0
+   },
+   "90d": {
+    "n": 195,
+    "median_pct": 1.82,
+    "positive": 195,
+    "negative": 0,
+    "gt5_pct": 12,
+    "lt_minus5_pct": 0
+   },
+   "180d": {
+    "n": 195,
+    "median_pct": 4.56,
+    "positive": 195,
+    "negative": 0,
+    "gt5_pct": 87,
+    "lt_minus5_pct": 0
+   }
+  },
+  "top_increases": {
+   "7d": [
+    {
+     "good_id": 13660,
+     "item_id": 185,
+     "item_name": "USP 消音版 | 紫色 DDPAT (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 32759,
+     "7d": 1.19,
+     "30d": 5.92,
+     "90d": 18.82,
+     "180d": 27.26
+    },
+    {
+     "good_id": 1536,
+     "item_id": 127,
+     "item_name": "MP7 | 硝烟 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 975,
+     "7d": 0.62,
+     "30d": 1.77,
+     "90d": 5.29,
+     "180d": 7.5
+    },
+    {
+     "good_id": 14771,
+     "item_id": 48,
+     "item_name": "法玛斯 | 目皆转睛 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 38961,
+     "7d": 0.54,
+     "30d": 2.93,
+     "90d": 10.39,
+     "180d": 25.44
+    },
+    {
+     "good_id": 1238,
+     "item_id": 45,
+     "item_name": "M4A1消音版 | 闪回 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 35022,
+     "7d": 0.52,
+     "30d": 2.29,
+     "90d": 8.12,
+     "180d": 13.67
+    },
+    {
+     "good_id": 1605,
+     "item_id": 163,
+     "item_name": "MP9 | 焦油缠绕 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 60561,
+     "7d": 0.47,
+     "30d": 1.72,
+     "90d": 4.21,
+     "180d": 8.28
+    },
+    {
+     "good_id": 14712,
+     "item_id": 49,
+     "item_name": "USP 消音版 | 地狱门票 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 247464,
+     "7d": 0.46,
+     "30d": 2.14,
+     "90d": 7.5,
+     "180d": 16.53
+    },
+    {
+     "good_id": 2316,
+     "item_id": 136,
+     "item_name": "SSG 08 | 迂回路线 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 13242,
+     "7d": 0.39,
+     "30d": 1.71,
+     "90d": 6.52,
+     "180d": 9.21
+    },
+    {
+     "good_id": 1132,
+     "item_id": 158,
+     "item_name": "格洛克 18 型 | 噩梦之夜 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 1372,
+     "7d": 0.37,
+     "30d": 2.01,
+     "90d": 6.19,
+     "180d": 8.72
+    },
+    {
+     "good_id": 14758,
+     "item_id": 47,
+     "item_name": "MP9 | 星使 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 38506,
+     "7d": 0.31,
+     "30d": 1.41,
+     "90d": 4.44,
+     "180d": 10.35
+    },
+    {
+     "good_id": 1591,
+     "item_id": 161,
+     "item_name": "MP9 | 飞驰 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 33729,
+     "7d": 0.3,
+     "30d": 1.11,
+     "90d": 3.58,
+     "180d": 7.04
+    }
+   ],
+   "30d": [
+    {
+     "good_id": 13660,
+     "item_id": 185,
+     "item_name": "USP 消音版 | 紫色 DDPAT (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 32759,
+     "7d": 1.19,
+     "30d": 5.92,
+     "90d": 18.82,
+     "180d": 27.26
+    },
+    {
+     "good_id": 14771,
+     "item_id": 48,
+     "item_name": "法玛斯 | 目皆转睛 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 38961,
+     "7d": 0.54,
+     "30d": 2.93,
+     "90d": 10.39,
+     "180d": 25.44
+    },
+    {
+     "good_id": 1238,
+     "item_id": 45,
+     "item_name": "M4A1消音版 | 闪回 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 35022,
+     "7d": 0.52,
+     "30d": 2.29,
+     "90d": 8.12,
+     "180d": 13.67
+    },
+    {
+     "good_id": 14712,
+     "item_id": 49,
+     "item_name": "USP 消音版 | 地狱门票 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 247464,
+     "7d": 0.46,
+     "30d": 2.14,
+     "90d": 7.5,
+     "180d": 16.53
+    },
+    {
+     "good_id": 1132,
+     "item_id": 158,
+     "item_name": "格洛克 18 型 | 噩梦之夜 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 1372,
+     "7d": 0.37,
+     "30d": 2.01,
+     "90d": 6.19,
+     "180d": 8.72
+    },
+    {
+     "good_id": 1536,
+     "item_id": 127,
+     "item_name": "MP7 | 硝烟 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 975,
+     "7d": 0.62,
+     "30d": 1.77,
+     "90d": 5.29,
+     "180d": 7.5
+    },
+    {
+     "good_id": 1605,
+     "item_id": 163,
+     "item_name": "MP9 | 焦油缠绕 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 60561,
+     "7d": 0.47,
+     "30d": 1.72,
+     "90d": 4.21,
+     "180d": 8.28
+    },
+    {
+     "good_id": 2316,
+     "item_id": 136,
+     "item_name": "SSG 08 | 迂回路线 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 13242,
+     "7d": 0.39,
+     "30d": 1.71,
+     "90d": 6.52,
+     "180d": 9.21
+    },
+    {
+     "good_id": 6543,
+     "item_id": 8,
+     "item_name": "USP 消音版 | 次时代 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 183008,
+     "7d": 0.26,
+     "30d": 1.51,
+     "90d": 5.96,
+     "180d": 9.36
+    },
+    {
+     "good_id": 21726,
+     "item_id": 195,
+     "item_name": "法玛斯 | 幻灭之旅 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 16958,
+     "7d": 0.28,
+     "30d": 1.5,
+     "90d": 5.71,
+     "180d": 15.31
+    }
+   ],
+   "90d": [
+    {
+     "good_id": 13660,
+     "item_id": 185,
+     "item_name": "USP 消音版 | 紫色 DDPAT (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 32759,
+     "7d": 1.19,
+     "30d": 5.92,
+     "90d": 18.82,
+     "180d": 27.26
+    },
+    {
+     "good_id": 14771,
+     "item_id": 48,
+     "item_name": "法玛斯 | 目皆转睛 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 38961,
+     "7d": 0.54,
+     "30d": 2.93,
+     "90d": 10.39,
+     "180d": 25.44
+    },
+    {
+     "good_id": 1238,
+     "item_id": 45,
+     "item_name": "M4A1消音版 | 闪回 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 35022,
+     "7d": 0.52,
+     "30d": 2.29,
+     "90d": 8.12,
+     "180d": 13.67
+    },
+    {
+     "good_id": 14712,
+     "item_id": 49,
+     "item_name": "USP 消音版 | 地狱门票 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 247464,
+     "7d": 0.46,
+     "30d": 2.14,
+     "90d": 7.5,
+     "180d": 16.53
+    },
+    {
+     "good_id": 9563,
+     "item_id": 7,
+     "item_name": "AWP | 冥界之河 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 115905,
+     "7d": 0.24,
+     "30d": 1.21,
+     "90d": 7.08,
+     "180d": 13.62
+    },
+    {
+     "good_id": 2316,
+     "item_id": 136,
+     "item_name": "SSG 08 | 迂回路线 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 13242,
+     "7d": 0.39,
+     "30d": 1.71,
+     "90d": 6.52,
+     "180d": 9.21
+    },
+    {
+     "good_id": 1132,
+     "item_id": 158,
+     "item_name": "格洛克 18 型 | 噩梦之夜 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 1372,
+     "7d": 0.37,
+     "30d": 2.01,
+     "90d": 6.19,
+     "180d": 8.72
+    },
+    {
+     "good_id": 6543,
+     "item_id": 8,
+     "item_name": "USP 消音版 | 次时代 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 183008,
+     "7d": 0.26,
+     "30d": 1.51,
+     "90d": 5.96,
+     "180d": 9.36
+    },
+    {
+     "good_id": 8506,
+     "item_id": 77,
+     "item_name": "M4A1消音版 | 梦魇 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 20577,
+     "7d": 0.16,
+     "30d": 1.06,
+     "90d": 5.84,
+     "180d": 12.05
+    },
+    {
+     "good_id": 21726,
+     "item_id": 195,
+     "item_name": "法玛斯 | 幻灭之旅 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 16958,
+     "7d": 0.28,
+     "30d": 1.5,
+     "90d": 5.71,
+     "180d": 15.31
+    }
+   ],
+   "180d": [
+    {
+     "good_id": 23872,
+     "item_id": 181,
+     "item_name": "AK-47 | 流金王朝 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 5613,
+     "7d": 0.23,
+     "30d": 1.45,
+     "90d": 5.37,
+     "180d": 32.07
+    },
+    {
+     "good_id": 13660,
+     "item_id": 185,
+     "item_name": "USP 消音版 | 紫色 DDPAT (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 32759,
+     "7d": 1.19,
+     "30d": 5.92,
+     "90d": 18.82,
+     "180d": 27.26
+    },
+    {
+     "good_id": 14771,
+     "item_id": 48,
+     "item_name": "法玛斯 | 目皆转睛 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 38961,
+     "7d": 0.54,
+     "30d": 2.93,
+     "90d": 10.39,
+     "180d": 25.44
+    },
+    {
+     "good_id": 14712,
+     "item_id": 49,
+     "item_name": "USP 消音版 | 地狱门票 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 247464,
+     "7d": 0.46,
+     "30d": 2.14,
+     "90d": 7.5,
+     "180d": 16.53
+    },
+    {
+     "good_id": 21726,
+     "item_id": 195,
+     "item_name": "法玛斯 | 幻灭之旅 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 16958,
+     "7d": 0.28,
+     "30d": 1.5,
+     "90d": 5.71,
+     "180d": 15.31
+    },
+    {
+     "good_id": 9583,
+     "item_id": 58,
+     "item_name": "MP7 | 渐变之色 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 202265,
+     "7d": 0.15,
+     "30d": 0.73,
+     "90d": 4.6,
+     "180d": 15.04
+    },
+    {
+     "good_id": 1238,
+     "item_id": 45,
+     "item_name": "M4A1消音版 | 闪回 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 35022,
+     "7d": 0.52,
+     "30d": 2.29,
+     "90d": 8.12,
+     "180d": 13.67
+    },
+    {
+     "good_id": 9563,
+     "item_id": 7,
+     "item_name": "AWP | 冥界之河 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 115905,
+     "7d": 0.24,
+     "30d": 1.21,
+     "90d": 7.08,
+     "180d": 13.62
+    },
+    {
+     "good_id": 1619,
+     "item_id": 167,
+     "item_name": "MP9 | 橘皮涂装 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 18375,
+     "7d": 0.13,
+     "30d": 0.85,
+     "90d": 4.84,
+     "180d": 12.84
+    },
+    {
+     "good_id": 754,
+     "item_id": 139,
+     "item_name": "法玛斯 | 灯神 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 6911,
+     "7d": 0.13,
+     "30d": 0.88,
+     "90d": 3.63,
+     "180d": 12.54
+    }
+   ]
+  },
+  "top_decreases": {
+   "7d": [
+    {
+     "good_id": 240,
+     "item_id": 27,
+     "item_name": "AWP | 珊瑚树 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 5232,
+     "7d": 0.0,
+     "30d": 0.11,
+     "90d": 0.71,
+     "180d": 2.35
+    },
+    {
+     "good_id": 1304,
+     "item_id": 35,
+     "item_name": "M4A4 | 沙漠风暴 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 659,
+     "7d": 0.0,
+     "30d": 0.3,
+     "90d": 1.23,
+     "180d": 2.33
+    },
+    {
+     "good_id": 13812,
+     "item_id": 52,
+     "item_name": "USP 消音版 | 银装素裹 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 3838,
+     "7d": 0.0,
+     "30d": 0.08,
+     "90d": 0.52,
+     "180d": 1.51
+    },
+    {
+     "good_id": 1349,
+     "item_id": 60,
+     "item_name": "M4A4 | 波塞冬 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 3794,
+     "7d": 0.0,
+     "30d": 0.13,
+     "90d": 0.4,
+     "180d": 1.31
+    },
+    {
+     "good_id": 20459,
+     "item_id": 66,
+     "item_name": "AWP | CMYK (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 4729,
+     "7d": 0.0,
+     "30d": 0.13,
+     "90d": 0.96,
+     "180d": 5.91
+    },
+    {
+     "good_id": 13031,
+     "item_id": 67,
+     "item_name": "AK-47 | X 射线 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 1769,
+     "7d": 0.0,
+     "30d": 0.0,
+     "90d": 0.06,
+     "180d": 0.51
+    },
+    {
+     "good_id": 237,
+     "item_id": 97,
+     "item_name": "AWP | *嘣* (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 838,
+     "7d": 0.0,
+     "30d": 0.0,
+     "90d": 0.24,
+     "180d": 1.45
+    },
+    {
+     "good_id": 284,
+     "item_id": 111,
+     "item_name": "AWP | 粉红 DDPAT (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 1170,
+     "7d": 0.0,
+     "30d": 0.09,
+     "90d": 0.69,
+     "180d": 1.39
+    },
+    {
+     "good_id": 552,
+     "item_id": 115,
+     "item_name": "沙漠之鹰 | 深红之网 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 3170,
+     "7d": 0.0,
+     "30d": 0.0,
+     "90d": 0.28,
+     "180d": 1.02
+    },
+    {
+     "good_id": 1323,
+     "item_id": 130,
+     "item_name": "M4A4 | 渐变斑纹 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 639,
+     "7d": 0.0,
+     "30d": 0.16,
+     "90d": 1.27,
+     "180d": 2.73
+    }
+   ],
+   "30d": [
+    {
+     "good_id": 13031,
+     "item_id": 67,
+     "item_name": "AK-47 | X 射线 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 1769,
+     "7d": 0.0,
+     "30d": 0.0,
+     "90d": 0.06,
+     "180d": 0.51
+    },
+    {
+     "good_id": 237,
+     "item_id": 97,
+     "item_name": "AWP | *嘣* (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 838,
+     "7d": 0.0,
+     "30d": 0.0,
+     "90d": 0.24,
+     "180d": 1.45
+    },
+    {
+     "good_id": 552,
+     "item_id": 115,
+     "item_name": "沙漠之鹰 | 深红之网 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 3170,
+     "7d": 0.0,
+     "30d": 0.0,
+     "90d": 0.28,
+     "180d": 1.02
+    },
+    {
+     "good_id": 13373,
+     "item_id": 6,
+     "item_name": "M4A4 | 合纵 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 4700,
+     "7d": 0.02,
+     "30d": 0.04,
+     "90d": 0.26,
+     "180d": 0.69
+    },
+    {
+     "good_id": 275,
+     "item_id": 65,
+     "item_name": "AWP | 鬼退治 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 6911,
+     "7d": 0.01,
+     "30d": 0.07,
+     "90d": 0.63,
+     "180d": 1.75
+    },
+    {
+     "good_id": 149,
+     "item_id": 91,
+     "item_name": "AK-47 | 火神 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 14656,
+     "7d": 0.01,
+     "30d": 0.07,
+     "90d": 0.43,
+     "180d": 0.82
+    },
+    {
+     "good_id": 13812,
+     "item_id": 52,
+     "item_name": "USP 消音版 | 银装素裹 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 3838,
+     "7d": 0.0,
+     "30d": 0.08,
+     "90d": 0.52,
+     "180d": 1.51
+    },
+    {
+     "good_id": 9839,
+     "item_id": 182,
+     "item_name": "AK-47 | 二西莫夫 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 6622,
+     "7d": 0.02,
+     "30d": 0.08,
+     "90d": 0.55,
+     "180d": 1.8
+    },
+    {
+     "good_id": 284,
+     "item_id": 111,
+     "item_name": "AWP | 粉红 DDPAT (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 1170,
+     "7d": 0.0,
+     "30d": 0.09,
+     "90d": 0.69,
+     "180d": 1.39
+    },
+    {
+     "good_id": 12800,
+     "item_id": 70,
+     "item_name": "M4A1消音版 | 印花集 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 15070,
+     "7d": 0.01,
+     "30d": 0.1,
+     "90d": 0.43,
+     "180d": 0.85
+    }
+   ],
+   "90d": [
+    {
+     "good_id": 13031,
+     "item_id": 67,
+     "item_name": "AK-47 | X 射线 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 1769,
+     "7d": 0.0,
+     "30d": 0.0,
+     "90d": 0.06,
+     "180d": 0.51
+    },
+    {
+     "good_id": 237,
+     "item_id": 97,
+     "item_name": "AWP | *嘣* (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 838,
+     "7d": 0.0,
+     "30d": 0.0,
+     "90d": 0.24,
+     "180d": 1.45
+    },
+    {
+     "good_id": 13373,
+     "item_id": 6,
+     "item_name": "M4A4 | 合纵 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 4700,
+     "7d": 0.02,
+     "30d": 0.04,
+     "90d": 0.26,
+     "180d": 0.69
+    },
+    {
+     "good_id": 12919,
+     "item_id": 54,
+     "item_name": "AWP | 锦虎 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 6280,
+     "7d": 0.03,
+     "30d": 0.14,
+     "90d": 0.26,
+     "180d": 0.87
+    },
+    {
+     "good_id": 552,
+     "item_id": 115,
+     "item_name": "沙漠之鹰 | 深红之网 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 3170,
+     "7d": 0.0,
+     "30d": 0.0,
+     "90d": 0.28,
+     "180d": 1.02
+    },
+    {
+     "good_id": 1349,
+     "item_id": 60,
+     "item_name": "M4A4 | 波塞冬 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 3794,
+     "7d": 0.0,
+     "30d": 0.13,
+     "90d": 0.4,
+     "180d": 1.31
+    },
+    {
+     "good_id": 12800,
+     "item_id": 70,
+     "item_name": "M4A1消音版 | 印花集 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 15070,
+     "7d": 0.01,
+     "30d": 0.1,
+     "90d": 0.43,
+     "180d": 0.85
+    },
+    {
+     "good_id": 149,
+     "item_id": 91,
+     "item_name": "AK-47 | 火神 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 14656,
+     "7d": 0.01,
+     "30d": 0.07,
+     "90d": 0.43,
+     "180d": 0.82
+    },
+    {
+     "good_id": 72,
+     "item_id": 107,
+     "item_name": "AK-47 | 火蛇 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 924,
+     "7d": 0.11,
+     "30d": 0.11,
+     "90d": 0.43,
+     "180d": 0.87
+    },
+    {
+     "good_id": 1258,
+     "item_id": 61,
+     "item_name": "M4A1消音版 | 伊卡洛斯殒落 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 18256,
+     "7d": 0.05,
+     "30d": 0.18,
+     "90d": 0.44,
+     "180d": 0.93
+    }
+   ],
+   "180d": [
+    {
+     "good_id": 13031,
+     "item_id": 67,
+     "item_name": "AK-47 | X 射线 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 1769,
+     "7d": 0.0,
+     "30d": 0.0,
+     "90d": 0.06,
+     "180d": 0.51
+    },
+    {
+     "good_id": 13373,
+     "item_id": 6,
+     "item_name": "M4A4 | 合纵 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 4700,
+     "7d": 0.02,
+     "30d": 0.04,
+     "90d": 0.26,
+     "180d": 0.69
+    },
+    {
+     "good_id": 149,
+     "item_id": 91,
+     "item_name": "AK-47 | 火神 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 14656,
+     "7d": 0.01,
+     "30d": 0.07,
+     "90d": 0.43,
+     "180d": 0.82
+    },
+    {
+     "good_id": 12800,
+     "item_id": 70,
+     "item_name": "M4A1消音版 | 印花集 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 15070,
+     "7d": 0.01,
+     "30d": 0.1,
+     "90d": 0.43,
+     "180d": 0.85
+    },
+    {
+     "good_id": 12919,
+     "item_id": 54,
+     "item_name": "AWP | 锦虎 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 6280,
+     "7d": 0.03,
+     "30d": 0.14,
+     "90d": 0.26,
+     "180d": 0.87
+    },
+    {
+     "good_id": 72,
+     "item_id": 107,
+     "item_name": "AK-47 | 火蛇 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 924,
+     "7d": 0.11,
+     "30d": 0.11,
+     "90d": 0.43,
+     "180d": 0.87
+    },
+    {
+     "good_id": 1258,
+     "item_id": 61,
+     "item_name": "M4A1消音版 | 伊卡洛斯殒落 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 18256,
+     "7d": 0.05,
+     "30d": 0.18,
+     "90d": 0.44,
+     "180d": 0.93
+    },
+    {
+     "good_id": 552,
+     "item_id": 115,
+     "item_name": "沙漠之鹰 | 深红之网 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 3170,
+     "7d": 0.0,
+     "30d": 0.0,
+     "90d": 0.28,
+     "180d": 1.02
+    },
+    {
+     "good_id": 1116,
+     "item_id": 156,
+     "item_name": "格洛克 18 型 | 渐变之色 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 4626,
+     "7d": 0.04,
+     "30d": 0.15,
+     "90d": 0.67,
+     "180d": 1.09
+    },
+    {
+     "good_id": 534,
+     "item_id": 59,
+     "item_name": "沙漠之鹰 | 炽烈之炎 (崭新出厂)",
+     "date_min": "2026-02-14",
+     "date_max": "2026-08-13",
+     "n_days": 180,
+     "latest_statistic": 21403,
+     "7d": 0.02,
+     "30d": 0.15,
+     "90d": 0.62,
+     "180d": 1.12
+    }
+   ]
+  }
+ },
+ "notes": [
+  "Read-only inventory from series_snapshot and survive_history. No engine change.",
+  "survive_history statistic is supply count, not in_sale_count; do not mix with engine supply metric."
+ ]
+}

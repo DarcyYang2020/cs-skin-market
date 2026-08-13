@@ -1,0 +1,170 @@
+{
+ "generated": "stage0",
+ "signals": 317,
+ "vol_ref": 0.049598,
+ "modes": {
+  "baseline": {
+   "total_return_pct": 201.06,
+   "max_drawdown_pct": -9.13,
+   "max_position": 0.8,
+   "rejected_cap": 266,
+   "rejected_breaker": 0,
+   "rejected_item": 0,
+   "breaker_active_pct": 0.0,
+   "days": 272,
+   "n_trades": 51
+  },
+  "vol": {
+   "total_return_pct": 169.12,
+   "max_drawdown_pct": -9.72,
+   "max_position": 0.8,
+   "rejected_cap": 255,
+   "rejected_breaker": 0,
+   "rejected_item": 0,
+   "breaker_active_pct": 0.0,
+   "days": 272,
+   "n_trades": 62
+  },
+  "regime": {
+   "total_return_pct": 179.76,
+   "max_drawdown_pct": -11.37,
+   "max_position": 0.8,
+   "rejected_cap": 228,
+   "rejected_breaker": 0,
+   "rejected_item": 0,
+   "breaker_active_pct": 0.0,
+   "days": 272,
+   "n_trades": 89
+  },
+  "vol_regime": {
+   "total_return_pct": 164.53,
+   "max_drawdown_pct": -11.21,
+   "max_position": 0.796,
+   "rejected_cap": 215,
+   "rejected_breaker": 0,
+   "rejected_item": 0,
+   "breaker_active_pct": 0.0,
+   "days": 272,
+   "n_trades": 102
+  }
+ },
+ "splits": {
+  "baseline": {
+   "pre": {
+    "total_return_pct": 128.39,
+    "max_drawdown_pct": -9.13,
+    "max_position": 0.8,
+    "rejected_cap": 122,
+    "rejected_breaker": 0,
+    "rejected_item": 0,
+    "breaker_active_pct": 0.0,
+    "days": 126,
+    "n_trades": 34,
+    "n_signals": 156
+   },
+   "post": {
+    "total_return_pct": 81.85,
+    "max_drawdown_pct": -20.1,
+    "max_position": 0.8,
+    "rejected_cap": 137,
+    "rejected_breaker": 0,
+    "rejected_item": 0,
+    "breaker_active_pct": 0.0,
+    "days": 167,
+    "n_trades": 24,
+    "n_signals": 161
+   }
+  },
+  "vol": {
+   "pre": {
+    "total_return_pct": 124.06,
+    "max_drawdown_pct": -9.04,
+    "max_position": 0.792,
+    "rejected_cap": 117,
+    "rejected_breaker": 0,
+    "rejected_item": 0,
+    "breaker_active_pct": 0.0,
+    "days": 126,
+    "n_trades": 39,
+    "n_signals": 156
+   },
+   "post": {
+    "total_return_pct": 50.88,
+    "max_drawdown_pct": -23.93,
+    "max_position": 0.8,
+    "rejected_cap": 132,
+    "rejected_breaker": 0,
+    "rejected_item": 0,
+    "breaker_active_pct": 0.0,
+    "days": 167,
+    "n_trades": 29,
+    "n_signals": 161
+   }
+  },
+  "regime": {
+   "pre": {
+    "total_return_pct": 114.07,
+    "max_drawdown_pct": -11.37,
+    "max_position": 0.8,
+    "rejected_cap": 94,
+    "rejected_breaker": 0,
+    "rejected_item": 0,
+    "breaker_active_pct": 0.0,
+    "days": 126,
+    "n_trades": 62,
+    "n_signals": 156
+   },
+   "post": {
+    "total_return_pct": 70.03,
+    "max_drawdown_pct": -26.04,
+    "max_position": 0.8,
+    "rejected_cap": 129,
+    "rejected_breaker": 0,
+    "rejected_item": 0,
+    "breaker_active_pct": 0.0,
+    "days": 167,
+    "n_trades": 32,
+    "n_signals": 161
+   }
+  },
+  "vol_regime": {
+   "pre": {
+    "total_return_pct": 108.04,
+    "max_drawdown_pct": -11.21,
+    "max_position": 0.784,
+    "rejected_cap": 90,
+    "rejected_breaker": 0,
+    "rejected_item": 0,
+    "breaker_active_pct": 0.0,
+    "days": 126,
+    "n_trades": 66,
+    "n_signals": 156
+   },
+   "post": {
+    "total_return_pct": 59.45,
+    "max_drawdown_pct": -25.88,
+    "max_position": 0.8,
+    "rejected_cap": 121,
+    "rejected_breaker": 0,
+    "rejected_item": 0,
+    "breaker_active_pct": 0.0,
+    "days": 167,
+    "n_trades": 40,
+    "n_signals": 161
+   }
+  }
+ },
+ "split": {
+  "cutoff": "2026-02-27",
+  "pre_n": 156,
+  "post_n": 161
+ },
+ "permutation_vol": {
+  "actual_calmar": 17.4,
+  "actual_total_return_pct": 169.12,
+  "actual_max_drawdown_pct": -9.72,
+  "permutation_calmar_mean": 14.53,
+  "p_calmar_ge": 0.18,
+  "n": 200
+ }
+}

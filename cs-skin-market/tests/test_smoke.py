@@ -2900,14 +2900,14 @@ def t_render_html():
          "percentile_90d": 15, "cycle_label": "洗盘", "price_rmb": 120.0},
         {"name": "M4A1 消音版 | 咆哮 (崭新出厂)", "score": 7.2, "composite": 7.0, "grade": "A",
          "percentile_90d": 45, "cycle_phase": "吸筹", "price_rmb": 300.0},
-        {"name": "印花 | MOUZ（全息）| 2024年上海锦标赛", "score": 8.0, "composite": 8.5,
+        {"name": "命悬一线武器箱", "category": "case", "score": 8.0, "composite": 8.5,
          "grade": "A", "percentile_90d": 8, "cycle_label": "吸筹", "price_rmb": 46.9},
     ]
     h = render_discover_html(results, market_th=40)
     assert "Top 10" in h and "加入自选" in h, h[:300]
     assert "品类热力图" in h, "多品类应渲染热度图"
     assert "已扫描 3 个饰品" in h
-    assert "印花" in h and "枪皮" in h, "无磨损品类应分桶展示（M-6）"
+    assert "武器箱" in h and "枪皮" in h, "无磨损品类应分桶展示（M-6）"
 
     # 3) spark_svg：正常渲染 / 点数不足返回空
     svg = spark_svg([(1, 10.0), (2, 11.0), (3, 10.5)], cost=10.2)

@@ -316,7 +316,9 @@ async def _run_discover_task(task_id: str, items: list):
 async def _run_discover_pool_task(task_id: str, scope: str = "all"):
     """从池内跑 discover（F-3.4, 2026-08-08）：加载活跃池品，DB 新鲜 K 线复用优先，
     按综合分排序出高分品。池内 90 日 K 线每日采集已在库，纯 DB 扫描，只有过期品才触发网络补齐。
-    scope（2026-08-12 双榜独立刷新）：all=全池 / skin=综合榜（非贴纸）/ sticker=贴纸榜，仅刷新对应品类。"""
+    scope: sticker collection paused 2026-08-13; all/skin both exclude stickers, sticker maps to skin."""
+    if scope == "sticker":
+        scope = "skin"
     conn_p = db.get_conn()
     try:
         # M-6 (2026-08-11): 发现空间扩展——无磨损品类（印花/武器箱/挂件/收藏品/胶囊）
@@ -329,10 +331,10 @@ async def _run_discover_pool_task(task_id: str, scope: str = "all"):
         rows = conn_p.execute(
             "SELECT i.id, i.good_id, i.name FROM items i "
             "WHERE i.good_id>0 AND (i.name LIKE '%崭新出厂%' "
-            "OR i.name LIKE '印花 |%' OR i.name LIKE '挂件 |%' "
+            "OR i.name LIKE '挂件 |%' "
             "OR i.name LIKE '%武器箱' OR i.name LIKE '%收藏品' OR i.name LIKE '%胶囊') "
             "AND (i.notes IS NULL OR (i.notes NOT LIKE '%存世量过低%' "
-            "AND i.notes NOT LIKE '%活跃池淘汰%'))" + _scope_sql + " ORDER BY i.id"
+            "AND i.notes NOT LIKE '%活跃池淘汰%' AND i.notes NOT LIKE '%贴纸模块停采%'))" + _scope_sql + " ORDER BY i.id"
         ).fetchall()
     finally:
         conn_p.close()

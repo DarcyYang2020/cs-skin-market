@@ -152,27 +152,64 @@ def _guard_batch_write(day: str):
         conn.close()
 
 
+async def _backoff_sleep(consecutive: int, base: float, max_delay: float) -> None:
+    """Exponential backoff for empty/failed K-line fetches; successful items stay at base delay."""
+    exponent = min(int(consecutive), 6)
+    delay = min(max_delay, base * (2 ** exponent))
+    await asyncio.sleep(delay)
+
+
 async def collect_kline_all() -> int:
     from pipeline import collector_csqaq, db
+    from pipeline.config import API_RATE_LIMIT
     conn = db.get_conn()
     # F-3.1 活跃池淘汰：自选/持仓必采集；其余排除「存世量过低 / 活跃池淘汰」标记品（数据保留）
-    rows = conn.execute("SELECT id, good_id, name FROM items WHERE good_id > 0 AND (in_watchlist=1 OR holding=1 OR notes IS NULL OR (notes NOT LIKE '%存世量过低%' AND notes NOT LIKE '%活跃池淘汰%')) ORDER BY id").fetchall()
+    rows = conn.execute("SELECT id, good_id, name FROM items WHERE good_id > 0 AND (in_watchlist=1 OR holding=1 OR notes IS NULL OR (notes NOT LIKE '%存世量过低%' AND notes NOT LIKE '%活跃池淘汰%' AND notes NOT LIKE '%贴纸模块停采%')) ORDER BY id").fetchall()
     conn.close()
     ok = 0
+    api_ok = 0
+    browser_ok = 0
     fails = []
+    try:
+        base_delay = float(os.environ.get("CS_KLINE_BASE_SLEEP", "0.4"))
+    except (TypeError, ValueError):
+        base_delay = 0.4
+    try:
+        max_delay = float(os.environ.get("CS_KLINE_MAX_SLEEP", "8.0"))
+    except (TypeError, ValueError):
+        max_delay = 8.0
+    direct_sleep = max(base_delay, API_RATE_LIMIT, 1.5)
+    consecutive_empty = 0
     for r in rows:
+        source = None
+        bars = []
         try:
-            bars, _raw = await collector_csqaq.fetch_kline_90d(r["good_id"])
-        except Exception as e:
-            log(f"  [{r['id']}] K线异常: {e}")
-            fails.append(f"{r['name'][:28]}({str(e)[:40]})")
-            continue
+            bars, _raw = collector_csqaq.fetch_kline_90d_api(r["good_id"])
+        except Exception:
+            bars = []
+        if bars:
+            source = "api"
+        else:
+            try:
+                bars, _raw = await collector_csqaq.fetch_kline_90d(r["good_id"])
+            except Exception as e:
+                consecutive_empty += 1
+                fails.append(f"{r['name'][:28]}({str(e)[:40]})")
+                await _backoff_sleep(consecutive_empty, base_delay, max_delay)
+                continue
+            if bars:
+                source = "browser"
         if not bars:
+            consecutive_empty += 1
             log(f"  [{r['id']}] K线空: {r['name'][:30]}")
             fails.append(f"{r['name'][:28]}(空)")
-            await asyncio.sleep(2)
+            await _backoff_sleep(consecutive_empty, base_delay, max_delay)
             continue
-        await asyncio.sleep(1.5)
+        if source == "api":
+            api_ok += 1
+        else:
+            browser_ok += 1
+        consecutive_empty = 0
         conn = db.get_conn()
         try:
             db.save_price_history_batch(conn, r["id"], bars)
@@ -180,7 +217,8 @@ async def collect_kline_all() -> int:
         finally:
             conn.close()
         ok += 1
-    log(f"K线全量刷新: {ok}/{len(rows)} 失败={len(fails)}")
+        await asyncio.sleep(direct_sleep if source == "api" else base_delay)
+    log(f"K线全量刷新: {ok}/{len(rows)} 失败={len(fails)} (API={api_ok}, Browser={browser_ok})")
     # 跨品一致性闸门（2026-08-10 csQAQ 故障事件后新增）：本批写入 vs 上一交易日跳变异常占比
     # 超阈（正常基线 价<=0.5%/量<=1.2%，阈值 3%/5%）→ 判定数据失真，回滚异常品 + 留痕告警。
     try:
@@ -295,7 +333,7 @@ def main():
     async def _playwright_tasks():
         # 全市场快照/大户集中度降为每周（2026-08-08 优化）：引擎/决策不消费这两份数据，
         # 仅数据进度卡与健康检查计数；周度采集保留数据积累能力，省 ~9 分钟/天 Playwright 负载。
-        # K 线全量刷新（价格+在售量，引擎唯一数据源）仍每日无条件执行。
+        # P3 (2026-08-07 去量)：每日全量刷新 90 日 K 线（全品价格+在售量日更，补齐非自选品停更缺口）
         if _weekly:
             try:
                 await collect_market_snapshot(max_pages=25)
@@ -305,12 +343,23 @@ def main():
                 await collect_monitor_rank(top_n=50)
             except Exception as e:
                 log(f"大户集中度快照任务异常: {e}")
-        # P3 (2026-08-07 去量)：每日全量刷新 90 日 K 线（全品价格+在售量日更，补齐非自选品停更缺口）
+        # K 线全量刷新（价格+在售量，引擎唯一数据源）仍每日无条件执行。
         try:
             nonlocal _kline_ok, _kline_fails
             _kline_ok, _kline_fails = await collect_kline_all()
         except Exception as e:
             log(f"K线任务异常: {e}")
+        # B-5 求购观察累积必须作为最后一个浏览器任务：
+        # collect_bids 会在结束时关闭共享 Playwright browser。
+        if _weekly:
+            try:
+                from references.collect_bid_observations import candidate_rows, collect_bids
+                _bid_today = datetime.now(TZ_BJ).strftime("%Y-%m-%d")
+                _bid_rows = candidate_rows(8, "supply_contract")
+                _bid_n = await collect_bids(_bid_rows, _bid_today, "weekly")
+                log(f"B-5 求购观察: {_bid_n}/{len(_bid_rows)} 品 ({_bid_today})")
+            except Exception as e:
+                log(f"B-5 求购观察任务异常（不中断采集）: {e}")
     # 活跃池淘汰 (F-3.1, 2026-08-08): K线刷新后评估流动性，淘汰品退出每日采集（数据保留）
     try:
         prune_inactive()
@@ -398,14 +447,7 @@ def main():
         log(f"J-2 三通道监测刷新: exit={_r.returncode} {(_r.stdout or '').strip()}")
     except Exception as e:
         log(f"J-2 三通道监测刷新异常（不中断采集）: {e}")
-    # W-3 吸筹信号跟踪刷新 (2026-08-12): 贴纸吸筹信号 30d 落地实时推进（price_history 口径） + alpha/regime 统计（只读研究，零引擎参数）
-    try:
-        import subprocess, sys as _sys
-        _r = subprocess.run([_sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "references", "w3_signal_tracker.py")],
-                            capture_output=True, text=True, timeout=60)
-        log(f"W-3 吸筹跟踪: exit={_r.returncode} {(_r.stdout or '').strip()[-200:]}")
-    except Exception as e:
-        log(f"W-3 吸筹跟踪异常（不中断采集）: {e}")
+    # Sticker W-3 daily tracker paused 2026-08-13; research assets remain static/read-only.
     # T0 greedy 覆盖监测 (2026-08-10): 采集后记录 greedy_index 覆盖天数，连续 7 个采集日验证单调增长（第一性原理审计 P-0/T0）
     try:
         import subprocess, sys as _sys

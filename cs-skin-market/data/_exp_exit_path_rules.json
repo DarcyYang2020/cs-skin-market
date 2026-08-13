@@ -1,0 +1,121 @@
+{
+ "generated": "stage0",
+ "signals": 317,
+ "rules": [
+  {
+   "rule": "hold21",
+   "trades": {
+    "n": 317,
+    "win_pct": 65.6,
+    "avg_pct": 18.72,
+    "median_pct": 8.0,
+    "p05_pct": -11.72,
+    "p95_pct": 85.76
+   },
+   "portfolio": {
+    "total_return_pct": 186.53,
+    "max_drawdown_pct": -24.29,
+    "calmar": 7.68
+   }
+  },
+  {
+   "rule": "trail_0.1",
+   "trades": {
+    "n": 317,
+    "win_pct": 50.5,
+    "avg_pct": 10.59,
+    "median_pct": 0.32,
+    "p05_pct": -16.49,
+    "p95_pct": 65.78
+   },
+   "portfolio": {
+    "total_return_pct": 113.19,
+    "max_drawdown_pct": -24.27,
+    "calmar": 4.66
+   }
+  },
+  {
+   "rule": "trail_0.15",
+   "trades": {
+    "n": 317,
+    "win_pct": 53.0,
+    "avg_pct": 12.9,
+    "median_pct": 2.63,
+    "p05_pct": -18.94,
+    "p95_pct": 83.69
+   },
+   "portfolio": {
+    "total_return_pct": 106.92,
+    "max_drawdown_pct": -25.25,
+    "calmar": 4.24
+   }
+  },
+  {
+   "rule": "trail_0.2",
+   "trades": {
+    "n": 317,
+    "win_pct": 50.2,
+    "avg_pct": 11.38,
+    "median_pct": 0.38,
+    "p05_pct": -21.35,
+    "p95_pct": 82.67
+   },
+   "portfolio": {
+    "total_return_pct": 72.61,
+    "max_drawdown_pct": -17.96,
+    "calmar": 4.04
+   }
+  },
+  {
+   "rule": "trail_0.25",
+   "trades": {
+    "n": 317,
+    "win_pct": 48.3,
+    "avg_pct": 11.75,
+    "median_pct": -1.53,
+    "p05_pct": -23.4,
+    "p95_pct": 86.25
+   },
+   "portfolio": {
+    "total_return_pct": 82.16,
+    "max_drawdown_pct": -19.67,
+    "calmar": 4.18
+   }
+  },
+  {
+   "rule": "regime",
+   "trades": {
+    "n": 317,
+    "win_pct": 61.2,
+    "avg_pct": 14.25,
+    "median_pct": 4.11,
+    "p05_pct": -13.42,
+    "p95_pct": 82.78
+   },
+   "portfolio": {
+    "total_return_pct": 74.79,
+    "max_drawdown_pct": -19.19,
+    "calmar": 3.9
+   }
+  }
+ ],
+ "baseline_meta": {
+  "replay": {
+   "signals": 318,
+   "win14": 225,
+   "n14": 317,
+   "win14_pct": 71.0,
+   "avg14": 15.95,
+   "wavg14": 21.04,
+   "wwin14_pct": 75.4,
+   "win30": 211,
+   "n30": 310,
+   "win30_pct": 68.1,
+   "avg30": 23.11,
+   "wavg30": 23.7,
+   "wwin30_pct": 66.9
+  },
+  "hold21_cost": 0.02,
+  "cap": 0.8
+ }
+}

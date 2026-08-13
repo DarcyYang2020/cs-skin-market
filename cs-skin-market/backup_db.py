@@ -9,7 +9,7 @@ data/backup/market_YYYYMMDD_HHMMSS.db，并清理保留份数之外的旧备份�
 
 配合 Windows 计划任务（每日一次）使用，见 install_tasks.ps1。
 """
-import sys, io, os, sqlite3, shutil, argparse
+import re, sys, sqlite3, argparse
 from pathlib import Path
 from datetime import datetime
 
@@ -37,7 +37,11 @@ def backup(db_path, keep=14, dry_run=False):
             src_conn.close()
         print(f"backup ok: {dest.name} ({dest.stat().st_size/1024/1024:.1f} MB)")
     # 清理旧备份（按修改时间保留最近 keep 份）
-    backups = sorted(BACKUP_DIR.glob("market_*.db"), key=lambda p: p.stat().st_mtime, reverse=True)
+    backups = sorted(
+        (p for p in BACKUP_DIR.glob("market_*.db") if re.fullmatch(r"market_\d{8}_\d{6}\.db", p.name)),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
     for old in backups[keep:]:
         if dry_run:
             print(f"[dry-run] would remove old backup: {old.name}")
