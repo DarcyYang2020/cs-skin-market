@@ -66,7 +66,7 @@
 ## 4. 问题台账
 
 ### A. 数据口径与流动性
-- `LIQ-RATIO-1`｜相对挂单率未落地。P1。
+- `LIQ-RATIO-1`｜相对挂单率方向证伪（2026-08-15），不立项。P1。
 - `POOL-1`｜双层淘汰口径并存、`notes` 自由文本不可回滚。P1。
 - `POOL-2`｜`supply_depth` 取最新一条，单日脏值三处漂移。P0/P1。
 - `POOL-3`｜自动淘汰无观察期。P1。
@@ -87,9 +87,9 @@
 ### C. 评分、仓位与退出
 - `POS-7`｜族级固定仓位与基础分档的策略缺口。P2。
 - `POS-8`｜族级仓位网格未复验。P1。
-- `EXIT-9`｜组合回测未复现单品止损。P0/P1。
-- `EXIT-10`｜退出规则混用固定倍数与 ATR。P2。
-- `EXIT-11`｜`hold21` 与 `take` 触发顺序未定义。P2。
+- `EXIT-9`｜组合回测未复现单品止损。P0/P1。（2026-08-15 不立项，维持 hold21）
+- `EXIT-10`｜退出规则混用固定倍数与 ATR。P2。（同批不立项；ATR 网格无稳定增量）
+- `EXIT-11`｜`hold21` 与 `take` 触发顺序未定义。P2。（同批不立项；hold21 仍为组合层退出）
 - `POS-12`｜评级线与仓位线间隙。P3。
 
 ## 5. 已修正口径
@@ -110,14 +110,14 @@
 - ✅ `P-B`：panic 与 supply_accum 仓位变体均恶化；**deep_value 0.15 落地（v2-T5）**。
 - ✅ `P-C`：组合 stop/take 使 Calmar 36.42→16.72，不落地；hold21 是组合优势来源。
 - ✅ POOL-2（CLEAN-CUR 复核，2026-08-14）：supply_depth 最新 vs 近7日中位数仅 1 降级 / 0 升级，不落地，转数据治理；`probe_pool2_supply_depth_clean.py` → `data/_exp_pool2_supply_depth_clean.json`。
-- 后续仍开放：`LIQ-RATIO-1` 正式前瞻、`DECISION-5/7/9`、`EXIT-9/10/11` 的 ATR 自适应网格；DECISION-6/v2-T7/v2-T8 已完成。
+- `LIQ-RATIO-1` 已方向证伪（2026-08-15），不立项；`EXIT-9/10/11` 已不立项（2026-08-15）；后续仍开放：`DECISION-5/7/9`；DECISION-6/v2-T7/v2-T8 已完成。
 ## 7. 专家复核补正（2026-08-14）
 
 - ✅ 止损路径信任提示已加到持仓建议卡（`analysis.html`）。
 - ✅ deep_value 落地证据等级改为“低置信/方向性”，并挂 deep 成交≥30 / 生产 N≥30 复验触发器。
 - ✅ 后置族旁路表写入 `decision4-guard-coverage.md`。
 - ✅ Calmar 唯一标尺：`references/calmar_standard.py` + `data/_exp_calmar_standard.json`；EXIT-1 组合模拟与门槛符号已修复并重跑。
-- 仍未执行：`LIQ-RATIO-1` 正式前瞻、`EXIT-9/10/11` ATR 网格；双基线展示与 POOL-2 复核已落地。
+- `LIQ-RATIO-1` 已方向证伪、不立项；`EXIT-9/10/11` 已不立项并维持 hold21；双基线展示与 POOL-2 复核已落地。
 
 ## 8. 专家残留风险收口（2026-08-14）
 
@@ -138,3 +138,18 @@
 ## 10. 常驻数据治理项（2026-08-14）
 
 - **`DATA-GOV-1`（常驻，不再挂在 POOL-2/DECISION-6 名下漂）**：`in_sale_count` 的「缺失（NULL/断档）」与「单日脏值」是同一治理对象：读侧统一 missing 标记 + 写侧单日跳变闸门（已有 `_guard_batch_write` 可复用），目标让 supply_depth / 地板 / 供给收缩三处消费同一份「已治理」序列。触发条件：再次发现单日在售量跳变/污染或任一消费点因脏值判定反转时启动；启动后必须回测先行 + 三件套 + 双基线复跑 sync。
+
+
+## 11. LIQ-RATIO-1 方向证伪收口（2026-08-15）
+
+- ✅ `P-D-0` 通过：bid_history 91 天 / 202 品可用，同日 in_sale join 100%，ratio 极值已 winsorize。
+- ✅ `P-D-1`：横截面高 ratio 反而更差（fwd14 31.37%→23.26%、fwd30 48.34%→25.30%）；时序 fwd14 仅胜率单点单调但 avg 全负、fwd30 反向。判定：**方向证伪，不立项，在新增证据前不再投入**；caveat=仅 2026-05 后单 regime 前瞻。
+- 已完成：`EXIT-9/10/11` ATR 自适应止损网格（calmar_standard 唯一标尺 + HIST-FULL / CLEAN-CUR 双基线）不立项，维持 hold21；待定项=EXIT 门槛唯一语义。
+
+
+## 12. EXIT-9/10/11 收口与 EXIT 门槛语义待定（2026-08-15）
+
+- ✅ `EXIT-9/10/11` 不立项：双基线复算与官方/干净基线一致；全部 `atr_stop` / `atr_trailing` 变体未过预注册门槛，最接近的 `atr_stop_4.0` 全局 Calmar 仅 +5.41%（HIST-FULL）、CLEAN-CUR 近中性；CLEAN-CUR 后半段弱势段 ATR 止损无改善甚至更差。结论：维持 hold21。
+- ⏳ 待定：两轮 EXIT 门槛语义统一——`Calmar 提升 ≥15%` 应统一为 walk-forward 折上 Calmar 均值的相对提升；样本不足无 fold 时改用「全局 Calmar 绝对差 ≥1.0 且前后半段方向一致」。登记在 `calmar_standard` 待定项，禁止与全局相对提升混用。
+- 队列状态：本批优化候选（DECISION-6 → POOL-2 → LIQ-RATIO-1 → EXIT-9/10/11）已全部走完；转入自然积累，等待 A 通道独立事件 ≥3 或 B 通道 260 天（约 2027-04）。
+

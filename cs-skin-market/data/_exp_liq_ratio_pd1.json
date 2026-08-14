@@ -1,0 +1,141 @@
+{
+ "probe": "LIQ-RATIO-1 P-D-1 factor body",
+ "pre_registered": {
+  "level_factor": "buy_num_last / same-day in_sale_count",
+  "ts_factor": "ratio_w change vs 7 rows prior",
+  "winsorize": "p99",
+  "base_floor": "in_sale >= 200 (price<10000) else 100; buy_num_last >= 3",
+  "fwd": "same item price_history +14/+30 rows (replay-aligned)",
+  "decluster_spacing": ">=30 rows per item",
+  "threshold": "win >=8pp OR avg >=3pp AND monotone",
+  "permutation_trials": 300
+ },
+ "sample": {
+  "eligible_before_decluster": 14301,
+  "p99_winsor": 0.33043,
+  "kept_declustered": 643,
+  "ts_kept_with_change": 472,
+  "ratio_w_summary": {
+   "min": 0.00288,
+   "median": 0.09798,
+   "p75": 0.14186,
+   "max": 0.33043
+  }
+ },
+ "cross_sectional": {
+  "quantile_cutoffs": [
+   0.0713,
+   0.1253
+  ],
+  "groups": {
+   "Q1_low": {
+    "n": 215,
+    "fwd14": {
+     "n": 153,
+     "win_pct": 31.37,
+     "avg_pct": -2.106
+    },
+    "fwd30": {
+     "n": 151,
+     "win_pct": 48.34,
+     "avg_pct": 7.326
+    }
+   },
+   "Q2_mid": {
+    "n": 214,
+    "fwd14": {
+     "n": 166,
+     "win_pct": 34.34,
+     "avg_pct": -2.77
+    },
+    "fwd30": {
+     "n": 162,
+     "win_pct": 33.33,
+     "avg_pct": -4.577
+    }
+   },
+   "Q3_high": {
+    "n": 214,
+    "fwd14": {
+     "n": 172,
+     "win_pct": 23.26,
+     "avg_pct": -6.439
+    },
+    "fwd30": {
+     "n": 166,
+     "win_pct": 25.3,
+     "avg_pct": -5.528
+    }
+   }
+  },
+  "monotone_win14": false,
+  "permutation_fwd14": {
+   "observed_diff": -4.333,
+   "p_greater": 0.9933,
+   "trials": 300
+  },
+  "permutation_fwd30": {
+   "observed_diff": -12.855,
+   "p_greater": 1.0,
+   "trials": 300
+  }
+ },
+ "time_series": {
+  "quantile_cutoffs": [
+   -0.02342,
+   -0.00017
+  ],
+  "groups": {
+   "T1_falling": {
+    "n": 158,
+    "fwd14": {
+     "n": 85,
+     "win_pct": 27.06,
+     "avg_pct": -1.191
+    },
+    "fwd30": {
+     "n": 84,
+     "win_pct": 19.05,
+     "avg_pct": -14.27
+    }
+   },
+   "T2_flat": {
+    "n": 157,
+    "fwd14": {
+     "n": 99,
+     "win_pct": 40.4,
+     "avg_pct": -0.855
+    },
+    "fwd30": {
+     "n": 98,
+     "win_pct": 26.53,
+     "avg_pct": -5.527
+    }
+   },
+   "T3_rising": {
+    "n": 157,
+    "fwd14": {
+     "n": 136,
+     "win_pct": 40.44,
+     "avg_pct": -0.651
+    },
+    "fwd30": {
+     "n": 128,
+     "win_pct": 25.0,
+     "avg_pct": -6.405
+    }
+   }
+  },
+  "monotone_win14": true,
+  "permutation_fwd14": {
+   "observed_diff": 0.539,
+   "p_greater": 0.37,
+   "trials": 300
+  },
+  "permutation_fwd30": {
+   "observed_diff": 7.865,
+   "p_greater": 0.0267,
+   "trials": 300
+  }
+ }
+}

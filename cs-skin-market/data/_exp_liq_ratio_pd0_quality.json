@@ -1,0 +1,136 @@
+{
+ "probe": "LIQ-RATIO-1 P-D-0 data quality gate",
+ "pre_registered_factor": "buy_num_last / same-day in_sale_count",
+ "read_only": true,
+ "coverage": {
+  "rows": 18381,
+  "distinct_good_id": 202,
+  "distinct_item_id": 202,
+  "item_id_null": 0,
+  "date_min": "2026-05-15",
+  "date_max": "2026-08-13",
+  "unique_dates": 91
+ },
+ "buy_num_quality": {
+  "buy_num_last_null": 0,
+  "buy_num_last_zero": 0,
+  "buy_num_last_negative": 0,
+  "buy_num_mean_null": 0,
+  "buy_num_mean_zero": 0,
+  "point_count_min": 4,
+  "point_count_avg": 6.0,
+  "point_count_max": 6
+ },
+ "same_day_in_sale": {
+  "bid_rows": 18381,
+  "in_sale_joined": 18381,
+  "in_sale_join_rate_pct": 100.0,
+  "in_sale_positive_rows": 18381,
+  "in_sale_positive_rate_pct": 100.0
+ },
+ "day_over_day_jump_pct": {
+  "n": 18179,
+  "min": -90.909,
+  "p25": -10.526,
+  "median": 0.0,
+  "p75": 11.429,
+  "p95": 36.364,
+  "max": 500.0
+ },
+ "largest_jumps": [
+  {
+   "item_id": 158,
+   "from_date": "2026-06-23",
+   "to_date": "2026-06-24",
+   "from_buy_num": 1.0,
+   "to_buy_num": 6.0,
+   "pct": 500.0
+  },
+  {
+   "item_id": 201,
+   "from_date": "2026-06-12",
+   "to_date": "2026-06-13",
+   "from_buy_num": 1.0,
+   "to_buy_num": 5.0,
+   "pct": 400.0
+  },
+  {
+   "item_id": 201,
+   "from_date": "2026-05-22",
+   "to_date": "2026-05-23",
+   "from_buy_num": 1.0,
+   "to_buy_num": 4.0,
+   "pct": 300.0
+  },
+  {
+   "item_id": 158,
+   "from_date": "2026-06-03",
+   "to_date": "2026-06-04",
+   "from_buy_num": 2.0,
+   "to_buy_num": 8.0,
+   "pct": 300.0
+  },
+  {
+   "item_id": 201,
+   "from_date": "2026-05-31",
+   "to_date": "2026-06-01",
+   "from_buy_num": 1.0,
+   "to_buy_num": 3.0,
+   "pct": 200.0
+  },
+  {
+   "item_id": 201,
+   "from_date": "2026-05-28",
+   "to_date": "2026-05-29",
+   "from_buy_num": 1.0,
+   "to_buy_num": 3.0,
+   "pct": 200.0
+  },
+  {
+   "item_id": 158,
+   "from_date": "2026-08-01",
+   "to_date": "2026-08-02",
+   "from_buy_num": 1.0,
+   "to_buy_num": 3.0,
+   "pct": 200.0
+  },
+  {
+   "item_id": 127,
+   "from_date": "2026-05-31",
+   "to_date": "2026-06-01",
+   "from_buy_num": 1.0,
+   "to_buy_num": 3.0,
+   "pct": 200.0
+  },
+  {
+   "item_id": 126,
+   "from_date": "2026-05-31",
+   "to_date": "2026-06-01",
+   "from_buy_num": 1.0,
+   "to_buy_num": 3.0,
+   "pct": 200.0
+  },
+  {
+   "item_id": 116,
+   "from_date": "2026-05-22",
+   "to_date": "2026-05-23",
+   "from_buy_num": 1.0,
+   "to_buy_num": 3.0,
+   "pct": 200.0
+  }
+ ],
+ "factor_ready": {
+  "calc_rows": 18381,
+  "calc_rate_pct": 100.0,
+  "ratio_summary": {
+   "n": 18381,
+   "min": 0.002,
+   "p25": 0.075,
+   "median": 0.122,
+   "p75": 0.174,
+   "p95": 0.301,
+   "max": 7.9
+  },
+  "ratio_gt_1_pct": 0.09
+ }
+}

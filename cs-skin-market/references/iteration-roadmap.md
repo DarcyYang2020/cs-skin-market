@@ -6,7 +6,8 @@
 > 变更纪律：每次更新先写版本变更说明，再改映射表/批次/状态。
 
 ## 版本历史
-- **v65（2026-08-14，进行中）**：v2-T8 真基线重跑 + below_floor 吸筹旁路修复——`compute_fusion_decision` 吸筹周期 watch→buy 尊重 `liquidity_filtered`，`_deep_dip_transform` 加防御守卫；真 v2-T8 回放 149 信号（三族闭合 panic 85 / deep_value 18 / accumulate 46，panic 单事件占 57.0%），same_fail（沙漠之鹰|指挥）消失；CLEAN-CUR 改为 `data/_exp_v2t8_win_replay.json` / v2-T8 / 149。详见 decision-log「v2-T8 真基线重跑 + below_floor 吸筹旁路修复」。
+- **v66（2026-08-15，进行中）**：LIQ-RATIO-1 方向证伪收口 + EXIT-9/10/11 ATR 网格不立项——相对挂单率横截面反向、时序无稳定增量；ATR stop/trailing 双基线均未过门槛，维持 hold21；登记两轮 EXIT 门槛语义统一待定项。详见 decision-log「LIQ-RATIO-1 P-D-0/P-D-1：方向证伪」「EXIT-9/10/11 ATR 自适应止损网格」。
+- **v65（2026-08-14，已完成）**：v2-T8 真基线重跑 + below_floor 吸筹旁路修复——`compute_fusion_decision` 吸筹周期 watch→buy 尊重 `liquidity_filtered`，`_deep_dip_transform` 加防御守卫；真 v2-T8 回放 149 信号（三族闭合 panic 85 / deep_value 18 / accumulate 46，panic 单事件占 57.0%），same_fail（沙漠之鹰|指挥）消失；CLEAN-CUR 改为 `data/_exp_v2t8_win_replay.json` / v2-T8 / 149。详见 decision-log「v2-T8 真基线重跑 + below_floor 吸筹旁路修复」。
 - **v64（2026-08-14，已完成）**：族分类唯一事实源 + 中间数废弃——新增 `pipeline/config.py:SIGNAL_FAMILY_TAXONOMY`，`panic / deep_value / accumulate` 三展示键与六细族映射唯一化，j1/j2/sync/attribution/benchmark 全部改为从该表取定义；290/140/163/149 显式标为中间推导、已废弃（后续 v65 把 149 转为 CLEAN-CUR 真基线、150 进入废弃中间数）。详见 decision-log「族分类唯一事实源 + 中间数废弃」。
 - **v63（2026-08-14，已完成）**：双基线落地——HIST-FULL（官方 317，v2-T4/T5）与 CLEAN-CUR 并存；expectancy/benchmark/attribution/J-3 全部挂标签，禁止裸数字。C 通道监测主口径 HIST-FULL，CLEAN-CUR 仅展示参考。详见 decision-log「双基线落地（HIST-FULL / CLEAN-CUR）」。
 - **v62（2026-08-14，进行中）**：v2-T7 流动性地板泄漏修复——below_floor 与 missing 同样禁后置升级，堵住 14 条 45~196 在售量经 panic/accumulate 绕过 200/100 地板的泄漏；新增升级路径测试。详见 decision-log「v2-T7 流动性地板泄漏修复」。

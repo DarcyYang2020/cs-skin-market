@@ -3431,3 +3431,27 @@ Fluxo 25→280 约 11 倍），尖顶后 3 天 -86~94%，与枪皮统计反转�
 - **attribution（CLEAN-CUR，hold21）**：accumulate +129.95pp（n=46）、deep_value +83.80pp（n=18）、panic +65.14pp（n=85）。
 - **验证**：新增 `tests/test_smoke.py::t_accumulation_floor_leak` 钉死「below_floor + 吸筹周期不得升 buy」；`python tests/test_smoke.py` **108 passed / 0 failed / 0 skipped**；pyflakes 仅 test_smoke 存量告警，无新增。
 - **未改红线**：未改阈值/权重/信号族/研究开关默认值；HIST-FULL `item_backtest_full_2025.json` 未覆盖；未 commit（沿用本会话暂缓提交约定）。
+
+
+## LIQ-RATIO-1 P-D-0/P-D-1：方向证伪，不立项（2026-08-15，只读研究，不落地）
+
+- **预注册（外审补强）**：因子=相对挂单率 `buy_num_last / 同日 in_sale_count`；横截面（ratio 水平）与时序（ratio 变化）分开判定；p99 winsorize、`in_sale>=200/100` + `buy_num_last>=3` 基数下限；fwd=回放同源 `+14/+30 rows`；按品 ≥30 rows 去簇；阈值=去簇后极值组 `win>=8pp` 或 `avg>=3pp` 且单调。
+- **P-D-0 数据质量（通过）**：`bid_history` 18,381 行 / 202 品 / 91 天（2026-05-15~08-13）；`buy_num_last` 0 缺失、0 零值/负值；同日 `in_sale_count` join 100% 且 >0 100%。ratio median 0.122 / p95 0.301 / max 7.9，`ratio>1` 仅 0.09%；日间跳变主要来自小基数 1→6、1→5。
+- **P-D-1 结果**：过滤后 14,301 → 去簇 643（时序有变化 472），`p99_winsor=0.33043`。
+  - 横截面（ratio 水平）无增量且方向反：Q1→Q3 fwd14 胜率 31.37%→34.34%→23.26%，avg −2.11%→−2.77%→−6.44%；fwd30 48.34%→33.33%→25.30%，avg +7.33%→−4.58%→−5.53%。高 ratio 品 fwd 收益更差。
+  - 时序（ratio 变化）不成立：T1→T3 fwd14 胜率 27.06%→40.40%→40.44%（形式单调、极值差 13.38pp），但三组 fwd14 avg 全负（−1.19%/−0.86%/−0.65%）；fwd30 19.05%→26.53%→25.00% 不单调，极值均值差 p=0.0267 但 T2 最优、T3 回落，与“ratio 上升=领先买盘”假设矛盾。
+- **结论**：**LIQ-RATIO-1 方向证伪，不立项。** 相对挂单率既非“买盘强度”因子（横截面高 ratio 更差），也非“领先买盘”时序因子（fwd14 仅胜率单点触碰、avg 全负，fwd30 反向）。保留前瞻观察仅用于更多独立事件/更长窗口下复核方向是否反转；**在新增证据前不再投入。**
+- **caveat**：本次前瞻仅覆盖 2026-05-15 后约 91 天（回调/弱势段），与 CLEAN-CUR 的 regime 一致；结论是“该 regime 内方向证伪”，不是全市场证伪。
+- **产物**：`references/probe_liq_ratio_pd0_quality.py` → `data/_exp_liq_ratio_pd0_quality.json`；`references/probe_liq_ratio_pd1.py` → `data/_exp_liq_ratio_pd1.json`（只读，未改引擎/参数/台账/回放产物，未 commit）。
+
+
+## EXIT-9/10/11 ATR 自适应止损网格：不立项，维持 hold21（2026-08-15，只读研究）
+
+- **预注册（外审升级版）**：双基线 HIST-FULL 317 / CLEAN-CUR 149；标尺=唯一口径 simulate + 年化 Calmar，cap0.8 / hold21 / 2% 费 / 回放窗口；变体=`atr_stop` 2.5×/3×/4× + `atr_trailing` 2.5×/3×/4×；门槛=全局 Calmar 提升 ≥15% 或 maxDD 改善 ≥2pp，且收益下降 ≤5pp，且前后半段方向一致。
+- **基线复算对齐**：HIST-FULL hold21 `+200.55% / −9.13% / Calmar 39.20`；CLEAN-CUR hold21 `+257.16% / −7.61% / Calmar 41.51`，均与官方/干净基线一致，确认 EXIT-1 两处 simulate/risk_metrics 口径 bug 未在本链路重现。
+- **结果**：全部 6 个 ATR 变体 `pass_pre_registered_gate=false`；`atr_stop_2.5` 明显更差，`atr_trailing` 全系列大幅损收益；最接近的 `atr_stop_4.0` HIST-FULL Calmar +5.41% / maxDD 改善 +0.16pp / 收益 +6.07pp，CLEAN-CUR Calmar −0.77% / maxDD −0.02pp / 收益 −1.27pp。
+- **机制**：CLEAN-CUR 后半段（2026-06 后弱势段）基线子窗口收益为负，ATR 止损在该段无改善甚至更差；贡献只在部分强势段微弱为正、弱势段为负，无稳定增量。这也复现了 EXIT-1 的「trailing 会提前截断 14~21d 反弹主升段」。
+- **结论**：**EXIT-9/10/11 不立项，维持 hold21 作为组合层退出规则。**
+- **待定项（登记）**：两轮 EXIT 门槛语义不统一——EXIT-1 用「三折 Calmar 均值相对提升」，EXIT-9/10/11 用「全局 Calmar 相对提升」。待定唯一语义：`Calmar 提升 ≥15%` 一律指 walk-forward 折上 Calmar 均值的相对提升；样本不足无 fold 时，改用「全局 Calmar 绝对差 ≥1.0 且前后半段方向一致」，不得混用全局相对提升。
+- **产物**：`references/probe_exit_9_10_11_atr_grid.py` → `data/_exp_exit_9_10_11_atr_grid.json`（只读，未改引擎/阈值/信号族，未 commit）。
+
