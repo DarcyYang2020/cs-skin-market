@@ -252,6 +252,7 @@ async def page_dashboard(request: Request):
                 "c_flagged": len(_flagged),
                 "c_latest_month": (_flagged[-1].get("month") if _flagged else None),
                 "c_latest_flags": (_flagged[-1].get("flags") or []) if _flagged else [],
+                "optimization_view": _j2.get("optimization_view"),
             }
         except Exception:
             _engine_status = None
@@ -354,7 +355,7 @@ async def page_watchlist(request: Request):
         if wq:
             filtered = [i for i in filtered if wq in (i.get("name") or "").lower()]
         # ---- 买点接近度（自选快照 proximity，供排序）----
-        for _it in filtered:
+        for _it in all_items:
             _prox = None
             _wsum = None
             if _it.get("latest_summary"):
@@ -427,12 +428,40 @@ async def page_watchlist(request: Request):
                         "collected_at": _it.get("snapshot_created_at") or "",
                     })
         _near.sort(key=lambda x: x["score"], reverse=True)
+
+        # ---- 今日 buy 信号（A-3 补充）：直接展示自选当前 fusion_action=buy/oversold_buy ----
+        _buy_now = []
+        _buy_ev_ids = {_e.get("item_id") for _e in _buy_ev if _e.get("item_id")}
+        for _it in all_items:
+            _wsum = _it.get("wl_summary") or {}
+            _act = _wsum.get("fusion_action") or _wsum.get("action")
+            if _act in ("buy", "oversold_buy") and _it.get("id") not in _buy_ev_ids:
+                _detail_parts = []
+                if _wsum.get("score") is not None:
+                    _detail_parts.append("评分 {:.1f}".format(float(_wsum.get("score"))))
+                if _wsum.get("valuation_tier"):
+                    _detail_parts.append(str(_wsum.get("valuation_tier")))
+                if _wsum.get("cycle_phase"):
+                    _detail_parts.append(str(_wsum.get("cycle_phase")))
+                if _it.get("latest_price"):
+                    _detail_parts.append("¥{:.2f}".format(float(_it.get("latest_price"))))
+                _buy_now.append({
+                    "item_id": _it["id"],
+                    "name": _it["name"],
+                    "action": _act,
+                    "score": float(_wsum.get("score") or 0),
+                    "detail": " · ".join(_detail_parts) or "买入信号",
+                    "collected_at": _it.get("snapshot_created_at") or "",
+                })
+        _buy_now.sort(key=lambda x: x["score"], reverse=True)
+
         monitor = {
             "near_buys": _near[:5],
             "broken": _broken[:5],
             "buy_events": _buy_ev[:5],
+            "buy_signals": _buy_now[:5],
             "warn_events": _warn_ev[:5],
-            "has_focus": bool(_buy_ev or _near or _broken or _warn_ev),
+            "has_focus": bool(_buy_ev or _buy_now or _near or _broken or _warn_ev),
             "today": _today_str,
         }
 
@@ -1573,6 +1602,7 @@ async def api_discover_refresh_item(request: Request):
         if len(prices) < 14:
             return JSONResponse({"ok": False, "error": "K 线不足 14 天（%s）" % len(prices)})
         supply_hist = [k.in_sale_count for k in daily_bars] if daily_bars else []
+        supply_depth_missing = db.latest_supply_missing(daily_bars)
         ms = market_snapshot()
         try:
             _conn_rb = db.get_conn()
@@ -1585,7 +1615,7 @@ async def api_discover_refresh_item(request: Request):
             _recent_buys = []
         analysis = await asyncio.get_running_loop().run_in_executor(
             None, lambda: _ia.run_item_analysis(
-                name=exact_name, prices=prices, supply_hist=supply_hist or None,
+                name=exact_name, prices=prices, supply_hist=supply_hist or None, supply_depth_missing=supply_depth_missing,
                 order_book=getattr(item, "order_book", None),
                 index_change_7d=ms["chg7"], market_history=ms["history"],
                 market_pct_90d=ms["pct"], market_zscore=ms["z"],

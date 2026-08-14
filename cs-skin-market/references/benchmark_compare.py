@@ -32,21 +32,24 @@ b1v2 = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(b1v2)
 
 from pipeline import db
+from pipeline.config import display_key_for_label  # noqa: E402
 
 REPLAY = ROOT / "data" / "item_backtest_full_2025.json"
+REPLAY_CLEAN = ROOT / "data" / "_exp_v2t7_win_replay.json"
 OUT = ROOT / "data" / "benchmark_compare.json"
 HOLD = 21
 COST = 0.02
 
 
-def load_signals():
-    d = json.load(io.open(REPLAY, encoding="utf-8"))
+def load_signals(replay_path=None):
+    path = Path(replay_path) if replay_path else REPLAY
+    d = json.load(io.open(path, encoding="utf-8"))
     sigs = []
     for s in d["signals"]:
         fwd = s.get("fwd_series") or []
         if not fwd:
             continue
-        st = b1v2.classify(s.get("action_label"))
+        st = display_key_for_label(s.get("action_label"))
         sigs.append({
             "date": date.fromisoformat(s["date"]), "item": s["name"],
             "entry": s["entry_price"], "limit": s.get("position_limit") or 0.0,
@@ -147,14 +150,13 @@ def buy_hold(prices_by_item, start, end):
     return out
 
 
-def main():
-    sigs, args = load_signals()
-    print("signals: %d | pool: %s | replay window: %s ~ %s" % (
-        len(sigs), args.get("pool"), args.get("start"), args.get("end")))
+def build_benchmark(replay_path, baseline_label):
+    sigs, args = load_signals(replay_path)
+    print("[%s] signals: %d | pool: %s | replay window: %s ~ %s" % (
+        baseline_label, len(sigs), args.get("pool"), args.get("start"), args.get("end")))
     if not sigs:
-        raise SystemExit("no signals")
+        raise SystemExit("no signals for " + baseline_label)
 
-    # 策略腿: cap0.8 组合模拟（现行政策）+ 无风控对照（仅作信息参考，实盘不采用）
     sim = b1v2.simulate(sigs, cap=0.8)
     sim_nocap = b1v2.simulate(sigs, cap=None)
     strat_curve = [(c[0], c[2]) for c in sim["curve"]]
@@ -164,7 +166,6 @@ def main():
     active_start = min(s["date"] for s in sigs)
     active_end = max(s["date"] for s in sigs) + timedelta(days=HOLD)
 
-    # 池内等权买入持有
     names = sorted({s["item"] for s in sigs})
     idmap = id_by_name(names)
     prices = price_series(list(idmap.keys()))
@@ -182,33 +183,43 @@ def main():
             "market_index": metrics(ffill_curve(mkt, ws, we)),
         }
 
-    # 信号层参考统计
     n14 = [s for s in sigs if s.get("net14") is not None]
     wins = sum(1 for s in n14 if s["net14"] > 0)
     out = {
+        "baseline": baseline_label,
         "generated": __import__("datetime").datetime.now().isoformat(timespec="minutes"),
-        "note": "策略腿=去量引擎 v2 信号组合模拟（cap0.8/hold21/手续费2%/拒绝优先级 panic>accumulate>deep_value，"
+        "note": "策略腿=信号组合模拟（cap0.8/hold21/手续费2%/拒绝优先级 panic>accumulate>deep_value，"
                 "权益曲线未部署资金按现金计，首信号日前无仓位故 full/active 同区间）；strategy_nocap_ref=同模拟去掉 cap 上限"
-                "（仅信息参考，实盘不采用，回撤 -61% 不可行）；pool_buy_hold=策略池 95 品等权买入持有"
+                "（仅信息参考，实盘不采用）；pool_buy_hold=策略池等权买入持有"
                 "（price_history.price_rmb 前向填充，2025 低价品暴涨主导，未计一次性 2% 成本）；"
-                "market_index=大盘指数同期（高价品权重，2025-10 五合一崩盘 maxDD -58%）。全量 332 信号（2025-08-10~2026-08-05，365 天窗口）。"
-                "结论参照：策略相对大盘大幅超额，但绝对收益低于池内等权买入持有——引擎的边际价值在风险控制"
-                "（maxDD -13.05% vs 池 -55.59% / 指数 -58.21%），非裸多收益。",
+                "market_index=大盘指数同期。本基线输出必须挂 baseline 标签，禁止裸数字。",
+        "caveat": "HIST-FULL: contains ~50% missing-depth signals" if baseline_label == "HIST-FULL"
+                  else "CLEAN-CUR: clean, panic single event 55.3%, missing 2026-02~04 bull segment",
         "replay": {"signals": len(sigs), "pool": args.get("pool"), "start": args.get("start"), "end": args.get("end")},
         "windows": windows,
         "signal_stats": {"n14": len(n14), "win14_pct": round(100.0 * wins / len(n14), 1),
                          "avg14": round(sum(s["net14"] for s in n14) / len(n14), 2)},
     }
+    return out
+
+
+def main():
+    hist = build_benchmark(REPLAY, "HIST-FULL")
+    clean = build_benchmark(REPLAY_CLEAN, "CLEAN-CUR")
+    out = {k: v for k, v in hist.items()}
+    out["baselines"] = {"HIST-FULL": hist, "CLEAN-CUR": clean}
     with io.open(OUT, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, indent=1)
     print("written:", OUT)
 
-    for wname, w in windows.items():
-        print("== window %s (%s ~ %s) ==" % (wname, w["range"][0], w["range"][1]))
-        for leg in ("strategy", "strategy_nocap_ref", "pool_buy_hold", "market_index"):
-            m = w[leg]
-            print("  %-14s total=%8.2f%%  maxDD=%7.2f%%  days=%d  ann=%s" % (
-                leg, m["total_return_pct"], m["max_drawdown_pct"], m["days"], m["annualized_pct"]))
+    for label, b in (("HIST-FULL", hist), ("CLEAN-CUR", clean)):
+        print("== baseline %s ==" % label)
+        for wname, w in b["windows"].items():
+            print("  window %s (%s ~ %s)" % (wname, w["range"][0], w["range"][1]))
+            for leg in ("strategy", "strategy_nocap_ref", "pool_buy_hold", "market_index"):
+                m = w[leg]
+                print("    %-14s total=%8.2f%%  maxDD=%7.2f%%  days=%d  ann=%s" % (
+                    leg, m["total_return_pct"], m["max_drawdown_pct"], m["days"], m["annualized_pct"]))
 
 
 if __name__ == "__main__":

@@ -22,6 +22,13 @@ TODAY = date.today().isoformat()
 
 MOODS = ("恐惧", "中性", "贪婪")
 
+ACTIVE_ITEM_COND = """
+    (i.in_watchlist=1 OR i.holding=1
+     OR COALESCE(i.notes, '') NOT LIKE '%存世量过低%'
+        AND COALESCE(i.notes, '') NOT LIKE '%活跃池淘汰%'
+        AND COALESCE(i.notes, '') NOT LIKE '%贴纸模块停采%')
+"""
+
 
 def _q(c, sql, args=()):
     try:
@@ -75,10 +82,15 @@ def run_checks(db_path=None):
         rows.append(("大盘指数", "FAIL", "market_index 无数据或查询失败"))
 
     # 2. 单品 K 线（2026-08-07 Phase 1b: 基线从自选品改为"历史有在售量的品"，曾漏检非自选品停更）
-    #    基线=历史曾有在售量的品（动态，贴纸/角色/无sell_price图表的品不计）；阈值85%：
+    #    2026-08-13 起基线改为活跃池品：自选/持仓豁免 + 排除存世量过低/活跃池淘汰/贴纸模块停采。
+    #    贴纸停采后历史在售量仍留在 price_history，若仍按"历史有在售量"统计会把已停采贴纸计入分母。
     #    低于此即提示当日抓取不完整（如 2026-08-03 回归 92→23，本检查应 FAIL 告警）
-    expect = _q(c, "SELECT COUNT(DISTINCT item_id) FROM price_history WHERE in_sale_count IS NOT NULL AND in_sale_count>0")[0][0]
-    kline = _q(c, "SELECT date, COUNT(DISTINCT item_id) n FROM price_history WHERE date>=date('now','-7 day') GROUP BY date ORDER BY date DESC LIMIT 1")
+    expect = _cnt(c, f"SELECT COUNT(*) FROM items i WHERE i.good_id>0 AND {ACTIVE_ITEM_COND}")
+    kline = _q(c, f"""SELECT p.date, COUNT(DISTINCT p.item_id) n
+                      FROM price_history p JOIN items i ON i.id=p.item_id
+                      WHERE i.good_id>0 AND {ACTIVE_ITEM_COND}
+                        AND p.date>=date('now','-7 day')
+                      GROUP BY p.date ORDER BY p.date DESC LIMIT 1""")
     if kline and kline[0][0] != "__ERR__":
         d, n = kline[0]
         age = _days_since(d)
@@ -88,9 +100,9 @@ def run_checks(db_path=None):
         if age > 1:
             bad.append(f"latest={d} 距今{age}天")
         # B-5（2026-08-10）失败品清单：当日未覆盖的基线品逐品列出，便于排查
-        miss = _q(c, """SELECT i.name FROM items i
-            WHERE i.good_id > 0 AND i.id IN (SELECT DISTINCT item_id FROM price_history WHERE in_sale_count IS NOT NULL AND in_sale_count > 0)
-              AND i.id NOT IN (SELECT DISTINCT item_id FROM price_history WHERE date = ?) ORDER BY i.id""", (d,))
+        miss = _q(c, f"""SELECT i.name FROM items i
+            WHERE i.good_id > 0 AND {ACTIVE_ITEM_COND}
+              AND i.id NOT IN (SELECT DISTINCT p.item_id FROM price_history p WHERE p.date = ?) ORDER BY i.id""", (d,))
         miss = [m[0] for m in miss if m[0] != "__ERR__"]
         if miss:
             bad.append(f"缺{len(miss)}品" + (f": {', '.join(miss[:10])}" + ("…" if len(miss) > 10 else "")))
@@ -100,7 +112,12 @@ def run_checks(db_path=None):
         rows.append(("单品K线", "FAIL", "近7日无 price_history"))
 
     # 3. 在售量覆盖（2026-08-07 去量：原悠悠成交量检查改为 in_sale_count）
-    sup = _q(c, "SELECT date, COUNT(*) n FROM price_history WHERE in_sale_count>0 AND in_sale_count IS NOT NULL AND date>=date('now','-7 day') GROUP BY date ORDER BY date DESC LIMIT 1")
+    sup = _q(c, f"""SELECT p.date, COUNT(*) n
+                    FROM price_history p JOIN items i ON i.id=p.item_id
+                    WHERE i.good_id>0 AND {ACTIVE_ITEM_COND}
+                      AND p.in_sale_count>0 AND p.in_sale_count IS NOT NULL
+                      AND p.date>=date('now','-7 day')
+                    GROUP BY p.date ORDER BY p.date DESC LIMIT 1""")
     if sup and sup[0][0] != "__ERR__":
         d, n = sup[0]
         age = _days_since(d)
@@ -110,9 +127,9 @@ def run_checks(db_path=None):
         if age > 1:
             bad.append(f"latest={d} 距今{age}天")
         # B-5（2026-08-10）失败品清单：当日无在售量的基线品逐品列出
-        miss = _q(c, """SELECT i.name FROM items i
-            WHERE i.good_id > 0 AND i.id IN (SELECT DISTINCT item_id FROM price_history WHERE in_sale_count IS NOT NULL AND in_sale_count > 0)
-              AND i.id NOT IN (SELECT DISTINCT item_id FROM price_history WHERE date = ? AND in_sale_count > 0) ORDER BY i.id""", (d,))
+        miss = _q(c, f"""SELECT i.name FROM items i
+            WHERE i.good_id > 0 AND {ACTIVE_ITEM_COND}
+              AND i.id NOT IN (SELECT DISTINCT p.item_id FROM price_history p WHERE p.date = ? AND p.in_sale_count > 0) ORDER BY i.id""", (d,))
         miss = [m[0] for m in miss if m[0] != "__ERR__"]
         if miss:
             bad.append(f"缺{len(miss)}品" + (f": {', '.join(miss[:10])}" + ("…" if len(miss) > 10 else "")))

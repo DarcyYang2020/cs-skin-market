@@ -221,6 +221,14 @@
 - 贴纸模块降级 ✅（2026-08-13，见 decision-log「贴纸模块降级」）：停采停扫 + 观察桶冻结 + 保留静态研究资产；159 个非自选/持仓贴纸标记 `贴纸模块停采`，discover 移除贴纸榜与热力图贴纸行，每日 W-3 跟踪调度摘除。零引擎参数。
 - BID-1 阶段 0 ✅（2026-08-13，只读，见 decision-log「BID-1 阶段 0」）：`bid_history` 18,381 行回看完成；当前无单调求购因子信号，维持观察累积、不接 buy。产物 `data/_exp_bid_1_stage0.json`。
 - CROSS-1 阶段 0 + P0/P1 质检 + 系列/存世量盘点 ✅（2026-08-13，只读，见 decision-log同日条目）：跨平台价差与锚校准已量化，P0/P1 新表质检全通过，系列广度与存世量趋势已归档。产物 `data/_exp_cross_1_stage0.json`、`_exp_data_reserve_quality.json`、`_exp_series_survive_inventory.json`。
+- 优化机会 #5/#8/#3 阶段0 只读探针 ✅（2026-08-14，见 decision-log「优化机会 #5/#8/#3 阶段0 只读探针」）：#5 供给收缩三态分解（近期求购截面：价涨量缩 fwd14 win28.9%/mean-4.8 最差，价跌量缩 win38.5%/+3.1 相对最好，价平态即现引擎吸筹口径 win22.2%/-5.7）；#8 信号族共现矩阵（76/94 品为多族品，同日多族因固定优先级未在回放可观测，固定优先级最优性未判定）；#3 情绪口径校准阶段0（真实贪婪 vs 价格近似 spearman 0.092、bias +16.76、sent≥75 真实32天/近似0天，口径断层已量化）。产物 `data/_exp_supply_three_state.json`、`_exp_signal_family_matrix.json`、`_exp_sentiment_calibration_stage0.json`。零引擎参数。
+- #6 成本影子 + #1 期望+Calmar 治理口径 ✅（2026-08-14，见 decision-log「#6 成本影子 + #1 期望+Calmar 治理口径」）：仪表盘期望卡片并排展示 3% 保守成本影子（生产 2% 口径不变）；J-2 C 通道增加月度/族级期望负告警维度，新增 optimization_view 展示回放期望与策略 Calmar（active 37.38/maxDD −9.13）。零引擎参数，冒烟 104/0/0。
+- #3/#5 展示层研究口径标注 ✅（2026-08-14，见 decision-log「#3/#5 展示层研究口径标注」）：单品报告在恐慌结论标注情绪口径断层、在供给收缩/吸筹结论标注三态分解，黄色提示块明确「仅标注，不改变决策」；`research_metrics` 只读字段 + `_fd_display`/`analysis.html` 共用，快照与重建口径一致。零引擎参数，冒烟 104/0/0。
+- 系统级主指标贯穿 ✅（2026-08-14，见 decision-log「系统级主指标贯穿」）：`PARAM_REGIME.north_star` 固定「期望+Calmar/maxDD 为主指标、胜率为下限」，期望卡展示策略/池内等权/大盘的 active 风险调整后收益，`/checkup` 增加主指标摘要与月度期望列；收益增强器路线先走 EXIT-1 / #5-down / 族期望加权仓位的 A2 验证，不直接改引擎。零引擎参数，冒烟 104/0/0。
+- EXIT-1 正式 A2 关闭 ✅（2026-08-14，见 decision-log「EXIT-1 正式 A2 结果」）：317 信号、3 折 walk-forward + 事件级去簇 + 1000 次置换；hold21 基线 Calmar 7.68，所有 trailing/chandelier/regime 变体均未过门槛，退出规则维持 hold21。零引擎参数。
+- 周期权重 Calmar 重评分 + #10 双轨收敛 ✅（2026-08-14，见 decision-log「周期权重 Calmar 重评分 + #10 双轨收敛」）：周期相位 Calmar 洗盘 5.35 > 吸筹 3.19 > 拉升 1.07，支持现行权重反转；`market_context` 统一接受 `[(date,value)]` 与 `[value]` 两种口径，消除旧值列表路径 fallback traceback。零引擎参数，冒烟 104/0/0。
+- 双基线展示/同步落地 ✅（2026-08-14，见 decision-log「双基线落地：HIST-FULL / CLEAN-CUR」）：HIST-FULL（官方 317，v2-T4/T5，含缺失深度污染）与 CLEAN-CUR（150，v2-T7，panic 单事件占 55.3%）并存；expectancy/benchmark/attribution/J-3 全部挂基线标签，C 通道监测主口径 HIST-FULL、CLEAN-CUR 仅展示参考。零引擎参数。
+
 ## 附录：与「评估指标体系第一性审计」的边界
 
 本评估直接引用、未重跑：六维权重（位置 40/周期 25/流动性 15/概率 20）、估值分位边界、供给吸筹/派发判定、评级切分（代码口径 8/6.5/4.5）、绩效口径（win14/30、net 2%）、持仓管理矩阵参数、TH/情绪/跌幅/牛熊结论、周期反转/panic 分级/概率去 z（2026-08-10 四项审计）。审计后新增的展示层改动（如 F-3.14 已止损感知）只审「改动本身」——见 E-1/E-2。

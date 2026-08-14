@@ -1,9 +1,10 @@
 {
- "generated": "2026-08-10",
+ "generated": "2026-08-14",
  "window": 3,
  "total_signals": 317,
  "note": "去量引擎 v2 回放同源（item_backtest_full_2025.json）；事件簇数=±3天去簇；细族按 action_label 关键词，展示键按「恐慌/深值」匹配（与 config.ITEM_EXPECTANCY_STATS 同口径，config 由 sync_expectancy_config.py 同步生成）",
  "source": "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\item_backtest_full_2025.json",
+ "baseline": "HIST-FULL",
  "panic_resonance": {
   "signals": 44,
   "events": 1,
@@ -47,7 +48,7 @@
   "avg14": 11.55,
   "win30": 63.6,
   "avg30": 51.51,
-  "match": "深值"
+  "match": "深值企稳"
  },
  "supply_accum": {
   "signals": 142,
@@ -62,7 +63,7 @@
   "avg14": 10.07,
   "win30": 72.9,
   "avg30": 25.56,
-  "match": "供给收缩"
+  "match": "供给收缩吸筹"
  },
  "deep_dip": {
   "signals": 34,
@@ -77,7 +78,7 @@
   "avg14": 13.88,
   "win30": 44.1,
   "avg30": 9.55,
-  "match": "深度回调"
+  "match": "深度回调低吸"
  },
  "base": {
   "signals": 22,
@@ -92,7 +93,7 @@
   "avg14": 4.62,
   "win30": 45.5,
   "avg30": 5.71,
-  "match": "其余(基础分批)"
+  "match": "基础分批"
  },
  "display_keys": {
   "panic": {
@@ -145,6 +146,310 @@
    "ci14_hi": 69.5,
    "win30": 64.8,
    "avg30": 20.55
+  }
+ },
+ "baselines": {
+  "HIST-FULL": {
+   "generated": "2026-08-14",
+   "window": 3,
+   "total_signals": 317,
+   "note": "去量引擎 v2 回放同源（item_backtest_full_2025.json）；事件簇数=±3天去簇；细族按 action_label 关键词，展示键按「恐慌/深值」匹配（与 config.ITEM_EXPECTANCY_STATS 同口径，config 由 sync_expectancy_config.py 同步生成）",
+   "source": "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\item_backtest_full_2025.json",
+   "baseline": "HIST-FULL",
+   "panic_resonance": {
+    "signals": 44,
+    "events": 1,
+    "unique_dates": 6,
+    "max_cluster_share": 1.0,
+    "date_range": [
+     "2026-05-22",
+     "2026-05-27"
+    ],
+    "win14": 100.0,
+    "avg14": 44.29,
+    "win30": 75.0,
+    "avg30": 33.67,
+    "match": "恐慌共振"
+   },
+   "panic_easing": {
+    "signals": 48,
+    "events": 1,
+    "unique_dates": 3,
+    "max_cluster_share": 1.0,
+    "date_range": [
+     "2026-05-28",
+     "2026-05-31"
+    ],
+    "win14": 81.2,
+    "avg14": 16.49,
+    "win30": 77.1,
+    "avg30": 10.87,
+    "match": "恐慌退潮"
+   },
+   "deep_value": {
+    "signals": 27,
+    "events": 6,
+    "unique_dates": 14,
+    "max_cluster_share": 0.3704,
+    "date_range": [
+     "2025-11-14",
+     "2026-07-12"
+    ],
+    "win14": 63.0,
+    "avg14": 11.55,
+    "win30": 63.6,
+    "avg30": 51.51,
+    "match": "深值企稳"
+   },
+   "supply_accum": {
+    "signals": 142,
+    "events": 9,
+    "unique_dates": 39,
+    "max_cluster_share": 0.9296,
+    "date_range": [
+     "2025-11-18",
+     "2026-07-22"
+    ],
+    "win14": 65.5,
+    "avg14": 10.07,
+    "win30": 72.9,
+    "avg30": 25.56,
+    "match": "供给收缩吸筹"
+   },
+   "deep_dip": {
+    "signals": 34,
+    "events": 3,
+    "unique_dates": 9,
+    "max_cluster_share": 0.9412,
+    "date_range": [
+     "2025-11-23",
+     "2026-06-21"
+    ],
+    "win14": 58.8,
+    "avg14": 13.88,
+    "win30": 44.1,
+    "avg30": 9.55,
+    "match": "深度回调低吸"
+   },
+   "base": {
+    "signals": 22,
+    "events": 7,
+    "unique_dates": 14,
+    "max_cluster_share": 0.6818,
+    "date_range": [
+     "2025-11-22",
+     "2026-06-12"
+    ],
+    "win14": 54.5,
+    "avg14": 4.62,
+    "win30": 45.5,
+    "avg30": 5.71,
+    "match": "基础分批"
+   },
+   "display_keys": {
+    "panic": {
+     "signals": 92,
+     "events": 1,
+     "unique_dates": 9,
+     "max_cluster_share": 1.0,
+     "date_range": [
+      "2026-05-22",
+      "2026-05-31"
+     ],
+     "n": 92,
+     "win14": 90.2,
+     "avg14": 29.79,
+     "ci14_lo": 82.4,
+     "ci14_hi": 94.8,
+     "win30": 76.1,
+     "avg30": 21.78
+    },
+    "deep_value": {
+     "signals": 27,
+     "events": 6,
+     "unique_dates": 14,
+     "max_cluster_share": 0.3704,
+     "date_range": [
+      "2025-11-14",
+      "2026-07-12"
+     ],
+     "n": 27,
+     "win14": 63.0,
+     "avg14": 11.55,
+     "ci14_lo": 44.2,
+     "ci14_hi": 78.5,
+     "win30": 63.6,
+     "avg30": 51.51
+    },
+    "accumulate": {
+     "signals": 198,
+     "events": 12,
+     "unique_dates": 53,
+     "max_cluster_share": 0.7525,
+     "date_range": [
+      "2025-11-18",
+      "2026-07-22"
+     ],
+     "n": 198,
+     "win14": 63.1,
+     "avg14": 10.12,
+     "ci14_lo": 56.2,
+     "ci14_hi": 69.5,
+     "win30": 64.8,
+     "avg30": 20.55
+    }
+   }
+  },
+  "CLEAN-CUR": {
+   "generated": "2026-08-14",
+   "window": 3,
+   "total_signals": 150,
+   "note": "CLEAN-CUR baseline (C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\_exp_v2t7_win_replay.json): same display-key mapping as HIST-FULL",
+   "source": "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\_exp_v2t7_win_replay.json",
+   "baseline": "CLEAN-CUR",
+   "panic_resonance": {
+    "signals": 42,
+    "events": 2,
+    "unique_dates": 8,
+    "max_cluster_share": 0.9524,
+    "date_range": [
+     "2025-10-23",
+     "2026-05-27"
+    ],
+    "win14": 100.0,
+    "avg14": 46.79,
+    "win30": 81.0,
+    "avg30": 37.72,
+    "match": "恐慌共振"
+   },
+   "panic_easing": {
+    "signals": 43,
+    "events": 1,
+    "unique_dates": 3,
+    "max_cluster_share": 1.0,
+    "date_range": [
+     "2026-05-28",
+     "2026-05-31"
+    ],
+    "win14": 81.4,
+    "avg14": 16.58,
+    "win30": 83.7,
+    "avg30": 12.34,
+    "match": "恐慌退潮"
+   },
+   "deep_value": {
+    "signals": 18,
+    "events": 5,
+    "unique_dates": 10,
+    "max_cluster_share": 0.4444,
+    "date_range": [
+     "2025-11-14",
+     "2026-07-12"
+    ],
+    "win14": 50.0,
+    "avg14": 14.75,
+    "win30": 61.5,
+    "avg30": 66.67,
+    "match": "深值企稳"
+   },
+   "supply_accum": {
+    "signals": 10,
+    "events": 8,
+    "unique_dates": 10,
+    "max_cluster_share": 0.2,
+    "date_range": [
+     "2025-09-13",
+     "2026-07-17"
+    ],
+    "win14": 60.0,
+    "avg14": 45.36,
+    "win30": 66.7,
+    "avg30": 52.37,
+    "match": "供给收缩吸筹"
+   },
+   "deep_dip": {
+    "signals": 33,
+    "events": 2,
+    "unique_dates": 8,
+    "max_cluster_share": 0.9697,
+    "date_range": [
+     "2025-11-23",
+     "2026-06-21"
+    ],
+    "win14": 60.6,
+    "avg14": 14.43,
+    "win30": 45.5,
+    "avg30": 10.41,
+    "match": "深度回调低吸"
+   },
+   "base": {
+    "signals": 4,
+    "events": 4,
+    "unique_dates": 4,
+    "max_cluster_share": 0.25,
+    "date_range": [
+     "2025-11-22",
+     "2026-06-12"
+    ],
+    "win14": 75.0,
+    "avg14": 11.87,
+    "win30": 50.0,
+    "avg30": 7.94,
+    "match": "基础分批"
+   },
+   "display_keys": {
+    "panic": {
+     "signals": 85,
+     "events": 2,
+     "unique_dates": 11,
+     "max_cluster_share": 0.9765,
+     "date_range": [
+      "2025-10-23",
+      "2026-05-31"
+     ],
+     "n": 85,
+     "win14": 90.6,
+     "avg14": 31.51,
+     "ci14_lo": 82.5,
+     "ci14_hi": 95.2,
+     "win30": 82.4,
+     "avg30": 24.88
+    },
+    "deep_value": {
+     "signals": 18,
+     "events": 5,
+     "unique_dates": 10,
+     "max_cluster_share": 0.4444,
+     "date_range": [
+      "2025-11-14",
+      "2026-07-12"
+     ],
+     "n": 18,
+     "win14": 50.0,
+     "avg14": 14.75,
+     "ci14_lo": 29.0,
+     "ci14_hi": 71.0,
+     "win30": 61.5,
+     "avg30": 66.67
+    },
+    "accumulate": {
+     "signals": 47,
+     "events": 10,
+     "unique_dates": 21,
+     "max_cluster_share": 0.7021,
+     "date_range": [
+      "2025-09-13",
+      "2026-07-17"
+     ],
+     "n": 47,
+     "win14": 61.7,
+     "avg14": 20.79,
+     "ci14_lo": 47.4,
+     "ci14_hi": 74.2,
+     "win30": 50.0,
+     "avg30": 18.41
+    }
+   }
   }
  }
 }

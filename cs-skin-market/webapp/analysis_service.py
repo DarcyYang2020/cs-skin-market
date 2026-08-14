@@ -56,11 +56,14 @@ def _history_to_bars(rows):
     bars = []
     for r in rows:
         price = float(r["price_rmb"] or 0)
+        _raw_sale = r["in_sale_count"]
         bars.append(_types.SimpleNamespace(
             ts=0, date=r["date"], close=price, high=price, low=price,
             volume=float(r["volume_day"] or 0),
-            in_sale_count=int(r["in_sale_count"] or 0),  # 去量: 在售量为唯一量源（勿用 volume_total）
+            in_sale_count=int(_raw_sale) if _raw_sale is not None else 0,  # 去量: 在售量为唯一量源（勿用 volume_total）
             tx_amount=0, tx_count=0, survive=0,
+            _in_sale_raw=_raw_sale,
+            in_sale_missing=db.supply_depth_missing(_raw_sale, r["date"]),
         ))
     return bars
 
@@ -464,7 +467,7 @@ def save_analysis_result(analysis, kline_stale_days=None, kline_stale_date="", c
         trend_score = th.get("score", 0)
         # 2026-08-12 口径修复：快照渲染复用 build_analysis_ctx 同款展示层注入
         # （期望徽章/regime 分层/决策链 trace/供给语义），discover 弹窗与 6h 缓存命中报告与重建口径一致。
-        fd = _fd_display(analysis.fusion_decision)
+        fd = _fd_display(analysis.fusion_decision, analysis)
         supply = _supply_display(getattr(analysis, "supply_analysis", None), getattr(analysis, "position", None))
         report_html = templates.get_template("partials/analysis.html").render({
             "name": analysis.name,
@@ -548,6 +551,7 @@ async def analyze_fresh(item, good_id, exact_name, *, db_item_id=None, apply_anc
         daily_bars = anchor_override(daily_bars, price_rmb, label=exact_name)
         price_history = [k.close for k in daily_bars if k.close > 0] if daily_bars else []
     supply_history = [k.in_sale_count for k in daily_bars] if daily_bars else []
+    supply_depth_missing = db.latest_supply_missing(daily_bars)
 
     ms = market_snapshot()
     market_history = ms["history"]
@@ -592,6 +596,7 @@ async def analyze_fresh(item, good_id, exact_name, *, db_item_id=None, apply_anc
         name=exact_name,
         prices=price_history if price_history else ([price_rmb] if allow_single_price else []),
         supply_hist=supply_history if supply_history else None,
+        supply_depth_missing=supply_depth_missing,
         order_book=item.order_book,
         index_change_7d=idx.change_7d,
         market_history=market_history,
@@ -746,6 +751,51 @@ def _load_expectancy_by_regime():
     return _data
 
 
+
+_COST_SHADOW_CACHE = {"mtime": 0.0, "data": None}
+
+
+def _load_cost_shadow():
+    """Load the 3% cost shadow artifact (display-only; production 2% cost unchanged)."""
+    _p = Path(__file__).resolve().parent.parent / "data" / "_exp_cost_shadow_3pct.json"
+    try:
+        _mtime = _p.stat().st_mtime
+    except OSError:
+        return None
+    if _COST_SHADOW_CACHE["mtime"] == _mtime:
+        return _COST_SHADOW_CACHE["data"]
+    try:
+        with io.open(_p, "r", encoding="utf-8") as _f:
+            _data = json.load(_f)
+    except Exception:
+        _COST_SHADOW_CACHE.update(mtime=_mtime, data=None)
+        return None
+    _COST_SHADOW_CACHE.update(mtime=_mtime, data=_data)
+    return _data
+
+
+_BENCHMARK_VIEW_CACHE = {"mtime": 0.0, "data": None}
+
+
+def _load_benchmark_view():
+    """只读加载 data/benchmark_compare.json（组合风险调整后收益双基线展示），mtime 缓存。"""
+    _p = Path(__file__).resolve().parent.parent / "data" / "benchmark_compare.json"
+    try:
+        _mtime = _p.stat().st_mtime
+    except OSError:
+        return None
+    if _BENCHMARK_VIEW_CACHE["mtime"] == _mtime:
+        return _BENCHMARK_VIEW_CACHE["data"]
+    try:
+        with io.open(_p, "r", encoding="utf-8") as _f:
+            _data = json.load(_f)
+    except Exception:
+        _BENCHMARK_VIEW_CACHE.update(mtime=_mtime, data=None)
+        return None
+    _BENCHMARK_VIEW_CACHE.update(mtime=_mtime, data=_data)
+    return _data
+
+
 def market_expectancy_card():
     """当前市场状态 × 信号族期望（外部常驻卡片，2026-08-12 从单品报告抽离）。
 
@@ -754,7 +804,7 @@ def market_expectancy_card():
 
     纯展示：状态桶 = market_context.state_bucket（与单品报告同口径三输入）；
     当前桶分层 = B-1 产物 _exp_expectancy_by_regime.json（六态×族 n/win14/avg30，net 已扣 2%）；
-    全局 = config.ITEM_EXPECTANCY_STATS（365d 回放单一事实源）。产物缺失静默降级。
+    全局 = config.ITEM_EXPECTANCY_STATS（HIST-FULL 基线）。产物缺失静默降级。
     """
     ms = market_snapshot()
     try:
@@ -766,11 +816,44 @@ def market_expectancy_card():
     _bdata = _rb.get(bucket) or {}
     _bfam = _bdata.get("family") or {}
     _btotal = _bdata.get("total") or {}
+    _shadow = _load_cost_shadow() or {}
+    _sfam = _shadow.get("families") or {}
+    _bench = _load_benchmark_view() or {}
+    _risk_view = None
+    _risk_view_clean = None
+
+    def _risk(x):
+        _ann = x.get("annualized_pct")
+        _dd = x.get("max_drawdown_pct")
+        _calmar = round(_ann / abs(_dd), 2) if _ann is not None and _dd not in (None, 0) else None
+        return {
+            "total_return_pct": x.get("total_return_pct"),
+            "max_drawdown_pct": _dd,
+            "annualized_pct": _ann,
+            "calmar": _calmar,
+        }
+
+    def _build_risk(bench_blob):
+        _active_win = ((bench_blob or {}).get("windows") or {}).get("active") or {}
+        if not _active_win:
+            return None
+        return {
+            "range": _active_win.get("range"),
+            "strategy": _risk(_active_win.get("strategy") or {}),
+            "pool_buy_hold": _risk(_active_win.get("pool_buy_hold") or {}),
+            "market_index": _risk(_active_win.get("market_index") or {}),
+        }
+
+    _baselines = _bench.get("baselines") or {}
+    _risk_view = _build_risk(_baselines.get("HIST-FULL") or _bench)
+    _risk_view_clean = _build_risk(_baselines.get("CLEAN-CUR"))
     families = []
     for _key, _label in (("panic", "恐慌族"), ("deep_value", "深值企稳"), ("accumulate", "吸筹族")):
         _g = _config.ITEM_EXPECTANCY_STATS.get(_key) or {}
+        _c = _config.ITEM_EXPECTANCY_STATS_CLEAN_CUR.get(_key) or {}
         _f = _bfam.get(_key) or {}
         _n = _f.get("n") or 0
+        _s = _sfam.get(_key) or {}
         families.append({
             "key": _key, "label": _label,
             "n": _n,
@@ -778,6 +861,13 @@ def market_expectancy_card():
             "insufficient": _n < 5,
             "global_n": _g.get("n"), "global_win14": _g.get("win14"),
             "global_avg30": _g.get("avg30"),
+            "global_win14_3pct": _s.get("win14_3pct"),
+            "global_avg14_3pct": _s.get("avg14_3pct"),
+            "global_win30_3pct": _s.get("win30_3pct"),
+            "global_avg30_3pct": _s.get("avg30_3pct"),
+            "clean_n": _c.get("n"),
+            "clean_win14": _c.get("win14"),
+            "clean_avg30": _c.get("avg30"),
         })
     return {
         "bucket": bucket,
@@ -785,10 +875,18 @@ def market_expectancy_card():
         "bucket_total": _btotal.get("n14") or _btotal.get("n") or 0,
         "bucket_win14": _btotal.get("win14"),
         "bucket_avg30": _btotal.get("avg30"),
+        "cost_shadow_available": bool(_shadow),
+        "cost_base_pct": _shadow.get("cost_base_pct"),
+        "cost_shadow_pct": _shadow.get("cost_shadow_pct"),
+        "cost_shadow_overall": _shadow.get("overall") or {},
+        "risk_view": _risk_view,
+        "risk_view_clean": _risk_view_clean,
+        "baseline_hist": (_config.BASELINE_LEDGER or {}).get("HIST-FULL") or {},
+        "baseline_clean": (_config.BASELINE_LEDGER or {}).get("CLEAN-CUR") or {},
     }
 
 
-def _fd_display(fd):
+def _fd_display(fd, analysis=None):
     """融合决策展示层注入（决策链 trace）。纯展示，不改引擎输出。
 
     2026-08-12：期望徽章（全局族 + B-1 regime 分层）已从单品报告抽离为外部常驻卡片
@@ -797,11 +895,50 @@ def _fd_display(fd):
     """
     fd = dict(fd or {})
     _src_labels = [_SOURCE_LABELS.get(str(s), str(s)) for s in (fd.get("deduction_sources") or [])]
+    _caveats = []
+    _action_label = str(fd.get("action_label") or "")
+    if "恐慌" in _action_label:
+        _caveats.append(
+            "恐慌族口径风险：回放用价格近似情绪，生产用真实贪婪指数；"
+            "real/approx 尺度未对齐（spearman 0.092、real 偏高 +16.76、sent≥75 一致率 45.8%），外推置信度低。"
+        )
+    _rm = getattr(analysis, "research_metrics", None) or {}
+    if ("吸筹" in _action_label or "supply_contraction_accumulation" in (fd.get("deduction_sources") or [])):
+        if _rm.get("supply_contract"):
+            _state = _rm.get("price_state")
+            _s7 = _rm.get("s7")
+            _s30 = _rm.get("s30")
+            _chg7 = _rm.get("chg7")
+            _num = ""
+            if _s7 is not None and _s30 is not None and _chg7 is not None:
+                _num = f"（s7={_s7:.0f}，s30={_s30:.0f}，chg7={_chg7:+.1f}%）"
+            if _state == "up":
+                _caveats.append(
+                    "供给收缩三态=价涨量缩·真吸筹，理论上偏正面；研究截面 win14 28.9% / 均值 -4.83%"
+                    f"{_num}。仅观察标注，不改变现有决策。"
+                )
+            elif _state == "down":
+                _caveats.append(
+                    "供给收缩三态=价跌量缩·下跌惜售，研究截面 win14 38.5% / 均值 +3.05%"
+                    f"{_num}。相对最好但仍为观察层，不接 buy。"
+                )
+            elif _state == "flat":
+                _caveats.append(
+                    "供给收缩三态=价平量缩·挂单撤走（现引擎按吸筹处理）；研究截面 win14 22.2% / 均值 -5.67%"
+                    f"{_num}。仅标注，不改变现有 buy 口径。"
+                )
+            else:
+                _caveats.append("供给收缩三态标注数据不足，保持现有结论，不调整动作。")
+        else:
+            _caveats.append(
+                "供给收缩三态：当前未满足 s7≤s30×0.85 的严格收缩口径，仍按现有动作展示，不改变结论。"
+            )
     fd["trace"] = {
         "zone": fd.get("zone_label", ""),
         "bucket": fd.get("state_bucket", ""),
         "sources": _src_labels,
     }
+    fd["research_caveats"] = _caveats
     return fd
 
 def _position_pct(position):
@@ -1019,7 +1156,7 @@ def build_analysis_ctx(analysis, kline_stale_days=None, kline_stale_date="",
         else:
             holding_action = {"action": "hold", "label": "观望", "signal": _ha,
                               "price": _cur, "qty": 0}
-    fd = _fd_display(analysis.fusion_decision)
+    fd = _fd_display(analysis.fusion_decision, analysis)
     supply = _supply_display(getattr(analysis, "supply_analysis", None), getattr(analysis, "position", None))
     # F-3.16：仅用户主动加入自选——报告页按 in_watchlist 状态展示「加入自选」按钮
     _in_wl = False

@@ -1,0 +1,48 @@
+{
+ "probe": "cost_shadow_3pct",
+ "generated": "2026-08-14",
+ "cost_base_pct": 2.0,
+ "cost_shadow_pct": 3.0,
+ "method": "net14 = fwd14 - 3.0%; net30 = fwd30 - 3.0%; display-only shadow, production 2% cost unchanged",
+ "overall": {
+  "n": 317,
+  "win14_3pct": 67.8,
+  "avg14_3pct": 14.95,
+  "median14_3pct": 6.48,
+  "win30_3pct": 64.8,
+  "avg30_3pct": 22.11,
+  "median30_3pct": 8.53
+ },
+ "families": {
+  "panic": {
+   "label": "恐慌族",
+   "n": 92,
+   "win14_3pct": 90.2,
+   "avg14_3pct": 28.79,
+   "median14_3pct": 18.73,
+   "win30_3pct": 71.7,
+   "avg30_3pct": 20.78,
+   "median30_3pct": 9.71
+  },
+  "deep_value": {
+   "label": "深值企稳",
+   "n": 27,
+   "win14_3pct": 55.6,
+   "avg14_3pct": 10.55,
+   "median14_3pct": 3.43,
+   "win30_3pct": 59.1,
+   "avg30_3pct": 50.51,
+   "median30_3pct": 10.95
+  },
+  "accumulate": {
+   "label": "吸筹族",
+   "n": 198,
+   "win14_3pct": 59.1,
+   "avg14_3pct": 9.12,
+   "median14_3pct": 1.6,
+   "win30_3pct": 62.2,
+   "avg30_3pct": 19.55,
+   "median30_3pct": 6.35
+  }
+ }
+}

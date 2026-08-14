@@ -51,6 +51,14 @@
       <button class="btn btn-outline btn-sm" onclick="showItemReport('{{ ev.item_name|e }}')">📄 报告</button>
     </div>
     {% endfor %}
+    {% for it in monitor.buy_signals %}
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <span style="font-weight:800;color:var(--green);">🟢 {{ it.name }}</span>
+      <span style="color:var(--text-muted);">{{ it.detail }}</span>
+      <span style="color:var(--text-muted);font-size:11px;">采集于 {{ it.collected_at }}</span>
+      <button class="btn btn-outline btn-sm" onclick="showItemReport('{{ it.name|e }}')">📄 报告</button>
+    </div>
+    {% endfor %}
     {% for it in monitor.near_buys %}
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
       <span>🎯 <b>{{ it.name }}</b></span>
@@ -79,6 +87,7 @@
     </div>
     {% endfor %}
     <div style="font-size:11px;color:var(--text-muted);border-top:1px dashed var(--border);padding-top:6px;">⚠️ 接近买点 ≠ 买点：队列仅为「距最近 buy 信号族的达标度」，实际买卖以报告决策条为准（buy/watch/avoid）。</div>
+    <div style="font-size:11px;color:var(--text-secondary);border-top:1px dashed var(--border);padding-top:6px;">⚠️ 止损/止盈建议未纳入组合回测；优先按回测最优的 21 日时间退出，止损/止盈仅作减仓参考。</div>
   </div>
 </div>
 {% endif %}
@@ -212,6 +221,7 @@
       </tbody>
     </table>
   </div>
+  <div style="padding:8px 14px;border-top:1px solid var(--border);font-size:12px;line-height:1.5;color:var(--text-secondary);background:rgba(245,158,11,0.05);">⚠️ 回测口径提示：表内止损位与单品报告中的止盈/止损建议均未纳入组合回测；P-C 组合模拟中严格按此执行会显著低于回测（total 195.85%→100.76%、Calmar 36.42→16.72）。优先按回测最优的 21 日时间退出，止损/止盈仅作减仓参考。</div>
 </div>
 
 <!-- 执行记录与复盘 (P0-2, 2026-08-04) -->
@@ -253,6 +263,7 @@
     </table>
   </div>
   <div style="padding:6px 14px 8px;font-size:11px;color:var(--text-muted);">💡 滑点 = 成交价 ÷ 建议价 − 1：正数=成交比建议差（买贵 / 卖贱），负数=优于建议，越接近 0 越贴近按建议成交；「该笔盈亏」只在减仓/清仓时统计实际落袋盈亏</div>
+  <div style="padding:2px 14px 8px;font-size:11px;color:var(--text-secondary);">⚠️ 止损/止盈建议未纳入组合回测；优先按回测最优的 21 日时间退出，止损/止盈仅作减仓参考。</div>
   <div id="exec-empty" style="padding:20px;text-align:center;color:var(--text-muted);display:none;">暂无执行记录：点上方「📝 手动录入」或批量扫描结果里「💼 按建议执行」开始记账，14/30 天后自动复盘</div>
 </div>
 

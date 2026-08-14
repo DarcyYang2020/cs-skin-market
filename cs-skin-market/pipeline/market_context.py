@@ -41,6 +41,23 @@ def _returns(prices):
     return [math.log(prices[i]/prices[i-1]) for i in range(1,len(prices)) if prices[i-1]>0 and prices[i]>0]
 
 
+def _market_values(market_history):
+    """Normalize market_history to numeric values.
+
+    Accepts either [(date_str, value), ...] (replay/production DB path) or [value, ...]
+    (legacy item-analysis test/replay path). This is the single source of the 2026-08-14
+    #10 dual-track fix: one function, one accepted contract.
+    """
+    out = []
+    for x in market_history or []:
+        if isinstance(x, (tuple, list)) and len(x) >= 2:
+            v = x[1]
+        else:
+            v = x
+        if isinstance(v, (int, float)) and v > 0:
+            out.append(float(v))
+    return out
+
 def build_market_context(item_prices, market_history, market_cycle="unknown", market_zscore=0.0):
     """Build market-anchored context for a single item.
     item_prices: daily close prices (oldest->newest), typically ~30 pts
@@ -56,7 +73,7 @@ def build_market_context(item_prices, market_history, market_cycle="unknown", ma
     elif n_item >= 30: ctx.data_quality = "medium"; ctx.confidence_penalty = 0.15
     else: ctx.data_quality = "low"; ctx.confidence_penalty = 0.35
 
-    market_values = [v for _, v in market_history if v > 0]
+    market_values = _market_values(market_history)
     if len(market_values) < 5: ctx.context_label = "market_data_insufficient"; ctx.confidence_penalty = 0.5; return ctx
 
     mkt_90d = market_values[-90:] if len(market_values) >= 90 else market_values
@@ -199,7 +216,7 @@ def market_index_stats(market_history):
 
     market_history: [(date_str, value), ...]（oldest -> newest）。
     """
-    values = [v for _, v in market_history if v > 0]
+    values = _market_values(market_history)
     pct, z = 50.0, 0.0
     cycle, th = "unknown", 50.0
     chg7 = chg30 = drop21 = 0.0

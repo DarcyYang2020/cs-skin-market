@@ -3233,3 +3233,176 @@ Fluxo 25→280 约 11 倍），尖顶后 3 天 -86~94%，与枪皮统计反转�
 - **存世量盘点**：195 品的 `statistic` 近 7/30/90/180 日中位变化 +0.09/+0.44/+1.82/+4.56%，广泛正增长且无负向变化；这是存世量底数不断上升，与 `in_sale_count` 不是同一口径，不得混用。
 - **产物**：`references/probe_cross_1_stage0.py`、`probe_data_reserve_quality.py`、`probe_series_survive_inventory.py`；`data/_exp_cross_1_stage0.json`、`_exp_data_reserve_quality.json`、`_exp_series_survive_inventory.json`。未改引擎/参数/阈值/信号族/闸门，未 commit。
 
+
+## 优化机会 #5/#8/#3 阶段0 只读探针（2026-08-14，零引擎参数，未提交）
+
+- **范围**：按 `references/optimization-opportunities-2026-08-14.md` 的 P0/P2 只读项执行三探针，不改评分/权重/阈值/信号族/闸门，不重跑 2026-08-10 四项审计，不写生产表。
+- **#5 供给收缩三态分解**：`probe_supply_three_state.py` → `data/_exp_supply_three_state.json`。回放吸筹 142 信号因引擎 `s7≤s30×0.85 AND |chg7|≤3` 构造上只覆盖「价平量缩」一态，且 2026-02/03 在售量 0 兜底使 97/142 重建 s7=0（再次印证 #7 断档债务）；近期求购截面 2026-05-15~08-13 共 692 收缩日/96 品。三态第二证据：价涨态 buy_price_chg7 中位 +26.8、buy_num_chg7 +6.7，但 fwd14 win 28.9%/mean -4.8 最差；价平态 buy_price_chg7 +0.6、buy_num_chg7 -4.3，fwd14 win 22.2%/mean -5.7；价跌态 buy_price_chg7 -9.0、buy_num_chg7 -14.4，fwd14 win 38.5%/mean +3.1 相对最好但仍弱。结论：方向支持现有「供给收缩拉升=诱多/追高禁止」口径，价跌惜售态最值得后续正式 A2，当前不落地。
+- **#8 信号族共现矩阵**：`probe_signal_family_matrix.py` → `data/_exp_signal_family_matrix.json`。回放只存固定优先级后的最终族，同日多族不可直接观测；代理口径：94 品中 76 品多族、18 品单族；同品全期对 `周期吸筹×恐慌 59 / 周期吸筹×低位 44 / 低位×恐慌 51`，同日对 `周期吸筹×低位 12 / 周期吸筹×恐慌 1`。单品 vs 多族品前瞻：吸筹单族品 n=14 net14 +19.6 vs 多族品 n=128 net14 +9.0，低位单族品 n=4 net14 +5.96 vs 多族品 n=79 +10.9，恐慌单族品 n=8 +33.8 vs 多族品 n=84 +29.4；单族样本过小，固定优先级是否最优仍未判定，留待生产多族触发日志或 A2。
+- **#3 情绪口径校准阶段0**：`probe_sentiment_calibration_stage0.py` → `data/_exp_sentiment_calibration_stage0.json`。真实贪婪非空仅 2026-06-15~08-12 共 59 天；与价格近似情绪重叠窗口 pearson 0.057 / spearman 0.092 / MAE 20.75 / bias +16.76；sent≥75 时真实 32 天达标而近似 0 天，sent≥70 真实 43 天而近似 0 天。量化坐实 #3 口径断层：价格近似无法复现真实恐惧尖峰，恐慌族回放胜率不能直接外推到生产触发。
+- **结论**：三项均为阶段0观察，不接引擎、不建 A2 门槛判定。后续已确认优先做 #6（成本敏感性 3% 影子，展示/数据层）与 #1（监测目标胜率→期望+Calmar，治理口径）。
+- **验证**：`python -m pyflakes references/probe_supply_three_state.py references/probe_signal_family_matrix.py references/probe_sentiment_calibration_stage0.py` 0 告警。未 commit / 未分支 / 未 push。
+
+## #6 成本影子 + #1 期望+Calmar 治理口径（2026-08-14，展示/监测层，零引擎参数）
+
+- **#6 成本敏感性 3% 影子（已确认，落地）**：`references/cost_shadow_3pct.py` → `data/_exp_cost_shadow_3pct.json`（net = fwd − 3%）；`webapp/analysis_service.py:market_expectancy_card` 与 `dashboard.html` 在现有 2% 口径旁并排显示 3% 保守影子。生产 2% 净收益口径不改。全局 3% 影子：win14 67.8% / avg14 +14.95% / win30 64.8% / avg30 +22.11%；族级 panic 90.2%/+28.79、deep_value 55.6%/+10.55、accumulate 59.1%/+9.12（14d win/avg）。
+- **#1 优化目标转「期望+Calmar」（已确认，落地为治理口径）**：`references/j2_channel_monitor.py` C 通道月度与族级新增 `avg14_net/avg30_net`（net 扣 2%）及「期望负」告警维度，原有胜率阈值不动；新增顶层 `optimization_view`（回放 win14 71.0%/avg14 15.95%/win30 68.1%/avg30 23.11；策略 active Calmar 37.38 / maxDD −9.13，full Calmar 39.20）。`webapp/main.py` 透传、`dashboard.html` 引擎状态卡新增「期望+Calmar（主指标）」展示；`tests/test_smoke.py` J-2 字段契约同步新增 `optimization_view`。
+- **验证**：`python tests/test_smoke.py` 104 passed / 0 failed / 0 skipped；`python -m pyflakes webapp/analysis_service.py webapp/main.py references/j2_channel_monitor.py references/cost_shadow_3pct.py` 0 告警。未 commit / 未分支 / 未 push。
+
+## 数据健康基线改回活跃池口径（2026-08-14，展示/监控层，零引擎参数）
+
+- **现象**：贴纸模块 2026-08-13 停采后，健康检查仍把 `price_history` 中历史有在售量的停采贴纸计入分母，`单品K线/在售量` 显示 `43/361`。
+- **修复**：`run_data_health.py` 的 K 线/在售量检查改为与每日采集一致的活跃池口径（`good_id>0` + 自选/持仓豁免 + 排除存世量过低/活跃池淘汰/贴纸模块停采）；失败品清单同步按活跃池过滤。`run_daily_collect.py` 的大户集中度周度采集、活跃池淘汰评估与池维护台账 active_pool 同步补齐贴纸停采排除。
+- **当前口径**：库内 361 品 → 活跃池 202 品（原 203 活跃池中 2 张印花，1 张自选保留、1 张非自选 MOUZ 停采，因此 203→202）。8-14 当日实时检查为 `43/202`，属当日采集未跑完，不是基线错误。
+- **验证**：`python run_data_health.py --json` 显示 `单品K线 43/202`、`在售量 43/202`；`CS_MODEL_SKIP_NET=1 python tests/test_smoke.py` 98 passed / 0 failed / 6 skipped。未 commit / 未分支 / 未 push。
+
+
+## #3/#5 展示层研究口径标注（2026-08-14，纯展示，零引擎参数）
+
+- **目标**：把阶段0 探针的结论落成单品报告「研究口径提示」，不改任何评分/阈值/信号族/闸门，也不把探针结果接 buy。
+- **#3 情绪口径断层标注**：`webapp/analysis_service.py:_fd_display` 在 `action_label` 含「恐慌」时追加标注——回放 panic 用价格近似情绪，生产用真实贪婪指数；real/approx 未对齐（spearman 0.092、real 偏高 +16.76、sent≥75 一致率 45.8%），外推置信度低。
+- **#5 供给收缩三态标注**：`pipeline/item_analysis.py` 为 `ItemAnalysisResult` 新增只读字段 `research_metrics`（`_research_supply_three_state`，口径与 `probe_supply_three_state.py` 一致）；`_fd_display` 在「吸筹/供给收缩」结论上按 `s7/s30/chg7` 标出 `价涨量缩·真吸筹 / 价平量缩·挂单撤走 / 价跌量缩·下跌惜售`，并附观察性 win/均值，不改变现有 buy 口径。
+- **展示入口**：`webapp/templates/partials/analysis.html` 决策条下新增黄色「研究口径提示（仅标注，不改变决策）」块；`build_analysis_ctx` 与 `save_analysis_result` 共用同一 `_fd_display`，快照/重建口径一致。
+- **验证**：`python tests/test_smoke.py` 104 passed / 0 failed / 0 skipped；`python -m pyflakes pipeline/item_analysis.py webapp/analysis_service.py` 0 告警。未 commit / 未分支 / 未 push。
+
+
+## 系统级主指标贯穿：期望+Calmar 治理扩展 + 收益增强器 A2 路线（2026-08-14，零引擎参数）
+
+- **目标**：把 #1「期望 + 风险调整后收益」从仪表盘单点扩展为全系统主指标；胜率降为下限约束，北极星从「减仓器/风控器」转向「收益增强器」。
+- **落地**：`pipeline/config.py:PARAM_REGIME` 新增 `north_star`，C 通道监测文案改为「胜率+期望监测」；`references/j2_channel_monitor.py` 在 `optimization_view` 透传 `north_star` 并更新 C 通道标签/总说明；`webapp/analysis_service.py` 新增 `_load_benchmark_view`，`market_expectancy_card` 返回 `risk_view`（策略/池内等权/大盘的 active 总收益、maxDD、Calmar）；`dashboard.html` 期望卡显示组合风险调整后收益对照；`checkup.html` 顶部新增主指标摘要、生产跟踪补 14d/30d 期望、回放月度表新增 14d/30d 期望列。
+- **收益增强器 A2 路线（不改引擎，先验证）**：① EXIT-1 正式 A2（2026-08-17~21，既有 317 信号跑退出规则变体，判定指标=Calmar/maxDD + net14/net30，胜率仅下限）；② `#5-down` 候选「价跌量缩·下跌惜售」在 bid_history≥90 天且样本可切分后按新信号族过 A2（walk-forward + 聚类 + 置换 ≥200）；③ 组合层「族期望加权仓位」A/B（cap0.8 / 单票 30% / hold21 不变，只比较等权 vs 期望加权对 Calmar 的增量）；④ 不追池内等权 top10 beta，保留风控优势并把风险预算转化为更高风险调整后收益。
+- **验证**：`python references/j2_channel_monitor.py` 重新生成 `data/j2_channel_status.json`；`python tests/test_smoke.py` 104 passed / 0 failed / 0 skipped；`python -m pyflakes pipeline/config.py webapp/analysis_service.py webapp/main.py references/j2_channel_monitor.py` 0 告警。未 commit / 未分支 / 未 push。
+
+
+## EXIT-1 正式 A2 结果：无变体过门槛，关闭（2026-08-14，只读研究）
+
+- **执行**：新增 `references/exit_1_a2.py`，按预注册口径对 317 条 `fwd_series` 跑 hold21 vs trailing 0.10/0.15/0.20/0.25、chandelier 3.0/4.0、regime；组合口径 cap0.8 / 2% 成本 / 事件级 ±3 天去簇 / 3 折 walk-forward / 置换 1000 次。
+- **结果**：基线 hold21 组合总收益 +186.53% / maxDD −24.29% / Calmar 7.68。所有变体均未过预注册门槛；最好的 trailing 0.10 组合 +113.19% / −24.27% / 4.66，Calmar 三折均值 −59.0%，总收益 −53.58pp，置换 p=0.65；regime +74.79% / −19.19% / 3.90，Calmar 三折均值 −31.31%，总收益 −29.40pp。
+- **判定**：7 个变体 `pass_pre_registered_gate=false`；阶段0 的负方向被正式 A2 复现。EXIT-1 关闭，退出规则维持 hold21 / 现有单品情绪自适应 stop/take 不变。
+- **产物**：`data/_exp_exit_1_a2.json`。未 commit / 未分支 / 未 push；不改评分/阈值/信号族/闸门，不重跑 2026-08-10 四项审计。
+
+
+## 政策变更：旧四项不做 → 新四不做（2026-08-14，治理口径，零引擎参数）
+
+- **背景**：主指标已从「胜率/裸收益」转为「期望 + Calmar/maxDD」（`PARAM_REGIME.north_star`，2026-08-14）。据此复审原四项「不做」，结论：①④需实质修订，②③保留但改为新主指标表述。
+- **旧四项 → 新四项**：
+  1. 原「不重跑/推翻 2026-08-10 四项审计」→ 新「不推翻已定论，但允许按 `期望 + Calmar/maxDD` 只读重评分；重评分只用于立项，不直接改引擎」。
+  2. 原「不在 2 个恐慌事件上拟合参数」→ 新「不在单事件/样本不足上做参数拟合或调阈值；只读探针与口径对齐（PANIC-ALIGN-1/#3）除外」。
+  3. 原「不盲目追跑赢池内等权/不加杠杆集中度」→ 新「不以牺牲 Calmar/maxDD 换裸收益或高胜率；不把『跑赢池内等权』设为目标，集中度/仓位变化须经 A2 证明提升 Calmar」。
+  4. 原「不新增信号族/不动参数」→ 新「不未经 A2 三件套 + 新主指标验收就新增信号族、改权重/阈值/闸门；新特征只进研究层」。
+- **被新口径释放的候选（仍走 A2，不直接改引擎）**：
+  - `deep_value` 仓位放大重评分：`family_cap_sensitivity` 基线组合 +185.18%/−9.08%（Calmar≈20.39）；x1.5 +216.14%/−9.97%（≈21.68）、x2.0 +227.89%/−10.62%（≈21.46），收益 +31~43pp、maxDD −0.9~1.5pp，但 deep 成交仅 11/14 笔——列为「deep 成交 ≥30 后正式 A2」。
+  - 组合层「族期望加权仓位」A/B；`SUPPLY-CONF-1` 三态拆解；`#5-down` 价跌惜售；`BID-1` 求购因子（90+ 天样本后）。
+- **同步文档**：`iteration-roadmap.md` 主引擎路线「边界」与 `optimization-opportunities-2026-08-14.md` 第五节按新四不做更新。
+- **验证**：本条目为治理口径变更，未改代码/参数/信号族/闸门/权重；冒烟测试随后复核。未 commit / 未分支 / 未 push。
+
+## 新主指标推进：FEW-1 族期望加权 A2 关闭 + deep_value Calmar 重评分（2026-08-14，只读研究）
+
+- **FEW-1 族期望加权仓位（预注册 A2）**：新增 `references/family_expectancy_weight_a2.py`。口径：expanding 3 折 walk-forward，训练段按族 `m_f=clip(族 net14/全池 net14, 0.5, 1.5)`，测试段 `position_limit=min(0.30, 原限×m_f)`；cap0.8 / hold21 / 费 2% 不变。
+  - 基线组合 +186.53%/−24.29%/Calmar 7.68；治疗 +186.35%/−24.29%/Calmar 7.67（Calmar −0.1%、总收益 −0.18pp、maxDD 0）。
+  - 折叠2 multiplier：deep 1.5 / accum 0.825；折叠3：deep 1.219 / accum 0.792 / panic 1.5。簇级分配增量置换 n=1000，obs +0.055pp，p=0.383。
+  - 判定：未过预注册门槛（Calmar 提升≥15% 或 maxDD 改善≥2pp 且收益下降≤5pp）。**不落地，仓位维持现行分级。**
+- **deep_value 仓位 Calmar 重评分**：新增 `references/deep_value_calmar_rescore.py`，对既有 `_exp_family_cap_sensitivity.json` 按新主指标重评。基线 Calmar_ann 31.95；deep_x1.5 34.70（最优）、deep_x2.0 34.62、deep_x0.5 22.62。正方向与旧结论一致，但 deep 成交仅 14/17 笔 <30，**预注册门禁未达，不落地**。
+- **产物**：`data/_exp_family_expectancy_weight_a2.json`、`data/_exp_deep_value_calmar_rescore.json`。
+- **验证**：`python -m pyflakes references/family_expectancy_weight_a2.py references/deep_value_calmar_rescore.py` 0 告警。未改评分/阈值/信号族/闸门/权重。未 commit / 未分支 / 未 push。
+
+## 周期权重 Calmar 重评分 + #10 双轨收敛（2026-08-14，研究/工程，零引擎参数）
+
+- **周期权重 Calmar 重评分**：新增 `references/run_cycle_weight_calmar.py`，对标准回放 317 信号按周期相位做期望与组合风险调整后收益重评。当前权重顺序下：consolidation（225 信号）net14 18.97/net30 28.44、组合 Calmar 5.35；accumulation（68）net14 9.31/net30 7.56、Calmar 3.19；markup（24）net14 6.36/net30 18.39、Calmar 1.07；distribution 无 buy。`Calmar` 顺序 = 洗盘 > 吸筹 > 拉升，**支持 2026-08-10 周期权重反转**。备注：markup net30 18.39 高于 accumulation 7.56，但 markup n=24、14d 主口径仍最差，仅记录不复议。
+  - 边界：此为本 317 信号集上的重评分，不是旧权重完整反事实重跑；池 A 历史已被 365 天保留策略清除，完整重跑不可复现。旧/新引擎 365d 归档仍在 `data/_exp_old_engine_365d.json` / `_exp_v3_365d.json`，但二者差异包含四项审计全部改动，不能单独归因周期权重。
+- **#10 双轨收敛（行为等价）**：`pipeline/market_context.py` 新增 `_market_values`，`build_market_context` 与 `market_index_stats` 统一接受 `[(date,value)]` 或 `[value]` 两种历史口径；消除 `run_item_analysis` 旧值列表路径的 `cannot unpack non-iterable int` fallback traceback。现有 tuple 调用路径行为不变。
+- **产物**：`data/_exp_cycle_weight_calmar.json`。
+- **验证**：`python -m pyflakes pipeline/market_context.py references/run_cycle_weight_calmar.py` 0 告警；`python tests/test_smoke.py` 104 passed / 0 failed / 0 skipped。未改评分/阈值/信号族/闸门/权重。未 commit / 未分支 / 未 push。
+## 展示层 + F-3.5 预筛口径修复（2026-08-14，行为等价/过滤口径对齐）
+
+- **Top10 卡片半宽**：`webapp/templates/partials/discover_html.html` 原卡片头缺少闭合标签，`#discover-tab-all` 被塞进 flex header，表格只占右侧约 779px。补 `</span>`/`</div>` 结构后表格恢复整卡宽度。
+- **今日关注接入当前 buy 信号**：`webapp/main.py` 从自选最新快照 `fusion_action in (buy, oversold_buy)` 抽取 `monitor.buy_signals`，与既有 `monitor_events.new_buy_signal` 去重并列展示；`watchlist.html` 同步渲染。仅展示层，不改决策。
+- **F-3.5 高分榜预筛门槛（同日二次修订，2026-08-14）**：`pipeline/discover_tasks.py` 改为按单价分档的最低在售量过滤：单价 `<10000` → 最新在售量 `<200` 跳过；单价 `>=10000` → 最新在售量 `<100` 跳过。该门槛只决定是否进入高分榜，不改变引擎 buy/watch 决策层。
+- **验证**：`python tests/test_smoke.py` 104 passed / 0 failed / 0 skipped；修改文件 pyflakes 0 告警；服务已重启，`/discover` 表格实测恢复整卡宽度。未 commit / 未分支 / 未 push。
+
+## 流动性地板全面升级：200/100 进入池过滤、榜单预筛与 supply_depth（2026-08-14，用户决策）
+
+- **池过滤（数据层）**：对当前 202 个活跃池品执行只读审计后，40 品最新在售量低于分档地板（单价 `<10000` 且 `<200` 39 品；单价 `>=10000` 且 `<100` 1 品）。备份 `data/backups/market_20260814_153253.db` 后，为 40 品追加 notes「活跃池淘汰:流动性不足(200/100)」，保留历史数据、不物理删除；池台账写 `type=prune`。自选品 MP9 星使（在售 198）一并标记但每日采集因自选豁免仍会更新。
+- **榜单预筛**：`pipeline/discover_tasks.py` 使用共享 `liquidity_supply_floor(price_rmb)`，与引擎同口径；低流动性品不进高分榜。
+- **决策层 supply_depth**：`pipeline/trend_health.py` 新增 `liquidity_supply_floor()`，`compute_fusion_decision` 增加 `supply_depth_floor`；未显式传入时从 `prices[-1]` 自动计算分档地板，`item_analysis.run_item_analysis` 也显式传入当前价地板。`0 < supply_depth < floor` 时 buy 降级 watch，`liquidity_filtered=True`，升级族不得恢复 buy。旧 `<15` 已不再作为生产路径。
+- **测试**：`tests/test_smoke.py` 新增 `t_liquidity_tier_gate`；105 passed / 0 failed / 0 skipped。未 commit / 未分支 / 未 push。
+
+## 优化路线 Phase 0/1 收尾：深值仓位升档落地，其余否决（2026-08-14）
+
+- **前提**：按 `references/optimization-roadmap-2026-08-14.md`，Phase 0 已产出守卫链地图（P-E）与 `DECISION-4` 对齐重放；Phase 1 完成只读探针 `P-A / P-D / P-F / P-B / P-C`。
+- **DECISION-4（对齐基线）**：官方 317 → 可处理 311，对齐当前生产口径后 buy 290；win14 77.24% / avg14 +17.28%。`survive_history` 覆盖 210/311、`bid_history` 覆盖 130/311；严格缺失即拦口径仅剩 111 条（win14 83.78% / avg14 +25.33%），只作下界，不作交易样本。
+- **P-A（supply_depth 口径）**：最新一条 vs 近 7 日中位数只有 4 条分类翻转（latest→median 各 2 条），且 123/311 条近 7 日有效在售不足 3 个。不能简单改中位数；根因是 `in_sale=0/缺失`，转入 `DECISION-6 / POOL-2`，不落地。
+- **P-D（LIQ-RATIO-1 前瞻）**：仅 2026-05-15 后 111 条可验；`listed_ratio≥5%` 桶 7 条 win14 57.14% / avg14 +6.86%，弱于低挂单率桶。只提示挂单率可能存在上界，样本不足，不落地；该因子继续前瞻积累，不回放。
+- **P-F（旁路守卫）**：后置族确实绕过 `GUARD1/GUARD2`；若给恐慌族补 `micro_th<45`，被拦 105 条 win 79.05% / +14.87%，低于恐慌族全量 100% / +47.44%——补闸会误伤高收益信号。`market_weak` 命中 135 条 win 81.48% / +22.68%，支持“后置族旁路 market_weak 是有意正优化”，不补闸。
+- **P-B（族级仓位网格）**：`panic 0.25/0.35` 与 `supply_accum 0.15/0.20` 全部恶化，不落地。`deep_value 0.10→0.15` 全面改善：baseline total +195.85% / maxDD −9.56% / Calmar 36.42 / n_trades 50 / win 62.0%；dv15 total +230.57% / maxDD −10.55% / Calmar 40.04 / n_trades 44 / win 68.2%。更细网格 0.12/0.13/0.15/0.18 单调改善，0.18 Calmar 43.02 但样本单薄，暂取 0.15。前后半段：前半 135.0→160.65、后半 76.0→78.1，均改善。bootstrap 200 次（iid 重抽样，seed 20260814）：total 差均值 +17.55pp、p(>0)=0.79；Calmar 差均值 +2.20、p(>0)=0.735；maxDD 差均值 −0.18pp（回撤中性）。
+- **P-C（组合止损 A/B）**：把单品情绪自适应 stop/take 放入组合后，逐笔胜率 62.0%→67.2%，但组合 total +195.85%→+100.76%、Calmar 36.42→16.72 大幅下降。不落地；当前组合收益优势来自 `hold21` 路径，不是单品止损。
+- **落地动作**：`pipeline/item_analysis.py` deep_value `limit=0.10→0.15` 与 detail；`tests/test_smoke.py` `t_p08_deep_value_tranche` 断言同步；`pipeline/config.py` `PARAM_REGIME.param_history/amendments` 追加并 `ENGINE_VERSION v2-T4→v2-T5`；`data/j2_channel_status.json` 引擎版本同步；`references/signal-family-registry.md` 深值仓位同步。
+- **产物**：`data/_exp_guard_coverage.json` / `_exp_aligned_replay_v2T4.json` / `_exp_supply_depth_sensitivity.json` / `_exp_liq_ratio_forward.json` / `_exp_guard_bypass.json` / `_exp_position_grid_v2T4.json` / `_exp_position_grid_bootstrap.json` / `_exp_stop_take_ab.json`；探针 `references/decision4_guard_coverage.py` / `probe_pa_supply_depth.py` / `probe_pd_liq_ratio_forward.py` / `probe_pf_guard_bypass.py` / `probe_pb_position_grid.py` / `probe_pb_position_grid_bootstrap.py` / `probe_pc_stop_take.py`。
+- **验证**：`python tests/test_smoke.py` 全量通过（预期 105 passed）；改动文件 pyflakes 无新增告警。
+## 专家复核补正：止损信任提示、证据等级、Calmar 口径（2026-08-14 追加）
+
+- **① 止损路径信任缺口**：`webapp/templates/partials/analysis.html` 持仓建议卡新增回测口径提示。P-C 结论是：单品情绪自适应 stop/take 放入组合后 total 195.85%→100.76%、Calmar 36.42→16.72；因此提示文案明确“止损/止盈建议未纳入组合回测，严格执行会显著偏离组合回测收益，优先按回测最优 21 日时间退出，止盈仅作减仓参考”。
+- **② deep_value 证据等级诚实化**：`config.PARAM_REGIME.amendments` 标注该落地为“低置信/方向性落地”，bootstrap p(>0)=0.79 不是统计显著；这是回放仓位网格修正，不等于放宽生产 A2 门禁（deep 成交≥30 仍未满足）。复验触发器：deep 成交≥30 或生产 buy N≥30 后按 north_star 重评。
+- **③ Calmar 三基线差异已记录为待统一项**：EXIT-1 A2、benchmark_compare、P-B 的组合口径不同，暂不混用。待办唯一口径 simulate（cap0.8/hold21/2% 费/对齐守卫）与三份报告复算。
+- **④ 后置族旁路显式化**：已确认非 bug，是设计意图；`references/guard-chain-map.md` 为代码生成事实源，`references/decision4-guard-coverage.md` 记录 P-F 结论（补闸会误伤高收益信号）。
+## Calmar 唯一标尺与 EXIT-1 口径修复（2026-08-14 追加）
+
+- **唯一标尺**：`references/calmar_standard.py` → `data/_exp_calmar_standard.json`。标准 = `b1_risk_backtest_v2.simulate` + `portfolio_backtest.risk_metrics`，cap0.8 / hold21 / 2% 成本 / 优先级准入，窗口 = 回放 args.start~end。
+- **三基线已复算**：官方 317 v2-T4 = total +200.55% / maxDD −9.13% / Calmar 39.20；对齐 290 v2-T4 = +195.85% / −9.56% / 36.42；对齐 290 + deep_value 0.15 = +230.57% / −10.55% / 40.04。
+- **为什么 290 与 317 的 maxDD 不同**：是对齐后剔除了 27 条（主要是新 200/100 地板与可用 survive/bid 守卫生效），属于口径差异，不是风险偏好漂移；两个口径都按同一 simulate 标尺计算。
+- **EXIT-1 修复**：`references/exit_1_a2.py` 修复组合模拟三处口径错误——① 出场当日 unreal 与 realized 重复计入；② Calmar 误用 total/maxDD（未年化）；③ 同信号日准入排序未用 panic>accumulate>deep_value 优先级。同时修复预注册门槛符号：总收益“下降 ≤5pp”应为 `avg_total >= -5.0`（原 `<=5.0` 会把大幅亏损误判为通过）。
+- **EXIT-1 修复后基线**：hold21 组合 total +201.06% / maxDD −9.13% / Calmar 27.55（退出研究窗口扩展 70 天，不与策略级标尺直接比较）；所有 trailing/chandelier/regime 变体仍全部未过预注册门槛，结论方向不变。
+- **产物**：`data/_exp_exit_1_a2.json` 已重生成；`references/calmar_standard.py` 与 `data/_exp_calmar_standard.json` 为唯一标尺事实源。
+
+## 专家残留风险收口：共享底层污染排查 + deep 复验前置 + 止损提示覆盖（2026-08-14 追加）
+
+- **风险2（第一优先）· 共享底层未污染**：核对 `data/benchmark_compare.json` strategy full 与 `data/_exp_calmar_standard.json` official_317_v2T4，两者 total +200.55%、maxDD −9.13%、年化 357.89% 完全一致；`references/portfolio_attribution.py` 实时复算与 `data/portfolio_attribution.json` 完全一致（deep_value +59.39pp、accumulate +111.69pp、panic +56.35pp）。结论：EXIT-1 修复的 unrealized/realized 重复计入与 Calmar 未年化两处 bug 未污染 `b1_risk_backtest_v2.simulate` / `portfolio_backtest.risk_metrics` 共享底层，官方基准与 A1-3 归因数字仍成立。另注明：旧文档中的供给吸筹 +34.2pp 来自更早 hold14/口径，不是本次唯一标尺口径，不混用。
+- **风险1 · deep 复验前置（登记，不立即执行）**：maxDD 对 deep 单票仓位高度敏感，deep 成交仅十余笔；在 `DECISION-6`、`EXIT-9/10/11` 完成后，或 deep 成交≥30 / 生产 buy N≥30 任一满足时，必须用 `references/calmar_standard.py` 唯一口径 + 年化 Calmar 复算 aligned_290_v2T4 vs deep_value 0.15，报告 maxDD 敏感性；未达标不得仅凭 ±1 笔 deep 修改结论。
+- **风险3 · 止损提示覆盖扩展**：原提示仅覆盖 `webapp/templates/partials/analysis.html` 持仓建议卡；本轮扩展 `webapp/templates/watchlist.html` 持仓表止损参考、破位提示与执行记录/复盘区，避免用户在其它入口继续按组合回测更差的 stop/take 路径操作。批量扫描当前版本已无「建议止损/止盈」列，不新增入口。
+- **验证**：本轮为零引擎参数/零回放重跑项；模板与文档改动后按硬约束跑 `python tests/test_smoke.py` 与 pyflakes。
+
+## DECISION-6 落地：in_sale NULL/断档与真实 0 分流（2026-08-14，引擎行为变更 v2-T6）
+
+- **预注册四条硬验收全部满足**：
+  1. NULL 与 2026-02-01~04-30 断档显式标 `supply_depth_status=missing_depth`，禁 buy/禁后置升级；真实 0（缺口外）保持旧口径，`supply_depth_status=zero`，两类分开计数。
+  2. 翻转双数：生产侧当前活跃池最新在售量缺失 0 品、真实 0 0 品，因此生产「漏过地板→被地板拦」= 0；回放 290 信号因读取口径变化翻转 buy→watch/avoid = **150 条**（290→140）。
+  3. `supply_accum` 免疫未动：`supply_hist` 仍传数值 0，`s30>0` 断档免疫逻辑未改。
+  4. 冒烟新增 `t_liquidity_missing_vs_zero` 同时覆盖 NULL/断档与真实 0，全量 `106 passed / 0 failed / 0 skipped`。
+- **落地实现**：`pipeline/db.py` 新增 `SUPPLY_GAP_START/END` + `supply_depth_missing()` / `latest_supply_missing()`；`collector_csqaq.Bar` 与 `analysis_service._history_to_bars` 保留 `_in_sale_raw` / `in_sale_missing`；`compute_fusion_decision` 新增 `supply_depth_missing` 参数与最终闸门；生产调用链（analysis_service / scan_tasks / discover_tasks / main / monitor）统一传入。`ENGINE_VERSION v2-T5→v2-T6`，`config.PARAM_REGIME` 台账同步。
+- **重放与 sync**：DECISION-6 对齐重放写入 `data/_exp_guard_coverage_decision6.json` / `_exp_aligned_replay_decision6.json`（旧 290 基线保留在 `_exp_guard_coverage.json` / `_exp_aligned_replay_v2T4.json`）。翻转审计 `references/decision6_audit.py` → `data/_exp_decision6_audit.json`。`sync_expectancy_config.py` 已复跑，`ITEM_EXPECTANCY_STATS` 无变化。
+- **官方 317 回放不可重跑说明**：365 天保留策略已删除 2025-08-10 前数据，`run_item_backtest_full.py` 当前 `pool A items=0`。执行前已备份 `data/item_backtest_full_2025.json` 至 `data/backups/item_backtest_full_2025_pre_decision6_20260814_184721.json`，执行后已立即回滚；官方 317 仍为当前文件（不因本次边界修复重生成）；2026-08-14 起其身份改为 BASELINE_LEDGER.HIST-FULL 冻结归档，不再作唯一事实源。
+- **后续队列重排**：因回放翻转 >0，`POOL-2` 原「仅 4 条翻转」结论作废，需在 DECISION-6 新口径（140 buy）上重判；顺序 = DECISION-6 → POOL-2 复核 → LIQ-RATIO-1 → EXIT-9/10/11。
+- **验证**：`python tests/test_smoke.py` 106 passed；pyflakes 仅 test_smoke 已知告警，无新增。
+
+
+## v2-T7 流动性地板泄漏修复：below_floor 禁后置升级（2026-08-14）
+
+- **根因**：DECISION-6 只对 `missing` 分支无条件置 `liquidity_filtered=True`，`below_floor`（0<supply_depth<floor）分支漏了。后置族（panic/accumulate/deep_value）从 watch 升级的路径在 `decide_fusion_signal` 只检查 `not fd.liquidity_filtered`，因此 14 条在售 45~196 的信号绕过 200/100 地板仍 buy，与 decision-log 3327「升级族不得恢复 buy」矛盾。
+- **修复**：`compute_fusion_decision` 对 `below_floor` 与 `missing` 同样无条件置 `liquidity_filtered=True`；`ENGINE_VERSION v2-T6→v2-T7`；新增 `tests/test_smoke.py::t_floor_upgrade_leak` 钉死升级路径（控制组深度充足时 supply_accum 仍 buy，低于地板时不得恢复 buy）。
+- **行为变更**：仅收紧地板执行（约 14 条信号被正确拦截），不改阈值/信号族/权重/s30 断档免疫。
+- **验证**：`tests/test_smoke.py` 106→107 passed；pyflakes 无新增。
+- **重放影响**：matched-window v2-T6 干净回放 163 信号中含 14 条 below_floor 泄漏，修复后应降至 ~149；精确数字待 v2-T7 重放后更新（见 iteration-roadmap / optimization-roadmap）。
+
+
+## 双基线落地：HIST-FULL / CLEAN-CUR（2026-08-14，展示/同步层，零引擎参数）
+
+- **背景**：DECISION-6 暴露官方 317 历史基线含约 50% 缺失深度信号；官方 317 因 365d retention 已删 2025-08-10 前数据不可重跑。若用 CLEAN-CUR 覆盖官方 317 会系统性丢失 2026-02~04 牛市段证据；若继续只展示 317 又会掩盖缺失深度污染。采纳外审结论：**双基线并存，禁止裸数字，每个统计挂基线标签**。
+- **单一事实源**：`pipeline/config.py:BASELINE_LEDGER` 定义两条基线（名称/引擎/回放路径/信号数/caveat/角色）。
+- **HIST-FULL**：317 信号，`v2-T4/T5`，`data/item_backtest_full_2025.json`。Caveat：含约 50% 缺失深度信号（2026-02~04 牛市段污染）；覆盖完整牛熊周期。角色=历史全窗口基准、C 通道监测主口径。期望：win14 71.0% / avg14 +15.95%；panic 92、deep_value 27、accumulate 198（action_label 展示键）。
+- **CLEAN-CUR**：150 信号，`v2-T7`，`data/_exp_v2t7_win_replay.json`。Caveat：干净但 panic 单事件占 55.3%（83/150）、缺 2026-02~04 牛市段。角色=当前引擎干净窗口展示参考，不参与 C 通道告警。期望：win14 76.7% / avg14 +26.14%；panic 85、deep_value 18、accumulate 47（action_label 展示键）。注意：`supply_accum` 细族在 CLEAN-CUR 仅 10 条，展示键 accumulate=47 还含 deep_dip 33 / base 4，不得把 47 当作 supply_accum 的可归因样本。
+- **expectancy 双列**：`config.ITEM_EXPECTANCY_STATS`（HIST-FULL）与新增 `config.ITEM_EXPECTANCY_STATS_CLEAN_CUR`（CLEAN-CUR）；`references/sync_expectancy_config.py` 改为同时生成两块，`data/signal_event_counts.json` 增加 `baselines` 对象并保留顶层 HIST-FULL 兼容。
+- **benchmark 双列**：`references/benchmark_compare.py` 参数化 replay，`data/benchmark_compare.json` 增加 `baselines.HIST-FULL` / `baselines.CLEAN-CUR`；顶层 `windows` 继续表示 HIST-FULL 兼容旧接口。HIST-FULL strategy active +201.06% / maxDD −9.13%；CLEAN-CUR strategy active +257.16% / maxDD −7.61%（当前库数据）。
+- **attribution 双列**：`references/portfolio_attribution.py` 参数化 replay，`data/portfolio_attribution.json` 增加 `baselines`。HIST-FULL deep_value +59.39pp / accumulate +111.69pp / panic +56.35pp；CLEAN-CUR 对应为 +83.80pp / +129.95pp / +65.14pp（展示键口径）。`accumulate +111.69pp` 是 HIST-FULL hold21 口径，CLEAN-CUR 展示键 accumulate=47 与 HIST-FULL 的 198 不同源，不可直接对比。
+- **J-2 / J-3**：`references/j2_channel_monitor.py` C 通道 note 改为 `v2-T7`，明确 C 通道监测主口径=HIST-FULL、CLEAN-CUR 仅展示参考；`dashboard.html` 期望卡与 J-3 卡片双列展示。
+- **验证**：`python references/sync_expectancy_config.py`、`python references/benchmark_compare.py`、`python references/portfolio_attribution.py`、`python references/j2_channel_monitor.py` 均已重跑；`python tests/test_smoke.py` 107 passed / 0 failed / 0 skipped。
+
+
+## 族分类唯一事实源 + 中间数废弃（2026-08-14，展示/统计层，零引擎参数）
+
+- **问题**：双基线落地时 `deep_value` / `accumulate` 两份报告宽窄定义对调——DECISION-6 报告用 signal_type 口径（deep_value=83、accumulate=142），双基线/历史 config 用 action_label 展示键口径（deep_value=27、accumulate=198），另有旧 A1-3 的 supply_accum=212。同一标签三种定义，导致族级归因与期望不可比。
+- **落地方案**：`pipeline/config.py` 新增 `SIGNAL_FAMILY_TAXONOMY`，并把 `BASELINE_LEDGER["family_taxonomy"]` 指向它。该表唯一定义六细族（`panic_resonance` / `panic_easing` / `deep_value` / `supply_accum` / `deep_dip` / `base`）到三展示键（`panic` / `deep_value` / `accumulate`）的映射：
+  - `deep_value` 展示键 = 仅 `deep_value` 细族（严格深值企稳）。
+  - `accumulate` 展示键 = `supply_accum` + `deep_dip` + `base`（聚合键，不叫「纯吸筹」；文案改为「吸筹/回补组」）。
+- **下游接入**：`j1_event_counts` / `j2_channel_monitor` / `sync_expectancy_config` / `portfolio_attribution` / `benchmark_compare` 全部改为从 `SIGNAL_FAMILY_TAXONOMY` 取 `fine_order`、`fine_keywords`、`fine_labels`、`display_keys`、`fine_to_display`；`assign_fine_family` / `display_key_for_label` 位于 config 单一实现。禁止各脚本再硬编码「恐慌/深值/其余」。
+- **中间数废弃**：`290`（DECISION-4 对齐 buy）、`140`（DECISION-6 翻转 buy）、`163`（v2-T6 干净回放含 below_floor 泄漏）、`149`（v2-T7 估算）均标注在 `BASELINE_LEDGER.deprecated_intermediates`，只作推导历史，不得再作为基线；唯一基线=HIST-FULL 317 / CLEAN-CUR 150。
+- **验证**：同步重跑后两基线的展示键计数保持 HIST-FULL panic92/deep27/accumulate198、CLEAN-CUR panic85/deep18/accumulate47；`t_expectancy_sync` 升级为双基线硬校验（两个 config 常量各自来自各自 replay 且使用同一 taxonomy）；`python tests/test_smoke.py` 107 passed / 0 failed / 0 skipped、pyflakes 无新增告警。

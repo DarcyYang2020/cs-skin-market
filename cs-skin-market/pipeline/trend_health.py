@@ -88,6 +88,7 @@ class FusionDecision:
     action_detail: str = ""
     deduction_sources: list = field(default_factory=list)
     liquidity_filtered: bool = False
+    supply_depth_status: str = "unknown"  # DECISION-6: missing_depth / zero / below_floor / ok
     market_relative_strength: bool = False
     position_limit: float = 1.0
     proximity: dict = None  # 信息层：买点接近度（不参与 action 决策；监控 near_buy / 自选排序读取）
@@ -671,17 +672,47 @@ def trend_health_summary(th):
 #  Fusion Decision Engine
 # ============================================================
 
-def compute_fusion_decision(percentile_90d, th, liquidity_score=50, zscore_90d=0.0, cycle_phase="unknown", market_cycle="unknown", market_30d_change=0.0, item_7d_change=0.0, event_risk_discount=1.0, prices=None, sentiment_score=50.0, supply_depth=0):
+def liquidity_supply_floor(price_rmb):
+    """200/100 分档最低在售量（2026-08-14，用户决策）。
+
+    单价 <10000 -> 最低在售量 200；单价 >=10000 -> 最低在售量 100。
+    price_rmb <=0（未知/无价格）时返回 0，表示不做流动性深度闸门。
+    """
+    try:
+        price = float(price_rmb or 0)
+    except (TypeError, ValueError):
+        price = 0.0
+    if price <= 0:
+        return 0
+    return 200 if price < 10000 else 100
+
+
+def compute_fusion_decision(percentile_90d, th, liquidity_score=50, zscore_90d=0.0, cycle_phase="unknown", market_cycle="unknown", market_30d_change=0.0, item_7d_change=0.0, event_risk_discount=1.0, prices=None, sentiment_score=50.0, supply_depth=0, supply_depth_floor=None, supply_depth_missing=False):
     """Combine percentile + corrected trend health -> action.
 
     When market is weak (bear/distribution) but item shows independent strength
     (item_7d_change outperforms market_30d_change by 5%+), buy thresholds are lowered.
 
     Liquidity filter (F-3.5, 2026-08-08): buy 降级 watch 双条件——
-    ① liquidity_score < 30（综合流动性极差）；② 最新在售量 supply_depth 在 (0,15)（结构性无流动性，
+    ① liquidity_score < 30（综合流动性极差）；② 最新在售量 supply_depth 在 (0, supply_depth_floor)（结构性无流动性；
     如渐变斑纹在售仅 13，总分 63 不触发旧闸门但实际无法出货）。
     """
     fd = FusionDecision()
+    if supply_depth_floor is None:
+        _price = prices[-1] if prices else 0
+        supply_depth_floor = liquidity_supply_floor(_price)
+
+    if supply_depth_missing:
+        fd.supply_depth_status = "missing_depth"
+        fd.liquidity_filtered = True  # DECISION-6: 缺失深度禁一切后置升级
+    elif supply_depth == 0:
+        fd.supply_depth_status = "zero"
+    elif 0 < supply_depth < supply_depth_floor:
+        fd.supply_depth_status = "below_floor"
+        fd.liquidity_filtered = True  # v2-T7: ???????????? missing??????????
+    else:
+        fd.supply_depth_status = "ok"
+
     fd.percentile_90d = percentile_90d
     fd.raw_th_score = th.raw_score
     fd.corrected_th_score = th.score
@@ -838,14 +869,29 @@ def compute_fusion_decision(percentile_90d, th, liquidity_score=50, zscore_90d=0
                 fd.action_detail = "\u6df1\u5ea6\u8d85\u8dcc\u533a\uff0c\u8dcc\u901f\u8870\u51cf\u4f01\u7a33\uff0c\u53ef\u5206\u6279\u5efa\u4ed3"
                 fd.deduction_sources.append("oversold_buy_exception")
 
-    # Liquidity filter (F-3.5, 2026-08-08): 综合分<30 或 最新在售量<15 都拦 buy（结构性无流动性）
-    if (liquidity_score < 30 or (0 < supply_depth < 15)) and fd.action == "buy":
-        fd.action = "watch"
-        fd.action_label = "\U0001f7e1 \u6d41\u52a8\u6027\u4e0d\u8db3\u00b7\u89c2\u671b"
-        fd.action_detail = "\u4f4e\u4f30\u4f46\u6d41\u52a8\u6027\u6781\u5dee\uff0c\u51fa\u8d27\u56f0\u96be\uff0c\u5efa\u4ed3\u964d\u7ea7\u4e3a\u89c2\u671b"
-        fd.liquidity_filtered = True
-        if 0 < supply_depth < 15:
-            fd.deduction_sources.append("liquidity_depth_gate")
+    # Liquidity filter (F-3.5, 2026-08-08 / 2026-08-14 分档): 综合分<30 或 最新在售量低于分档地板都拦 buy
+    # DECISION-6 (2026-08-14): NULL/断档 = 无深度，也拦 buy；真实 0 保持原口径，不混为一谈。
+    if fd.action == "buy":
+        _blocked = False
+        if liquidity_score < 30:
+            _blocked = True
+        elif supply_depth_missing:
+            _blocked = True
+        elif 0 < supply_depth < supply_depth_floor:
+            _blocked = True
+        if _blocked:
+            fd.action = "watch"
+            if supply_depth_missing:
+                fd.action_label = "\U0001f7e1 \u5728\u552e\u91cf\u7f3a\u5931\u00b7\u4e0d\u53ef\u4ea4\u6613"
+                fd.action_detail = "\u6700\u65b0\u5728\u552e\u91cf\u4e3a\u7f3a\u5931/\u65ad\u6863\uff08NULL\u6216 2026-02~04 \u7a7a\u7a97\uff09\uff0c\u65e0\u6df1\u5ea6\u53ef\u4ea4\u6613\uff0c\u5efa\u4ed3\u964d\u7ea7\u4e3a\u89c2\u671b"
+            else:
+                fd.action_label = "\U0001f7e1 \u6d41\u52a8\u6027\u4e0d\u8db3\u00b7\u89c2\u671b"
+                fd.action_detail = "\u4f4e\u4f30\u4f46\u6d41\u52a8\u6027\u6781\u5dee\uff0c\u51fa\u8d27\u56f0\u96be\uff0c\u5efa\u4ed3\u964d\u7ea7\u4e3a\u89c2\u671b"
+            fd.liquidity_filtered = True
+            if supply_depth_missing:
+                fd.deduction_sources.append("liquidity_depth_missing")
+            elif 0 < supply_depth < supply_depth_floor:
+                fd.deduction_sources.append("liquidity_depth_gate")
 
     # Event risk filter (P0)
     if event_risk_discount < 0.85 and fd.action in ("buy", "hold"):
@@ -910,6 +956,15 @@ def compute_fusion_decision(percentile_90d, th, liquidity_score=50, zscore_90d=0
             fd.action_detail = "周期洗盘期方向不明，不宜追买，先观察等待突破。"
             fd.deduction_sources.append("cycle_consolidation")
 
+    # DECISION-6 最终闸门：在售量缺失/断档必须穿过任何后续周期升级，最终仍不得 buy。
+    if supply_depth_missing and fd.action == "buy":
+        fd.action = "watch"
+        fd.action_label = "🟡 在售量缺失·不可交易"
+        fd.action_detail = "最新在售量为缺失/断档（NULL或 2026-02~04 空窗），无深度可交易，建仓降级为观望"
+        fd.liquidity_filtered = True
+        if "liquidity_depth_missing" not in fd.deduction_sources:
+            fd.deduction_sources.append("liquidity_depth_missing")
+
     return fd
 
 
@@ -925,6 +980,7 @@ def fusion_decision_summary(fd):
         "action_detail": fd.action_detail,
         "deduction_sources": fd.deduction_sources,
         "liquidity_filtered": fd.liquidity_filtered,
+        "supply_depth_status": getattr(fd, "supply_depth_status", "unknown"),
         "position_limit": fd.position_limit,
         "proximity": getattr(fd, "proximity", None),
     }

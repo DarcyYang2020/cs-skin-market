@@ -96,7 +96,7 @@ cs-skin-market/
 
 | 文件 | 功能 |
 |---|---|
-| `test_smoke.py` | 冒烟测试（104 用例（离线基线 98 passed / 6 skipped），支持 CS_MODEL_SKIP_NET 离线跳过网络用例） |
+| `test_smoke.py` | 冒烟测试（107 用例，当前 107 passed / 0 failed / 0 skipped；支持 CS_MODEL_SKIP_NET 离线跳过网络用例） |
 | `check_encoding.py` | 仓库文本编码健康检查（UTF-8 无 BOM / 无乱码） |
 | `snapshots/replay_v2.`json | 回放口径快照（aggregate+月度，防无意漂移） |
 
@@ -117,7 +117,7 @@ cs-skin-market/
 
 ### 研究脚本（产出 `data/*.`json）
 
-- `j2_channel_monitor.py` — J-2 三通道监测（A 恐慌事件/B 新数据天数/C 胜率）→ `j2_channel_status.json`
+- `j2_channel_monitor.py` — J-2 三通道监测（A 恐慌事件/B 新数据天数/C 胜率+期望）→ `j2_channel_status.json`
 - `refit_pipeline.py` — Phase 3 重拟合流水线（A2 三件套 + 达标判定）→ `refit_pipeline_report.json`
 - `portfolio_backtest.py` — Phase 2 组合层回测（cap 变体）→ `portfolio_backtest.json`
 - `b1_risk_backtest_v2.py` — B1 风险预算 v2 复验 → `b1_risk_validation_v2.json`
@@ -128,7 +128,7 @@ cs-skin-market/
 - `cap_family_backtest.py` / `s3_bucket_replay.py` — cap 族级/分桶复验
 - `sync_expectancy_config.py` / `sync_replay_snapshot.py` — 期望统计/回放口径同步
 - `j1_event_counts.py` — 各族独立事件数 → `signal_event_counts.json`
-- `run_item_backtest_full.py` — 全窗口单品回放（标准基准 `item_backtest_full_2025.json`）
+- `run_item_backtest_full.py` — 全窗口单品回放（产出 HIST-FULL 冻结归档 `item_backtest_full_2025.json`）
 - `t`rend_leg_*.`py` / `t`h_*_study.`py` / `topup_replay.py` / `t`ranche_fit*.`py` / `c1_p10_replay.py` / `advice_layer_fit.py` / `portfolio_cap_fit.py` — 历史研究脚本
 - `scripts-archive/` — 已下线脚本归档（成交量时代等，仅存证）
 
@@ -137,7 +137,7 @@ cs-skin-market/
 | 文件 | 说明 |
 |---|---|
 | `market.db` | SQLite 主库（gitignore） |
-| `item_backtest_full_2025.json` | **标准回放基准**（去量 v2，365d 窗口 317 信号） |
+| `item_backtest_full_2025.json` | **HIST-FULL 冻结归档**（去量 v2-T4/T5，365d 窗口 317 信号，不可复现） |
 | `item_backtest_full_2025.baseline450.`json / `.devol_v1.`json | 去量演进对比存档（旧引擎产物，仅存证） |
 | `j2_channel_status.json` / `refit_pipeline_report.json` / `portfolio_backtest.json` 等 | 研究产物 |
 | `backup/` | 每日 DB 备份（保留 14 份，gitignore） |

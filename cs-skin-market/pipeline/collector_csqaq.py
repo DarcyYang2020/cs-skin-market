@@ -87,7 +87,7 @@ def _chart_to_daily_ohlc(cd: dict) -> list:
     survive_arr = cd.get("survive_data", [])
 
     class Bar:
-        def __init__(self, ts, close, high, low, volume, in_sale, tx_amount, tx_count, survive):
+        def __init__(self, ts, close, high, low, volume, in_sale, tx_amount, tx_count, survive, in_sale_raw=None, in_sale_missing=False):
             self.ts = ts
             self.date = ""  # set below
             self.close = close
@@ -98,6 +98,19 @@ def _chart_to_daily_ohlc(cd: dict) -> list:
             self.tx_amount = tx_amount
             self.tx_count = tx_count
             self.survive = survive
+            self._in_sale_raw = in_sale_raw
+            self.in_sale_missing = in_sale_missing
+
+    def _parse_sale(idx):
+        if idx >= len(num_arr) or num_arr[idx] in (None, ""):
+            return None, True
+        try:
+            raw = float(num_arr[idx])
+        except (TypeError, ValueError):
+            return None, True
+        if raw != raw:
+            return None, True
+        return raw, False
 
     daily = {}
     for i in range(min(len(ts_arr), len(price_arr))):
@@ -116,18 +129,23 @@ def _chart_to_daily_ohlc(cd: dict) -> list:
         tx_amt = float(tx_arr[i]) if i < len(tx_arr) and tx_arr[i] is not None else 0
         tx_cnt = int(tx_count_arr[i]) if i < len(tx_count_arr) and tx_count_arr[i] is not None else 0
         survive = int(survive_arr[i]) if i < len(survive_arr) and survive_arr[i] is not None else 0
+        _sale_raw, _sale_missing = _parse_sale(i)
         if day_key in daily:
             b = daily[day_key]
             if price > b.high: b.high = price
             if price < b.low: b.low = price
             b.close = price
             b.volume += vol
-            b.date = day_key; b.in_sale_count = int(float(num_arr[i])) if i < len(num_arr) and num_arr[i] is not None else 0
+            b.date = day_key
+            if not _sale_missing:
+                b.in_sale_count = int(_sale_raw)
+                b._in_sale_raw = _sale_raw
+                b.in_sale_missing = False
             b.tx_amount += tx_amt
             b.tx_count += tx_cnt
             b.survive = survive
         else:
-            b = Bar(ts, price, price, price, vol, int(float(num_arr[i])) if i < len(num_arr) and num_arr[i] is not None else 0, tx_amt, tx_cnt, survive); b.date = day_key; daily[day_key] = b
+            b = Bar(ts, price, price, price, vol, int(_sale_raw) if _sale_raw is not None else 0, tx_amt, tx_cnt, survive, _sale_raw, _sale_missing); b.date = day_key; daily[day_key] = b
 
     return list(daily.values())
 

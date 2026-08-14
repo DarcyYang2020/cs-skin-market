@@ -13,25 +13,24 @@
 1. **单层独立回测**：每层改动前先跑基线，改动后单独回测，记录单层增量（胜率/均收益/信号数）。
 2. **叠加回归**：层与层合入前，重跑当前完整引擎的统一窗口回测（大盘 `python run_backtest.py`；单品 `python run_item_backtest.py --all --warmup 30`），确认叠加后整体 ≥ 最优单层，不满足则不准合入。
 3. **消融定位**：叠加后整体变差时，临时关闭上一层规则再跑一次，区分「上一层被冗余化（删规则）」还是「本层引入副作用（调本层）」。
-4. **以完整引擎为准**：最终判定以当前完整引擎在统一窗口的胜率/收益为准，单层贡献数字仅作参考；结论与数字记入 `references/decision-log.md`（决策记录）。
+4. **以完整引擎为准**：最终判定以当前完整引擎在统一窗口的期望/风险调整后收益为准（胜率为下限），单层贡献数字仅作参考；结论与数字记入 `references/decision-log.md`（决策记录）。
 
 配套：每次回测自动生成快照 `data/item_backtest_YYYYMMDD.json`（保留 365 天），用于因子衰减监控与回归对比。
 
-### 参数治理 + 基准对照 + 期望统计单一事实源（2026-08-10 解除冻结期）
+### 参数治理 + 基准对照 + 期望统计双基线（2026-08-10 解除冻结期）
 
 - **参数治理**：`config.PARAM_REGIME` 维护参数台账（去量引擎 v2（I-13）全参数、组合层 cap0.8、单票敞口提示 30%、
-  `ITEM_EXPECTANCY_STATS` 展示口径、proximity 深跌确认、守卫1 大盘走弱拦截）。2026-08-07 定稿的冻结期概念已于
-  2026-08-10 解除；参数迭代纪律 = 回测先行 + 三件套记录（信号数/胜率/期望增量）+ 文档同步；新信号族须过 A2 三件套。
-  J-2 三通道监测照常收集（A 独立恐慌事件≥3（当前 2）/ B v2 样本积累 260 天（约 2027-04-25）/
-  C buy 连续 2 月 14d<70% 或月度 14d<80%/30d<55%），作为样本完整性与胜率健康度提示项；
+  `ITEM_EXPECTANCY_STATS` 展示口径、proximity 深跌确认、守卫1 大盘走弱拦截、north_star 主指标（期望+Calmar/maxDD，胜率为下限））。2026-08-07 定稿的冻结期概念已于
+  2026-08-10 解除；参数迭代纪律 = 回测先行 + 三件套记录（信号数/期望/风险调整后收益增量，胜率作下限）+ 文档同步；新信号族须过 A2 三件套。
+  J-2 三通道监测照常收集：A 独立恐慌事件≥3（当前 2）/ B v2 样本积累 260 天（约 2027-04-25）/
+  C 胜率+期望监测（buy 连续 2 月 14d<70% 或月度期望转负；月度 14d<80%/30d<55% 为附加下限），作为样本完整性与胜率/期望健康度提示项；
   监测 `python references/j2_channel_monitor.py` → `data/j2_channel_status.json`（dashboard 展示）。
-- **期望统计单一事实源**：`data/item_backtest_full_2025.json`（回放产物）→
-  `python references/sync_expectancy_config.py` 自动同步 `config.ITEM_EXPECTANCY_STATS` +
-  `data/signal_event_counts.json`；`t_expectancy_sync` 全字段硬校验防漂移（改回放不重跑同步即测试失败）。
+- **期望统计双基线**：当前唯一事实源 = `pipeline/config.py:BASELINE_LEDGER` 双基线——HIST-FULL（`data/item_backtest_full_2025.json`，317 信号，v2-T4/T5，冻结归档）+ CLEAN-CUR（`data/_exp_v2t7_win_replay.json`，150 信号，v2-T7，仅展示参考，panic 单事件占 55.3%）。
+  `python references/sync_expectancy_config.py` 自动同步 `config.ITEM_EXPECTANCY_STATS`（HIST-FULL）+ `config.ITEM_EXPECTANCY_STATS_CLEAN_CUR`（CLEAN-CUR）+ `data/signal_event_counts.json`；`t_expectancy_sync` 双基线全字段硬校验防漂移。
 - **基准对照**：`python references/benchmark_compare.py` → `data/benchmark_compare.json`
   （策略 cap0.8 vs 池内等权买入持有 vs 大盘指数，full/active 双窗口）。2026-08-10 结论（365d 窗口，317 信号，组合模拟口径 hold21——2026-08-10 对齐单品 hold_guidance，见 decision-log）：策略 +200.55%/-9.13%
   大幅跑赢大盘 -24.20%/-58.21%，但低于池内等权 +252.32%/-55.59% —— 引擎边际价值在风险控制（maxDD 9.13% vs 55~58%）。
-- **组合归因（A1-3，2026-08-10）**：`python references/portfolio_attribution.py` → `data/portfolio_attribution.json`（leave-one-out 族级/月度/集中度）；供给吸筹族贡献最大 +34.2pp（n=212）、恐慌族 +21.65pp（n=93）、深值族 +13.98pp（n=27）；策略低于等权主因=2025 低价品暴涨集中度（top10 占 43.5%），引擎以回撤换集中度。
+- **组合归因（A1-3，2026-08-14 重跑 hold21 + taxonomy 双基线）**：`python references/portfolio_attribution.py` → `data/portfolio_attribution.json`（leave-one-out 族级/月度/集中度，与 portfolio_backtest 同源口径）。HIST-FULL（317）：accumulate +111.69pp（n=198）、deep_value +59.39pp（n=27）、panic +56.35pp（n=92）；CLEAN-CUR（150，展示参考）：accumulate +129.95pp（n=47）、deep_value +83.80pp（n=18）、panic +65.14pp（n=85）。旧 hold14 口径 +34.2pp（n=212）/ +21.65pp（n=93）/ +13.98pp（n=27）仅作历史存证，不与当前 hold21 + taxonomy 标尺混用。
 
 
 ## 数据来源与采集
@@ -247,7 +246,7 @@ python references/scripts-archive/run_item_backtest.py --items "AWP | 冥界之�
 - 缺失成交量/在售/盘口历史 → 回测用中性默认值，信号带 data_quality 标注
 - warmup=30 结果（2026-05-21~07-31, P0 过滤后 33 信号）: 14d胜率94%/均+45.5%, 30d胜率82%/均+53.7%（旧版 67 信号含重复: 14d 61%/30d 77%）
 - 分层结论（支撑补仓阈值）: pct≤25&th≥40 → 14d胜率75%; pct 25~40(半山腰) → 14d胜率28%; 市场贪婪(sent≤30) → 30d胜率0%
-- 输出: 控制台明细 + data/backtest_snapshots/item_backtest_YYYYMMDD.json（标准回放基准 = data/item_backtest_full_2025.json，旧 88 基准已删）
+- 输出: 控制台明细 + data/backtest_snapshots/item_backtest_YYYYMMDD.json（回放快照；HIST-FULL 冻结归档 = data/item_backtest_full_2025.json，旧 88 基准已删）
 
 ### 持仓补仓/止损（F-3.7 定稿，2026-08-09）
 浮亏持仓走**五状态止损矩阵 + V 型底补仓**（完整理论/回测/矩阵见 `references/stop-loss-strategy.md`）：
@@ -306,7 +305,7 @@ cs-skin-market/
   notify_alert.py        -- 告警/监控推送（钉钉，.env NOTIFY_WEBHOOK_URL；M2 监控日报复用）
   references/scripts-archive/ -- 历史回测/回填脚本归档（run_backtest/run_item_backtest/run_item_9grid/run_item_exit/run_portfolio/run_backfill_history，2026-08-08 归档；当前回测统一走 references/refit_pipeline.py）
   data/market.db         -- SQLite 数据库
-  data/item_backtest_full_2025.json -- 标准回放基准（去量 v2，365d 窗口 317 信号）
+  data/item_backtest_full_2025.json -- HIST-FULL 冻结归档（去量 v2-T4/T5，365d 窗口 317 信号，不可复现）
   pipeline/
     config.py            -- 配置（TOKEN/BASE_URL/权重/PARAM_REGIME/J2_THRESHOLDS/ENGINE_VERSION）
     collector.py         -- csQAQ HTTP 采集（大盘指数/品类/搜索）
@@ -342,7 +341,7 @@ cs-skin-market/
     static/js/app.js     -- 公共 JS（Modal/导航）
   references/            -- 文档 + 研究脚本（j2_channel_monitor.py / refit_pipeline.py / portfolio_backtest.py 等）
   tests/
-    test_smoke.py        -- 冒烟测试（104 用例（离线基线 98 passed / 6 skipped），支持 CS_MODEL_SKIP_NET；P1.2 起含 Web 只读 API 冒烟）
+    test_smoke.py        -- 冒烟测试（107 用例，当前 107 passed / 0 failed / 0 skipped；支持 CS_MODEL_SKIP_NET；P1.2 起含 Web 只读 API 冒烟）
     check_encoding.py    -- 编码健康检查
     snapshots/replay_v2.json -- 回放口径快照
 

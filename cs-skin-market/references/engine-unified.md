@@ -51,14 +51,14 @@ buy 信号由**一串 P0/P1 顺序 if 块**产出：
 
 ## 二、项目原则与迭代原则
 
-### 三原则（project-principles.md v1.0）
+### 三原则（project-principles.md v1.1）
 1. 破除散户魔咒：恐惧/贪婪 → 计算符号
-2. 数学模型代替主观：正期望交易，胜率仅辅助
+2. 数学模型代替主观：正期望交易，主指标=期望+Calmar/maxDD，胜率仅下限
 3. 止损是付费买正确概率：看错时少亏
 
 ### 落地工作流（硬性）
 - **算法改动必须数据先行**：先回测验证（起点 2025-11-02，五合一后口径），再改码
-- **优化目标**：更高胜率 + 更高期望/盈亏比；熊市侧重 14d
+- **优化目标**：期望+风险调整后收益（Calmar/maxDD）为主指标，胜率为下限；熊市侧重 14d 期望与胜率下限
 - **风控参数**：硬性参数必须组合回测先行，否则只做提示
 - **信号族审计**：展示必须带独立事件数；新信号上线需 A2 三件套（walk-forward+聚类+置换）
 - **工程**：中文用临时 .py 写（避免 PowerShell GBK）；改后跑 test_smoke
@@ -234,7 +234,7 @@ train 估计「族×状态桶」net14 期望表（6 格 n>=3），test 段应用
 - **验证**：test_smoke 59/59（网络桩离线）；回放数据 data/item_backtest_full_2025.json（2026-08-06 12:43 版）。
 ---
 
-## 六、基准对照 + 期望统计单一事实源 + 参数治理（2026-08-10 解除冻结期）
+## 六、基准对照 + 期望统计双基线 + 参数治理（2026-08-10 解除冻结期）
 
 ### 6.1 基准对照（references/benchmark_compare.py → data/benchmark_compare.json）
 
@@ -250,15 +250,15 @@ train 估计「族×状态桶」net14 期望表（6 格 n>=3），test 段应用
 - 池内 +510% 由 2025 低价品暴涨主导（median +220%）；大盘指数为高价品权重，2025-10 五合一崩盘 maxDD -58%，
   单看指数会系统性低估市场机会。
 
-### 6.2 期望统计单一事实源（③）
+### 6.2 期望统计双基线（③）
 
-`data/item_backtest_full_2025.json` 为唯一事实源；`references/sync_expectancy_config.py` 自动重算
-`config.ITEM_EXPECTANCY_STATS`（n/events/win14/avg14/ci14/win30/avg30，win30 为 n30 口径）与
-`data/signal_event_counts.json`；`tests/test_smoke.py::t_expectancy_sync` 全字段硬校验，改回放不重跑同步即失败。
+当前唯一事实源 = `pipeline/config.py:BASELINE_LEDGER` 双基线：HIST-FULL（`data/item_backtest_full_2025.json`，317 信号，v2-T4/T5，冻结归档）+ CLEAN-CUR（`data/_exp_v2t7_win_replay.json`，150 信号，v2-T7，仅展示参考）。
+`references/sync_expectancy_config.py` 自动重算 `config.ITEM_EXPECTANCY_STATS`（HIST-FULL）与 `config.ITEM_EXPECTANCY_STATS_CLEAN_CUR`（CLEAN-CUR）
+（n/events/win14/avg14/ci14/win30/avg30，win30 为 n30 口径）及 `data/signal_event_counts.json`；`tests/test_smoke.py::t_expectancy_sync` 双基线全字段硬校验，改回放不重跑同步即失败。
 
 ### 6.3 参数治理（⑤，2026-08-10 解除冻结期）
 
 `config.PARAM_REGIME`：参数台账（去量引擎 v2（I-13）全参数 + 组合层 cap0.8 + 单票敞口提示 30% + 期望统计口径
-+ proximity 深跌确认 + 守卫1）；J-2 三通道监测（A 恐慌事件≥3 / B v2 样本积累 260 天（约 2027-04-25）/
-C 胜率监测）数据照常收集，作为样本完整性与胜率健康度提示项；参数迭代纪律 = 回测先行 + 三件套记录
-（信号数/胜率/期望增量）+ 文档同步，新信号族须过 A2 三件套；`t_param_regime` 测试防台账被删。
++ proximity 深跌确认 + 守卫1、north_star 主指标（期望+Calmar/maxDD，胜率为下限））；J-2 三通道监测（A 恐慌事件≥3 / B v2 样本积累 260 天（约 2027-04-25）/
+C 胜率+期望监测）数据照常收集，作为样本完整性与胜率/期望健康度提示项；参数迭代纪律 = 回测先行 + 三件套记录
+（信号数/期望/风险调整后收益增量，胜率作下限）+ 文档同步，新信号族须过 A2 三件套；`t_param_regime` 测试防台账被删。

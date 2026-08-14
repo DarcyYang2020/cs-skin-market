@@ -54,8 +54,10 @@
     <div style="display:inline-flex;gap:6px;margin-left:12px;vertical-align:middle;" id="discover-tabs">
       <button id="tab-btn-all" class="btn btn-sm btn-primary" onclick="switchDiscoverTab('all')">综合榜</button>
     </div>
-  <span class="card-subtitle">已扫描 {{ ok_count }} 个饰品，各展示前10{{ market_note|safe }}
-    <button class="btn btn-sm btn-outline" onclick="refreshDiscover('skin')" style="margin-left:8px;" title="仅重扫综合榜">🔄 仅重扫综合榜</button>
+    <span class="card-subtitle">已扫描 {{ ok_count }} 个饰品，各展示前10{{ market_note|safe }}
+      <button class="btn btn-sm btn-outline" onclick="refreshDiscover('skin')" style="margin-left:8px;" title="仅重扫综合榜">🔄 仅重扫综合榜</button>
+    </span>
+  </div>
 
   <div id="discover-tab-all">{{ disc_table(top10) }}</div>
 </div>

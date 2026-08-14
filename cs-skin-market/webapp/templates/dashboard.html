@@ -12,7 +12,7 @@
 <div class="card" style="margin-top:12px;">
   <div class="card-header">
     <span class="card-title">🧪 当前市场状态 × 信号族期望</span>
-    <span style="font-size:11px;color:var(--text-muted);margin-left:auto;">365d 回放 · net 已扣 2% 双边成本 · 全局 vs 当前状态桶分层</span>
+    <span style="font-size:11px;color:var(--text-muted);margin-left:auto;">双基线回放 · net 已扣 2% 双边成本 · HIST-FULL / CLEAN-CUR vs 当前状态桶分层</span>
   </div>
   <div style="padding:10px 14px;font-size:12px;">
     <div style="margin-bottom:8px;">
@@ -26,8 +26,10 @@
           <th style="padding:3px 6px;">信号族</th>
           <th style="padding:3px 6px;">当前状态桶样本</th>
           <th style="padding:3px 6px;">当前桶 14d / 30d</th>
-          <th style="padding:3px 6px;">全局样本</th>
-          <th style="padding:3px 6px;">全局 14d / 30d</th>
+          <th style="padding:3px 6px;">HIST-FULL 样本</th>
+          <th style="padding:3px 6px;">HIST-FULL 14d / 30d</th>
+          <th style="padding:3px 6px;">CLEAN-CUR 样本<br><span style="font-weight:normal;color:var(--text-muted);">55% 单事件 · 缺牛市段</span></th>
+          <th style="padding:3px 6px;">CLEAN-CUR 14d / 30d<br><span style="font-weight:normal;color:var(--text-muted);">非增强证据</span></th>
         </tr>
       </thead>
       <tbody>
@@ -43,12 +45,31 @@
             {% else %}<span style="color:{% if f.win14 >= 80 %}var(--green){% elif f.win14 >= 70 %}var(--yellow){% else %}var(--red){% endif %};">{{ f.win14 }}%</span> · <span>{{ "%+.1f"|format(f.avg30) }}%</span>{% endif %}
           </td>
           <td style="padding:5px 6px;color:var(--text-primary);">n={{ f.global_n }}</td>
-          <td style="padding:5px 6px;"><span style="color:{% if f.global_win14 >= 80 %}var(--green){% elif f.global_win14 >= 70 %}var(--yellow){% else %}var(--red){% endif %};">{{ f.global_win14 }}%</span> · <span>{{ "%+.1f"|format(f.global_avg30) }}%</span></td>
+          <td style="padding:5px 6px;"><span style="color:{% if f.global_win14 >= 80 %}var(--green){% elif f.global_win14 >= 70 %}var(--yellow){% else %}var(--red){% endif %};">{{ f.global_win14 }}%</span> · <span>{{ "%+.1f"|format(f.global_avg30) }}%</span>{% if f.global_win14_3pct %}<br><span style="font-size:10px;color:var(--text-muted);">3%成本影子 {{ f.global_win14_3pct }}% / {{ "%+.1f"|format(f.global_avg14_3pct) }}%</span>{% endif %}</td>
+          <td style="padding:5px 6px;color:var(--text-primary);">n={{ f.clean_n }}<br><span style="font-size:10px;color:var(--text-muted);">55% 单事件 · 缺 2026-02~04</span></td>
+          <td style="padding:5px 6px;"><span style="color:{% if f.clean_win14 >= 80 %}var(--green){% elif f.clean_win14 >= 70 %}var(--yellow){% else %}var(--red){% endif %};">{{ f.clean_win14 }}%</span> · <span>{{ "%+.1f"|format(f.clean_avg30) }}%</span><br><span style="font-size:10px;color:var(--text-muted);">非增强证据</span></td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
-    <div style="margin-top:6px;font-size:11px;color:var(--text-muted);">当前桶样本 &lt;5 仅标注（2 条可能 100% 或 0%，无统计意义）；以全局期望为主依据。同一时期所有单品报告显示相同，故不再逐报告展示。</div>
+    <div style="margin-top:6px;font-size:11px;color:var(--text-muted);">当前桶样本 &lt;5 仅标注（2 条可能 100% 或 0%，无统计意义）。HIST-FULL=历史全窗口（含缺失深度污染）；CLEAN-CUR=当前引擎干净回调段（单事件偏样本）。同一时期所有单品报告显示相同，故不再逐报告展示。</div>
+    <div style="margin-top:2px;font-size:11px;color:var(--text-muted);">3% 成本影子为展示层保守口径（净收益再扣 1%），用于提示真实交易成本高于回放 2% 假设；不改生产 2% 净收益口径。</div>
+    {% if expectancy_card.risk_view %}
+    <div style="margin-top:8px;padding:8px 10px;background:rgba(59,130,246,0.06);border-left:3px solid var(--blue);font-size:11px;line-height:1.7;color:var(--text-secondary);">
+      <b style="color:var(--text-primary);">组合风险调整后收益 · HIST-FULL（active 窗口 {{ expectancy_card.risk_view.range[0] }} ~ {{ expectancy_card.risk_view.range[1] }}）</b><br>
+      策略：总收益 {{ "%+.1f"|format(expectancy_card.risk_view.strategy.total_return_pct) }}% · maxDD {{ expectancy_card.risk_view.strategy.max_drawdown_pct }}% · Calmar {{ expectancy_card.risk_view.strategy.calmar }}<br>
+      对照池内等权：总收益 {{ "%+.1f"|format(expectancy_card.risk_view.pool_buy_hold.total_return_pct) }}% · maxDD {{ expectancy_card.risk_view.pool_buy_hold.max_drawdown_pct }}% · Calmar {{ expectancy_card.risk_view.pool_buy_hold.calmar }}<br>
+      对照大盘：总收益 {{ "%+.1f"|format(expectancy_card.risk_view.market_index.total_return_pct) }}% · maxDD {{ expectancy_card.risk_view.market_index.max_drawdown_pct }}% · Calmar {{ expectancy_card.risk_view.market_index.calmar }}
+    </div>
+    {% endif %}
+    {% if expectancy_card.risk_view_clean %}
+    <div style="margin-top:6px;padding:8px 10px;background:rgba(245,158,11,0.06);border-left:3px solid var(--yellow);font-size:11px;line-height:1.7;color:var(--text-secondary);">
+      <b style="color:var(--text-primary);">组合风险调整后收益 · CLEAN-CUR（active 窗口 {{ expectancy_card.risk_view_clean.range[0] }} ~ {{ expectancy_card.risk_view_clean.range[1] }}）</b> <span style="color:var(--red);">55% 单事件 · 缺 2026-02~04 牛市段 · 非引擎增强证据</span><br>
+      策略：总收益 {{ "%+.1f"|format(expectancy_card.risk_view_clean.strategy.total_return_pct) }}% · maxDD {{ expectancy_card.risk_view_clean.strategy.max_drawdown_pct }}% · Calmar {{ expectancy_card.risk_view_clean.strategy.calmar }}<br>
+      对照池内等权：总收益 {{ "%+.1f"|format(expectancy_card.risk_view_clean.pool_buy_hold.total_return_pct) }}% · maxDD {{ expectancy_card.risk_view_clean.pool_buy_hold.max_drawdown_pct }}% · Calmar {{ expectancy_card.risk_view_clean.pool_buy_hold.calmar }}<br>
+      对照大盘：总收益 {{ "%+.1f"|format(expectancy_card.risk_view_clean.market_index.total_return_pct) }}% · maxDD {{ expectancy_card.risk_view_clean.market_index.max_drawdown_pct }}% · Calmar {{ expectancy_card.risk_view_clean.market_index.calmar }}
+    </div>
+    {% endif %}
   </div>
 </div>
 {% endif %}
@@ -70,6 +91,9 @@
     <span style="color:var(--yellow);">⚠️ C 通道告警：{{ engine_status.c_flagged }} 个月度胜率低于阈值{% if engine_status.c_latest_month %}（最近 {{ engine_status.c_latest_month }}）{% endif %}</span>
     {% else %}
     <span>✅ C 通道胜率监测：无告警</span>
+    {% endif %}
+    {% if engine_status.optimization_view %}
+    <span>📈 期望+Calmar（主指标）：net14 win {{ engine_status.optimization_view.win14_pct }}% / avg {{ "%+.1f"|format(engine_status.optimization_view.avg14_net) }}% · 策略 Calmar {{ engine_status.optimization_view.strategy_active.calmar }}（maxDD {{ engine_status.optimization_view.strategy_active.max_drawdown_pct }}%）</span>
     {% endif %}
   </div>
 </div>
@@ -224,10 +248,28 @@ fetch("/api/data/progress")
       ["吸筹族(供给收缩等)", _dk("accumulate","n") + " 信号 · " + _dk("accumulate","events") + " 次独立事件 · 最近 " + _dkLatest("accumulate")]
     ];
     html += '<div style="margin-top:12px;border-top:1px solid rgba(15,23,42,0.08);padding-top:8px;">'
-      + '<div style="color:var(--text-muted);font-size:12px;margin-bottom:4px;">信号族样本深度（K-2 回放 ' + (fam.total_signals || 0) + ' 信号 · ' + _dpFmt(fam.generated) + ' 口径）</div>'
+      + '<div style="color:var(--text-muted);font-size:12px;margin-bottom:4px;">信号族样本深度 HIST-FULL（K-2 回放 ' + (fam.total_signals || 0) + ' 信号 · ' + _dpFmt(fam.generated) + ' 口径）</div>'
       + '<table style="width:100%;font-size:12px;"><tbody>' + famRows.map(function(r) {
         return '<tr><td style="width:130px;color:var(--text-muted);padding:2px 0;">' + r[0] + '</td><td style="padding:2px 0;">' + r[1] + '</td></tr>';
-      }).join("") + '</tbody></table>'
+      }).join("") + '</tbody></table>';
+      var clean = fam.baselines && fam.baselines["CLEAN-CUR"];
+      if (clean && clean.display_keys) {
+        var cdk = clean.display_keys;
+        function _cdk(key, field) { return cdk[key] ? (cdk[key][field] != null ? cdk[key][field] : "-") : "-"; }
+        function _cdkLatest(key) { var r = cdk[key] && cdk[key].date_range; return (r && r[1]) ? r[1] : "-"; }
+        var cleanRows = [
+          ["恐慌族(共振+退潮)", _cdk("panic","n") + " 信号 · " + _cdk("panic","events") + " 次独立事件 · 最近 " + _cdkLatest("panic")],
+          ["深值·大盘企稳", _cdk("deep_value","n") + " 信号 · " + _cdk("deep_value","events") + " 次独立事件 · 最近 " + _cdkLatest("deep_value")],
+          ["吸筹族(供给收缩等)", _cdk("accumulate","n") + " 信号 · " + _cdk("accumulate","events") + " 次独立事件 · 最近 " + _cdkLatest("accumulate")]
+        ];
+        html += '<div style="margin-top:8px;border-top:1px dashed rgba(15,23,42,0.08);padding-top:6px;">'
+          + '<div style="color:var(--text-muted);font-size:12px;margin-bottom:4px;">信号族样本深度 CLEAN-CUR（当前引擎干净回调段，' + (clean.total_signals || 0) + ' 信号）</div>'
+          + '<table style="width:100%;font-size:12px;"><tbody>' + cleanRows.map(function(r) {
+            return '<tr><td style="width:130px;color:var(--text-muted);padding:2px 0;">' + r[0] + '</td><td style="padding:2px 0;">' + r[1] + '</td></tr>';
+          }).join("") + '</tbody></table>'
+          + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">CLEAN-CUR 仅展示参考，不参与 C 通道监测告警；HIST-FULL 仍为 C 通道主口径。</div></div>';
+      }
+
       // ---- 去簇胜率主视图对照 (第四批 ③, 2026-08-12): 全量 vs 独立事件去簇, 纯展示层 ----
       var dd = d.dedup;
       if (dd && dd.f14_all) {

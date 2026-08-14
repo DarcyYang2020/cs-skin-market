@@ -51,8 +51,8 @@ python run_health_monitor.py --json     # JSON 输出（供告警/日志系统�
 | 数据源 | 检查方法 | 关键验收点 |
 |---|---|---|
 | 大盘指数 | 直连 csQAQ API 或对比库内最新值 | 值>0，change_7d 与当日行情一致，mood 三态 |
-| 单品 K 线 | 库内 price_history 覆盖 | 每日历史有在售量品（动态，当前约 103 品）≥85%，最新日期为当日/前一日 |
-| 在售量 | 库内 in_sale_count | 近7日每日 ≥90% 品有在售量（csQAQ chart 自带，无登录态依赖） |
+| 单品 K 线 | 库内 price_history 覆盖 | 每日活跃池品（当前 202 品：自选/持仓豁免，排除存世量过低/活跃池淘汰/贴纸模块停采）≥85%，最新日期为当日/前一日 |
+| 在售量 | 库内 in_sale_count | 近7日每日活跃池 ≥90% 品有在售量（csQAQ chart 自带，无登录态依赖） |
 | 贪婪/卡价 | macro_history | greedy 60 点 / card 179 点 |
 | 全市场快照 | market_snapshot | 周度（周一）采集，最新日行数≈1468（磨损过滤后），无 StatTrak/纪念品残留 |
 | 大户集中度 | monitor_rank_snapshot | 周度（周一）采集，最新日约 100 品 / 8234 行，抽查与已知大户一致 |
@@ -77,24 +77,38 @@ SELECT date, value, change_7d, mood FROM market_index ORDER BY date DESC LIMIT 3
 ### 2. 单品 K 线（price_history）
 
 ```sql
-SELECT date, COUNT(*) n, COUNT(DISTINCT item_id) items
-FROM price_history WHERE date >= date('now','-7 day') GROUP BY date ORDER BY date;
+SELECT p.date, COUNT(*) n, COUNT(DISTINCT p.item_id) items
+FROM price_history p JOIN items i ON i.id = p.item_id
+WHERE i.good_id > 0
+  AND (i.in_watchlist=1 OR i.holding=1
+       OR COALESCE(i.notes, '') NOT LIKE '%存世量过低%'
+          AND COALESCE(i.notes, '') NOT LIKE '%活跃池淘汰%'
+          AND COALESCE(i.notes, '') NOT LIKE '%贴纸模块停采%')
+  AND p.date >= date('now','-7 day')
+GROUP BY p.date ORDER BY p.date;
 ```
 
 验收：
-- 历史有在售量的品应每天有 K 线（2026-08-07 Phase 1b: 基线从自选品改为动态"历史覆盖品"，阈值 85%，修复 08-03 起非自选品停更漏检；低于阈值提示当日抓取不完整）
+- 活跃池品应每天有 K 线（2026-08-07 Phase 1b 起按历史覆盖品动态统计；2026-08-13 贴纸模块停采后改为活跃池口径，避免已停采贴纸的历史在售量继续拉高分母；阈值 85%，低于阈值提示当日抓取不完整）
 - 2026-08-07 起每日全量刷新（价格+在售量，P3）；若大量品停在 2 天前，检查 `run_daily_collect.py` 的 `collect_kline_all` 是否被调用（回归防护测试 t_kline_daily）
 
 ### 3. 在售量覆盖（price_history.in_sale_count）
 
 ```sql
-SELECT date, COUNT(*) n FROM price_history
-WHERE in_sale_count>0 AND in_sale_count IS NOT NULL
-  AND date>=date('now','-7 day') GROUP BY date ORDER BY date DESC LIMIT 1;
+SELECT p.date, COUNT(*) n
+FROM price_history p JOIN items i ON i.id = p.item_id
+WHERE i.good_id > 0
+  AND (i.in_watchlist=1 OR i.holding=1
+       OR COALESCE(i.notes, '') NOT LIKE '%存世量过低%'
+          AND COALESCE(i.notes, '') NOT LIKE '%活跃池淘汰%'
+          AND COALESCE(i.notes, '') NOT LIKE '%贴纸模块停采%')
+  AND p.in_sale_count>0 AND p.in_sale_count IS NOT NULL
+  AND p.date>=date('now','-7 day')
+GROUP BY p.date ORDER BY p.date DESC LIMIT 1;
 ```
 
 验收：
-- 最新日期为当日/前一日，n ≥ 90% 品数（约 101 品）
+- 最新日期为当日/前一日，n ≥ 活跃池品数的 90%（当前约 202 品）
 - 若骤降为 0，说明每日 K 线/在售量刷新未跑（2026-08-07 起每日全量刷新，不再依赖悠悠登录态）
 
 ### 4. 贪婪/卡价（macro_history）

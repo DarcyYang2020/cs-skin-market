@@ -19,18 +19,14 @@ import sys
 
 sys.path.insert(0, ".")
 from pipeline.backtest_methodology import signal_cluster_report
+from pipeline.config import SIGNAL_FAMILY_TAXONOMY, assign_fine_family, display_key_for_label
 
 REPLAY = "data/item_backtest_full_2025.json"
+REPLAY_CLEAN = "data/_exp_v2t7_win_replay.json"
 OUT = "data/signal_event_counts.json"
 
-FAMILIES = [
-    ("panic_resonance", "恐慌共振"),
-    ("panic_easing", "恐慌退潮"),
-    ("deep_value", "深值"),
-    ("supply_accum", "供给收缩"),
-    ("deep_dip", "深度回调"),
-    ("base", None),  # 其余（基础分批）
-]
+FAMILIES = [(k, SIGNAL_FAMILY_TAXONOMY["fine_labels"][k]) for k in SIGNAL_FAMILY_TAXONOMY["fine_order"]]
+DISPLAY_KEYS = SIGNAL_FAMILY_TAXONOMY["display_keys"]
 
 
 def wilson_ci(k: int, n: int, z: float = 1.96):
@@ -45,20 +41,11 @@ def wilson_ci(k: int, n: int, z: float = 1.96):
 
 
 def assign_family(action_label: str) -> str:
-    label = action_label or ""
-    for key, kw in FAMILIES:
-        if kw and kw in label:
-            return key
-    return "base"
+    return assign_fine_family(action_label)
 
 
 def display_key(action_label: str) -> str:
-    label = action_label or ""
-    if "恐慌" in label:
-        return "panic"
-    if "深值" in label:
-        return "deep_value"
-    return "accumulate"
+    return display_key_for_label(action_label)
 
 
 def family_stats(dates):
@@ -82,13 +69,15 @@ def pnl_stats(sigs):
     return {"win14": _slice("net14"), "win30": _slice("net30")}
 
 
-def main():
-    data = json.load(io.open(REPLAY, encoding="utf-8"))
+def generate_payload(replay_path, source_label=None):
+
+    data = json.load(io.open(replay_path, encoding="utf-8"))
     signals = data["signals"]
 
     out = {"generated": __import__("datetime").datetime.now().strftime("%Y-%m-%d"), "window": 3, "total_signals": len(signals),
            "note": "去量引擎 v2 回放同源（item_backtest_full_2025.json）；事件簇数=±3天去簇；细族按 action_label 关键词，展示键按「恐慌/深值」匹配（与 config.ITEM_EXPECTANCY_STATS 同口径，config 由 sync_expectancy_config.py 同步生成）",
-           "source": REPLAY}
+           "source": str(replay_path),
+           "baseline": source_label}
 
     for key, kw in FAMILIES:
         sigs = [s for s in signals if assign_family(s.get("action_label") or "") == key]
@@ -105,7 +94,7 @@ def main():
 
     # 展示键（action_label 匹配，同 config.ITEM_EXPECTANCY_STATS 口径）
     out["display_keys"] = {}
-    for key in ("panic", "deep_value", "accumulate"):
+    for key in DISPLAY_KEYS:
         sigs = [s for s in signals if display_key(s.get("action_label") or "") == key]
         st = family_stats([s["date"] for s in sigs])
         p14 = pnl_stats(sigs)
@@ -117,19 +106,19 @@ def main():
         st["avg30"] = p14["win30"]["avg"]
         out["display_keys"][key] = st
 
-    with io.open(OUT, "w", encoding="utf-8") as f:
+    return out
+
+
+def main():
+    hist_payload = generate_payload(REPLAY, source_label="HIST-FULL")
+    clean_payload = generate_payload(REPLAY_CLEAN, source_label="CLEAN-CUR")
+    out = {k: v for k, v in hist_payload.items()}
+    out["baselines"] = {"HIST-FULL": hist_payload, "CLEAN-CUR": clean_payload}
+    with io.open(OUT, "w", encoding="utf-8", newline="\n") as f:
         json.dump(out, f, ensure_ascii=False, indent=1)
 
-    print("=== 信号族样本深度（去量引擎 v2 回放 %d 信号）===" % len(signals))
-    for key, _ in FAMILIES:
-        if key in out:
-            v = out[key]
-            print("%-15s 信号=%d 事件=%d win14=%s avg14=%s win30=%s avg30=%s  (%s)" % (
-                key, v["signals"], v["events"], v["win14"], v["avg14"], v["win30"], v["avg30"], v["match"]))
-    print("--- 展示键（同 config.ITEM_EXPECTANCY_STATS）---")
-    for k, v in out["display_keys"].items():
-        print("%-12s n=%d 事件=%d win14=%s avg14=%s ci=(%s,%s) win30=%s avg30=%s" % (
-            k, v["n"], v["events"], v["win14"], v["avg14"], v["ci14_lo"], v["ci14_hi"], v["win30"], v["avg30"]))
+    print("=== 信号族样本深度（HIST-FULL 回放 %d 信号）===" % len(json.load(io.open(REPLAY, encoding="utf-8"))["signals"]))
+    print("written:", OUT)
 
 
 if __name__ == "__main__":

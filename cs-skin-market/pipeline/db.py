@@ -32,6 +32,39 @@ def _today() -> str:
     return datetime.now(TZ_BJ).strftime("%Y-%m-%d")
 
 
+SUPPLY_GAP_START = "2026-02-01"
+SUPPLY_GAP_END = "2026-04-30"
+
+
+def supply_depth_missing(raw_value, date_str=None):
+    """Return True when raw in_sale_count is absent (NULL/None) or the date is in the known gap.
+
+    DECISION-6 (2026-08-14): NULL and 2026-02-01~04-30 are missing depth, not true zero.
+    True zero (raw_value == 0 outside the gap) is deliberately NOT treated as missing here.
+    """
+    if raw_value is None:
+        return True
+    day = (date_str or "")[:10]
+    return SUPPLY_GAP_START <= day <= SUPPLY_GAP_END
+
+
+def latest_supply_missing(daily_bars):
+    """Latest bar missing-depth flag for engine callers.
+
+    Bars can carry `in_sale_missing` and/or `_in_sale_raw`; fallbacks preserve old behavior
+    for callers that only provide numeric in_sale_count (unknown 0 stays non-missing).
+    """
+    if not daily_bars:
+        return True
+    bar = daily_bars[-1]
+    if getattr(bar, "in_sale_missing", False):
+        return True
+    raw = getattr(bar, "_in_sale_raw", None)
+    if raw is None and not hasattr(bar, "_in_sale_raw"):
+        raw = getattr(bar, "in_sale_count", None)
+    return supply_depth_missing(raw, getattr(bar, "date", ""))
+
+
 # 2026-08-06 性能修复：get_conn 每次连接都跑 _init_schema（32 条 DDL），
 # 在 WAL 写竞争下每条 execute 可达 ~0.1s，导致分析链（event_risk_coefficient 等）单次连接 ~11s。
 # 改为按 DB 路径缓存：同一进程内文件库只初始化一次；:memory: 每连接都是新库，不缓存。

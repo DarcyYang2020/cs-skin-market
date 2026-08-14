@@ -4,14 +4,25 @@
 <div style="padding:16px 0;">
   <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
     <h2 style="margin:0;font-size:20px;">🧪 信号体检</h2>
-    <span style="font-size:12px;color:var(--text-muted);">J-2 C 通道胜率监测：回放月度判定 + 实盘信号跟踪（data/j2_channel_status.json + signal_tracking 表）</span>
+    <span style="font-size:12px;color:var(--text-muted);">J-2 C 通道胜率+期望监测：回放月度判定 + 实盘信号跟踪（data/j2_channel_status.json + signal_tracking 表）</span>
   </div>
+
+  {% if j2 and j2.optimization_view %}
+  <div class="card" style="margin-bottom:14px;padding:12px 14px;border-color:rgba(59,130,246,0.35);">
+    <div style="font-size:12px;font-weight:700;margin-bottom:6px;">📈 主指标：期望 + 风险调整后收益（胜率只作为下限约束）</div>
+    <div style="font-size:12px;line-height:1.7;color:var(--text-secondary);">
+      <div>回放 net14：win {{ j2.optimization_view.win14_pct }}% / 期望 {{ "%+.1f"|format(j2.optimization_view.avg14_net) }}%；net30：win {{ j2.optimization_view.win30_net }}% / 期望 {{ "%+.1f"|format(j2.optimization_view.avg30_net) }}%</div>
+      <div>策略 active：总收益 {{ "%+.1f"|format(j2.optimization_view.strategy_active.total_return_pct) }}% / maxDD {{ j2.optimization_view.strategy_active.max_drawdown_pct }}% / Calmar {{ j2.optimization_view.strategy_active.calmar }}</div>
+      <div>策略 full：总收益 {{ "%+.1f"|format(j2.optimization_view.strategy_full.total_return_pct) }}% / maxDD {{ j2.optimization_view.strategy_full.max_drawdown_pct }}% / Calmar {{ j2.optimization_view.strategy_full.calmar }}</div>
+    </div>
+  </div>
+  {% endif %}
 
   {% if j2 and j2.channels %}
   {% set ch = j2.channels.C %}
   <div class="card" style="margin-bottom:14px;padding:14px 16px;">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
-      <span style="font-weight:700;">C 通道 · 胜率监测</span>
+      <span style="font-weight:700;">C 通道 · 胜率+期望监测</span>
       {% if ch.status == '已触发' %}
         <span style="color:var(--red);font-weight:bold;">🔴 {{ ch.status }}</span>
       {% else %}
@@ -37,6 +48,8 @@
       {{ prod.n_total }} 条信号 · 已回填 14d {{ prod.n_filled14 }} / 30d {{ prod.n_filled30 }}
       {% if prod.net14 and prod.net14.n %} · 实盘 14d 胜率 {{ prod.net14.win }}%（n={{ prod.net14.n }}）{% endif %}
       {% if prod.net30 and prod.net30.n %} · 30d 胜率 {{ prod.net30.win }}%（n={{ prod.net30.n }}）{% endif %}
+      {% if prod.net14 and prod.net14.avg is not none %} · 14d 期望 {{ "%+.2f"|format(prod.net14.avg) }}%{% endif %}
+      {% if prod.net30 and prod.net30.avg is not none %} · 30d 期望 {{ "%+.2f"|format(prod.net30.avg) }}%{% endif %}
     </div>
     {% else %}
     <div style="font-size:13px;margin-bottom:8px;">实盘信号积累中：signal_tracking 暂无已回填样本（0 条），未达判定门槛。</div>
@@ -52,7 +65,7 @@
     <div class="table-wrap" style="max-height:420px;overflow-y:auto;">
       <table class="data-table" style="width:100%;font-size:12px;">
         <thead>
-          <tr><th>月份</th><th>n</th><th>去簇 n</th><th>14d 胜率</th><th>去簇 14d</th><th>30d 胜率</th><th>去簇 30d</th><th>标注</th></tr>
+          <tr><th>月份</th><th>n</th><th>去簇 n</th><th>14d 胜率</th><th>去簇 14d</th><th>30d 胜率</th><th>去簇 30d</th><th>14d 期望</th><th>30d 期望</th><th>标注</th></tr>
         </thead>
         <tbody>
         {% for r in ch.monthly or [] %}
@@ -64,6 +77,8 @@
             <td>{% if r.dedup_win14 is not none %}{{ r.dedup_win14 }}%{% else %}<span class="muted">--</span>{% endif %}</td>
             <td>{% if r.win30 is not none %}{{ r.win30 }}%{% else %}<span class="muted">--</span>{% endif %}</td>
             <td>{% if r.dedup_win30 is not none %}{{ r.dedup_win30 }}%{% else %}<span class="muted">--</span>{% endif %}</td>
+            <td>{% if r.avg14_net is not none %}{{ "%+.1f"|format(r.avg14_net) }}%{% else %}<span class="muted">--</span>{% endif %}</td>
+            <td>{% if r.avg30_net is not none %}{{ "%+.1f"|format(r.avg30_net) }}%{% else %}<span class="muted">--</span>{% endif %}</td>
             <td>
               {% for f in r.flags or [] %}<span style="color:var(--red);font-size:11px;">⚠️ {{ f }}</span>{% if not loop.last %}<br>{% endif %}{% endfor %}
               {% if not (r.flags or []) %}<span class="muted">--</span>{% endif %}
@@ -71,7 +86,7 @@
           </tr>
         {% endfor %}
         {% if not (ch.monthly or []) %}
-          <tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text-muted);">暂无月度回放数据</td></tr>
+          <tr><td colspan="10" style="text-align:center;padding:24px;color:var(--text-muted);">暂无月度回放数据</td></tr>
         {% endif %}
         </tbody>
       </table>

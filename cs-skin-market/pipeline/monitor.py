@@ -67,6 +67,8 @@ def _analyze_item(conn, item, ms, signal_date):
         return None
     prices = [p for p, _ in valid]
     supply_hist = [s for _, s in valid]
+    _last_sale_row = next((r for r in reversed(rows) if r["price_rmb"] and r["price_rmb"] > 0), None)
+    supply_depth_missing = db.supply_depth_missing(_last_sale_row["in_sale_count"], _last_sale_row["date"]) if _last_sale_row is not None else True
     cutoff = (datetime.now(TZ_BJ) - timedelta(days=7)).strftime("%Y-%m-%d")
     rb = [r["date"][:10] for r in conn.execute(
         "SELECT date FROM snapshots WHERE item_id=? AND action IN ('buy','oversold_buy') AND date>=? ORDER BY date DESC",
@@ -74,7 +76,7 @@ def _analyze_item(conn, item, ms, signal_date):
     ).fetchall()]
     from pipeline import item_analysis
     analysis = item_analysis.run_item_analysis(
-        name=item["name"], prices=prices, supply_hist=supply_hist or None,
+        name=item["name"], prices=prices, supply_hist=supply_hist or None, supply_depth_missing=supply_depth_missing,
         index_change_7d=ms["chg7"], market_cycle=ms["cycle"], market_th_score=int(ms["th"]),
         market_30d_change=ms["chg30"], market_drop21=ms["drop21"],
         recent_buy_dates=rb, signal_date=signal_date,

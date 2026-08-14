@@ -134,11 +134,12 @@ async def _scan_item(row, idx, ms, market_th_score, sentiment_score, total_asset
             conn_c.close()
         prices = [k.close for k in daily_bars if k.close > 0] if daily_bars else [item.price_rmb]
         supply_hist = [k.in_sale_count for k in daily_bars] if daily_bars else []
+        supply_depth_missing = db.latest_supply_missing(daily_bars)
         analysis = await asyncio.get_running_loop().run_in_executor(
             None,
             lambda: item_analysis.run_item_analysis(
                 name=exact_name, prices=prices,
-                supply_hist=supply_hist or None, order_book=item.order_book,
+                supply_hist=supply_hist or None, supply_depth_missing=supply_depth_missing, order_book=item.order_book,
                 index_change_7d=getattr(idx, "change_7d", 0),
                 market_cycle=ms["cycle"],
                 market_th_score=ms["th"],

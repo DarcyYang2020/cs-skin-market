@@ -1,6 +1,6 @@
 {
  "generated": "2026-08-14",
- "engine_version": "v2-T4",
+ "engine_version": "v2-T7",
  "monitor_start": "2026-08-07",
  "sample_target_days": 260,
  "channels": {
@@ -22,16 +22,20 @@
    "note": "自 v2 引擎起点 2026-08-07 起累计新数据；满 260 天（约 2027-04-24）即样本完整性观察点"
   },
   "C": {
-   "label": "胜率监测（回放告警 + 实盘判定分离，Phase 2b）",
+   "label": "胜率+期望监测（回放告警 + 实盘判定分离，Phase 2b）",
    "monthly": [
     {
      "month": "2025-11",
      "n": 14,
      "win14": 64.3,
      "win30": 64.3,
+     "avg14_net": 8.48,
+     "avg30_net": 6.79,
      "dedup_n": 3,
      "dedup_win14": 33.3,
      "dedup_win30": 66.7,
+     "dedup_avg14_net": -2.14,
+     "dedup_avg30_net": 6.94,
      "flags": [
       "14d 64.3% < 80%"
      ]
@@ -41,9 +45,13 @@
      "n": 11,
      "win14": 54.5,
      "win30": 90.9,
+     "avg14_net": 20.8,
+     "avg30_net": 54.26,
      "dedup_n": 5,
      "dedup_win14": 60.0,
      "dedup_win30": 80.0,
+     "dedup_avg14_net": 9.26,
+     "dedup_avg30_net": 24.64,
      "flags": [
       "14d 54.5% < 80%"
      ]
@@ -53,9 +61,13 @@
      "n": 5,
      "win14": 80.0,
      "win30": 60.0,
+     "avg14_net": 65.82,
+     "avg30_net": 147.83,
      "dedup_n": 2,
      "dedup_win14": 100.0,
      "dedup_win30": 50.0,
+     "dedup_avg14_net": 153.34,
+     "dedup_avg30_net": 112.13,
      "flags": []
     },
     {
@@ -63,9 +75,13 @@
      "n": 133,
      "win14": 76.7,
      "win30": 76.7,
+     "avg14_net": 6.05,
+     "avg30_net": 23.98,
      "dedup_n": 7,
      "dedup_win14": 100.0,
      "dedup_win30": 100.0,
+     "dedup_avg14_net": 10.72,
+     "dedup_avg30_net": 54.35,
      "flags": [
       "14d 76.7% < 80%"
      ]
@@ -75,9 +91,13 @@
      "n": 21,
      "win14": 76.2,
      "win30": 52.4,
+     "avg14_net": 21.07,
+     "avg30_net": 10.54,
      "dedup_n": 3,
      "dedup_win14": 33.3,
      "dedup_win30": 33.3,
+     "dedup_avg14_net": 15.48,
+     "dedup_avg30_net": 0.82,
      "flags": [
       "14d 76.2% < 80%",
       "30d 52.4% < 55%"
@@ -88,9 +108,13 @@
      "n": 93,
      "win14": 93.5,
      "win30": 79.6,
+     "avg14_net": 29.52,
+     "avg30_net": 21.56,
      "dedup_n": 3,
      "dedup_win14": 100.0,
      "dedup_win30": 100.0,
+     "dedup_avg14_net": 37.37,
+     "dedup_avg30_net": 32.98,
      "flags": []
     },
     {
@@ -98,9 +122,13 @@
      "n": 33,
      "win14": 72.7,
      "win30": 42.4,
+     "avg14_net": 13.5,
+     "avg30_net": 9.65,
      "dedup_n": 3,
      "dedup_win14": 66.7,
      "dedup_win30": 33.3,
+     "dedup_avg14_net": 1.52,
+     "dedup_avg30_net": 7.32,
      "flags": [
       "14d 72.7% < 80%",
       "30d 42.4% < 55%"
@@ -111,9 +139,13 @@
      "n": 7,
      "win14": 14.3,
      "win30": null,
+     "avg14_net": -8.57,
+     "avg30_net": null,
      "dedup_n": 3,
      "dedup_win14": 0.0,
      "dedup_win30": null,
+     "dedup_avg14_net": -15.38,
+     "dedup_avg30_net": null,
      "flags": []
     }
    ],
@@ -130,9 +162,13 @@
         "n": 1,
         "win14": 0.0,
         "win30": 0.0,
+        "avg14_net": -8.16,
+        "avg30_net": -9.46,
         "dedup_n": 1,
         "dedup_win14": 0.0,
         "dedup_win30": 0.0,
+        "dedup_avg14_net": -8.16,
+        "dedup_avg30_net": -9.46,
         "flags": []
        },
        {
@@ -140,9 +176,13 @@
         "n": 2,
         "win14": 100.0,
         "win30": 100.0,
+        "avg14_net": 27.81,
+        "avg30_net": 22.61,
         "dedup_n": 2,
         "dedup_win14": 100.0,
         "dedup_win30": 100.0,
+        "dedup_avg14_net": 27.81,
+        "dedup_avg30_net": 22.61,
         "flags": []
        },
        {
@@ -150,9 +190,13 @@
         "n": 15,
         "win14": 73.3,
         "win30": 73.3,
+        "avg14_net": 5.5,
+        "avg30_net": 9.31,
         "dedup_n": 3,
         "dedup_win14": 100.0,
         "dedup_win30": 100.0,
+        "dedup_avg14_net": 5.5,
+        "dedup_avg30_net": 18.96,
         "flags": []
        },
        {
@@ -160,9 +204,13 @@
         "n": 3,
         "win14": 0.0,
         "win30": 0.0,
+        "avg14_net": -9.46,
+        "avg30_net": -15.25,
         "dedup_n": 2,
         "dedup_win14": 0.0,
         "dedup_win30": 0.0,
+        "dedup_avg14_net": -12.55,
+        "dedup_avg30_net": -19.88,
         "flags": []
        },
        {
@@ -170,9 +218,13 @@
         "n": 1,
         "win14": 100.0,
         "win30": 0.0,
+        "avg14_net": 0.04,
+        "avg30_net": -4.0,
         "dedup_n": 1,
         "dedup_win14": 100.0,
         "dedup_win30": 0.0,
+        "dedup_avg14_net": 0.04,
+        "dedup_avg30_net": -4.0,
         "flags": []
        }
       ],
@@ -182,16 +234,20 @@
       "win14_total": 63.6
      },
      "deep_dip": {
-      "label": "深度回调",
+      "label": "深度回调低吸",
       "monthly": [
        {
         "month": "2025-11",
         "n": 1,
         "win14": 100.0,
         "win30": 100.0,
+        "avg14_net": 30.66,
+        "avg30_net": 21.22,
         "dedup_n": 1,
         "dedup_win14": 100.0,
         "dedup_win30": 100.0,
+        "dedup_avg14_net": 30.66,
+        "dedup_avg30_net": 21.22,
         "flags": []
        },
        {
@@ -199,9 +255,13 @@
         "n": 1,
         "win14": 0.0,
         "win30": 0.0,
+        "avg14_net": -4.27,
+        "avg30_net": -19.04,
         "dedup_n": 1,
         "dedup_win14": 0.0,
         "dedup_win30": 0.0,
+        "dedup_avg14_net": -4.27,
+        "dedup_avg30_net": -19.04,
         "flags": []
        },
        {
@@ -209,9 +269,13 @@
         "n": 32,
         "win14": 71.9,
         "win30": 43.8,
+        "avg14_net": 13.92,
+        "avg30_net": 10.08,
         "dedup_n": 2,
         "dedup_win14": 100.0,
         "dedup_win30": 100.0,
+        "dedup_avg14_net": 62.99,
+        "dedup_avg30_net": 86.44,
         "flags": [
          "30d 43.8% < 50%"
         ]
@@ -225,16 +289,20 @@
       "win14_total": 70.6
      },
      "deep_value": {
-      "label": "深值·企稳",
+      "label": "深值企稳",
       "monthly": [
        {
         "month": "2025-11",
         "n": 10,
         "win14": 70.0,
         "win30": 60.0,
+        "avg14_net": 8.5,
+        "avg30_net": 5.71,
         "dedup_n": 2,
         "dedup_win14": 100.0,
         "dedup_win30": 100.0,
+        "dedup_avg14_net": 10.71,
+        "dedup_avg30_net": 14.52,
         "flags": []
        },
        {
@@ -242,9 +310,13 @@
         "n": 5,
         "win14": 60.0,
         "win30": 100.0,
+        "avg14_net": 38.77,
+        "avg30_net": 102.83,
         "dedup_n": 1,
         "dedup_win14": 100.0,
         "dedup_win30": 100.0,
+        "dedup_avg14_net": 10.08,
+        "dedup_avg30_net": 68.48,
         "flags": []
        },
        {
@@ -252,9 +324,13 @@
         "n": 4,
         "win14": 75.0,
         "win30": 50.0,
+        "avg14_net": 7.17,
+        "avg30_net": 127.42,
         "dedup_n": 2,
         "dedup_win14": 50.0,
         "dedup_win30": 0.0,
+        "dedup_avg14_net": 0.33,
+        "dedup_avg30_net": -6.16,
         "flags": []
        },
        {
@@ -262,9 +338,13 @@
         "n": 3,
         "win14": 100.0,
         "win30": 66.7,
+        "avg14_net": 8.35,
+        "avg30_net": 17.4,
         "dedup_n": 1,
         "dedup_win14": 100.0,
         "dedup_win30": 100.0,
+        "dedup_avg14_net": 6.93,
+        "dedup_avg30_net": 45.63,
         "flags": []
        },
        {
@@ -272,16 +352,22 @@
         "n": 5,
         "win14": 20.0,
         "win30": null,
+        "avg14_net": -4.17,
+        "avg30_net": null,
         "dedup_n": 1,
         "dedup_win14": 0.0,
         "dedup_win30": null,
+        "dedup_avg14_net": -7.01,
+        "dedup_avg30_net": null,
         "flags": [
-         "14d 20.0% < 60%"
+         "14d 20.0% < 60%",
+         "14d 期望负 -4.17%"
         ]
        }
       ],
       "flags": [
-       "14d 20.0% < 60%"
+       "14d 20.0% < 60%",
+       "14d 期望负 -4.17%"
       ],
       "two_month_flags": [],
       "n_total": 27,
@@ -295,9 +381,13 @@
         "n": 48,
         "win14": 87.5,
         "win30": 77.1,
+        "avg14_net": 16.49,
+        "avg30_net": 10.87,
         "dedup_n": 1,
         "dedup_win14": 100.0,
         "dedup_win30": 100.0,
+        "dedup_avg14_net": 20.87,
+        "dedup_avg30_net": 46.23,
         "flags": []
        }
       ],
@@ -314,9 +404,13 @@
         "n": 44,
         "win14": 100.0,
         "win30": 81.8,
+        "avg14_net": 44.29,
+        "avg30_net": 33.67,
         "dedup_n": 2,
         "dedup_win14": 100.0,
         "dedup_win30": 100.0,
+        "dedup_avg14_net": 53.16,
+        "dedup_avg30_net": 43.56,
         "flags": []
        }
       ],
@@ -326,16 +420,20 @@
       "win14_total": 100.0
      },
      "supply_accum": {
-      "label": "供给收缩",
+      "label": "供给收缩吸筹",
       "monthly": [
        {
         "month": "2025-11",
         "n": 2,
         "win14": 50.0,
         "win30": 100.0,
+        "avg14_net": 5.56,
+        "avg30_net": 13.1,
         "dedup_n": 1,
         "dedup_win14": 0.0,
         "dedup_win30": 100.0,
+        "dedup_avg14_net": -3.03,
+        "dedup_avg30_net": 12.14,
         "flags": []
        },
        {
@@ -343,9 +441,13 @@
         "n": 4,
         "win14": 25.0,
         "win30": 75.0,
+        "avg14_net": -5.17,
+        "avg30_net": 9.38,
         "dedup_n": 3,
         "dedup_win14": 0.0,
         "dedup_win30": 66.7,
+        "dedup_avg14_net": -9.93,
+        "dedup_avg30_net": 2.66,
         "flags": []
        },
        {
@@ -353,9 +455,13 @@
         "n": 1,
         "win14": 100.0,
         "win30": 100.0,
+        "avg14_net": 300.4,
+        "avg30_net": 229.5,
         "dedup_n": 1,
         "dedup_win14": 100.0,
         "dedup_win30": 100.0,
+        "dedup_avg14_net": 300.4,
+        "dedup_avg30_net": 229.5,
         "flags": []
        },
        {
@@ -363,9 +469,13 @@
         "n": 115,
         "win14": 76.5,
         "win30": 77.4,
+        "avg14_net": 6.06,
+        "avg30_net": 26.06,
         "dedup_n": 7,
         "dedup_win14": 100.0,
         "dedup_win30": 85.7,
+        "dedup_avg14_net": 8.04,
+        "dedup_avg30_net": 46.54,
         "flags": []
        },
        {
@@ -373,9 +483,13 @@
         "n": 17,
         "win14": 94.1,
         "win30": 64.7,
+        "avg14_net": 27.95,
+        "avg30_net": 16.83,
         "dedup_n": 1,
         "dedup_win14": 100.0,
         "dedup_win30": 100.0,
+        "dedup_avg14_net": 71.54,
+        "dedup_avg30_net": 42.22,
         "flags": []
        },
        {
@@ -383,9 +497,13 @@
         "n": 1,
         "win14": 100.0,
         "win30": 100.0,
+        "avg14_net": 5.05,
+        "avg30_net": 2.11,
         "dedup_n": 1,
         "dedup_win14": 100.0,
         "dedup_win30": 100.0,
+        "dedup_avg14_net": 5.05,
+        "dedup_avg30_net": 2.11,
         "flags": []
        },
        {
@@ -393,9 +511,13 @@
         "n": 2,
         "win14": 0.0,
         "win30": null,
+        "avg14_net": -19.56,
+        "avg30_net": null,
         "dedup_n": 2,
         "dedup_win14": 0.0,
         "dedup_win30": null,
+        "dedup_avg14_net": -19.56,
+        "dedup_avg30_net": null,
         "flags": []
        }
       ],
@@ -423,7 +545,7 @@
     "note": "回放口径告警（信息级提示，非正式重拟合触发）"
    },
    "production": {
-    "n_total": 1,
+    "n_total": 2,
     "n_filled14": 0,
     "n_filled30": 0,
     "net14": {
@@ -437,7 +559,7 @@
      "avg": null
     },
     "earliest_open": "2026-08-09",
-    "latest": "2026-08-09"
+    "latest": "2026-08-14"
    },
    "production_gate": {
     "min_filled14": 20,
@@ -447,15 +569,35 @@
    "production_triggered": false,
    "status": "已触发",
    "trigger_state": "待启动重拟合流水线",
-   "note": "回放口径：去量 v2 365d 窗口 317 信号(v2-T4)，月度 n>=10 判定，去簇(±3天) n>=10 判定；2026-08-10 事件簇复核：6 月劣化为独立簇(06-12~21)非恐慌簇退出，恐慌簇 win30 76.3~79.6% 优秀、6 月 avg30 +9.65 期望仍正，按事件级样本不足处理；生产实盘口径：signal_tracking 表（buy 信号 14/30 交易日后按真实价格回填，net 扣 2%），回填满 20 条后实盘胜率纳入判定；回放告警仅提示复核，正式重拟合评估以 C 通道监测为准，触发后动作见 overall.trigger_action"
+   "note": "回放口径：官方回放产物 365d 窗口 317 信号为 HIST-FULL（v2-T4/T5，C 通道主口径），当前引擎 ENGINE_VERSION=v2-T7；CLEAN-CUR 仅展示参考，不参与 C 通道告警；月度 n>=10 判定，去簇(±3天) n>=10 判定；2026-08-10 事件簇复核：6 月劣化为独立簇(06-12~21)非恐慌簇退出，恐慌簇 win30 76.3~79.6% 优秀、6 月 avg30 +9.65 期望仍正，按事件级样本不足处理；生产实盘口径：signal_tracking 表（buy 信号 14/30 交易日后按真实价格回填，net 扣 2%），回填满 20 条后实盘胜率纳入判定；回放告警仅提示复核，正式重拟合评估以 C 通道监测为准，触发后动作见 overall.trigger_action"
   }
+ },
+ "optimization_view": {
+  "north_star": "期望 + Calmar/maxDD 为主指标，胜率作为下限约束；方向是把引擎从「减仓器/风控器」转化为「收益增强器」（2026-08-14）",
+  "win14_pct": 71.0,
+  "avg14_net": 15.95,
+  "win30_net": 68.1,
+  "avg30_net": 23.11,
+  "strategy_full": {
+   "total_return_pct": 200.55,
+   "max_drawdown_pct": -9.13,
+   "annualized_pct": 357.89,
+   "calmar": 39.2
+  },
+  "strategy_active": {
+   "total_return_pct": 201.06,
+   "max_drawdown_pct": -9.13,
+   "annualized_pct": 341.24,
+   "calmar": 37.38
+  },
+  "note": "2026-08-14 #1: main optimization target = expectancy + Calmar; win rate is a floor constraint, not the sole trigger"
  },
  "overall": {
   "triggered": true,
   "triggered_channels": [
    "C"
   ],
-  "note": "J-2 三通道监测（提示项，非禁止调参闸门）：A 事件>=3 / B v2 样本>=260 天 / C 胜率告警",
+  "note": "J-2 三通道监测（提示项，非禁止调参闸门）：A 事件>=3 / B v2 样本>=260 天 / C 胜率+期望告警",
   "trigger_action": "触发后动作（重拟合评估）：1) 记录当前参数版本(ENGINE_VERSION)基线；2) 以新增数据重跑新旧引擎对比；3) A2 三件套(walk-forward+聚类+置换检验)验证；4) 人工确认后发布新参数版本并 bump ENGINE_VERSION；重拟合流水线已挂载：python references/refit_pipeline.py，输出 data/refit_pipeline_report.json（--simulate 演练 / 默认自 v2 起点后新增信号）"
  }
 }

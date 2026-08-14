@@ -13,6 +13,7 @@ from webapp.analysis_service import (
 )
 from pipeline.item_categories import discover_category
 from webapp.render_html import render_discover_html, split_discover_top10
+from pipeline.trend_health import liquidity_supply_floor
 
 _web_log = logging.getLogger("webapp")
 
@@ -165,12 +166,16 @@ async def _run_discover_task(task_id: str, items: list):
                 return "skip", "分位过高"
 
             supply_hist = [k.in_sale_count for k in daily_bars] if daily_bars else []
-            # F-3.5 流动性闸门 (2026-08-08): 近 7 天平均在售量 <15 -> 结构性无流动性，不入高分榜
+            supply_depth_missing = db.latest_supply_missing(daily_bars)
+            # F-3.5 高分榜流动性预筛（2026-08-14 用户口径）：按最新单价分档设置最低在售量
+            # 单价 <10000 -> 最新在售量 <200 跳过；单价 >=10000 -> 最新在售量 <100 跳过
+            # 与决策层 F-3.5 的 supply_depth<15 闸门分属两层：此处只决定是否进入高分榜。
             if supply_hist:
-                _recent_sale = [s for s in supply_hist[-7:] if s]
-                if _recent_sale and sum(_recent_sale) / len(_recent_sale) < 15:
+                _latest_sale = next((s for s in reversed(supply_hist) if s), 0)
+                _min_sale = liquidity_supply_floor(current_p)
+                if 0 < _latest_sale < _min_sale:
                     skipped += 1
-                    return "skip", "流动性不足(avg7在售<15)"
+                    return "skip", "流动性不足(单价¥{:.0f}/在售{}<{})".format(current_p, _latest_sale, _min_sale)
 
             _recent_buys = []
             try:
@@ -187,7 +192,7 @@ async def _run_discover_task(task_id: str, items: list):
                 None,
                 lambda: _ia.run_item_analysis(
                     name=exact_name, prices=prices,
-                    supply_hist=supply_hist or None, order_book=item.order_book,
+                    supply_hist=supply_hist or None, supply_depth_missing=supply_depth_missing, order_book=item.order_book,
                     index_change_7d=ms["chg7"],
                     market_history=ms["history"],
                     market_pct_90d=ms["pct"],

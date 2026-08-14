@@ -241,7 +241,7 @@ def prune_inactive(min_avg_sale: int = 10, days: int = 7) -> int:
     try:
         rows = conn.execute(f"""
             SELECT i.id FROM items i WHERE i.good_id>0 AND i.in_watchlist=0 AND COALESCE(i.holding,0)=0
-            AND (i.notes IS NULL OR (i.notes NOT LIKE '%存世量过低%' AND i.notes NOT LIKE '%活跃池淘汰%'))
+            AND (i.notes IS NULL OR (i.notes NOT LIKE '%存世量过低%' AND i.notes NOT LIKE '%活跃池淘汰%' AND i.notes NOT LIKE '%贴纸模块停采%'))
             AND (SELECT AVG(in_sale_count) FROM (SELECT in_sale_count FROM price_history p
                  WHERE p.item_id=i.id ORDER BY p.date DESC LIMIT {int(days)})) < {int(min_avg_sale)}
         """).fetchall()
@@ -285,7 +285,7 @@ async def collect_monitor_rank(top_n: int = 50) -> int:
     from pipeline.collector_monitor import fetch_monitor_rank
     conn = db.get_conn()
     try:
-        items = conn.execute("SELECT id, good_id, name FROM items WHERE good_id > 0 AND (in_watchlist=1 OR holding=1 OR notes IS NULL OR (notes NOT LIKE '%存世量过低%' AND notes NOT LIKE '%活跃池淘汰%')) ORDER BY id").fetchall()
+        items = conn.execute("SELECT id, good_id, name FROM items WHERE good_id > 0 AND (in_watchlist=1 OR holding=1 OR notes IS NULL OR (notes NOT LIKE '%存世量过低%' AND notes NOT LIKE '%活跃池淘汰%' AND notes NOT LIKE '%贴纸模块停采%')) ORDER BY id").fetchall()
     finally:
         conn.close()
     if not items:
@@ -388,7 +388,7 @@ def main():
         _pool_size = _c.execute("SELECT COUNT(*) FROM items WHERE good_id>0").fetchone()[0]
         _active = _c.execute(
             "SELECT COUNT(*) FROM items WHERE good_id>0 AND (in_watchlist=1 OR holding=1 OR notes IS NULL "
-            "OR (notes NOT LIKE '%存世量过低%' AND notes NOT LIKE '%活跃池淘汰%'))").fetchone()[0]
+            "OR (notes NOT LIKE '%存世量过低%' AND notes NOT LIKE '%活跃池淘汰%' AND notes NOT LIKE '%贴纸模块停采%'))").fetchone()[0]
         _pruned = _c.execute("SELECT COUNT(*) FROM items WHERE notes LIKE '%活跃池淘汰%'").fetchone()[0]
         _new = _c.execute(
             "SELECT COUNT(*) FROM items WHERE good_id>0 AND date(created_at)=date('now','localtime')").fetchone()[0]

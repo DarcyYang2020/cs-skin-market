@@ -10,7 +10,7 @@ import logging
 import os, statistics
 
 logger = logging.getLogger(__name__)
-from .trend_health import compute_trend_health, trend_health_summary, compute_fusion_decision, fusion_decision_summary
+from .trend_health import compute_trend_health, trend_health_summary, compute_fusion_decision, fusion_decision_summary, liquidity_supply_floor
 from .valuation import compute_valuation_grid, valuation_grid_summary
 from .supply import analyze_supply, supply_summary
 from .market_context import build_market_context, context_summary, state_bucket
@@ -223,6 +223,8 @@ class ItemAnalysisResult:
     risk_label: str = ""
     bid_support: dict = field(default_factory=dict)
     buy_distance: dict = field(default_factory=dict)
+    # 2026-08-14 #5：供给收缩三态研究标注的只读指标（展示层，不参与任何决策）。
+    research_metrics: dict = field(default_factory=dict)
 
 
 # ============================================================
@@ -1045,7 +1047,7 @@ SIGNAL_FAMILIES = (
         key="deep_value",
         label="🟢 深值·大盘企稳·分批建仓",
         priority=50,
-        limit=0.10,
+        limit=0.15,
         trigger=lambda F: (
             F["pct"] is not None and F["pct"] <= 20
             and F["z"] is not None and F["z"] <= -0.5
@@ -1061,7 +1063,7 @@ SIGNAL_FAMILIES = (
         detail=lambda F: (
             f"深值低估(pct={F['pct']:.0f}%,Z={F['z']:.1f})"
             f"+大盘企稳(TH={F['market_th']},21日跌幅{F['drop21']:.1f}%)·"
-            f"回测14d+14.9%/30d+52.4%(56信号14d75%胜率,轻仓0.10)·分批:首仓10%→跌10%加20%→跌15%加30%（单票敞口≤30%缩放）"
+            f"回测14d+14.9%/30d+52.4%(56信号14d75%胜率,轻仓0.15)·分批:首仓10%→跌10%加20%→跌15%加30%（单票敞口≤30%缩放）"
         ),
         sources=("deep_value_stable_market",),
         hypothesis="大盘企稳/修复环境(mchg30≤-3)下低分位(pct≤20%)+低估(Z≤-0.5)品均值回归；回放 56 信号 14d 75%/avg +14.9",
@@ -1631,6 +1633,45 @@ def decide_fusion_signal(
 
     return fd, bucket
 
+
+def _research_supply_three_state(prices, supply_hist):
+    """#5（2026-08-14）供给收缩三态分解：只读展示指标，不改变引擎决策。
+
+    口径与 references/probe_supply_three_state.py 保持一致：
+    - 价格三态：chg7 > 3% 为 up；chg7 < -3% 为 down；否则 flat
+    - 供给收缩：s30 > 0 且 s7 > 0 且 s7/s30 <= 0.85
+    """
+    if not prices or not supply_hist:
+        return {}
+    s7 = sum(supply_hist[-7:]) / 7 if len(supply_hist) >= 7 else None
+    s30 = sum(supply_hist[-30:]) / 30 if len(supply_hist) >= 30 else None
+    ratio = None
+    if s7 is not None and s30 not in (None, 0):
+        ratio = s7 / s30
+    chg7 = None
+    if len(prices) >= 8 and prices[-8] > 0 and prices[-1] > 0:
+        chg7 = (prices[-1] / prices[-8] - 1) * 100
+    price_state = None
+    if chg7 is not None:
+        if chg7 > 3:
+            price_state = "up"
+        elif chg7 < -3:
+            price_state = "down"
+        else:
+            price_state = "flat"
+    supply_contract = bool(
+        s30 and s30 > 0 and s7 and s7 > 0 and ratio is not None and ratio <= 0.85
+    )
+    return {
+        "s7": round(s7, 2) if s7 is not None else None,
+        "s30": round(s30, 2) if s30 is not None else None,
+        "chg7": round(chg7, 2) if chg7 is not None else None,
+        "ratio": round(ratio, 4) if ratio is not None else None,
+        "supply_contract": supply_contract,
+        "price_state": price_state,
+    }
+
+
 def run_item_analysis(
     name: str,
     prices: list,
@@ -1649,6 +1690,7 @@ def run_item_analysis(
     item_meta: dict = None,
     price_anchor: float = None,
     survive_count: int = 0,
+    supply_depth_missing: bool = False,
 ):
     """
     Complete single-item analysis pipeline.
@@ -1747,6 +1789,8 @@ def run_item_analysis(
         prices=prices,
         sentiment_score=sentiment_score,
         supply_depth=vol_total,
+        supply_depth_floor=liquidity_supply_floor(current),
+        supply_depth_missing=supply_depth_missing,
     )
 
     # ==================== 统一大脑阶段3：统一决策核心 ====================
@@ -2050,5 +2094,6 @@ def run_item_analysis(
         risk_label={"A":"低风险·可关注","B":"中等风险·正常操作","C":"较高风险·谨慎介入","D":"极度危险·回避"}.get(risk_level, ""),
         price_zones=price_zones,
         buy_distance=buy_distance,
+        research_metrics=_research_supply_three_state(prices, supply_hist),
     )
 

@@ -413,7 +413,7 @@ def t_p08_deep_value_tranche():
         assert fd['action'] == 'buy', fd['action']
         assert 'deep_value_stable_market' in fd['deduction_sources'], fd['deduction_sources']
         assert '深值' in fd['action_label'], fd['action_label']
-        assert fd['position_limit'] == 0.10, fd['position_limit']
+        assert fd['position_limit'] == 0.15, fd['position_limit']
         # 2026-08-04 分批落地: action_detail 带档位与加权期望
         assert '分批' in fd['action_detail'] and '跌10%加20%' in fd['action_detail'], fd['action_detail']
     finally:
@@ -1679,21 +1679,39 @@ print('[期望统计单一事实源 + 基准对照 + 参数冻结 (2026-08-07)]'
 def t_expectancy_sync():
     import importlib.util
     from pathlib import Path
-    from pipeline.config import ITEM_EXPECTANCY_STATS
+    from pipeline.config import (
+        ITEM_EXPECTANCY_STATS,
+        ITEM_EXPECTANCY_STATS_CLEAN_CUR,
+        SIGNAL_FAMILY_TAXONOMY,
+        BASELINE_LEDGER,
+        display_key_for_label,
+    )
     base = Path(TEST_DIR).parent
     ref = base / 'references' / 'sync_expectancy_config.py'
     spec = importlib.util.spec_from_file_location('sync_expectancy_config', ref)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
-    stats, _total, _comp = mod.compute_display_stats(str(base / 'data' / 'item_backtest_full_2025.json'))
-    assert set(stats) == set(ITEM_EXPECTANCY_STATS), f'展示键不一致: {sorted(stats)} vs {sorted(ITEM_EXPECTANCY_STATS)}'
-    for k, v in stats.items():
-        c = ITEM_EXPECTANCY_STATS[k]
-        for f in ('n', 'events', 'win14', 'avg14', 'ci14_lo', 'ci14_hi', 'win30', 'avg30'):
-            assert c[f] == v[f], (
-                f'{k}.{f} 漂移: config={c[f]} 回放计算={v[f]}；'
-                f'改回放产物后必须重跑 references/sync_expectancy_config.py')
-check('期望统计单一事实源: config == 回放计算值（全字段）', t_expectancy_sync)
+    assert BASELINE_LEDGER['family_taxonomy'] is SIGNAL_FAMILY_TAXONOMY, 'family taxonomy object drift'
+    baselines = {
+        'HIST-FULL': ('item_backtest_full_2025.json', ITEM_EXPECTANCY_STATS),
+        'CLEAN-CUR': ('_exp_v2t7_win_replay.json', ITEM_EXPECTANCY_STATS_CLEAN_CUR),
+    }
+    for baseline, (replay_file, cfg_stats) in baselines.items():
+        stats, _total, _comp = mod.compute_display_stats(str(base / 'data' / replay_file))
+        assert set(stats) == set(cfg_stats), f'{baseline} display keys drift: {sorted(stats)} vs {sorted(cfg_stats)}'
+        for k, v in stats.items():
+            c = cfg_stats[k]
+            for f in ('n', 'events', 'win14', 'avg14', 'ci14_lo', 'ci14_hi', 'win30', 'avg30'):
+                assert c[f] == v[f], (
+                    f'{baseline}.{k}.{f} drift: config={c[f]} replay={v[f]}; '
+                    f'rerun references/sync_expectancy_config.py after replay changes')
+    fold = SIGNAL_FAMILY_TAXONOMY['fine_to_display']
+    for fine in SIGNAL_FAMILY_TAXONOMY['fine_order']:
+        kw = SIGNAL_FAMILY_TAXONOMY['fine_keywords'][fine] or ''
+        assert fold[fine] == display_key_for_label(kw), f'{fine} display fold drift'
+    import references.j1_event_counts as j1
+    assert tuple(j1.DISPLAY_KEYS) == tuple(SIGNAL_FAMILY_TAXONOMY['display_keys']), 'j1 display keys drift'
+check('期望统计双基线硬校验: HIST-FULL + CLEAN-CUR + 族分类同源', t_expectancy_sync)
 
 def t_market_expectancy_card():
     """2026-08-12 期望徽章抽离外部卡：market_expectancy_card 数据组装
@@ -1711,6 +1729,9 @@ def t_market_expectancy_card():
         assert _f['insufficient'] == (_f['n'] < 5), _f
     # 当前桶数据字段齐备（数字或 None）
     assert 'bucket_total' in card and 'bucket_win14' in card, card
+    # 2026-08-14：风险调整后收益视图进入期望卡，主指标不是只看胜率
+    assert card.get('risk_view') and card['risk_view']['strategy']['calmar'] is not None, card.get('risk_view')
+    assert card['risk_view']['strategy']['max_drawdown_pct'] <= 0, card['risk_view']['strategy']
 check('2026-08-12 期望徽章抽离: market_expectancy_card 数据组装', t_market_expectancy_card)
 
 def t_buy_queue():
@@ -1941,7 +1962,7 @@ def t_progress_schema():
     assert set(d['families']) >= {'generated', 'window', 'total_signals', 'display_keys'}
     j2 = d['j2']
     assert j2 is not None, 'j2 状态缺失'
-    assert set(j2) == {'generated', 'monitor_start', 'sample_target_days', 'engine_version', 'channels', 'overall'}, (
+    assert set(j2) == {'generated', 'monitor_start', 'sample_target_days', 'engine_version', 'channels', 'overall', 'optimization_view'}, (
         f'j2 字段漂移: {sorted(j2)}')
     assert set(j2['channels']) == {'A', 'B', 'C'}
     assert set(j2['channels']['A']) == {'label', 'value', 'threshold', 'progress_pct', 'status', 'note'}
@@ -2555,23 +2576,102 @@ def t_liquidity_depth_gate():
     # 低在售：buy -> watch + liquidity_depth_gate
     fd = compute_fusion_decision(10, th, liquidity_score=63, zscore_90d=-1.0,
                                  market_cycle="consolidation", sentiment_score=50.0,
-                                 supply_depth=13)
+                                 supply_depth=13, supply_depth_floor=15)
     assert fd.action == "watch", fd.action
     assert fd.liquidity_filtered is True
     assert "liquidity_depth_gate" in fd.deduction_sources
     # 充足在售：buy 保持
     fd2 = compute_fusion_decision(10, th, liquidity_score=63, zscore_90d=-1.0,
                                   market_cycle="consolidation", sentiment_score=50.0,
-                                  supply_depth=80)
+                                  supply_depth=80, supply_depth_floor=15)
     assert fd2.action == "buy", fd2.action
     assert fd2.liquidity_filtered is False
     # 无数据（supply_depth=0）：不误伤
     fd3 = compute_fusion_decision(10, th, liquidity_score=63, zscore_90d=-1.0,
                                   market_cycle="consolidation", sentiment_score=50.0,
-                                  supply_depth=0)
+                                  supply_depth=0, supply_depth_floor=15)
     assert fd3.action == "buy", fd3.action
 
 check("F-3.5 流动性深度闸门 buy 降级", t_liquidity_depth_gate)
+
+def t_liquidity_missing_vs_zero():
+    """DECISION-6 (2026-08-14): NULL/断档 = 不可交易，真实在售 0 维持原口径。"""
+    import types
+    from pipeline.trend_health import compute_fusion_decision
+    th = types.SimpleNamespace(raw_score=80, score=80, deduction_sources=[])
+    fd = compute_fusion_decision(10, th, liquidity_score=63, zscore_90d=-1.0,
+                                 market_cycle="consolidation", sentiment_score=50.0,
+                                 supply_depth=0, supply_depth_floor=15, supply_depth_missing=True)
+    assert fd.action == "watch", fd.action
+    assert fd.liquidity_filtered is True
+    assert fd.supply_depth_status == "missing_depth"
+    assert "liquidity_depth_missing" in fd.deduction_sources
+    # 后续周期升级不得恢复 buy
+    fd2 = compute_fusion_decision(10, th, liquidity_score=63, zscore_90d=-1.0,
+                                  cycle_phase="accumulation", market_cycle="consolidation",
+                                  sentiment_score=50.0, supply_depth=0, supply_depth_floor=15,
+                                  supply_depth_missing=True)
+    assert fd2.action == "watch", fd2.action
+    # 真实在售 0（非缺失）维持原行为：不误伤
+    fd3 = compute_fusion_decision(10, th, liquidity_score=63, zscore_90d=-1.0,
+                                  market_cycle="consolidation", sentiment_score=50.0,
+                                  supply_depth=0, supply_depth_floor=15, supply_depth_missing=False)
+    assert fd3.action == "buy", fd3.action
+    assert fd3.supply_depth_status == "zero"
+
+check("F-3.5 NULL/断档 vs 真实 0 分流", t_liquidity_missing_vs_zero)
+
+def t_liquidity_tier_gate():
+    """F-3.5 2026-08-14 分档：单价<10000 地板 200；单价>=10000 地板 100。"""
+    import types
+    from pipeline.trend_health import compute_fusion_decision
+    th = types.SimpleNamespace(raw_score=80, score=80, deduction_sources=[])
+    fd = compute_fusion_decision(10, th, liquidity_score=63, zscore_90d=-1.0,
+                                 market_cycle="consolidation", sentiment_score=50.0,
+                                 supply_depth=150, supply_depth_floor=200)
+    assert fd.action == "watch", fd.action
+    assert fd.liquidity_filtered is True
+    fd2 = compute_fusion_decision(10, th, liquidity_score=63, zscore_90d=-1.0,
+                                  market_cycle="consolidation", sentiment_score=50.0,
+                                  supply_depth=200, supply_depth_floor=200)
+    assert fd2.action == "buy", fd2.action
+    fd3 = compute_fusion_decision(10, th, liquidity_score=63, zscore_90d=-1.0,
+                                  market_cycle="consolidation", sentiment_score=50.0,
+                                  supply_depth=80, supply_depth_floor=100)
+    assert fd3.action == "watch", fd3.action
+    fd4 = compute_fusion_decision(10, th, liquidity_score=63, zscore_90d=-1.0,
+                                  market_cycle="consolidation", sentiment_score=50.0,
+                                  supply_depth=100, supply_depth_floor=100)
+    assert fd4.action == "buy", fd4.action
+
+check("F-3.5 200/100 分档 liquidity floor", t_liquidity_tier_gate)
+
+def t_floor_upgrade_leak():
+    """v2-T7 (2026-08-14): below_floor must block post-upgrade families (watch->buy leak)."""
+    from pipeline.item_analysis import run_item_analysis
+    N = 90
+    prices = [400.0] * (N - 30) + [500.0] * 30
+    def analyze(supply):
+        return run_item_analysis(
+            name="AK-47 | TestSkin (FN)",
+            prices=prices, supply_hist=supply,
+            index_change_7d=0, market_history=None, market_pct_90d=50,
+            market_zscore=0.0, market_cycle="consolidation", market_th_score=50,
+            market_30d_change=0, market_drop21=0, survive_count=0,
+            supply_depth_missing=False,
+        ).fusion_decision
+    # control: sufficient depth -> supply_accum upgrades watch->buy
+    fd_ok = analyze([400.0] * (N - 7) + [300.0] * 7)
+    assert fd_ok["action"] == "buy", fd_ok
+    assert "supply_contraction_accumulation" in fd_ok["deduction_sources"], fd_ok
+    # below floor: upgrade must NOT restore buy
+    fd_low = analyze([200.0] * (N - 7) + [100.0] * 7)
+    assert fd_low["action"] != "buy", fd_low
+    assert fd_low["supply_depth_status"] == "below_floor", fd_low
+    assert fd_low["liquidity_filtered"] is True, fd_low
+    assert "supply_contraction_accumulation" not in fd_low["deduction_sources"], fd_low
+
+check("F-3.5 floor blocks post-upgrade buy (v2-T7)", t_floor_upgrade_leak)
 
 
 def t_liquidity_gate_e2e():
