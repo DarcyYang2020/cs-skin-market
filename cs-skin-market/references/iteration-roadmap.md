@@ -6,8 +6,9 @@
 > 变更纪律：每次更新先写版本变更说明，再改映射表/批次/状态。
 
 ## 版本历史
-- **v64（2026-08-14，进行中）**：族分类唯一事实源 + 中间数废弃——新增 `pipeline/config.py:SIGNAL_FAMILY_TAXONOMY`，`panic / deep_value / accumulate` 三展示键与六细族映射唯一化，j1/j2/sync/attribution/benchmark 全部改为从该表取定义；290/140/163/149 显式标为中间推导、已废弃。详见 decision-log「族分类唯一事实源 + 中间数废弃」。
-- **v63（2026-08-14，进行中）**：双基线落地——HIST-FULL（官方 317，v2-T4/T5）与 CLEAN-CUR（150，v2-T7）并存；expectancy/benchmark/attribution/J-3 全部挂标签，禁止裸数字。C 通道监测主口径 HIST-FULL，CLEAN-CUR 仅展示参考。详见 decision-log「双基线落地（HIST-FULL / CLEAN-CUR）」。
+- **v65（2026-08-14，进行中）**：v2-T8 真基线重跑 + below_floor 吸筹旁路修复——`compute_fusion_decision` 吸筹周期 watch→buy 尊重 `liquidity_filtered`，`_deep_dip_transform` 加防御守卫；真 v2-T8 回放 149 信号（三族闭合 panic 85 / deep_value 18 / accumulate 46，panic 单事件占 57.0%），same_fail（沙漠之鹰|指挥）消失；CLEAN-CUR 改为 `data/_exp_v2t8_win_replay.json` / v2-T8 / 149。详见 decision-log「v2-T8 真基线重跑 + below_floor 吸筹旁路修复」。
+- **v64（2026-08-14，已完成）**：族分类唯一事实源 + 中间数废弃——新增 `pipeline/config.py:SIGNAL_FAMILY_TAXONOMY`，`panic / deep_value / accumulate` 三展示键与六细族映射唯一化，j1/j2/sync/attribution/benchmark 全部改为从该表取定义；290/140/163/149 显式标为中间推导、已废弃（后续 v65 把 149 转为 CLEAN-CUR 真基线、150 进入废弃中间数）。详见 decision-log「族分类唯一事实源 + 中间数废弃」。
+- **v63（2026-08-14，已完成）**：双基线落地——HIST-FULL（官方 317，v2-T4/T5）与 CLEAN-CUR 并存；expectancy/benchmark/attribution/J-3 全部挂标签，禁止裸数字。C 通道监测主口径 HIST-FULL，CLEAN-CUR 仅展示参考。详见 decision-log「双基线落地（HIST-FULL / CLEAN-CUR）」。
 - **v62（2026-08-14，进行中）**：v2-T7 流动性地板泄漏修复——below_floor 与 missing 同样禁后置升级，堵住 14 条 45~196 在售量经 panic/accumulate 绕过 200/100 地板的泄漏；新增升级路径测试。详见 decision-log「v2-T7 流动性地板泄漏修复」。
 - **v61（2026-08-14，进行中）**：DECISION-6 落地——in_sale NULL/2026-02~04 断档显式缺失并禁 buy，真实 0 维持原口径；回放 290→140（150 条翻转），生产侧当前 0 品翻转；ENGINE_VERSION v2-T6。详见 decision-log「DECISION-6 落地」。
 - **v60（2026-08-14，进行中）**：专家三残留风险收口——风险2 共享底层污染排查（未污染，官方基准/归因仍成立）、风险1 deep 复验前置登记、风险3 止损提示扩展至自选/持仓页；零引擎参数，不重跑审计。
@@ -551,6 +552,14 @@ eferences/refit_pipeline.py → data/refit_pipeline_report.json（A2 三件套�
 ## DECISION-6 收口（2026-08-14）
 
 - 四条硬验收：NULL/断档与真实 0 分流 ✅；翻转双数=生产 0 / 回放 150 ✅；supply_accum 免疫未动 ✅；冒烟新增边界测试且 106 passed ✅。
-- 重放产物：`data/_exp_guard_coverage_decision6.json` / `_exp_aligned_replay_decision6.json` / `data/_exp_decision6_audit.json`；官方 317 因数据保留不可重跑，已冻结为 HIST-FULL（v2-T4/T5，仍为 C 通道监测主口径）；新增 CLEAN-CUR（150 信号，v2-T7）仅展示参考。`sync_expectancy_config.py` 已改为双基线同步。
-- 队列重排：`POOL-2` 原「仅 4 条翻转」结论作废，必须在 CLEAN-CUR（150 信号，v2-T7）口径上复核；之后 `LIQ-RATIO-1` → `EXIT-9/10/11`。全部研究在 HIST-FULL vs CLEAN-CUR 双口径报告。
-- **中间数废弃**：`290`（DECISION-4 对齐中间 buy）、`140`（DECISION-6 翻转中间 buy）、`163`（v2-T6 干净回放含 below_floor 泄漏）、`149`（v2-T7 估算）均为中间推导，**已废弃，不得再作为基线**；唯一基线=HIST-FULL 317 / CLEAN-CUR 150，见 `config.BASELINE_LEDGER.deprecated_intermediates`。
+- 重放产物：`data/_exp_guard_coverage_decision6.json` / `_exp_aligned_replay_decision6.json` / `data/_exp_decision6_audit.json`；官方 317 因数据保留不可重跑，已冻结为 HIST-FULL（v2-T4/T5，仍为 C 通道监测主口径）；新增 CLEAN-CUR（149 信号，v2-T8）仅展示参考。`sync_expectancy_config.py` 已改为双基线同步。
+- 队列重排：`POOL-2` 原「仅 4 条翻转」结论作废，必须在 CLEAN-CUR（149 信号，v2-T8）口径上复核；之后 `LIQ-RATIO-1` → `EXIT-9/10/11`。全部研究在 HIST-FULL vs CLEAN-CUR 双口径报告。
+- **中间数废弃**：`290`（DECISION-4 对齐中间 buy）、`140`（DECISION-6 翻转中间 buy）、`163`（v2-T6 干净回放含 below_floor 泄漏）、`149`（v2-T7 估算）均为中间推导，**已废弃，不得再作为基线**；唯一基线=HIST-FULL 317 / CLEAN-CUR 149（v2-T8），见 `config.BASELINE_LEDGER.deprecated_intermediates`。
+
+
+## v2-T8 真基线重跑 + 残留旁路修复（2026-08-14）
+
+- 修复：`compute_fusion_decision` 吸筹周期 watch→buy 尊重 `liquidity_filtered`；`_deep_dip_transform` 加防御守卫。升版 `v2-T7→v2-T8`。
+- 真 v2-T8 回放（`data/replay_v2t6_win.db` → `data/_exp_v2t8_win_replay.json`）：**149 信号**，三族闭合 panic 85 / deep_value 18 / accumulate 46；panic 单事件占 57.0%（仍集中于 2026-05 单事件），same_fail（沙漠之鹰|指挥）消失。
+- CLEAN-CUR 组合：strategy total +257.16% / maxDD −7.61%；attribution accumulate +129.95pp(n=46) / deep_value +83.80pp(n=18) / panic +65.14pp(n=85)。
+- 验证：`sync_expectancy_config` / `benchmark_compare` / `portfolio_attribution` / `j1_event_counts` / `j2_channel_monitor` 全链路重跑；`tests/test_smoke.py` 108 passed / 0 failed / 0 skipped；pyflakes 无新增告警。

@@ -3389,7 +3389,7 @@ Fluxo 25→280 约 11 倍），尖顶后 3 天 -86~94%，与枪皮统计反转�
 - **背景**：DECISION-6 暴露官方 317 历史基线含约 50% 缺失深度信号；官方 317 因 365d retention 已删 2025-08-10 前数据不可重跑。若用 CLEAN-CUR 覆盖官方 317 会系统性丢失 2026-02~04 牛市段证据；若继续只展示 317 又会掩盖缺失深度污染。采纳外审结论：**双基线并存，禁止裸数字，每个统计挂基线标签**。
 - **单一事实源**：`pipeline/config.py:BASELINE_LEDGER` 定义两条基线（名称/引擎/回放路径/信号数/caveat/角色）。
 - **HIST-FULL**：317 信号，`v2-T4/T5`，`data/item_backtest_full_2025.json`。Caveat：含约 50% 缺失深度信号（2026-02~04 牛市段污染）；覆盖完整牛熊周期。角色=历史全窗口基准、C 通道监测主口径。期望：win14 71.0% / avg14 +15.95%；panic 92、deep_value 27、accumulate 198（action_label 展示键）。
-- **CLEAN-CUR**：150 信号，`v2-T7`，`data/_exp_v2t7_win_replay.json`。Caveat：干净但 panic 单事件占 55.3%（83/150）、缺 2026-02~04 牛市段。角色=当前引擎干净窗口展示参考，不参与 C 通道告警。期望：win14 76.7% / avg14 +26.14%；panic 85、deep_value 18、accumulate 47（action_label 展示键）。注意：`supply_accum` 细族在 CLEAN-CUR 仅 10 条，展示键 accumulate=47 还含 deep_dip 33 / base 4，不得把 47 当作 supply_accum 的可归因样本。
+- **CLEAN-CUR**：150 信号，`v2-T7`，`data/_exp_v2t7_win_replay_deprecated_20260814.json`。Caveat：干净但 panic 单事件占 55.3%（83/150）、缺 2026-02~04 牛市段。角色=当前引擎干净窗口展示参考，不参与 C 通道告警。期望：win14 76.7% / avg14 +26.14%；panic 85、deep_value 18、accumulate 47（action_label 展示键）。注意：`supply_accum` 细族在 CLEAN-CUR 仅 10 条，展示键 accumulate=47 还含 deep_dip 33 / base 4，不得把 47 当作 supply_accum 的可归因样本。
 - **expectancy 双列**：`config.ITEM_EXPECTANCY_STATS`（HIST-FULL）与新增 `config.ITEM_EXPECTANCY_STATS_CLEAN_CUR`（CLEAN-CUR）；`references/sync_expectancy_config.py` 改为同时生成两块，`data/signal_event_counts.json` 增加 `baselines` 对象并保留顶层 HIST-FULL 兼容。
 - **benchmark 双列**：`references/benchmark_compare.py` 参数化 replay，`data/benchmark_compare.json` 增加 `baselines.HIST-FULL` / `baselines.CLEAN-CUR`；顶层 `windows` 继续表示 HIST-FULL 兼容旧接口。HIST-FULL strategy active +201.06% / maxDD −9.13%；CLEAN-CUR strategy active +257.16% / maxDD −7.61%（当前库数据）。
 - **attribution 双列**：`references/portfolio_attribution.py` 参数化 replay，`data/portfolio_attribution.json` 增加 `baselines`。HIST-FULL deep_value +59.39pp / accumulate +111.69pp / panic +56.35pp；CLEAN-CUR 对应为 +83.80pp / +129.95pp / +65.14pp（展示键口径）。`accumulate +111.69pp` 是 HIST-FULL hold21 口径，CLEAN-CUR 展示键 accumulate=47 与 HIST-FULL 的 198 不同源，不可直接对比。
@@ -3410,10 +3410,24 @@ Fluxo 25→280 约 11 倍），尖顶后 3 天 -86~94%，与枪皮统计反转�
 
 ## POOL-2 复核：supply_depth 最新 vs 7 日中位数（CLEAN-CUR，2026-08-14，只读研究，不落地）
 
-- **任务**：在 CLEAN-CUR（150 信号，v2-T7，`data/_exp_v2t7_win_replay.json`）上复核「 supply_depth 取最新一条 vs 近 7 日非零中位数」的 200/100 地板块翻转敏感性。
+- **任务**：在 CLEAN-CUR（150 信号，v2-T7，`data/_exp_v2t7_win_replay_deprecated_20260814.json`）上复核「 supply_depth 取最新一条 vs 近 7 日非零中位数」的 200/100 地板块翻转敏感性。
 - **探针**：`references/probe_pool2_supply_depth_clean.py` → `data/_exp_pool2_supply_depth_clean.json`（只读，未改引擎/地板/回放产物）。
 - **结果**：150 信号中 147 可解析（3 条名称未命中当前 items 表：`指挥官 梅 “极寒” 贾米森 | 特警`×1、`AWP | 无畏战神 (略有磨损)`×2）。翻转：same_pass 145、same_fail 1、latest_pass_median_fail 1；升级 0。
   - 唯一「中位数会降级」信号：`M4A4 | 彼岸花 (崭新出厂)` 2026-06-21，latest 204 / median7 194（floor 200），fwd14 +2.88% / net14 +0.88%——改用中位数会误杀一条正期望信号。
   - `沙漠之鹰 | 指挥 (崭新出厂)` 2026-06-20 latest 112 / median7 105 双口径均低于 200（same_fail），属当前市场库与 `replay_v2t6_win.db` 快照在售量差异或 below_floor 边界残留，仅记录、不影响本项口径结论。
 - **结论**：中位数口径在 CLEAN-CUR 上仅 1 条会降级（且为正期望）、0 条升级，无稳健性收益；**POOL-2 维持不落地，根因转数据治理**（单日脏值治理 + 200/100 地板与回放快照同源）。若未来落地中位数，必须联动重放 + `sync_expectancy_config` 双基线复跑（旧纪律不变）。
 - **验证**：探针只读，未改引擎；`python tests/test_smoke.py` 仍 107 passed（本轮未改动代码）。
+## v2-T8 真基线重跑 + below_floor 吸筹旁路修复（2026-08-14，引擎行为变更）
+
+- **根因（外审 A 方案）**：v2-T7 已对 `below_floor` 置 `liquidity_filtered=True`，但 `compute_fusion_decision` 的吸筹周期分支把 `watch` 无条件升回 `buy`，未尊重 `liquidity_filtered`；随后 `_deep_dip_transform` 又把它重贴为「深度回调低吸」，形成残留旁路。实证：`沙漠之鹰 | 指挥 (崭新出厂)` 2026-06-20（supply_depth 112 < floor 200，net14 −1.92%）仍为 buy。
+- **修复**：`pipeline/trend_health.py` 吸筹分支 watch→buy 增加 `and not fd.liquidity_filtered`；`pipeline/item_analysis.py::_deep_dip_transform` 增加 `if getattr(fd, "liquidity_filtered", False): return False` 防御守卫。`ENGINE_VERSION v2-T7→v2-T8`，`config.PARAM_REGIME.param_history` 新增 v2-T8 条目。
+- **真 v2-T8 回放**：`references/run_item_backtest_v2t8_win.py`（源 `data/replay_v2t6_win.db`）→ `data/_exp_v2t8_win_replay.json`。结果 **149 信号**（150→149，漏网 1 条被正确降级），`signal_type` base 54 / panic 85 / accumulate 10。
+- **四要素核验**：
+  1. 三族闭合：panic 85 + deep_value 18 + accumulate 46 = **149**（action_label 展示键口径；细族 panic_resonance 42 / panic_easing 43 / deep_value 18 / deep_dip 32 / supply_accum 10 / base 4）。
+  2. regime 分布：月度 2025-09 2 / 10 4 / 11 11 / 12 8 / 2026-01 3 / 05 83 / 06 32 / 07 6；panic 仍高度集中于 2026-05 单事件簇（2026-05-22~31，占 panic 的 10/85 日期、全量 57.0%）。「55% 单事件」caveat 仍成立并更新为 57.0%。
+  3. same_fail：`沙漠之鹰 | 指挥` 已不在信号集，漏网消除。
+  4. CLEAN-CUR 数字变化：strategy total 257.16% / maxDD −7.61%（总收益与回撤与 v2-T7 泄漏基线相同，仅信号数 150→149）；HIST-FULL 200.55% / −9.13% 不变。
+- **全链路重跑**：`sync_expectancy_config`（CLEAN-CUR 改为 v2-T8 + 动态 panic share 57.0%）→ `benchmark_compare` → `portfolio_attribution` → `j1_event_counts` → `j2_channel_monitor`。`BASELINE_LEDGER.CLEAN-CUR` 更新为 engine v2-T8 / replay `_exp_v2t8_win_replay.json` / signals 149；`150`（v2-T7 泄漏基线）进入 `deprecated_intermediates`。
+- **attribution（CLEAN-CUR，hold21）**：accumulate +129.95pp（n=46）、deep_value +83.80pp（n=18）、panic +65.14pp（n=85）。
+- **验证**：新增 `tests/test_smoke.py::t_accumulation_floor_leak` 钉死「below_floor + 吸筹周期不得升 buy」；`python tests/test_smoke.py` **108 passed / 0 failed / 0 skipped**；pyflakes 仅 test_smoke 存量告警，无新增。
+- **未改红线**：未改阈值/权重/信号族/研究开关默认值；HIST-FULL `item_backtest_full_2025.json` 未覆盖；未 commit（沿用本会话暂缓提交约定）。

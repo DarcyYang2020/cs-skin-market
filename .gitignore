@@ -73,3 +73,8 @@ cs-skin-market/data/price_history_write_log.jsonl
 cs-skin-market/data/signal_tracking_reconcile.jsonl
 cs-skin-market/data/csqaq_chart_probe.jsonl
 cs-skin-market/data/_audit_*.jsonl
+
+# Runtime DB/file backups (local restore points) - not source
+cs-skin-market/data/backups/
+# Runtime UI screenshot artifact
+discover-before.png

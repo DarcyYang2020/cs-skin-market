@@ -96,7 +96,7 @@ cs-skin-market/
 
 | 文件 | 功能 |
 |---|---|
-| `test_smoke.py` | 冒烟测试（107 用例，当前 107 passed / 0 failed / 0 skipped；支持 CS_MODEL_SKIP_NET 离线跳过网络用例） |
+| `test_smoke.py` | 冒烟测试（108 用例，当前 108 passed / 0 failed / 0 skipped；支持 CS_MODEL_SKIP_NET 离线跳过网络用例） |
 | `check_encoding.py` | 仓库文本编码健康检查（UTF-8 无 BOM / 无乱码） |
 | `snapshots/replay_v2.`json | 回放口径快照（aggregate+月度，防无意漂移） |
 

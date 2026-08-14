@@ -110,7 +110,7 @@
 - ✅ `P-B`：panic 与 supply_accum 仓位变体均恶化；**deep_value 0.15 落地（v2-T5）**。
 - ✅ `P-C`：组合 stop/take 使 Calmar 36.42→16.72，不落地；hold21 是组合优势来源。
 - ✅ POOL-2（CLEAN-CUR 复核，2026-08-14）：supply_depth 最新 vs 近7日中位数仅 1 降级 / 0 升级，不落地，转数据治理；`probe_pool2_supply_depth_clean.py` → `data/_exp_pool2_supply_depth_clean.json`。
-- 后续仍开放：`LIQ-RATIO-1` 正式前瞻、`DECISION-5/7/9`、`EXIT-9/10/11` 的 ATR 自适应网格；DECISION-6/v2-T7 已完成。
+- 后续仍开放：`LIQ-RATIO-1` 正式前瞻、`DECISION-5/7/9`、`EXIT-9/10/11` 的 ATR 自适应网格；DECISION-6/v2-T7/v2-T8 已完成。
 ## 7. 专家复核补正（2026-08-14）
 
 - ✅ 止损路径信任提示已加到持仓建议卡（`analysis.html`）。
@@ -132,7 +132,7 @@
 - 产物：`data/_exp_guard_coverage_decision6.json` / `data/_exp_aligned_replay_decision6.json` / `data/_exp_decision6_audit.json`；脚本 `references/decision6_audit.py`。
 - 官方 317 回放因 365d 保留已删除 2025-08-10 前数据，不可重跑；已备份并回滚，`sync_expectancy_config` 复跑无变化。
 - **队列重排**：`POOL-2` 原「仅 4 条翻转」结论作废，必须在 DECISION-6 新口径（140 buy）上复核；随后 `LIQ-RATIO-1` → `EXIT-9/10/11`。
-- **中间数废弃（2026-08-14）**：`290` / `140` / `163` / `149` 均为中间推导，**已废弃，不得作为基线**；唯一基线=HIST-FULL 317 / CLEAN-CUR 150，见 `config.BASELINE_LEDGER.deprecated_intermediates` 与 `SIGNAL_FAMILY_TAXONOMY`。
+- **中间数废弃（2026-08-14）**：`290` / `140` / `163` / `149` 均为中间推导，**已废弃，不得作为基线**；唯一基线=HIST-FULL 317 / CLEAN-CUR 149（v2-T8），见 `config.BASELINE_LEDGER.deprecated_intermediates` 与 `SIGNAL_FAMILY_TAXONOMY`。
 
 
 ## 10. 常驻数据治理项（2026-08-14）
