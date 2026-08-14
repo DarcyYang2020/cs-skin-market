@@ -22,7 +22,7 @@ import sys
 BASE = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BASE))
 REPLAY = BASE / "data" / "item_backtest_full_2025.json"
-REPLAY_CLEAN = BASE / "data" / "_exp_v2t7_win_replay.json"
+REPLAY_CLEAN = BASE / "data" / "_exp_v2t8_win_replay.json"
 OUT = BASE / "data" / "portfolio_attribution.json"
 
 _spec = spec_from_file_location("pb", str(BASE / "references" / "portfolio_backtest.py"))
@@ -115,7 +115,7 @@ def build_attribution(replay_path, baseline_label):
         "baseline": baseline_label,
         "caveat": ("HIST-FULL: accumulate leave-out +111.69pp is hold21 portfolio attribution; "
                    "contains ~50% missing-depth signals" if baseline_label == "HIST-FULL"
-                   else "CLEAN-CUR: clean current-engine window; panic single-event share 55.3%"),
+                   else "CLEAN-CUR: clean current-engine window; panic single-event share 57.0%"),
         "meta": "组合绩效归因双基线（A1-3）：与 portfolio_backtest 同源口径；leave-one-out=剔除该族后组合总收益差值(pp)。",
         "generated": date.today().isoformat(),
         "base": {"total_return_pct": round(base_ret * 100, 2), "n_signals": len(sigs)},

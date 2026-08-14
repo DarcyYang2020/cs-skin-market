@@ -282,12 +282,12 @@
   },
   "CLEAN-CUR": {
    "baseline": "CLEAN-CUR",
-   "caveat": "CLEAN-CUR: clean current-engine window; panic single-event share 55.3%",
+   "caveat": "CLEAN-CUR: clean current-engine window; panic single-event share 57.0%",
    "meta": "组合绩效归因双基线（A1-3）：与 portfolio_backtest 同源口径；leave-one-out=剔除该族后组合总收益差值(pp)。",
    "generated": "2026-08-14",
    "base": {
     "total_return_pct": 257.16,
-    "n_signals": 150
+    "n_signals": 149
    },
    "family_contribution": {
     "deep_value": {
@@ -296,15 +296,15 @@
      "win14_pct": 50.0,
      "avg14_net_pct": 14.75,
      "leave_out_contrib_pp": 83.8,
-     "share_of_signals_pct": 12.0
+     "share_of_signals_pct": 12.1
     },
     "accumulate": {
      "label": "吸筹/回补组（供给收缩 + 深度回调 + 基础分批）",
-     "n_signals": 47,
-     "win14_pct": 61.7,
-     "avg14_net_pct": 20.79,
+     "n_signals": 46,
+     "win14_pct": 63.0,
+     "avg14_net_pct": 21.29,
      "leave_out_contrib_pp": 129.95,
-     "share_of_signals_pct": 31.3
+     "share_of_signals_pct": 30.9
     },
     "panic": {
      "label": "恐慌族",
@@ -312,7 +312,7 @@
      "win14_pct": 90.6,
      "avg14_net_pct": 31.51,
      "leave_out_contrib_pp": 65.14,
-     "share_of_signals_pct": 56.7
+     "share_of_signals_pct": 57.0
     }
    },
    "monthly_pnl": {
@@ -347,9 +347,9 @@
      "win14_pct": 90.4
     },
     "2026-06": {
-     "n": 33,
-     "pnl_weighted": 76.47,
-     "win14_pct": 60.6
+     "n": 32,
+     "pnl_weighted": 76.85,
+     "win14_pct": 62.5
     },
     "2026-07": {
      "n": 6,
@@ -411,7 +411,7 @@
      }
     ],
     "top10_share_pct": 48.0,
-    "total_pnl": 838.12
+    "total_pnl": 838.5
    },
    "pool_buy_hold_concentration": {
     "n_items": 0,

@@ -907,7 +907,7 @@ def compute_fusion_decision(percentile_90d, th, liquidity_score=50, zscore_90d=0
             fd.action_label = "🟡 周期吸筹·观察"
             fd.action_detail = fd.action_detail + "。但周期处于吸筹期，不宜清仓，先观察等待确认。"
             fd.deduction_sources.append("cycle_accumulation_boost")
-        elif fd.action == "watch":
+        elif fd.action == "watch" and not fd.liquidity_filtered:
             fd.action = "buy"
             fd.action_label = "🟢 周期吸筹·分批建仓"
             fd.action_detail = "周期处于吸筹期，融合决策建议分批建仓。"

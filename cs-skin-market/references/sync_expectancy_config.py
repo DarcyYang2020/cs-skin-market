@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """期望统计双基线同步器（J-3 口径，2026-08-07 定稿，2026-08-14 改双基线）。
 
-HIST-FULL = data/item_backtest_full_2025.json（v2-T4/T5 冻结归档）；CLEAN-CUR = data/_exp_v2t7_win_replay.json（v2-T7 展示参考）。
+HIST-FULL = data/item_backtest_full_2025.json（v2-T4/T5 冻结归档）；CLEAN-CUR = data/_exp_v2t8_win_replay.json（v2-T8 展示参考）。
 本脚本把回放产物按展示键（panic / deep_value / accumulate）重算
 n / events / win14 / avg14 / ci14 / win30 / avg30，并同步写入：
 
@@ -25,7 +25,7 @@ import j1_event_counts as j1  # noqa: E402
 ROOT = Path(__file__).resolve().parent.parent
 CONFIG = ROOT / "pipeline" / "config.py"
 REPLAY = ROOT / "data" / "item_backtest_full_2025.json"
-REPLAY_CLEAN = ROOT / "data" / "_exp_v2t7_win_replay.json"
+REPLAY_CLEAN = ROOT / "data" / "_exp_v2t8_win_replay.json"
 
 sys.path.insert(0, str(ROOT))
 from pipeline.config import SIGNAL_FAMILY_TAXONOMY  # noqa: E402
@@ -109,6 +109,9 @@ def _replace_block(src, var_name, block):
 def sync():
     hist_stats, hist_total, hist_comp = compute_display_stats(REPLAY)
     clean_stats, clean_total, clean_comp = compute_display_stats(REPLAY_CLEAN)
+    clean_panic_share = round(100.0 * clean_stats["panic"]["n"] / clean_total, 1) if clean_total else 0.0
+    clean_caveat = ("CLEAN-CUR: %d signals, v2-T8, panic single-event share %.1f%%, "
+                    "missing 2026-02~04 bull segment") % (clean_total, clean_panic_share)
 
     hist_block = render_block(hist_stats, hist_total, hist_comp,
                               var_name="ITEM_EXPECTANCY_STATS", replay_path=str(REPLAY),
@@ -117,7 +120,7 @@ def sync():
     clean_block = render_block(clean_stats, clean_total, clean_comp,
                                var_name="ITEM_EXPECTANCY_STATS_CLEAN_CUR", replay_path=str(REPLAY_CLEAN),
                                baseline_label="CLEAN-CUR",
-                               caveat="CLEAN-CUR: 150 signals, v2-T7, panic single-event share 55.3%, missing 2026-02~04 bull segment")
+                               caveat=clean_caveat)
 
     src = io.open(CONFIG, encoding="utf-8").read()
     # normalize an empty clean block so the regex below can replace it

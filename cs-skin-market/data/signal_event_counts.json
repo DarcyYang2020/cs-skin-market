@@ -3,7 +3,7 @@
  "window": 3,
  "total_signals": 317,
  "note": "去量引擎 v2 回放同源（item_backtest_full_2025.json）；事件簇数=±3天去簇；细族按 action_label 关键词，展示键按「恐慌/深值」匹配（与 config.ITEM_EXPECTANCY_STATS 同口径，config 由 sync_expectancy_config.py 同步生成）",
- "source": "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\item_backtest_full_2025.json",
+ "source": "data/item_backtest_full_2025.json",
  "baseline": "HIST-FULL",
  "panic_resonance": {
   "signals": 44,
@@ -154,7 +154,7 @@
    "window": 3,
    "total_signals": 317,
    "note": "去量引擎 v2 回放同源（item_backtest_full_2025.json）；事件簇数=±3天去簇；细族按 action_label 关键词，展示键按「恐慌/深值」匹配（与 config.ITEM_EXPECTANCY_STATS 同口径，config 由 sync_expectancy_config.py 同步生成）",
-   "source": "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\item_backtest_full_2025.json",
+   "source": "data/item_backtest_full_2025.json",
    "baseline": "HIST-FULL",
    "panic_resonance": {
     "signals": 44,
@@ -303,9 +303,9 @@
   "CLEAN-CUR": {
    "generated": "2026-08-14",
    "window": 3,
-   "total_signals": 150,
-   "note": "CLEAN-CUR baseline (C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\_exp_v2t7_win_replay.json): same display-key mapping as HIST-FULL",
-   "source": "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\_exp_v2t7_win_replay.json",
+   "total_signals": 149,
+   "note": "去量引擎 v2 回放同源（item_backtest_full_2025.json）；事件簇数=±3天去簇；细族按 action_label 关键词，展示键按「恐慌/深值」匹配（与 config.ITEM_EXPECTANCY_STATS 同口径，config 由 sync_expectancy_config.py 同步生成）",
+   "source": "data/_exp_v2t8_win_replay.json",
    "baseline": "CLEAN-CUR",
    "panic_resonance": {
     "signals": 42,
@@ -368,18 +368,18 @@
     "match": "供给收缩吸筹"
    },
    "deep_dip": {
-    "signals": 33,
+    "signals": 32,
     "events": 2,
     "unique_dates": 8,
-    "max_cluster_share": 0.9697,
+    "max_cluster_share": 0.9688,
     "date_range": [
      "2025-11-23",
      "2026-06-21"
     ],
-    "win14": 60.6,
-    "avg14": 14.43,
-    "win30": 45.5,
-    "avg30": 10.41,
+    "win14": 62.5,
+    "avg14": 14.94,
+    "win30": 46.9,
+    "avg30": 11.04,
     "match": "深度回调低吸"
    },
    "base": {
@@ -433,21 +433,21 @@
      "avg30": 66.67
     },
     "accumulate": {
-     "signals": 47,
+     "signals": 46,
      "events": 10,
      "unique_dates": 21,
-     "max_cluster_share": 0.7021,
+     "max_cluster_share": 0.6957,
      "date_range": [
       "2025-09-13",
       "2026-07-17"
      ],
-     "n": 47,
-     "win14": 61.7,
-     "avg14": 20.79,
-     "ci14_lo": 47.4,
-     "ci14_hi": 74.2,
-     "win30": 50.0,
-     "avg30": 18.41
+     "n": 46,
+     "win14": 63.0,
+     "avg14": 21.29,
+     "ci14_lo": 48.6,
+     "ci14_hi": 75.5,
+     "win30": 51.1,
+     "avg30": 19.03
     }
    }
   }

@@ -1694,7 +1694,7 @@ def t_expectancy_sync():
     assert BASELINE_LEDGER['family_taxonomy'] is SIGNAL_FAMILY_TAXONOMY, 'family taxonomy object drift'
     baselines = {
         'HIST-FULL': ('item_backtest_full_2025.json', ITEM_EXPECTANCY_STATS),
-        'CLEAN-CUR': ('_exp_v2t7_win_replay.json', ITEM_EXPECTANCY_STATS_CLEAN_CUR),
+        'CLEAN-CUR': ('_exp_v2t8_win_replay.json', ITEM_EXPECTANCY_STATS_CLEAN_CUR),
     }
     for baseline, (replay_file, cfg_stats) in baselines.items():
         stats, _total, _comp = mod.compute_display_stats(str(base / 'data' / replay_file))
@@ -2672,6 +2672,21 @@ def t_floor_upgrade_leak():
     assert "supply_contraction_accumulation" not in fd_low["deduction_sources"], fd_low
 
 check("F-3.5 floor blocks post-upgrade buy (v2-T7)", t_floor_upgrade_leak)
+
+def t_accumulation_floor_leak():
+    """v2-T8 (2026-08-14): accumulation cycle watch->buy must respect liquidity_filtered."""
+    import types
+    from pipeline.trend_health import compute_fusion_decision
+    th = types.SimpleNamespace(raw_score=80, score=80, deduction_sources=[])
+    fd = compute_fusion_decision(10, th, liquidity_score=63, zscore_90d=-1.0,
+                                  cycle_phase="accumulation", market_cycle="accumulation",
+                                  sentiment_score=50.0, supply_depth=100, supply_depth_floor=200)
+    assert fd.action == "watch", fd.action
+    assert fd.liquidity_filtered is True
+    assert fd.supply_depth_status == "below_floor"
+    assert "cycle_accumulation_boost" not in fd.deduction_sources, fd.deduction_sources
+
+check("F-3.5 accumulation cycle respects liquidity_filtered (v2-T8)", t_accumulation_floor_leak)
 
 
 def t_liquidity_gate_e2e():

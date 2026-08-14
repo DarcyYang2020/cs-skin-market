@@ -1310,6 +1310,8 @@ def _deep_dip_transform(fd, F):
     """P0-7b：周期吸筹 buy 需大盘深跌共振；D方案深度回调低吸例外。"""
     if not (fd.action == "buy" and "吸筹" in fd.action_label and F["drop21"] > -18):
         return False
+    if getattr(fd, "liquidity_filtered", False):
+        return False
     if F["dd30"] <= -22 and F["chg14"] <= -6:
         fd.action_label = "🟢 深度回调低吸·分批建仓"
         fd.action_detail = ("周期吸筹但大盘未深跌，单品深度回调"

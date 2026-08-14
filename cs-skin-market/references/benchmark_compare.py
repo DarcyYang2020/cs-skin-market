@@ -35,7 +35,7 @@ from pipeline import db
 from pipeline.config import display_key_for_label  # noqa: E402
 
 REPLAY = ROOT / "data" / "item_backtest_full_2025.json"
-REPLAY_CLEAN = ROOT / "data" / "_exp_v2t7_win_replay.json"
+REPLAY_CLEAN = ROOT / "data" / "_exp_v2t8_win_replay.json"
 OUT = ROOT / "data" / "benchmark_compare.json"
 HOLD = 21
 COST = 0.02
@@ -194,7 +194,7 @@ def build_benchmark(replay_path, baseline_label):
                 "（price_history.price_rmb 前向填充，2025 低价品暴涨主导，未计一次性 2% 成本）；"
                 "market_index=大盘指数同期。本基线输出必须挂 baseline 标签，禁止裸数字。",
         "caveat": "HIST-FULL: contains ~50% missing-depth signals" if baseline_label == "HIST-FULL"
-                  else "CLEAN-CUR: clean, panic single event 55.3%, missing 2026-02~04 bull segment",
+                  else "CLEAN-CUR: clean, panic single event 57.0%, missing 2026-02~04 bull segment",
         "replay": {"signals": len(sigs), "pool": args.get("pool"), "start": args.get("start"), "end": args.get("end")},
         "windows": windows,
         "signal_stats": {"n14": len(n14), "win14_pct": round(100.0 * wins / len(n14), 1),
