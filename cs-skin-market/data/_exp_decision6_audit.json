@@ -1,0 +1,169 @@
+{
+  "generated": "2026-08-14",
+  "replay": {
+    "old_aligned_n": 290,
+    "new_aligned_n": 140,
+    "supply_missing_rows": 155,
+    "supply_missing_gap_rows": 150,
+    "supply_missing_null_rows": 5,
+    "buy_flips_due_missing": 150,
+    "transitions": {
+      "avoid->avoid": 1,
+      "buy->avoid": 22,
+      "buy->buy": 140,
+      "buy->watch": 128,
+      "watch->avoid": 1,
+      "watch->watch": 19
+    },
+    "flip_examples": [
+      {
+        "name": "AK-47 | X 射线 (崭新出厂)",
+        "date": "2026-02-06",
+        "old": "buy",
+        "new": "avoid",
+        "supply_depth": 0
+      },
+      {
+        "name": "AK-47 | 抽象派 1337 (崭新出厂)",
+        "date": "2026-02-03",
+        "old": "buy",
+        "new": "avoid",
+        "supply_depth": 0
+      },
+      {
+        "name": "AK-47 | 抽象派 1337 (崭新出厂)",
+        "date": "2026-02-20",
+        "old": "buy",
+        "new": "watch",
+        "supply_depth": 0
+      },
+      {
+        "name": "AK-47 | 抽象派 1337 (崭新出厂)",
+        "date": "2026-03-02",
+        "old": "buy",
+        "new": "watch",
+        "supply_depth": 0
+      },
+      {
+        "name": "AK-47 | 抽象派 1337 (崭新出厂)",
+        "date": "2026-03-12",
+        "old": "buy",
+        "new": "watch",
+        "supply_depth": 0
+      },
+      {
+        "name": "AK-47 | 抽象派 1337 (略有磨损)",
+        "date": "2026-02-03",
+        "old": "buy",
+        "new": "avoid",
+        "supply_depth": 0
+      },
+      {
+        "name": "AK-47 | 抽象派 1337 (略有磨损)",
+        "date": "2026-02-21",
+        "old": "buy",
+        "new": "watch",
+        "supply_depth": 0
+      },
+      {
+        "name": "AK-47 | 抽象派 1337 (略有磨损)",
+        "date": "2026-03-02",
+        "old": "buy",
+        "new": "watch",
+        "supply_depth": 0
+      },
+      {
+        "name": "AK-47 | 深海复仇 (崭新出厂)",
+        "date": "2026-02-15",
+        "old": "buy",
+        "new": "avoid",
+        "supply_depth": 0
+      },
+      {
+        "name": "AK-47 | 深海复仇 (崭新出厂)",
+        "date": "2026-02-25",
+        "old": "buy",
+        "new": "watch",
+        "supply_depth": 0
+      },
+      {
+        "name": "AK-47 | 火神 (崭新出厂)",
+        "date": "2026-02-04",
+        "old": "buy",
+        "new": "avoid",
+        "supply_depth": 0
+      },
+      {
+        "name": "AK-47 | 火神 (崭新出厂)",
+        "date": "2026-02-12",
+        "old": "buy",
+        "new": "avoid",
+        "supply_depth": 0
+      },
+      {
+        "name": "AK-47 | 火神 (崭新出厂)",
+        "date": "2026-02-25",
+        "old": "buy",
+        "new": "watch",
+        "supply_depth": 0
+      },
+      {
+        "name": "AK-47 | 皇后 (崭新出厂)",
+        "date": "2026-02-05",
+        "old": "buy",
+        "new": "watch",
+        "supply_depth": 0
+      },
+      {
+        "name": "AK-47 | 皇后 (崭新出厂)",
+        "date": "2026-02-14",
+        "old": "buy",
+        "new": "watch",
+        "supply_depth": 0
+      },
+      {
+        "name": "AK-47 | 皇后 (崭新出厂)",
+        "date": "2026-02-24",
+        "old": "buy",
+        "new": "watch",
+        "supply_depth": 0
+      },
+      {
+        "name": "AK-47 | 蓝色层压板 (崭新出厂)",
+        "date": "2026-02-12",
+        "old": "buy",
+        "new": "watch",
+        "supply_depth": 0
+      },
+      {
+        "name": "AK-47 | 表面淬火 (崭新出厂)",
+        "date": "2026-02-07",
+        "old": "buy",
+        "new": "watch",
+        "supply_depth": 0
+      },
+      {
+        "name": "AK-47 | 表面淬火 (崭新出厂)",
+        "date": "2026-03-01",
+        "old": "buy",
+        "new": "watch",
+        "supply_depth": 0
+      },
+      {
+        "name": "AK-47 | 霓虹革命 (崭新出厂)",
+        "date": "2026-02-06",
+        "old": "buy",
+        "new": "watch",
+        "supply_depth": 0
+      }
+    ]
+  },
+  "production": {
+    "active_candidates": 322,
+    "missing_latest": 0,
+    "true_zero_latest": 0,
+    "missing_buy_flip_proxy": 0,
+    "missing_examples": [],
+    "true_zero_examples": []
+  }
+}

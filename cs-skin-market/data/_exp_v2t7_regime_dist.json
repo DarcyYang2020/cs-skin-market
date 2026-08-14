@@ -1,0 +1,155 @@
+{
+  "generated": "2026-08-14",
+  "engine": "v2-T7",
+  "window": "2025-08-10..2026-08-05 (matched-window hybrid replay; price_history truncated to 2025-08-10, market_index full)",
+  "db": "data/replay_v2t6_win.db",
+  "clean": {
+    "aggregate": {
+      "n": 150,
+      "win14": 115,
+      "win14_pct": 76.7,
+      "n30": 144,
+      "win30": 101,
+      "win30_pct": 70.1,
+      "avg14_net": 26.14
+    },
+    "families": {
+      "accumulate": {
+        "n": 10,
+        "win14": 6,
+        "win14_pct": 60.0,
+        "n30": 9,
+        "win30": 6,
+        "win30_pct": 66.7,
+        "avg14_net": 45.36
+      },
+      "deep_value": {
+        "n": 55,
+        "win14": 32,
+        "win14_pct": 58.2,
+        "n30": 50,
+        "win30": 25,
+        "win30_pct": 50.0,
+        "avg14_net": 14.35
+      },
+      "panic": {
+        "n": 85,
+        "win14": 77,
+        "win14_pct": 90.6,
+        "n30": 85,
+        "win30": 70,
+        "win30_pct": 82.4,
+        "avg14_net": 31.51
+      }
+    },
+    "monthly": {
+      "2025-09": {
+        "accumulate": 2
+      },
+      "2025-10": {
+        "panic": 2,
+        "accumulate": 2
+      },
+      "2025-11": {
+        "deep_value": 10,
+        "accumulate": 1
+      },
+      "2025-12": {
+        "deep_value": 5,
+        "accumulate": 3
+      },
+      "2026-01": {
+        "deep_value": 2,
+        "accumulate": 1
+      },
+      "2026-05": {
+        "panic": 83
+      },
+      "2026-06": {
+        "deep_value": 33
+      },
+      "2026-07": {
+        "accumulate": 1,
+        "deep_value": 5
+      }
+    },
+    "panic_single_event_n": 83,
+    "panic_total_n": 85,
+    "panic_single_event_pct_of_panic": 97.6,
+    "panic_single_event_pct_of_all": 55.3
+  },
+  "official_317": {
+    "aggregate": {
+      "n": 317,
+      "win14": 225,
+      "win14_pct": 71.0,
+      "n30": 310,
+      "win30": 211,
+      "win30_pct": 68.1,
+      "avg14_net": 15.95
+    },
+    "families": {
+      "accumulate": {
+        "n": 142,
+        "win14": 93,
+        "win14_pct": 65.5,
+        "n30": 140,
+        "win30": 102,
+        "win30_pct": 72.9,
+        "avg14_net": 10.07
+      },
+      "deep_value": {
+        "n": 83,
+        "win14": 49,
+        "win14_pct": 59.0,
+        "n30": 78,
+        "win30": 39,
+        "win30_pct": 50.0,
+        "avg14_net": 10.67
+      },
+      "panic": {
+        "n": 92,
+        "win14": 83,
+        "win14_pct": 90.2,
+        "n30": 92,
+        "win30": 70,
+        "win30_pct": 76.1,
+        "avg14_net": 29.79
+      }
+    },
+    "monthly": {
+      "2025-11": {
+        "deep_value": 12,
+        "accumulate": 2
+      },
+      "2025-12": {
+        "deep_value": 7,
+        "accumulate": 4
+      },
+      "2026-01": {
+        "deep_value": 4,
+        "accumulate": 1
+      },
+      "2026-02": {
+        "accumulate": 115,
+        "deep_value": 18
+      },
+      "2026-03": {
+        "accumulate": 17,
+        "deep_value": 4
+      },
+      "2026-05": {
+        "panic": 92,
+        "accumulate": 1
+      },
+      "2026-06": {
+        "deep_value": 33
+      },
+      "2026-07": {
+        "accumulate": 2,
+        "deep_value": 5
+      }
+    }
+  },
+  "note": "Do NOT overwrite official 317. Clean baseline has a regime hole (2026-02/03 accumulate bull segment absent; 55% single panic event). Recommend double-baseline."
+}

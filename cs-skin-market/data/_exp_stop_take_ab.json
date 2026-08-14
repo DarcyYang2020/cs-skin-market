@@ -1,0 +1,56 @@
+{
+  "generated": "2026-08-14",
+  "n_signals": 290,
+  "variants": {
+    "hold21": {
+      "days": 265,
+      "total_return_pct": 195.85,
+      "ann_return_pct": 348.02,
+      "max_drawdown_pct": -9.56,
+      "calmar": 36.42,
+      "sharpe": 2.94,
+      "sortino": 7.75,
+      "monthly_returns": {
+        "2025-12": 1.3,
+        "2026-01": 102.25,
+        "2026-02": -2.04,
+        "2026-03": 4.5,
+        "2026-04": 0.0,
+        "2026-05": 0.24,
+        "2026-06": 16.14,
+        "2026-07": 14.24,
+        "2026-08": -0.8
+      },
+      "n_trades": 50,
+      "portfolio_win_rate_pct": 62.0,
+      "avg_trade_pct": 3.93,
+      "max_position": 0.8,
+      "rejected_cap": 240
+    },
+    "stop_take": {
+      "days": 265,
+      "total_return_pct": 100.76,
+      "ann_return_pct": 162.1,
+      "max_drawdown_pct": -9.69,
+      "calmar": 16.72,
+      "sharpe": 3.08,
+      "sortino": 7.16,
+      "monthly_returns": {
+        "2025-12": 0.74,
+        "2026-01": 35.53,
+        "2026-02": 9.55,
+        "2026-03": 5.58,
+        "2026-04": 0.01,
+        "2026-05": 0.32,
+        "2026-06": 25.29,
+        "2026-07": -2.29,
+        "2026-08": -1.07
+      },
+      "n_trades": 61,
+      "portfolio_win_rate_pct": 67.2,
+      "avg_trade_pct": 1.65,
+      "max_position": 0.8,
+      "rejected_cap": 229
+    }
+  }
+}

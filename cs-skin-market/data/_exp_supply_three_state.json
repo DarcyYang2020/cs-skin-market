@@ -1,0 +1,446 @@
+{
+ "probe": "supply_three_state",
+ "stage": "stage0",
+ "generated": "2026-08-14",
+ "caveats": [
+  "read-only probe: no engine parameters/thresholds changed",
+  "replay accumulation signals are concentrated in 2026-02/03; bid_history starts 2026-05, so replay bid evidence is only n=3",
+  "supply_accum family is by construction price-flat (|chg7|<=3); the three-state contrast therefore lives in the 2026-05+ bid evidence segment",
+  "bid evidence segment is observational, overlapping windows, not walk-forward; forward returns are unverified small samples and not a production gate",
+  "spread_pct is sparse (425 non-null snapshots), so per-state date-aligned spread is mostly missing; latest item-level spread is a static liquidity proxy",
+  "supply_contract uses s7/s30<=0.85 consistent with the engine family trigger"
+ ],
+ "replay_accumulate": {
+  "n_accumulate_signals": 142,
+  "n_unmapped_items": 4,
+  "n_with_computed_contract": 41,
+  "n_with_bid_before_date": 3,
+  "engine_supply_direction": {
+   "engine_contract": 126,
+   "engine_not_contract": 16
+  },
+  "note": "supply_accum family trigger is s7<=s30*0.85 AND |chg7|<=3, so by construction the replay family is the flat state; DB in_sale_count zero-padding in 2026-02/03 collapses s7 to 0 for most records",
+  "by_state": {
+   "up": {
+    "n": 0
+   },
+   "flat": {
+    "n": 41,
+    "win_fwd14": 68.3,
+    "mean_fwd14": 10.542,
+    "median_fwd14": 2.44,
+    "win_net14": 53.7,
+    "mean_net14": 8.542,
+    "median_net14": 0.44,
+    "win_fwd30": 87.2,
+    "mean_fwd30": 25.262,
+    "median_fwd30": 13.7,
+    "win_net30": 82.1,
+    "mean_net30": 23.262,
+    "median_net30": 11.7
+   },
+   "down": {
+    "n": 0
+   },
+   "not_contract": {
+    "n": 97,
+    "win_fwd14": 78.4,
+    "mean_fwd14": 12.933,
+    "median_fwd14": 7.05,
+    "win_net14": 71.1,
+    "mean_net14": 10.933,
+    "median_net14": 5.05,
+    "win_fwd30": 71.1,
+    "mean_fwd30": 28.587,
+    "median_fwd30": 9.75,
+    "win_net30": 68.0,
+    "mean_net30": 26.587,
+    "median_net30": 7.75
+   }
+  },
+  "monthly_contract_states": {
+   "2025-11": {
+    "价平量缩·挂单撤走（现引擎判定为吸筹）": 2
+   },
+   "2025-12": {
+    "价平量缩·挂单撤走（现引擎判定为吸筹）": 4
+   },
+   "2026-01": {
+    "价平量缩·挂单撤走（现引擎判定为吸筹）": 1
+   },
+   "2026-02": {
+    "价平量缩·挂单撤走（现引擎判定为吸筹）": 32
+   },
+   "2026-07": {
+    "价平量缩·挂单撤走（现引擎判定为吸筹）": 2
+   }
+  },
+  "sample_records": [
+   {
+    "date": "2026-02-12",
+    "name": "AWP | 火卫一 (崭新出厂)",
+    "state": "not_contract",
+    "metrics": {
+     "s7": 0.0,
+     "s30": 677.07,
+     "ratio": 0.0,
+     "ins_valid30": 30,
+     "ins_null30": 0,
+     "ins_zero30": 10,
+     "chg7": 1.67,
+     "chg14": -13.54,
+     "price_state": "flat",
+     "supply_contract": false
+    },
+    "engine_supply_change_30d": -35.9,
+    "fwd14": 9.89,
+    "net14": 7.89,
+    "fwd30": 49.73,
+    "net30": 47.73,
+    "bid_before_date": false
+   },
+   {
+    "date": "2026-02-03",
+    "name": "AK-47 | 抽象派 1337 (略有磨损)",
+    "state": "flat",
+    "metrics": {
+     "s7": 862.14,
+     "s30": 1040.2,
+     "ratio": 0.8288,
+     "ins_valid30": 30,
+     "ins_null30": 0,
+     "ins_zero30": 1,
+     "chg7": -2.73,
+     "chg14": -16.42,
+     "price_state": "flat",
+     "supply_contract": true
+    },
+    "engine_supply_change_30d": 10.5,
+    "fwd14": 20.49,
+    "net14": 18.49,
+    "fwd30": 5.56,
+    "net30": 3.56,
+    "bid_before_date": false
+   },
+   {
+    "date": "2026-03-02",
+    "name": "AK-47 | 抽象派 1337 (略有磨损)",
+    "state": "not_contract",
+    "metrics": {
+     "s7": 0.0,
+     "s30": 67.0,
+     "ratio": 0.0,
+     "ins_valid30": 30,
+     "ins_null30": 0,
+     "ins_zero30": 28,
+     "chg7": 1.05,
+     "chg14": -12.35,
+     "price_state": "flat",
+     "supply_contract": false
+    },
+    "engine_supply_change_30d": -93.8,
+    "fwd14": 0.0,
+    "net14": -2.0,
+    "fwd30": -20.51,
+    "net30": -22.51,
+    "bid_before_date": false
+   },
+   {
+    "date": "2026-02-21",
+    "name": "USP 消音版 | 守护者 (崭新出厂)",
+    "state": "not_contract",
+    "metrics": {
+     "s7": 0.0,
+     "s30": 358.0,
+     "ratio": 0.0,
+     "ins_valid30": 30,
+     "ins_null30": 0,
+     "ins_zero30": 19,
+     "chg7": -0.8,
+     "chg14": -1.43,
+     "price_state": "flat",
+     "supply_contract": false
+    },
+    "engine_supply_change_30d": -61.3,
+    "fwd14": 25.49,
+    "net14": 23.49,
+    "fwd30": 35.48,
+    "net30": 33.48,
+    "bid_before_date": false
+   },
+   {
+    "date": "2026-03-03",
+    "name": "USP 消音版 | 守护者 (崭新出厂)",
+    "state": "not_contract",
+    "metrics": {
+     "s7": 0.0,
+     "s30": 37.67,
+     "ratio": 0.0,
+     "ins_valid30": 30,
+     "ins_null30": 0,
+     "ins_zero30": 29,
+     "chg7": -1.53,
+     "chg14": 1.58,
+     "price_state": "flat",
+     "supply_contract": false
+    },
+    "engine_supply_change_30d": -96.0,
+    "fwd14": 61.72,
+    "net14": 59.72,
+    "fwd30": 25.0,
+    "net30": 23.0,
+    "bid_before_date": false
+   },
+   {
+    "date": "2026-02-06",
+    "name": "M4A4 | 合纵 (崭新出厂)",
+    "state": "flat",
+    "metrics": {
+     "s7": 111.57,
+     "s30": 237.53,
+     "ratio": 0.4697,
+     "ins_valid30": 30,
+     "ins_null30": 0,
+     "ins_zero30": 4,
+     "chg7": -1.34,
+     "chg14": 7.56,
+     "price_state": "flat",
+     "supply_contract": true
+    },
+    "engine_supply_change_30d": -14.2,
+    "fwd14": 12.56,
+    "net14": 10.56,
+    "fwd30": 20.65,
+    "net30": 18.65,
+    "bid_before_date": false
+   },
+   {
+    "date": "2026-02-23",
+    "name": "AWP | 冥界之河 (崭新出厂)",
+    "state": "not_contract",
+    "metrics": {
+     "s7": 0.0,
+     "s30": 275.07,
+     "ratio": 0.0,
+     "ins_valid30": 30,
+     "ins_null30": 0,
+     "ins_zero30": 21,
+     "chg7": -1.27,
+     "chg14": -0.25,
+     "price_state": "flat",
+     "supply_contract": false
+    },
+    "engine_supply_change_30d": -72.4,
+    "fwd14": 19.68,
+    "net14": 17.68,
+    "fwd30": 74.18,
+    "net30": 72.18,
+    "bid_before_date": false
+   },
+   {
+    "date": "2026-03-03",
+    "name": "AWP | 冥界之河 (崭新出厂)",
+    "state": "not_contract",
+    "metrics": {
+     "s7": 0.0,
+     "s30": 37.77,
+     "ratio": 0.0,
+     "ins_valid30": 30,
+     "ins_null30": 0,
+     "ins_zero30": 29,
+     "chg7": -0.31,
+     "chg14": -2.49,
+     "price_state": "flat",
+     "supply_contract": false
+    },
+    "engine_supply_change_30d": -96.0,
+    "fwd14": 88.76,
+    "net14": 86.76,
+    "fwd30": 153.18,
+    "net30": 151.18,
+    "bid_before_date": false
+   },
+   {
+    "date": "2026-02-06",
+    "name": "USP 消音版 | 次时代 (崭新出厂)",
+    "state": "flat",
+    "metrics": {
+     "s7": 934.0,
+     "s30": 2091.53,
+     "ratio": 0.4466,
+     "ins_valid30": 30,
+     "ins_null30": 0,
+     "ins_zero30": 4,
+     "chg7": -0.47,
+     "chg14": 14.55,
+     "price_state": "flat",
+     "supply_contract": true
+    },
+    "engine_supply_change_30d": -9.7,
+    "fwd14": 7.48,
+    "net14": 5.48,
+    "fwd30": 37.43,
+    "net30": 35.43,
+    "bid_before_date": false
+   },
+   {
+    "date": "2026-02-20",
+    "name": "USP 消音版 | 次时代 (崭新出厂)",
+    "state": "not_contract",
+    "metrics": {
+     "s7": 0.0,
+     "s30": 906.97,
+     "ratio": 0.0,
+     "ins_valid30": 30,
+     "ins_null30": 0,
+     "ins_zero30": 18,
+     "chg7": 1.76,
+     "chg14": 7.48,
+     "price_state": "flat",
+     "supply_contract": false
+    },
+    "engine_supply_change_30d": -63.3,
+    "fwd14": 31.33,
+    "net14": 29.33,
+    "fwd30": 40.84,
+    "net30": 38.84,
+    "bid_before_date": false
+   }
+  ]
+ },
+ "bid_evidence": {
+  "window": [
+   "2026-05-15",
+   "2026-08-13"
+  ],
+  "n_contract_bid_days": 692,
+  "n_unique_items": 96,
+  "global_spread_distribution": {
+   "n": 425,
+   "median": 2.7,
+   "mean": 3.091,
+   "p90": 5.9,
+   "share_gt2": 68.2
+  },
+  "by_state": {
+   "up": {
+    "label": "价涨量缩·真吸筹",
+    "n": 456,
+    "n_unique_items": 85,
+    "n_buy_price_chg7_nonnull": 456,
+    "n_buy_num_chg7_nonnull": 456,
+    "n_spread_date_aligned_nonnull": 0,
+    "n_latest_spread_nonnull": 160,
+    "median_buy_price_chg7": 26.845,
+    "median_buy_num_chg7": 6.723,
+    "median_spread_pct": null,
+    "median_bid_7d_chg": null,
+    "median_bid_30d_chg": null,
+    "median_bid_highest": null,
+    "median_latest_spread_pct": 2.4,
+    "share_latest_spread_gt2": 55.6,
+    "forward": {
+     "n": 456,
+     "win_fwd14": 28.9,
+     "mean_fwd14": -4.828,
+     "median_fwd14": -9.008,
+     "win_net14": 27.3,
+     "mean_net14": -6.828,
+     "median_net14": -11.008,
+     "win_fwd30": 23.1,
+     "mean_fwd30": -10.008,
+     "median_fwd30": -16.179,
+     "win_net30": 20.3,
+     "mean_net30": -12.008,
+     "median_net30": -18.179
+    }
+   },
+   "flat": {
+    "label": "价平量缩·挂单撤走（现引擎判定为吸筹）",
+    "n": 96,
+    "n_unique_items": 39,
+    "n_buy_price_chg7_nonnull": 95,
+    "n_buy_num_chg7_nonnull": 95,
+    "n_spread_date_aligned_nonnull": 0,
+    "n_latest_spread_nonnull": 18,
+    "median_buy_price_chg7": 0.613,
+    "median_buy_num_chg7": -4.348,
+    "median_spread_pct": null,
+    "median_bid_7d_chg": null,
+    "median_bid_30d_chg": null,
+    "median_bid_highest": null,
+    "median_latest_spread_pct": 3.0,
+    "share_latest_spread_gt2": 66.7,
+    "forward": {
+     "n": 96,
+     "win_fwd14": 22.2,
+     "mean_fwd14": -5.67,
+     "median_fwd14": -7.643,
+     "win_net14": 18.1,
+     "mean_net14": -7.67,
+     "median_net14": -9.643,
+     "win_fwd30": 25.6,
+     "mean_fwd30": -12.85,
+     "median_fwd30": -13.363,
+     "win_net30": 18.6,
+     "mean_net30": -14.85,
+     "median_net30": -15.363
+    }
+   },
+   "down": {
+    "label": "价跌量缩·下跌惜售",
+    "n": 140,
+    "n_unique_items": 53,
+    "n_buy_price_chg7_nonnull": 138,
+    "n_buy_num_chg7_nonnull": 138,
+    "n_spread_date_aligned_nonnull": 2,
+    "n_latest_spread_nonnull": 30,
+    "median_buy_price_chg7": -8.955,
+    "median_buy_num_chg7": -14.365,
+    "median_spread_pct": 1.8,
+    "median_bid_7d_chg": -10.4,
+    "median_bid_30d_chg": 8.1,
+    "median_bid_highest": 407.0,
+    "median_latest_spread_pct": 3.0,
+    "share_latest_spread_gt2": 83.3,
+    "forward": {
+     "n": 140,
+     "win_fwd14": 38.5,
+     "mean_fwd14": 3.051,
+     "median_fwd14": -4.883,
+     "win_net14": 37.5,
+     "mean_net14": 1.051,
+     "median_net14": -6.883,
+     "win_fwd30": 48.5,
+     "mean_fwd30": 5.058,
+     "median_fwd30": -1.043,
+     "win_net30": 42.6,
+     "mean_net30": 3.058,
+     "median_net30": -3.043
+    }
+   }
+  },
+  "monthly_contract_states": {
+   "2026-05": {
+    "价涨量缩·真吸筹": 15,
+    "价跌量缩·下跌惜售": 16,
+    "价平量缩·挂单撤走（现引擎判定为吸筹）": 2
+   },
+   "2026-06": {
+    "价涨量缩·真吸筹": 275,
+    "价跌量缩·下跌惜售": 39,
+    "价平量缩·挂单撤走（现引擎判定为吸筹）": 31
+   },
+   "2026-07": {
+    "价涨量缩·真吸筹": 143,
+    "价跌量缩·下跌惜售": 51,
+    "价平量缩·挂单撤走（现引擎判定为吸筹）": 40
+   },
+   "2026-08": {
+    "价平量缩·挂单撤走（现引擎判定为吸筹）": 23,
+    "价涨量缩·真吸筹": 23,
+    "价跌量缩·下跌惜售": 34
+   }
+  }
+ }
+}

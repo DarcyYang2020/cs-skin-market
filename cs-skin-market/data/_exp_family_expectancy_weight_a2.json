@@ -1,0 +1,83 @@
+{
+ "generated": "2026-08-14T12:24",
+ "note": "FEW-1 family-expectancy-weighted position sizing A2: expanding 3-fold walk-forward; multiplier m_f=clip(fam_net14/pool_net14,0.5,1.5) learned on prior folds; adjusted limit=min(0.30,orig*m_f). Baseline=current production limits; cap0.8/hold21/cost2%. Gate: OOS Calmar>=+15% OR (maxDD improve>=2pp AND total decline<=5pp).",
+ "signals": 317,
+ "baseline": {
+  "total_return_pct": 186.53,
+  "max_drawdown_pct": -24.29,
+  "calmar": 7.68
+ },
+ "treatment": {
+  "total_return_pct": 186.35,
+  "max_drawdown_pct": -24.29,
+  "calmar": 7.67
+ },
+ "calmar_delta_pct": -0.1,
+ "maxdd_improve_pp": 0.0,
+ "total_decline_pp": 0.18,
+ "pass_pre_registered_gate": false,
+ "folds": [
+  {
+   "fold": 1,
+   "n": 106,
+   "train_n": 0,
+   "multipliers": {},
+   "baseline": {
+    "total_return_pct": 113.64,
+    "max_drawdown_pct": -24.29,
+    "calmar": 4.68
+   },
+   "treatment": {
+    "total_return_pct": 113.64,
+    "max_drawdown_pct": -24.29,
+    "calmar": 4.68
+   }
+  },
+  {
+   "fold": 2,
+   "n": 106,
+   "train_n": 106,
+   "multipliers": {
+    "deep_value": 1.5,
+    "accumulate": 0.8250687151100573
+   },
+   "baseline": {
+    "total_return_pct": 36.71,
+    "max_drawdown_pct": -23.42,
+    "calmar": 1.57
+   },
+   "treatment": {
+    "total_return_pct": 32.62,
+    "max_drawdown_pct": -21.8,
+    "calmar": 1.5
+   }
+  },
+  {
+   "fold": 3,
+   "n": 105,
+   "train_n": 212,
+   "multipliers": {
+    "deep_value": 1.2190482948282946,
+    "accumulate": 0.792078496810706,
+    "panic": 1.5
+   },
+   "baseline": {
+    "total_return_pct": 100.28,
+    "max_drawdown_pct": -26.98,
+    "calmar": 3.72
+   },
+   "treatment": {
+    "total_return_pct": 103.07,
+    "max_drawdown_pct": -26.99,
+    "calmar": 3.82
+   }
+  }
+ ],
+ "permutation": {
+  "n_signals": 317,
+  "n_clusters": 15,
+  "obs_mean_alloc_delta_pp": 0.055,
+  "p_two_sided": 0.383,
+  "n_perm": 1000
+ }
+}

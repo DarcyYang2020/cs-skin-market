@@ -1,0 +1,30 @@
+{
+  "generated": "2026-08-14",
+  "method": "iid resample with replacement of aligned signals (n=290, draws=200)",
+  "baseline_n": 290,
+  "seed": 20260814,
+  "total_diff_pp": {
+    "mean": 17.549,
+    "p_gt_0": 0.79,
+    "p_lt_0": 0.21,
+    "q05": -27.553,
+    "q50": 15.48,
+    "q95": 60.001
+  },
+  "calmar_diff": {
+    "mean": 2.196,
+    "p_gt_0": 0.735,
+    "p_lt_0": 0.265,
+    "q05": -4.17,
+    "q50": 1.375,
+    "q95": 9.077
+  },
+  "maxdd_diff_pp": {
+    "mean": -0.182,
+    "p_gt_0": 0.455,
+    "p_lt_0": 0.535,
+    "q05": -3.875,
+    "q50": -0.125,
+    "q95": 3.768
+  }
+}

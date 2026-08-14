@@ -19,7 +19,7 @@ sys.path.insert(0, ".")
 from pipeline import db
 import pipeline.item_analysis as ia
 from pipeline.index_analysis import compute_micro_th
-from pipeline.backtest_common import approx_sentiment, patch_sentiment, build_market_context
+from pipeline.backtest_common import patch_sentiment, build_market_context
 from pipeline.batch_scan import signal_guidance
 
 
@@ -37,7 +37,8 @@ def load_item_series(item_id):
     dates = [r["date"] for r in rows]
     prices = [r["price_rmb"] for r in rows]
     in_sale = [r["in_sale_count"] or 0 for r in rows]
-    return dates, prices, in_sale
+    raw_sale = [r["in_sale_count"] for r in rows]
+    return dates, prices, in_sale, raw_sale
 
 
 # 庄盘异常品：无真实流通（日均成交≈0.2件、价格2.9~4.4万），价格被操纵，不参与回测
@@ -53,7 +54,7 @@ def load_items(conn=None):
 
 
 def backtest_item(item_id, name, start, end, warmup, market_ctx, cost=0.02):
-    dates, prices, in_sale = load_item_series(item_id)
+    dates, prices, in_sale, raw_sale = load_item_series(item_id)
     if len(prices) < warmup + 1:
         return {"item_id": item_id, "name": name, "days": len(dates),
                 "signals": [], "error": "not enough history"}
@@ -76,6 +77,7 @@ def backtest_item(item_id, name, start, end, warmup, market_ctx, cost=0.02):
                 name=name,
                 prices=prefix,
                 supply_hist=in_sale[:i + 1],
+                supply_depth_missing=db.supply_depth_missing(raw_sale[i], d),
                 market_history=None,
                 market_pct_90d=mc["pct"],
                 market_cycle=mc["cycle"],

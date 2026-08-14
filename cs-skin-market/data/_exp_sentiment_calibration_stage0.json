@@ -1,0 +1,70 @@
+{
+ "probe": "sentiment_calibration_stage0",
+ "stage": "stage0",
+ "generated": "2026-08-14",
+ "caveats": [
+  "read-only probe: no engine parameters/thresholds changed",
+  "real greedy history starts 2026-02-03; replay panic signals before 2026-05 have no real sentiment overlap",
+  "approx_sentiment is the price-action proxy used by offline replay, not a production trigger",
+  "threshold agreement is descriptive only and does not change the production panic gate"
+ ],
+ "real_sentiment": {
+  "n_days": 59,
+  "date_range": [
+   "2026-06-15",
+   "2026-08-12"
+  ],
+  "sentiment_values": {
+   "60.0": 10,
+   "50.0": 2,
+   "70.0": 11,
+   "35.0": 3,
+   "20.0": 1,
+   "80.0": 20,
+   "90.0": 8,
+   "95.0": 4
+  },
+  "sent_ge75_days": 32,
+  "sent_ge70_days": 43
+ },
+ "overlap": {
+  "n_days": 59,
+  "date_range": [
+   "2026-06-15",
+   "2026-08-12"
+  ],
+  "pearson_sent_vs_approx": 0.057,
+  "spearman_sent_vs_approx": 0.092,
+  "pearson_raw_vs_approx": -0.076,
+  "spearman_raw_vs_approx": -0.095,
+  "mae_sent_vs_approx": 20.75,
+  "bias_real_minus_approx": 16.76,
+  "threshold_50": {
+   "real_pos": 55,
+   "real_neg": 4,
+   "approx_pos": 50,
+   "approx_neg": 9,
+   "agree": 46,
+   "n": 59,
+   "agree_pct": 78.0
+  },
+  "threshold_70": {
+   "real_pos": 43,
+   "real_neg": 16,
+   "approx_pos": 0,
+   "approx_neg": 59,
+   "agree": 16,
+   "n": 59,
+   "agree_pct": 27.1
+  },
+  "threshold_75": {
+   "real_pos": 32,
+   "real_neg": 27,
+   "approx_pos": 0,
+   "approx_neg": 59,
+   "agree": 27,
+   "n": 59,
+   "agree_pct": 45.8
+  }
+ }
+}

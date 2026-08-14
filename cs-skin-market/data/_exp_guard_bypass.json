@@ -1,0 +1,3818 @@
+{
+  "aggregate": {
+    "generated_at": "2026-08-14 17:40:19",
+    "n": 290,
+    "family": {
+      "base": {
+        "all": {
+          "n": 52,
+          "win14_pct": 69.23,
+          "avg14_pct": 12.917,
+          "avg_net14_pct": 10.917
+        },
+        "guard1_bypass": {
+          "n": 0,
+          "win14_pct": null,
+          "avg14_pct": null,
+          "avg_net14_pct": null
+        },
+        "guard2_bypass": {
+          "n": 0,
+          "win14_pct": null,
+          "avg14_pct": null,
+          "avg_net14_pct": null
+        }
+      },
+      "oversold": {
+        "all": {
+          "n": 0,
+          "win14_pct": null,
+          "avg14_pct": null,
+          "avg_net14_pct": null
+        },
+        "guard1_bypass": {
+          "n": 0,
+          "win14_pct": null,
+          "avg14_pct": null,
+          "avg_net14_pct": null
+        },
+        "guard2_bypass": {
+          "n": 0,
+          "win14_pct": null,
+          "avg14_pct": null,
+          "avg_net14_pct": null
+        }
+      },
+      "panic": {
+        "all": {
+          "n": 32,
+          "win14_pct": 100.0,
+          "avg14_pct": 47.44,
+          "avg_net14_pct": 45.44
+        },
+        "guard1_bypass": {
+          "n": 32,
+          "win14_pct": 100.0,
+          "avg14_pct": 47.44,
+          "avg_net14_pct": 45.44
+        },
+        "guard2_bypass": {
+          "n": 0,
+          "win14_pct": null,
+          "avg14_pct": null,
+          "avg_net14_pct": null
+        }
+      },
+      "deep_value": {
+        "all": {
+          "n": 26,
+          "win14_pct": 61.54,
+          "avg14_pct": 13.749,
+          "avg_net14_pct": 11.749
+        },
+        "guard1_bypass": {
+          "n": 26,
+          "win14_pct": 61.54,
+          "avg14_pct": 13.749,
+          "avg_net14_pct": 11.749
+        },
+        "guard2_bypass": {
+          "n": 26,
+          "win14_pct": 61.54,
+          "avg14_pct": 13.749,
+          "avg_net14_pct": 11.749
+        }
+      },
+      "panic_easing": {
+        "all": {
+          "n": 46,
+          "win14_pct": 86.96,
+          "avg14_pct": 18.683,
+          "avg_net14_pct": 16.683
+        },
+        "guard1_bypass": {
+          "n": 46,
+          "win14_pct": 86.96,
+          "avg14_pct": 18.683,
+          "avg_net14_pct": 16.683
+        },
+        "guard2_bypass": {
+          "n": 46,
+          "win14_pct": 86.96,
+          "avg14_pct": 18.683,
+          "avg_net14_pct": 16.683
+        }
+      },
+      "supply_accum": {
+        "all": {
+          "n": 134,
+          "win14_pct": 74.63,
+          "avg14_pct": 11.965,
+          "avg_net14_pct": 9.965
+        },
+        "guard1_bypass": {
+          "n": 134,
+          "win14_pct": 74.63,
+          "avg14_pct": 11.965,
+          "avg_net14_pct": 9.965
+        },
+        "guard2_bypass": {
+          "n": 134,
+          "win14_pct": 74.63,
+          "avg14_pct": 11.965,
+          "avg_net14_pct": 9.965
+        }
+      }
+    },
+    "guard_would_hit": {
+      "consecutive": {
+        "count": 56,
+        "n": 56,
+        "win14_pct": 71.43,
+        "avg14_pct": 16.622,
+        "avg_net14_pct": 14.622
+      },
+      "z_gate": {
+        "count": 106,
+        "n": 106,
+        "win14_pct": 69.81,
+        "avg14_pct": 15.104,
+        "avg_net14_pct": 13.104
+      },
+      "market_weak": {
+        "count": 135,
+        "n": 135,
+        "win14_pct": 81.48,
+        "avg14_pct": 22.681,
+        "avg_net14_pct": 20.681
+      },
+      "micro_th": {
+        "count": 105,
+        "n": 105,
+        "win14_pct": 79.05,
+        "avg14_pct": 14.867,
+        "avg_net14_pct": 12.867
+      },
+      "supply_expansion": {
+        "count": 41,
+        "n": 41,
+        "win14_pct": 70.73,
+        "avg14_pct": 20.429,
+        "avg_net14_pct": 18.429
+      },
+      "halfway": {
+        "count": 19,
+        "n": 19,
+        "win14_pct": 73.68,
+        "avg14_pct": 25.835,
+        "avg_net14_pct": 23.835
+      },
+      "bid": {
+        "count": 5,
+        "n": 5,
+        "win14_pct": 60.0,
+        "avg14_pct": 14.592,
+        "avg_net14_pct": 12.592
+      }
+    },
+    "family_counts": {
+      "deep_value": 26,
+      "supply_accum": 134,
+      "panic_easing": 46,
+      "base": 52,
+      "panic": 32
+    }
+  },
+  "signals": [
+    {
+      "name": "AK-47 | X 射线 (崭新出厂)",
+      "date": "2025-11-18",
+      "family": "deep_value",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "consecutive": true,
+        "z_gate": true
+      },
+      "fwd14": 18.65,
+      "net14": 16.65
+    },
+    {
+      "name": "AK-47 | X 射线 (崭新出厂)",
+      "date": "2026-02-06",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": 1.53,
+      "net14": -0.47
+    },
+    {
+      "name": "AK-47 | X 射线 (崭新出厂)",
+      "date": "2026-05-28",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": 0.86,
+      "net14": -1.14
+    },
+    {
+      "name": "AK-47 | 卡特尔 (崭新出厂)",
+      "date": "2026-05-28",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": 28.87,
+      "net14": 26.87
+    },
+    {
+      "name": "AK-47 | 卡特尔 (崭新出厂)",
+      "date": "2026-06-19",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "supply_expansion": true
+      },
+      "fwd14": 3.7,
+      "net14": 1.7
+    },
+    {
+      "name": "AK-47 | 幻影破坏者 (崭新出厂)",
+      "date": "2026-05-22",
+      "family": "panic",
+      "bypass_guard1": true,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": 43.1,
+      "net14": 41.1
+    },
+    {
+      "name": "AK-47 | 幻影破坏者 (崭新出厂)",
+      "date": "2026-05-30",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": 16.41,
+      "net14": 14.41
+    },
+    {
+      "name": "AK-47 | 幻影破坏者 (崭新出厂)",
+      "date": "2026-06-18",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "supply_expansion": true
+      },
+      "fwd14": 5.15,
+      "net14": 3.15
+    },
+    {
+      "name": "AK-47 | 抽象派 1337 (崭新出厂)",
+      "date": "2026-02-03",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true,
+        "consecutive": true
+      },
+      "fwd14": 15.61,
+      "net14": 13.61
+    },
+    {
+      "name": "AK-47 | 抽象派 1337 (崭新出厂)",
+      "date": "2026-02-20",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "halfway": true
+      },
+      "fwd14": 2.45,
+      "net14": 0.45
+    },
+    {
+      "name": "AK-47 | 抽象派 1337 (崭新出厂)",
+      "date": "2026-03-02",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "micro_th": true
+      },
+      "fwd14": 5.03,
+      "net14": 3.03
+    },
+    {
+      "name": "AK-47 | 抽象派 1337 (崭新出厂)",
+      "date": "2026-03-12",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {},
+      "fwd14": -19.35,
+      "net14": -21.35
+    },
+    {
+      "name": "AK-47 | 抽象派 1337 (略有磨损)",
+      "date": "2026-02-03",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "consecutive": true,
+        "supply_expansion": true
+      },
+      "fwd14": 20.49,
+      "net14": 18.49
+    },
+    {
+      "name": "AK-47 | 抽象派 1337 (略有磨损)",
+      "date": "2026-02-21",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {},
+      "fwd14": 3.46,
+      "net14": 1.46
+    },
+    {
+      "name": "AK-47 | 抽象派 1337 (略有磨损)",
+      "date": "2026-03-02",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "consecutive": true,
+        "z_gate": true
+      },
+      "fwd14": 0.0,
+      "net14": -2.0
+    },
+    {
+      "name": "AK-47 | 抽象派 1337 (略有磨损)",
+      "date": "2026-05-25",
+      "family": "panic",
+      "bypass_guard1": true,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": 172.57,
+      "net14": 170.57
+    },
+    {
+      "name": "AK-47 | 深海复仇 (崭新出厂)",
+      "date": "2026-02-15",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "z_gate": true
+      },
+      "fwd14": 0.55,
+      "net14": -1.45
+    },
+    {
+      "name": "AK-47 | 深海复仇 (崭新出厂)",
+      "date": "2026-02-25",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "z_gate": true
+      },
+      "fwd14": 4.17,
+      "net14": 2.17
+    },
+    {
+      "name": "AK-47 | 深海复仇 (崭新出厂)",
+      "date": "2026-05-28",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": 30.24,
+      "net14": 28.24
+    },
+    {
+      "name": "AK-47 | 深海复仇 (崭新出厂)",
+      "date": "2026-06-19",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "supply_expansion": true
+      },
+      "fwd14": 2.29,
+      "net14": 0.29
+    },
+    {
+      "name": "AK-47 | 火神 (崭新出厂)",
+      "date": "2025-11-16",
+      "family": "deep_value",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "consecutive": true
+      },
+      "fwd14": -0.96,
+      "net14": -2.96
+    },
+    {
+      "name": "AK-47 | 火神 (崭新出厂)",
+      "date": "2026-01-19",
+      "family": "deep_value",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": -3.63,
+      "net14": -5.63
+    },
+    {
+      "name": "AK-47 | 火神 (崭新出厂)",
+      "date": "2026-02-04",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": -1.15,
+      "net14": -3.15
+    },
+    {
+      "name": "AK-47 | 火神 (崭新出厂)",
+      "date": "2026-02-12",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {},
+      "fwd14": 1.0,
+      "net14": -1.0
+    },
+    {
+      "name": "AK-47 | 火神 (崭新出厂)",
+      "date": "2026-02-25",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "micro_th": true
+      },
+      "fwd14": 1.92,
+      "net14": -0.08
+    },
+    {
+      "name": "AK-47 | 火神 (崭新出厂)",
+      "date": "2026-05-28",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": -0.55,
+      "net14": -2.55
+    },
+    {
+      "name": "AK-47 | 火神 (崭新出厂)",
+      "date": "2026-07-12",
+      "family": "deep_value",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true,
+        "consecutive": true,
+        "z_gate": true
+      },
+      "fwd14": -1.01,
+      "net14": -3.01
+    },
+    {
+      "name": "AK-47 | 皇后 (崭新出厂)",
+      "date": "2026-02-05",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": -1.33,
+      "net14": -3.33
+    },
+    {
+      "name": "AK-47 | 皇后 (崭新出厂)",
+      "date": "2026-02-14",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "micro_th": true,
+        "z_gate": true
+      },
+      "fwd14": -3.78,
+      "net14": -5.78
+    },
+    {
+      "name": "AK-47 | 皇后 (崭新出厂)",
+      "date": "2026-02-24",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "halfway": true,
+        "z_gate": true
+      },
+      "fwd14": 10.37,
+      "net14": 8.37
+    },
+    {
+      "name": "AK-47 | 皇后 (崭新出厂)",
+      "date": "2026-05-24",
+      "family": "panic",
+      "bypass_guard1": true,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": 34.86,
+      "net14": 32.86
+    },
+    {
+      "name": "AK-47 | 皇后 (崭新出厂)",
+      "date": "2026-06-21",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "supply_expansion": true
+      },
+      "fwd14": 1.72,
+      "net14": -0.28
+    },
+    {
+      "name": "AK-47 | 蓝色层压板 (崭新出厂)",
+      "date": "2026-02-12",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "micro_th": true,
+        "z_gate": true
+      },
+      "fwd14": 24.45,
+      "net14": 22.45
+    },
+    {
+      "name": "AK-47 | 血腥运动 (崭新出厂)",
+      "date": "2025-11-22",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {},
+      "fwd14": -6.16,
+      "net14": -8.16
+    },
+    {
+      "name": "AK-47 | 血腥运动 (崭新出厂)",
+      "date": "2026-05-28",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "consecutive": true
+      },
+      "fwd14": 4.26,
+      "net14": 2.26
+    },
+    {
+      "name": "AK-47 | 血腥运动 (崭新出厂)",
+      "date": "2026-06-12",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {},
+      "fwd14": 2.04,
+      "net14": 0.04
+    },
+    {
+      "name": "AK-47 | 血腥运动 (崭新出厂)",
+      "date": "2026-07-11",
+      "family": "deep_value",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true,
+        "z_gate": true
+      },
+      "fwd14": -4.67,
+      "net14": -6.67
+    },
+    {
+      "name": "AK-47 | 表面淬火 (崭新出厂)",
+      "date": "2026-02-07",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "consecutive": true,
+        "z_gate": true
+      },
+      "fwd14": 7.72,
+      "net14": 5.72
+    },
+    {
+      "name": "AK-47 | 表面淬火 (崭新出厂)",
+      "date": "2026-03-01",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "consecutive": true
+      },
+      "fwd14": 22.74,
+      "net14": 20.74
+    },
+    {
+      "name": "AK-47 | 表面淬火 (崭新出厂)",
+      "date": "2026-05-22",
+      "family": "panic",
+      "bypass_guard1": true,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": 17.97,
+      "net14": 15.97
+    },
+    {
+      "name": "AK-47 | 霓虹革命 (崭新出厂)",
+      "date": "2026-02-06",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true,
+        "z_gate": true
+      },
+      "fwd14": 0.67,
+      "net14": -1.33
+    },
+    {
+      "name": "AK-47 | 霓虹革命 (崭新出厂)",
+      "date": "2026-02-14",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "halfway": true,
+        "micro_th": true,
+        "z_gate": true
+      },
+      "fwd14": -4.45,
+      "net14": -6.45
+    },
+    {
+      "name": "AK-47 | 霓虹革命 (崭新出厂)",
+      "date": "2026-02-22",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "halfway": true,
+        "consecutive": true,
+        "z_gate": true
+      },
+      "fwd14": -4.98,
+      "net14": -6.98
+    },
+    {
+      "name": "AK-47 | 霓虹革命 (崭新出厂)",
+      "date": "2026-03-02",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "micro_th": true
+      },
+      "fwd14": 3.52,
+      "net14": 1.52
+    },
+    {
+      "name": "AK-47 | 霓虹革命 (崭新出厂)",
+      "date": "2026-05-25",
+      "family": "panic",
+      "bypass_guard1": true,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": 108.79,
+      "net14": 106.79
+    },
+    {
+      "name": "AK-47 | 霓虹骑士 (崭新出厂)",
+      "date": "2026-02-09",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "consecutive": true,
+        "z_gate": true
+      },
+      "fwd14": -0.18,
+      "net14": -2.18
+    },
+    {
+      "name": "AK-47 | 霓虹骑士 (崭新出厂)",
+      "date": "2026-02-18",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "consecutive": true,
+        "z_gate": true
+      },
+      "fwd14": -3.7,
+      "net14": -5.7
+    },
+    {
+      "name": "AK-47 | 霓虹骑士 (崭新出厂)",
+      "date": "2026-03-02",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "micro_th": true,
+        "consecutive": true,
+        "z_gate": true
+      },
+      "fwd14": 6.81,
+      "net14": 4.81
+    },
+    {
+      "name": "AK-47 | 霓虹骑士 (崭新出厂)",
+      "date": "2026-05-22",
+      "family": "panic",
+      "bypass_guard1": true,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": 20.22,
+      "net14": 18.22
+    },
+    {
+      "name": "AK-47 | 霓虹骑士 (崭新出厂)",
+      "date": "2026-05-30",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": 18.42,
+      "net14": 16.42
+    },
+    {
+      "name": "AK-47 | 霓虹骑士 (崭新出厂)",
+      "date": "2026-06-19",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "supply_expansion": true
+      },
+      "fwd14": 2.33,
+      "net14": 0.33
+    },
+    {
+      "name": "AWP | CMYK (崭新出厂)",
+      "date": "2026-02-04",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": 4.5,
+      "net14": 2.5
+    },
+    {
+      "name": "AWP | CMYK (崭新出厂)",
+      "date": "2026-02-18",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {},
+      "fwd14": -4.05,
+      "net14": -6.05
+    },
+    {
+      "name": "AWP | CMYK (崭新出厂)",
+      "date": "2026-02-26",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "halfway": true,
+        "micro_th": true,
+        "z_gate": true
+      },
+      "fwd14": -0.41,
+      "net14": -2.41
+    },
+    {
+      "name": "AWP | CMYK (崭新出厂)",
+      "date": "2026-05-28",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true,
+        "bid": true
+      },
+      "fwd14": -1.83,
+      "net14": -3.83
+    },
+    {
+      "name": "AWP | 冥界之河 (崭新出厂)",
+      "date": "2026-02-23",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "z_gate": true
+      },
+      "fwd14": 19.68,
+      "net14": 17.68
+    },
+    {
+      "name": "AWP | 冥界之河 (崭新出厂)",
+      "date": "2026-03-03",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "consecutive": true,
+        "z_gate": true
+      },
+      "fwd14": 88.76,
+      "net14": 86.76
+    },
+    {
+      "name": "AWP | 复古流行 (崭新出厂)",
+      "date": "2026-02-10",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true,
+        "z_gate": true
+      },
+      "fwd14": -3.13,
+      "net14": -5.13
+    },
+    {
+      "name": "AWP | 复古流行 (崭新出厂)",
+      "date": "2026-02-18",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "consecutive": true
+      },
+      "fwd14": 19.04,
+      "net14": 17.04
+    },
+    {
+      "name": "AWP | 复古流行 (崭新出厂)",
+      "date": "2026-02-26",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "micro_th": true,
+        "consecutive": true,
+        "z_gate": true
+      },
+      "fwd14": 41.74,
+      "net14": 39.74
+    },
+    {
+      "name": "AWP | 火卫一 (崭新出厂)",
+      "date": "2025-11-15",
+      "family": "deep_value",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "consecutive": true
+      },
+      "fwd14": 24.61,
+      "net14": 22.61
+    },
+    {
+      "name": "AWP | 火卫一 (崭新出厂)",
+      "date": "2025-11-23",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {},
+      "fwd14": 32.66,
+      "net14": 30.66
+    },
+    {
+      "name": "AWP | 火卫一 (崭新出厂)",
+      "date": "2026-02-12",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "micro_th": true,
+        "consecutive": true,
+        "z_gate": true
+      },
+      "fwd14": 9.89,
+      "net14": 7.89
+    },
+    {
+      "name": "AWP | 猫猫狗狗 (崭新出厂)",
+      "date": "2025-11-14",
+      "family": "deep_value",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": -0.62,
+      "net14": -2.62
+    },
+    {
+      "name": "AWP | 猫猫狗狗 (崭新出厂)",
+      "date": "2026-02-12",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "z_gate": true
+      },
+      "fwd14": 10.64,
+      "net14": 8.64
+    },
+    {
+      "name": "AWP | 猫猫狗狗 (崭新出厂)",
+      "date": "2026-05-23",
+      "family": "panic",
+      "bypass_guard1": true,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": 44.86,
+      "net14": 42.86
+    },
+    {
+      "name": "AWP | 猫猫狗狗 (崭新出厂)",
+      "date": "2026-05-31",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": 50.89,
+      "net14": 48.89
+    },
+    {
+      "name": "AWP | 石墨黑 (崭新出厂)",
+      "date": "2026-05-28",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": 64.0,
+      "net14": 62.0
+    },
+    {
+      "name": "AWP | 锦虎 (崭新出厂)",
+      "date": "2026-02-06",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": 15.01,
+      "net14": 13.01
+    },
+    {
+      "name": "AWP | 锦虎 (崭新出厂)",
+      "date": "2026-05-28",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": 3.4,
+      "net14": 1.4
+    },
+    {
+      "name": "AWP | 鬼退治 (崭新出厂)",
+      "date": "2026-02-06",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": 18.1,
+      "net14": 16.1
+    },
+    {
+      "name": "AWP | 鬼退治 (崭新出厂)",
+      "date": "2026-02-23",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {},
+      "fwd14": 31.73,
+      "net14": 29.73
+    },
+    {
+      "name": "AWP | 鬼退治 (崭新出厂)",
+      "date": "2026-05-28",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": 37.37,
+      "net14": 35.37
+    },
+    {
+      "name": "FN57 | 神祗 (崭新出厂)",
+      "date": "2026-02-16",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "micro_th": true,
+        "z_gate": true
+      },
+      "fwd14": 44.86,
+      "net14": 42.86
+    },
+    {
+      "name": "FN57 | 神祗 (崭新出厂)",
+      "date": "2026-05-28",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true,
+        "consecutive": true
+      },
+      "fwd14": 1.88,
+      "net14": -0.12
+    },
+    {
+      "name": "FN57 | 神祗 (崭新出厂)",
+      "date": "2026-07-17",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "consecutive": true,
+        "z_gate": true
+      },
+      "fwd14": -27.67,
+      "net14": -29.67
+    },
+    {
+      "name": "FN57 | 霸意大名 (崭新出厂)",
+      "date": "2026-05-28",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true,
+        "consecutive": true
+      },
+      "fwd14": 22.87,
+      "net14": 20.87
+    },
+    {
+      "name": "FN57 | 霸意大名 (崭新出厂)",
+      "date": "2026-06-19",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "supply_expansion": true
+      },
+      "fwd14": 85.49,
+      "net14": 83.49
+    },
+    {
+      "name": "M4A1消音版 | 二号玩家 (崭新出厂)",
+      "date": "2026-02-05",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "z_gate": true
+      },
+      "fwd14": 0.18,
+      "net14": -1.82
+    },
+    {
+      "name": "M4A1消音版 | 二号玩家 (崭新出厂)",
+      "date": "2026-02-14",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "micro_th": true,
+        "consecutive": true,
+        "z_gate": true
+      },
+      "fwd14": -1.69,
+      "net14": -3.69
+    },
+    {
+      "name": "M4A1消音版 | 二号玩家 (崭新出厂)",
+      "date": "2026-02-25",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "z_gate": true
+      },
+      "fwd14": -0.95,
+      "net14": -2.95
+    },
+    {
+      "name": "M4A1消音版 | 二号玩家 (崭新出厂)",
+      "date": "2026-05-28",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": 33.04,
+      "net14": 31.04
+    },
+    {
+      "name": "M4A1消音版 | 二号玩家 (崭新出厂)",
+      "date": "2026-06-19",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "supply_expansion": true
+      },
+      "fwd14": -1.07,
+      "net14": -3.07
+    },
+    {
+      "name": "M4A1消音版 | 伊卡洛斯殒落 (崭新出厂)",
+      "date": "2026-02-10",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": 0.35,
+      "net14": -1.65
+    },
+    {
+      "name": "M4A1消音版 | 伊卡洛斯殒落 (崭新出厂)",
+      "date": "2026-02-19",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {},
+      "fwd14": 1.18,
+      "net14": -0.82
+    },
+    {
+      "name": "M4A1消音版 | 伊卡洛斯殒落 (崭新出厂)",
+      "date": "2026-02-27",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "micro_th": true,
+        "z_gate": true
+      },
+      "fwd14": 5.1,
+      "net14": 3.1
+    },
+    {
+      "name": "M4A1消音版 | 伊卡洛斯殒落 (崭新出厂)",
+      "date": "2026-05-22",
+      "family": "panic",
+      "bypass_guard1": true,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": 11.52,
+      "net14": 9.52
+    },
+    {
+      "name": "M4A1消音版 | 伊卡洛斯殒落 (崭新出厂)",
+      "date": "2026-07-12",
+      "family": "deep_value",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true,
+        "consecutive": true,
+        "z_gate": true
+      },
+      "fwd14": -3.15,
+      "net14": -5.15
+    },
+    {
+      "name": "M4A1消音版 | 印花集 (崭新出厂)",
+      "date": "2025-11-16",
+      "family": "deep_value",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "consecutive": true
+      },
+      "fwd14": -2.09,
+      "net14": -4.09
+    },
+    {
+      "name": "M4A1消音版 | 印花集 (崭新出厂)",
+      "date": "2026-02-04",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": 2.44,
+      "net14": 0.44
+    },
+    {
+      "name": "M4A1消音版 | 印花集 (崭新出厂)",
+      "date": "2026-02-12",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "consecutive": true
+      },
+      "fwd14": 3.89,
+      "net14": 1.89
+    },
+    {
+      "name": "M4A1消音版 | 印花集 (崭新出厂)",
+      "date": "2026-02-24",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {},
+      "fwd14": -0.01,
+      "net14": -2.01
+    },
+    {
+      "name": "M4A1消音版 | 印花集 (崭新出厂)",
+      "date": "2026-05-28",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": -3.76,
+      "net14": -5.76
+    },
+    {
+      "name": "M4A1消音版 | 原子合金 (崭新出厂)",
+      "date": "2026-02-11",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "micro_th": true,
+        "z_gate": true
+      },
+      "fwd14": -7.22,
+      "net14": -9.22
+    },
+    {
+      "name": "M4A1消音版 | 原子合金 (崭新出厂)",
+      "date": "2026-02-19",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "halfway": true,
+        "z_gate": true
+      },
+      "fwd14": -2.89,
+      "net14": -4.89
+    },
+    {
+      "name": "M4A1消音版 | 原子合金 (崭新出厂)",
+      "date": "2026-02-28",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "z_gate": true
+      },
+      "fwd14": 11.11,
+      "net14": 9.11
+    },
+    {
+      "name": "M4A1消音版 | 原子合金 (崭新出厂)",
+      "date": "2026-05-28",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": 19.72,
+      "net14": 17.72
+    },
+    {
+      "name": "M4A1消音版 | 原子合金 (崭新出厂)",
+      "date": "2026-06-19",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "supply_expansion": true
+      },
+      "fwd14": -3.34,
+      "net14": -5.34
+    },
+    {
+      "name": "M4A1消音版 | 控制台 (崭新出厂)",
+      "date": "2025-12-14",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "z_gate": true,
+        "supply_expansion": true
+      },
+      "fwd14": -8.36,
+      "net14": -10.36
+    },
+    {
+      "name": "M4A1消音版 | 控制台 (崭新出厂)",
+      "date": "2026-05-28",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": 48.49,
+      "net14": 46.49
+    },
+    {
+      "name": "M4A1消音版 | 暴怒野兽 (崭新出厂)",
+      "date": "2026-02-08",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": -3.65,
+      "net14": -5.65
+    },
+    {
+      "name": "M4A1消音版 | 暴怒野兽 (崭新出厂)",
+      "date": "2026-02-26",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "micro_th": true,
+        "consecutive": true,
+        "z_gate": true
+      },
+      "fwd14": -4.18,
+      "net14": -6.18
+    },
+    {
+      "name": "M4A1消音版 | 暴怒野兽 (崭新出厂)",
+      "date": "2026-05-30",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": 34.0,
+      "net14": 32.0
+    },
+    {
+      "name": "M4A1消音版 | 暴怒野兽 (崭新出厂)",
+      "date": "2026-06-21",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "supply_expansion": true
+      },
+      "fwd14": -2.65,
+      "net14": -4.65
+    },
+    {
+      "name": "M4A1消音版 | 机械工业 (崭新出厂)",
+      "date": "2026-02-11",
+      "family": "deep_value",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "micro_th": true
+      },
+      "fwd14": 3.6,
+      "net14": 1.6
+    },
+    {
+      "name": "M4A1消音版 | 机械工业 (崭新出厂)",
+      "date": "2026-02-22",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {},
+      "fwd14": -0.95,
+      "net14": -2.95
+    },
+    {
+      "name": "M4A1消音版 | 机械工业 (崭新出厂)",
+      "date": "2026-03-02",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "micro_th": true,
+        "consecutive": true
+      },
+      "fwd14": 14.03,
+      "net14": 12.03
+    },
+    {
+      "name": "M4A1消音版 | 机械工业 (崭新出厂)",
+      "date": "2026-05-28",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": 52.55,
+      "net14": 50.55
+    },
+    {
+      "name": "M4A1消音版 | 梦魇 (崭新出厂)",
+      "date": "2026-02-11",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "z_gate": true
+      },
+      "fwd14": 17.14,
+      "net14": 15.14
+    },
+    {
+      "name": "M4A1消音版 | 梦魇 (崭新出厂)",
+      "date": "2026-05-22",
+      "family": "panic",
+      "bypass_guard1": true,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": 21.39,
+      "net14": 19.39
+    },
+    {
+      "name": "M4A1消音版 | 次时代 (崭新出厂)",
+      "date": "2026-02-12",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "micro_th": true,
+        "consecutive": true,
+        "z_gate": true
+      },
+      "fwd14": -2.46,
+      "net14": -4.46
+    },
+    {
+      "name": "M4A1消音版 | 次时代 (崭新出厂)",
+      "date": "2026-02-20",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "consecutive": true
+      },
+      "fwd14": -2.13,
+      "net14": -4.13
+    },
+    {
+      "name": "M4A1消音版 | 次时代 (崭新出厂)",
+      "date": "2026-02-28",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "z_gate": true
+      },
+      "fwd14": -1.39,
+      "net14": -3.39
+    },
+    {
+      "name": "M4A1消音版 | 次时代 (崭新出厂)",
+      "date": "2026-03-12",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {},
+      "fwd14": -1.28,
+      "net14": -3.28
+    },
+    {
+      "name": "M4A1消音版 | 次时代 (崭新出厂)",
+      "date": "2026-05-28",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": 17.9,
+      "net14": 15.9
+    },
+    {
+      "name": "M4A1消音版 | 破碎铅秋 (崭新出厂)",
+      "date": "2026-02-09",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "z_gate": true
+      },
+      "fwd14": 12.59,
+      "net14": 10.59
+    },
+    {
+      "name": "M4A1消音版 | 破碎铅秋 (崭新出厂)",
+      "date": "2026-05-22",
+      "family": "panic",
+      "bypass_guard1": true,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": 41.44,
+      "net14": 39.44
+    },
+    {
+      "name": "M4A1消音版 | 赤红新星 (崭新出厂)",
+      "date": "2026-02-06",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true,
+        "z_gate": true
+      },
+      "fwd14": 1.07,
+      "net14": -0.93
+    },
+    {
+      "name": "M4A1消音版 | 赤红新星 (崭新出厂)",
+      "date": "2026-02-15",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {},
+      "fwd14": 1.07,
+      "net14": -0.93
+    },
+    {
+      "name": "M4A1消音版 | 赤红新星 (崭新出厂)",
+      "date": "2026-02-25",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "micro_th": true,
+        "z_gate": true
+      },
+      "fwd14": 11.38,
+      "net14": 9.38
+    },
+    {
+      "name": "M4A1消音版 | 赤红新星 (崭新出厂)",
+      "date": "2026-03-05",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {},
+      "fwd14": -1.74,
+      "net14": -3.74
+    },
+    {
+      "name": "M4A1消音版 | 赤红新星 (崭新出厂)",
+      "date": "2026-05-22",
+      "family": "panic",
+      "bypass_guard1": true,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": 18.83,
+      "net14": 16.83
+    },
+    {
+      "name": "M4A1消音版 | 赤红新星 (崭新出厂)",
+      "date": "2026-06-19",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "supply_expansion": true
+      },
+      "fwd14": 2.43,
+      "net14": 0.43
+    },
+    {
+      "name": "M4A1消音版 | 闪回 (崭新出厂)",
+      "date": "2025-12-07",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "z_gate": true,
+        "supply_expansion": true
+      },
+      "fwd14": -15.12,
+      "net14": -17.12
+    },
+    {
+      "name": "M4A4 | 全球攻势 (崭新出厂)",
+      "date": "2026-02-05",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "z_gate": true
+      },
+      "fwd14": 7.69,
+      "net14": 5.69
+    },
+    {
+      "name": "M4A4 | 合纵 (崭新出厂)",
+      "date": "2026-02-06",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true,
+        "consecutive": true
+      },
+      "fwd14": 12.56,
+      "net14": 10.56
+    },
+    {
+      "name": "M4A4 | 合纵 (崭新出厂)",
+      "date": "2026-05-22",
+      "family": "panic",
+      "bypass_guard1": true,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": 31.92,
+      "net14": 29.92
+    },
+    {
+      "name": "M4A4 | 合纵 (崭新出厂)",
+      "date": "2026-06-21",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "supply_expansion": true
+      },
+      "fwd14": 0.69,
+      "net14": -1.31
+    },
+    {
+      "name": "M4A4 | 喧嚣杀戮 (崭新出厂)",
+      "date": "2026-05-27",
+      "family": "panic",
+      "bypass_guard1": true,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": 67.18,
+      "net14": 65.18
+    },
+    {
+      "name": "M4A4 | 地狱烈焰 (崭新出厂)",
+      "date": "2026-02-11",
+      "family": "deep_value",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {},
+      "fwd14": 18.52,
+      "net14": 16.52
+    },
+    {
+      "name": "M4A4 | 地狱烈焰 (崭新出厂)",
+      "date": "2026-02-25",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "consecutive": true,
+        "z_gate": true
+      },
+      "fwd14": 4.98,
+      "net14": 2.98
+    },
+    {
+      "name": "M4A4 | 地狱烈焰 (崭新出厂)",
+      "date": "2026-05-25",
+      "family": "panic",
+      "bypass_guard1": true,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": 98.63,
+      "net14": 96.63
+    },
+    {
+      "name": "M4A4 | 弹雨 (崭新出厂)",
+      "date": "2026-05-28",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": 5.26,
+      "net14": 3.26
+    },
+    {
+      "name": "M4A4 | 彼岸花 (崭新出厂)",
+      "date": "2026-02-10",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "consecutive": true,
+        "z_gate": true
+      },
+      "fwd14": 4.6,
+      "net14": 2.6
+    },
+    {
+      "name": "M4A4 | 彼岸花 (崭新出厂)",
+      "date": "2026-02-23",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {},
+      "fwd14": 11.19,
+      "net14": 9.19
+    },
+    {
+      "name": "M4A4 | 彼岸花 (崭新出厂)",
+      "date": "2026-03-03",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "halfway": true,
+        "z_gate": true
+      },
+      "fwd14": 20.07,
+      "net14": 18.07
+    },
+    {
+      "name": "M4A4 | 彼岸花 (崭新出厂)",
+      "date": "2026-06-21",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "supply_expansion": true
+      },
+      "fwd14": 2.88,
+      "net14": 0.88
+    },
+    {
+      "name": "M4A4 | 死寂空间 (崭新出厂)",
+      "date": "2026-05-28",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": 30.18,
+      "net14": 28.18
+    },
+    {
+      "name": "M4A4 | 沙漠精英 (崭新出厂)",
+      "date": "2026-02-11",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "micro_th": true,
+        "z_gate": true
+      },
+      "fwd14": 4.03,
+      "net14": 2.03
+    },
+    {
+      "name": "M4A4 | 沙漠精英 (崭新出厂)",
+      "date": "2026-02-23",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {},
+      "fwd14": 6.6,
+      "net14": 4.6
+    },
+    {
+      "name": "M4A4 | 沙漠精英 (崭新出厂)",
+      "date": "2026-03-03",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "halfway": true,
+        "consecutive": true,
+        "z_gate": true
+      },
+      "fwd14": 39.93,
+      "net14": 37.93
+    },
+    {
+      "name": "M4A4 | 沙漠精英 (崭新出厂)",
+      "date": "2026-05-28",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": 21.66,
+      "net14": 19.66
+    },
+    {
+      "name": "M4A4 | 沙漠精英 (崭新出厂)",
+      "date": "2026-06-21",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "supply_expansion": true
+      },
+      "fwd14": -4.96,
+      "net14": -6.96
+    },
+    {
+      "name": "M4A4 | 沙漠风暴 (崭新出厂)",
+      "date": "2025-11-14",
+      "family": "deep_value",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "consecutive": true,
+        "z_gate": true
+      },
+      "fwd14": 6.78,
+      "net14": 4.78
+    },
+    {
+      "name": "M4A4 | 波塞冬 (崭新出厂)",
+      "date": "2026-02-15",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {},
+      "fwd14": -3.68,
+      "net14": -5.68
+    },
+    {
+      "name": "M4A4 | 波塞冬 (崭新出厂)",
+      "date": "2026-02-28",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "halfway": true,
+        "micro_th": true,
+        "z_gate": true
+      },
+      "fwd14": 9.2,
+      "net14": 7.2
+    },
+    {
+      "name": "M4A4 | 波塞冬 (崭新出厂)",
+      "date": "2026-05-28",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": 9.96,
+      "net14": 7.96
+    },
+    {
+      "name": "M4A4 | 活色生香 (崭新出厂)",
+      "date": "2026-02-04",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": 3.57,
+      "net14": 1.57
+    },
+    {
+      "name": "M4A4 | 活色生香 (崭新出厂)",
+      "date": "2026-02-14",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "micro_th": true
+      },
+      "fwd14": -3.36,
+      "net14": -5.36
+    },
+    {
+      "name": "M4A4 | 活色生香 (崭新出厂)",
+      "date": "2026-02-23",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {},
+      "fwd14": 9.48,
+      "net14": 7.48
+    },
+    {
+      "name": "M4A4 | 活色生香 (崭新出厂)",
+      "date": "2026-05-23",
+      "family": "panic",
+      "bypass_guard1": true,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": 37.81,
+      "net14": 35.81
+    },
+    {
+      "name": "M4A4 | 活色生香 (崭新出厂)",
+      "date": "2026-06-21",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "supply_expansion": true
+      },
+      "fwd14": -1.6,
+      "net14": -3.6
+    },
+    {
+      "name": "M4A4 | 皇帝 (崭新出厂)",
+      "date": "2026-02-04",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "supply_expansion": true
+      },
+      "fwd14": 0.85,
+      "net14": -1.15
+    },
+    {
+      "name": "M4A4 | 皇帝 (崭新出厂)",
+      "date": "2026-02-12",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "micro_th": true
+      },
+      "fwd14": 0.85,
+      "net14": -1.15
+    },
+    {
+      "name": "M4A4 | 皇帝 (崭新出厂)",
+      "date": "2026-02-21",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "consecutive": true
+      },
+      "fwd14": 7.45,
+      "net14": 5.45
+    },
+    {
+      "name": "M4A4 | 皇帝 (崭新出厂)",
+      "date": "2026-03-01",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "consecutive": true,
+        "z_gate": true
+      },
+      "fwd14": 11.32,
+      "net14": 9.32
+    },
+    {
+      "name": "M4A4 | 皇帝 (崭新出厂)",
+      "date": "2026-05-28",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": 30.55,
+      "net14": 28.55
+    },
+    {
+      "name": "M4A4 | 赛博 (崭新出厂)",
+      "date": "2026-02-04",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "z_gate": true
+      },
+      "fwd14": -1.02,
+      "net14": -3.02
+    },
+    {
+      "name": "M4A4 | 赛博 (崭新出厂)",
+      "date": "2026-02-12",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "consecutive": true,
+        "z_gate": true
+      },
+      "fwd14": -3.55,
+      "net14": -5.55
+    },
+    {
+      "name": "M4A4 | 赛博 (崭新出厂)",
+      "date": "2026-02-21",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "halfway": true,
+        "consecutive": true,
+        "z_gate": true
+      },
+      "fwd14": 0.49,
+      "net14": -1.51
+    },
+    {
+      "name": "M4A4 | 赛博 (崭新出厂)",
+      "date": "2026-03-01",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "micro_th": true,
+        "consecutive": true,
+        "z_gate": true
+      },
+      "fwd14": 19.03,
+      "net14": 17.03
+    },
+    {
+      "name": "M4A4 | 赛博 (崭新出厂)",
+      "date": "2026-05-28",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": 21.8,
+      "net14": 19.8
+    },
+    {
+      "name": "MP7 | 卷云 (崭新出厂)",
+      "date": "2026-01-05",
+      "family": "deep_value",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "micro_th": true,
+        "consecutive": true,
+        "z_gate": true
+      },
+      "fwd14": 25.6,
+      "net14": 23.6
+    },
+    {
+      "name": "MP7 | 渐变之色 (崭新出厂)",
+      "date": "2026-01-19",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "halfway": true,
+        "micro_th": true,
+        "consecutive": true,
+        "z_gate": true,
+        "supply_expansion": true
+      },
+      "fwd14": 302.4,
+      "net14": 300.4
+    },
+    {
+      "name": "MP7 | 渐变之色 (崭新出厂)",
+      "date": "2026-02-26",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "z_gate": true
+      },
+      "fwd14": 25.54,
+      "net14": 23.54
+    },
+    {
+      "name": "MP7 | 渐变之色 (崭新出厂)",
+      "date": "2026-05-24",
+      "family": "panic",
+      "bypass_guard1": true,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": 61.94,
+      "net14": 59.94
+    },
+    {
+      "name": "MP7 | 渐变之色 (崭新出厂)",
+      "date": "2026-06-18",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "supply_expansion": true
+      },
+      "fwd14": -6.58,
+      "net14": -8.58
+    },
+    {
+      "name": "MP9 | 星使 (崭新出厂)",
+      "date": "2026-02-03",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true,
+        "z_gate": true
+      },
+      "fwd14": 4.61,
+      "net14": 2.61
+    },
+    {
+      "name": "MP9 | 星使 (崭新出厂)",
+      "date": "2026-02-20",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "z_gate": true
+      },
+      "fwd14": 3.8,
+      "net14": 1.8
+    },
+    {
+      "name": "MP9 | 星使 (崭新出厂)",
+      "date": "2026-05-28",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": 10.58,
+      "net14": 8.58
+    },
+    {
+      "name": "MP9 | 气密 (崭新出厂)",
+      "date": "2026-02-12",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "micro_th": true,
+        "z_gate": true
+      },
+      "fwd14": 5.49,
+      "net14": 3.49
+    },
+    {
+      "name": "MP9 | 气密 (崭新出厂)",
+      "date": "2026-03-02",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "consecutive": true,
+        "z_gate": true
+      },
+      "fwd14": 36.91,
+      "net14": 34.91
+    },
+    {
+      "name": "MP9 | 气密 (崭新出厂)",
+      "date": "2026-05-30",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true,
+        "bid": true
+      },
+      "fwd14": 26.16,
+      "net14": 24.16
+    },
+    {
+      "name": "MP9 | 气密 (崭新出厂)",
+      "date": "2026-06-19",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "supply_expansion": true
+      },
+      "fwd14": 11.09,
+      "net14": 9.09
+    },
+    {
+      "name": "SSG 08 | 无尽深海 (崭新出厂)",
+      "date": "2026-02-03",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "z_gate": true
+      },
+      "fwd14": -4.01,
+      "net14": -6.01
+    },
+    {
+      "name": "SSG 08 | 无尽深海 (崭新出厂)",
+      "date": "2026-02-16",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "halfway": true,
+        "consecutive": true,
+        "z_gate": true
+      },
+      "fwd14": 47.78,
+      "net14": 45.78
+    },
+    {
+      "name": "SSG 08 | 无尽深海 (崭新出厂)",
+      "date": "2026-05-23",
+      "family": "panic",
+      "bypass_guard1": true,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": 16.92,
+      "net14": 14.92
+    },
+    {
+      "name": "SSG 08 | 水中之血 (崭新出厂)",
+      "date": "2026-05-22",
+      "family": "panic",
+      "bypass_guard1": true,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": 14.12,
+      "net14": 12.12
+    },
+    {
+      "name": "SSG 08 | 水中之血 (崭新出厂)",
+      "date": "2026-07-22",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "supply_expansion": true
+      },
+      "fwd14": -7.45,
+      "net14": -9.45
+    },
+    {
+      "name": "SSG 08 | 炎龙之焰 (崭新出厂)",
+      "date": "2026-02-10",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": 9.62,
+      "net14": 7.62
+    },
+    {
+      "name": "SSG 08 | 炎龙之焰 (崭新出厂)",
+      "date": "2026-02-27",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "halfway": true,
+        "micro_th": true,
+        "z_gate": true
+      },
+      "fwd14": -8.47,
+      "net14": -10.47
+    },
+    {
+      "name": "SSG 08 | 炎龙之焰 (崭新出厂)",
+      "date": "2026-05-28",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": 23.49,
+      "net14": 21.49
+    },
+    {
+      "name": "SSG 08 | 蓝色云杉 (崭新出厂)",
+      "date": "2025-12-29",
+      "family": "deep_value",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": -6.99,
+      "net14": -8.99
+    },
+    {
+      "name": "SSG 08 | 蓝色云杉 (崭新出厂)",
+      "date": "2026-01-06",
+      "family": "deep_value",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "micro_th": true,
+        "z_gate": true
+      },
+      "fwd14": 6.43,
+      "net14": 4.43
+    },
+    {
+      "name": "SSG 08 | 速度激情 (崭新出厂)",
+      "date": "2026-02-09",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "halfway": true,
+        "z_gate": true
+      },
+      "fwd14": 3.53,
+      "net14": 1.53
+    },
+    {
+      "name": "SSG 08 | 速度激情 (崭新出厂)",
+      "date": "2026-02-24",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {},
+      "fwd14": 11.11,
+      "net14": 9.11
+    },
+    {
+      "name": "SSG 08 | 速度激情 (崭新出厂)",
+      "date": "2026-05-28",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true,
+        "bid": true
+      },
+      "fwd14": 36.81,
+      "net14": 34.81
+    },
+    {
+      "name": "SSG 08 | 速度激情 (崭新出厂)",
+      "date": "2026-06-19",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "supply_expansion": true
+      },
+      "fwd14": 1.38,
+      "net14": -0.62
+    },
+    {
+      "name": "Tec-9 | 冰冠 (崭新出厂)",
+      "date": "2026-02-15",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "halfway": true,
+        "micro_th": true,
+        "consecutive": true
+      },
+      "fwd14": 13.06,
+      "net14": 11.06
+    },
+    {
+      "name": "Tec-9 | 冰冠 (崭新出厂)",
+      "date": "2026-05-28",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": 47.54,
+      "net14": 45.54
+    },
+    {
+      "name": "USP 消音版 | 地狱门票 (崭新出厂)",
+      "date": "2025-12-08",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "z_gate": true
+      },
+      "fwd14": 11.12,
+      "net14": 9.12
+    },
+    {
+      "name": "USP 消音版 | 地狱门票 (崭新出厂)",
+      "date": "2026-05-28",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true,
+        "bid": true
+      },
+      "fwd14": 20.7,
+      "net14": 18.7
+    },
+    {
+      "name": "USP 消音版 | 地狱门票 (崭新出厂)",
+      "date": "2026-06-17",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "supply_expansion": true
+      },
+      "fwd14": 23.6,
+      "net14": 21.6
+    },
+    {
+      "name": "USP 消音版 | 守护者 (崭新出厂)",
+      "date": "2026-02-11",
+      "family": "deep_value",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "z_gate": true
+      },
+      "fwd14": 8.93,
+      "net14": 6.93
+    },
+    {
+      "name": "USP 消音版 | 守护者 (崭新出厂)",
+      "date": "2026-02-21",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "z_gate": true
+      },
+      "fwd14": 25.49,
+      "net14": 23.49
+    },
+    {
+      "name": "USP 消音版 | 守护者 (崭新出厂)",
+      "date": "2026-03-03",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "z_gate": true
+      },
+      "fwd14": 61.72,
+      "net14": 59.72
+    },
+    {
+      "name": "USP 消音版 | 守护者 (崭新出厂)",
+      "date": "2026-05-22",
+      "family": "panic",
+      "bypass_guard1": true,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": 37.3,
+      "net14": 35.3
+    },
+    {
+      "name": "USP 消音版 | 守护者 (崭新出厂)",
+      "date": "2026-05-30",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": 7.8,
+      "net14": 5.8
+    },
+    {
+      "name": "USP 消音版 | 守护者 (崭新出厂)",
+      "date": "2026-06-16",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "supply_expansion": true
+      },
+      "fwd14": 15.82,
+      "net14": 13.82
+    },
+    {
+      "name": "USP 消音版 | 次时代 (崭新出厂)",
+      "date": "2025-12-29",
+      "family": "deep_value",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": -1.17,
+      "net14": -3.17
+    },
+    {
+      "name": "USP 消音版 | 次时代 (崭新出厂)",
+      "date": "2026-02-06",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "z_gate": true
+      },
+      "fwd14": 7.48,
+      "net14": 5.48
+    },
+    {
+      "name": "USP 消音版 | 次时代 (崭新出厂)",
+      "date": "2026-02-20",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "consecutive": true,
+        "z_gate": true
+      },
+      "fwd14": 31.33,
+      "net14": 29.33
+    },
+    {
+      "name": "USP 消音版 | 次时代 (崭新出厂)",
+      "date": "2026-03-01",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "z_gate": true
+      },
+      "fwd14": 73.54,
+      "net14": 71.54
+    },
+    {
+      "name": "USP 消音版 | 银装素裹 (崭新出厂)",
+      "date": "2026-02-27",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "micro_th": true,
+        "z_gate": true
+      },
+      "fwd14": 32.19,
+      "net14": 30.19
+    },
+    {
+      "name": "USP 消音版 | 银装素裹 (崭新出厂)",
+      "date": "2026-05-22",
+      "family": "panic",
+      "bypass_guard1": true,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": 21.44,
+      "net14": 19.44
+    },
+    {
+      "name": "USP 消音版 | 银装素裹 (崭新出厂)",
+      "date": "2026-05-30",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": 10.48,
+      "net14": 8.48
+    },
+    {
+      "name": "亚诺（野草） | 游击队",
+      "date": "2025-11-15",
+      "family": "deep_value",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {},
+      "fwd14": 8.74,
+      "net14": 6.74
+    },
+    {
+      "name": "亚诺（野草） | 游击队",
+      "date": "2026-02-03",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "z_gate": true
+      },
+      "fwd14": -6.79,
+      "net14": -8.79
+    },
+    {
+      "name": "亚诺（野草） | 游击队",
+      "date": "2026-02-25",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "z_gate": true
+      },
+      "fwd14": 10.19,
+      "net14": 8.19
+    },
+    {
+      "name": "亚诺（野草） | 游击队",
+      "date": "2026-05-22",
+      "family": "panic",
+      "bypass_guard1": true,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": 32.13,
+      "net14": 30.13
+    },
+    {
+      "name": "亚诺（野草） | 游击队",
+      "date": "2026-06-18",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "supply_expansion": true
+      },
+      "fwd14": -10.24,
+      "net14": -12.24
+    },
+    {
+      "name": "加利尔 AR | 冷石 (崭新出厂)",
+      "date": "2026-05-26",
+      "family": "panic",
+      "bypass_guard1": true,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": 73.01,
+      "net14": 71.01
+    },
+    {
+      "name": "加利尔 AR | 蓝钛 (崭新出厂)",
+      "date": "2025-12-14",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {},
+      "fwd14": 4.32,
+      "net14": 2.32
+    },
+    {
+      "name": "加利尔 AR | 蓝钛 (崭新出厂)",
+      "date": "2026-02-13",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "z_gate": true
+      },
+      "fwd14": 11.48,
+      "net14": 9.48
+    },
+    {
+      "name": "加利尔 AR | 迷人眼 (崭新出厂)",
+      "date": "2026-05-30",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": -2.83,
+      "net14": -4.83
+    },
+    {
+      "name": "加利尔 AR | 迷人眼 (崭新出厂)",
+      "date": "2026-06-19",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "supply_expansion": true
+      },
+      "fwd14": 5.98,
+      "net14": 3.98
+    },
+    {
+      "name": "加利尔 AR | 黑砂 (崭新出厂)",
+      "date": "2026-02-02",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "z_gate": true
+      },
+      "fwd14": 7.21,
+      "net14": 5.21
+    },
+    {
+      "name": "加利尔 AR | 黑砂 (崭新出厂)",
+      "date": "2026-05-22",
+      "family": "panic",
+      "bypass_guard1": true,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": 83.21,
+      "net14": 81.21
+    },
+    {
+      "name": "德拉戈米尔 | 军刀勇士",
+      "date": "2025-11-17",
+      "family": "deep_value",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {},
+      "fwd14": 2.93,
+      "net14": 0.93
+    },
+    {
+      "name": "德拉戈米尔 | 军刀勇士",
+      "date": "2025-12-29",
+      "family": "deep_value",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "z_gate": true
+      },
+      "fwd14": 15.79,
+      "net14": 13.79
+    },
+    {
+      "name": "德拉戈米尔 | 军刀勇士",
+      "date": "2026-05-22",
+      "family": "panic",
+      "bypass_guard1": true,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": 19.33,
+      "net14": 17.33
+    },
+    {
+      "name": "德拉戈米尔 | 军刀勇士",
+      "date": "2026-05-30",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": -9.51,
+      "net14": -11.51
+    },
+    {
+      "name": "德拉戈米尔 | 军刀勇士",
+      "date": "2026-07-11",
+      "family": "deep_value",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true,
+        "z_gate": true
+      },
+      "fwd14": 2.99,
+      "net14": 0.99
+    },
+    {
+      "name": "格洛克 18 型 | 异星世界 (崭新出厂)",
+      "date": "2025-12-29",
+      "family": "deep_value",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "z_gate": true
+      },
+      "fwd14": 184.14,
+      "net14": 182.14
+    },
+    {
+      "name": "格洛克 18 型 | 异星世界 (崭新出厂)",
+      "date": "2026-06-19",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "supply_expansion": true
+      },
+      "fwd14": 72.2,
+      "net14": 70.2
+    },
+    {
+      "name": "格洛克 18 型 | 拉美西斯之触 (崭新出厂)",
+      "date": "2026-02-11",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "consecutive": true,
+        "z_gate": true
+      },
+      "fwd14": -10.28,
+      "net14": -12.28
+    },
+    {
+      "name": "格洛克 18 型 | 拉美西斯之触 (崭新出厂)",
+      "date": "2026-03-01",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "micro_th": true,
+        "z_gate": true
+      },
+      "fwd14": 16.63,
+      "net14": 14.63
+    },
+    {
+      "name": "格洛克 18 型 | 拉美西斯之触 (崭新出厂)",
+      "date": "2026-05-28",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": 24.55,
+      "net14": 22.55
+    },
+    {
+      "name": "格洛克 18 型 | 拉美西斯之触 (崭新出厂)",
+      "date": "2026-06-17",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "supply_expansion": true
+      },
+      "fwd14": 8.99,
+      "net14": 6.99
+    },
+    {
+      "name": "格洛克 18 型 | 本生灯 (崭新出厂)",
+      "date": "2025-12-24",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {},
+      "fwd14": 55.3,
+      "net14": 53.3
+    },
+    {
+      "name": "格洛克 18 型 | 本生灯 (崭新出厂)",
+      "date": "2026-06-15",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "supply_expansion": true
+      },
+      "fwd14": 28.53,
+      "net14": 26.53
+    },
+    {
+      "name": "格洛克 18 型 | 水灵 (崭新出厂)",
+      "date": "2026-02-05",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "z_gate": true
+      },
+      "fwd14": -7.59,
+      "net14": -9.59
+    },
+    {
+      "name": "格洛克 18 型 | 水灵 (崭新出厂)",
+      "date": "2026-02-15",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {},
+      "fwd14": 4.75,
+      "net14": 2.75
+    },
+    {
+      "name": "格洛克 18 型 | 水灵 (崭新出厂)",
+      "date": "2026-02-24",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {},
+      "fwd14": 17.34,
+      "net14": 15.34
+    },
+    {
+      "name": "格洛克 18 型 | 水灵 (崭新出厂)",
+      "date": "2026-05-26",
+      "family": "panic",
+      "bypass_guard1": true,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": 80.0,
+      "net14": 78.0
+    },
+    {
+      "name": "格洛克 18 型 | 粉碎者 (崭新出厂)",
+      "date": "2026-02-06",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "z_gate": true,
+        "supply_expansion": true
+      },
+      "fwd14": 2.05,
+      "net14": 0.05
+    },
+    {
+      "name": "格洛克 18 型 | 粉碎者 (崭新出厂)",
+      "date": "2026-02-14",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "micro_th": true,
+        "z_gate": true
+      },
+      "fwd14": -0.85,
+      "net14": -2.85
+    },
+    {
+      "name": "格洛克 18 型 | 粉碎者 (崭新出厂)",
+      "date": "2026-02-27",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "z_gate": true
+      },
+      "fwd14": 60.95,
+      "net14": 58.95
+    },
+    {
+      "name": "格洛克 18 型 | 粉碎者 (崭新出厂)",
+      "date": "2026-05-22",
+      "family": "panic",
+      "bypass_guard1": true,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": 42.35,
+      "net14": 40.35
+    },
+    {
+      "name": "格洛克 18 型 | 粉碎者 (崭新出厂)",
+      "date": "2026-06-19",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "supply_expansion": true
+      },
+      "fwd14": 79.55,
+      "net14": 77.55
+    },
+    {
+      "name": "格洛克 18 型 | 黑龙纹身 (崭新出厂)",
+      "date": "2026-02-11",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "halfway": true,
+        "micro_th": true,
+        "consecutive": true,
+        "z_gate": true
+      },
+      "fwd14": 13.5,
+      "net14": 11.5
+    },
+    {
+      "name": "格洛克 18 型 | 黑龙纹身 (崭新出厂)",
+      "date": "2026-05-22",
+      "family": "panic",
+      "bypass_guard1": true,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": 13.37,
+      "net14": 11.37
+    },
+    {
+      "name": "格洛克 18 型 | 黑龙纹身 (崭新出厂)",
+      "date": "2026-05-30",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": 18.0,
+      "net14": 16.0
+    },
+    {
+      "name": "格洛克 18 型 | 黑龙纹身 (崭新出厂)",
+      "date": "2026-07-11",
+      "family": "deep_value",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "consecutive": true,
+        "z_gate": true
+      },
+      "fwd14": -5.01,
+      "net14": -7.01
+    },
+    {
+      "name": "沙漠之鹰 | 人造卫星 (崭新出厂)",
+      "date": "2026-02-14",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "micro_th": true
+      },
+      "fwd14": 6.06,
+      "net14": 4.06
+    },
+    {
+      "name": "沙漠之鹰 | 人造卫星 (崭新出厂)",
+      "date": "2026-02-22",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "z_gate": true
+      },
+      "fwd14": 23.14,
+      "net14": 21.14
+    },
+    {
+      "name": "沙漠之鹰 | 午夜凶匪 (崭新出厂)",
+      "date": "2026-02-05",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": 5.14,
+      "net14": 3.14
+    },
+    {
+      "name": "沙漠之鹰 | 午夜凶匪 (崭新出厂)",
+      "date": "2026-02-14",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "micro_th": true,
+        "z_gate": true
+      },
+      "fwd14": 21.39,
+      "net14": 19.39
+    },
+    {
+      "name": "沙漠之鹰 | 午夜凶匪 (崭新出厂)",
+      "date": "2026-05-25",
+      "family": "panic",
+      "bypass_guard1": true,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": 120.43,
+      "net14": 118.43
+    },
+    {
+      "name": "沙漠之鹰 | 后发制人 (崭新出厂)",
+      "date": "2025-11-21",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "z_gate": true,
+        "supply_expansion": true
+      },
+      "fwd14": 16.15,
+      "net14": 14.15
+    },
+    {
+      "name": "沙漠之鹰 | 后发制人 (崭新出厂)",
+      "date": "2026-03-03",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "consecutive": true,
+        "z_gate": true
+      },
+      "fwd14": 65.48,
+      "net14": 63.48
+    },
+    {
+      "name": "沙漠之鹰 | 指挥 (崭新出厂)",
+      "date": "2026-05-30",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": 18.13,
+      "net14": 16.13
+    },
+    {
+      "name": "沙漠之鹰 | 指挥 (崭新出厂)",
+      "date": "2026-06-20",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "supply_expansion": true
+      },
+      "fwd14": 0.08,
+      "net14": -1.92
+    },
+    {
+      "name": "沙漠之鹰 | 炽烈之炎 (崭新出厂)",
+      "date": "2025-11-14",
+      "family": "deep_value",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": 16.64,
+      "net14": 14.64
+    },
+    {
+      "name": "沙漠之鹰 | 炽烈之炎 (崭新出厂)",
+      "date": "2026-02-05",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "z_gate": true
+      },
+      "fwd14": 1.87,
+      "net14": -0.13
+    },
+    {
+      "name": "沙漠之鹰 | 炽烈之炎 (崭新出厂)",
+      "date": "2026-02-18",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "consecutive": true
+      },
+      "fwd14": 0.29,
+      "net14": -1.71
+    },
+    {
+      "name": "沙漠之鹰 | 炽烈之炎 (崭新出厂)",
+      "date": "2026-02-26",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "micro_th": true,
+        "consecutive": true,
+        "z_gate": true
+      },
+      "fwd14": 3.89,
+      "net14": 1.89
+    },
+    {
+      "name": "沙漠之鹰 | 炽烈之炎 (崭新出厂)",
+      "date": "2026-05-22",
+      "family": "panic",
+      "bypass_guard1": true,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": 10.19,
+      "net14": 8.19
+    },
+    {
+      "name": "沙漠之鹰 | 炽烈之炎 (崭新出厂)",
+      "date": "2026-05-30",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": 6.85,
+      "net14": 4.85
+    },
+    {
+      "name": "沙漠之鹰 | 纳迦蛇神 (崭新出厂)",
+      "date": "2026-05-22",
+      "family": "panic",
+      "bypass_guard1": true,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": 25.0,
+      "net14": 23.0
+    },
+    {
+      "name": "沙漠之鹰 | 纳迦蛇神 (崭新出厂)",
+      "date": "2026-05-30",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": 11.9,
+      "net14": 9.9
+    },
+    {
+      "name": "沙漠之鹰 | 纳迦蛇神 (崭新出厂)",
+      "date": "2026-06-19",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "supply_expansion": true
+      },
+      "fwd14": 24.34,
+      "net14": 22.34
+    },
+    {
+      "name": "沙漠之鹰 | 翡翠巨蟒 (崭新出厂)",
+      "date": "2025-11-20",
+      "family": "deep_value",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {},
+      "fwd14": 30.35,
+      "net14": 28.35
+    },
+    {
+      "name": "沙漠之鹰 | 翡翠巨蟒 (崭新出厂)",
+      "date": "2026-02-04",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "supply_expansion": true
+      },
+      "fwd14": 8.47,
+      "net14": 6.47
+    },
+    {
+      "name": "沙漠之鹰 | 翡翠巨蟒 (崭新出厂)",
+      "date": "2026-02-15",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "consecutive": true
+      },
+      "fwd14": 10.13,
+      "net14": 8.13
+    },
+    {
+      "name": "沙漠之鹰 | 翡翠巨蟒 (崭新出厂)",
+      "date": "2026-02-25",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "halfway": true,
+        "micro_th": true,
+        "z_gate": true
+      },
+      "fwd14": 21.67,
+      "net14": 19.67
+    },
+    {
+      "name": "沙漠之鹰 | 翡翠巨蟒 (崭新出厂)",
+      "date": "2026-05-28",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": 0.18,
+      "net14": -1.82
+    },
+    {
+      "name": "沙漠之鹰 | 蓝色层压板 (崭新出厂)",
+      "date": "2025-12-29",
+      "family": "deep_value",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true,
+        "consecutive": true
+      },
+      "fwd14": 12.08,
+      "net14": 10.08
+    },
+    {
+      "name": "沙漠之鹰 | 蓝色层压板 (崭新出厂)",
+      "date": "2026-06-19",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "supply_expansion": true
+      },
+      "fwd14": 101.46,
+      "net14": 99.46
+    },
+    {
+      "name": "沙漠之鹰 | 轻轨 (崭新出厂)",
+      "date": "2026-05-24",
+      "family": "panic",
+      "bypass_guard1": true,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": 67.29,
+      "net14": 65.29
+    },
+    {
+      "name": "沙漠之鹰 | 轻轨 (崭新出厂)",
+      "date": "2026-06-19",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "supply_expansion": true
+      },
+      "fwd14": 65.05,
+      "net14": 63.05
+    },
+    {
+      "name": "沙漠之鹰 | 阴谋者 (崭新出厂)",
+      "date": "2026-02-06",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "consecutive": true
+      },
+      "fwd14": 3.13,
+      "net14": 1.13
+    },
+    {
+      "name": "沙漠之鹰 | 阴谋者 (崭新出厂)",
+      "date": "2026-02-14",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "micro_th": true,
+        "consecutive": true
+      },
+      "fwd14": 4.16,
+      "net14": 2.16
+    },
+    {
+      "name": "沙漠之鹰 | 阴谋者 (崭新出厂)",
+      "date": "2026-02-23",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "halfway": true,
+        "consecutive": true
+      },
+      "fwd14": 4.03,
+      "net14": 2.03
+    },
+    {
+      "name": "沙漠之鹰 | 阴谋者 (崭新出厂)",
+      "date": "2026-03-03",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "halfway": true
+      },
+      "fwd14": 23.59,
+      "net14": 21.59
+    },
+    {
+      "name": "沙漠之鹰 | 阴谋者 (崭新出厂)",
+      "date": "2026-05-28",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": 5.08,
+      "net14": 3.08
+    },
+    {
+      "name": "沙漠之鹰 | 黄金锦鲤 (崭新出厂)",
+      "date": "2026-02-03",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true,
+        "z_gate": true,
+        "supply_expansion": true
+      },
+      "fwd14": 5.92,
+      "net14": 3.92
+    },
+    {
+      "name": "沙漠之鹰 | 黄金锦鲤 (崭新出厂)",
+      "date": "2026-02-12",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "micro_th": true,
+        "z_gate": true
+      },
+      "fwd14": 7.46,
+      "net14": 5.46
+    },
+    {
+      "name": "沙漠之鹰 | 黄金锦鲤 (崭新出厂)",
+      "date": "2026-05-28",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true
+      },
+      "fwd14": 13.93,
+      "net14": 11.93
+    },
+    {
+      "name": "沙漠之鹰 | 黄金锦鲤 (崭新出厂)",
+      "date": "2026-06-19",
+      "family": "base",
+      "bypass_guard1": false,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "supply_expansion": true
+      },
+      "fwd14": -1.08,
+      "net14": -3.08
+    },
+    {
+      "name": "法玛斯 | 机械工业 (崭新出厂)",
+      "date": "2026-02-10",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true,
+        "z_gate": true
+      },
+      "fwd14": 15.21,
+      "net14": 13.21
+    },
+    {
+      "name": "法玛斯 | 机械工业 (崭新出厂)",
+      "date": "2026-02-25",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "z_gate": true
+      },
+      "fwd14": 14.14,
+      "net14": 12.14
+    },
+    {
+      "name": "法玛斯 | 残影 (崭新出厂)",
+      "date": "2026-05-30",
+      "family": "panic_easing",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "micro_th": true,
+        "bid": true
+      },
+      "fwd14": -8.88,
+      "net14": -10.88
+    },
+    {
+      "name": "法玛斯 | 殖民侵略者 (崭新出厂)",
+      "date": "2025-11-18",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "z_gate": true,
+        "supply_expansion": true
+      },
+      "fwd14": -1.03,
+      "net14": -3.03
+    },
+    {
+      "name": "法玛斯 | 殖民侵略者 (崭新出厂)",
+      "date": "2025-12-18",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "z_gate": true
+      },
+      "fwd14": -0.3,
+      "net14": -2.3
+    },
+    {
+      "name": "法玛斯 | 目皆转睛 (崭新出厂)",
+      "date": "2026-02-11",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "z_gate": true
+      },
+      "fwd14": 4.51,
+      "net14": 2.51
+    },
+    {
+      "name": "法玛斯 | 目皆转睛 (崭新出厂)",
+      "date": "2026-02-26",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "z_gate": true
+      },
+      "fwd14": 5.82,
+      "net14": 3.82
+    },
+    {
+      "name": "法玛斯 | 目皆转睛 (崭新出厂)",
+      "date": "2026-05-24",
+      "family": "panic",
+      "bypass_guard1": true,
+      "bypass_guard2": false,
+      "guards_would_hit": {
+        "market_weak": true
+      },
+      "fwd14": 28.96,
+      "net14": 26.96
+    },
+    {
+      "name": "电竞 2013 冬季武器箱",
+      "date": "2026-02-04",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "market_weak": true,
+        "z_gate": true
+      },
+      "fwd14": 30.15,
+      "net14": 28.15
+    },
+    {
+      "name": "电竞 2013 冬季武器箱",
+      "date": "2026-02-15",
+      "family": "supply_accum",
+      "bypass_guard1": true,
+      "bypass_guard2": true,
+      "guards_would_hit": {
+        "micro_th": true
+      },
+      "fwd14": 15.73,
+      "net14": 13.73
+    }
+  ]
+}

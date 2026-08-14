@@ -1,0 +1,66 @@
+{
+ "generated": "2026-08-14T12:25",
+ "note": "New north-star re-score of deep_value position-limit scaling. Calmar_rd=return/drawdown; Calmar_ann=annualized/drawdown. Pre-registered production gate: deep_value closed trades >=30 before any limit change.",
+ "baseline": {
+  "total_return_pct": 185.18,
+  "max_drawdown_pct": -9.08,
+  "annualized_pct": 290.09,
+  "calmar_rd": 20.39,
+  "calmar_ann": 31.95,
+  "n_trades": 50,
+  "deep_value_closed_n": 17
+ },
+ "grid": {
+  "baseline_x1.0": {
+   "total_return_pct": 185.18,
+   "max_drawdown_pct": -9.08,
+   "annualized_pct": 290.09,
+   "calmar_rd": 20.39,
+   "calmar_ann": 31.95,
+   "n_trades": 50,
+   "deep_value_closed_n": 17
+  },
+  "deep_x0.5": {
+   "total_return_pct": 142.51,
+   "max_drawdown_pct": -9.55,
+   "annualized_pct": 216.04,
+   "calmar_rd": 14.92,
+   "calmar_ann": 22.62,
+   "n_trades": 58,
+   "deep_value_closed_n": 23
+  },
+  "deep_x1.5": {
+   "total_return_pct": 216.14,
+   "max_drawdown_pct": -9.97,
+   "annualized_pct": 345.97,
+   "calmar_rd": 21.68,
+   "calmar_ann": 34.7,
+   "n_trades": 45,
+   "deep_value_closed_n": 14
+  },
+  "deep_x2.0": {
+   "total_return_pct": 227.89,
+   "max_drawdown_pct": -10.62,
+   "annualized_pct": 367.62,
+   "calmar_rd": 21.46,
+   "calmar_ann": 34.62,
+   "n_trades": 42,
+   "deep_value_closed_n": 11
+  }
+ },
+ "best_calmar_variant": {
+  "key": "deep_x1.5",
+  "total_return_pct": 216.14,
+  "max_drawdown_pct": -9.97,
+  "annualized_pct": 345.97,
+  "calmar_rd": 21.68,
+  "calmar_ann": 34.7,
+  "n_trades": 45,
+  "deep_value_closed_n": 14
+ },
+ "pre_registered_gate": {
+  "metric": "deep_value closed trades >=30",
+  "current_closed_n": 17,
+  "status": "not_ready"
+ }
+}

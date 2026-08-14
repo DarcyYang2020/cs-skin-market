@@ -25,5 +25,14 @@
   "latest": "2026-08-12",
   "latest_value": 59.8,
   "total_rows": 190
+ },
+ "2026-08-14": {
+  "checked_at": "2026-08-14 18:06",
+  "non_null_days": 60,
+  "coverage_days": 60,
+  "earliest": "2026-06-15",
+  "latest": "2026-08-13",
+  "latest_value": 62.1,
+  "total_rows": 191
  }
 }
