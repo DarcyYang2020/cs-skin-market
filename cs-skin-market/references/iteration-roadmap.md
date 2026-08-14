@@ -539,7 +539,8 @@ eferences/refit_pipeline.py → data/refit_pipeline_report.json（A2 三件套�
 - 已落地：deep_value 仓位 0.10→0.15（P-B 组合网格：total +195.85%→+230.57%、Calmar 36.42→40.04，前后半段与 bootstrap 一致支持）。
 - 已否决：panic 0.25/0.35、supply_accum 0.15/0.20；组合 stop/take（Calmar 36.42→16.72）。
 - 已确认无需改动：supply_depth 中位数切换、后置族旁路补闸、LIQ-RATIO-1 当前样本落地。
-- 后续研究仍排队：POOL-2 在 CLEAN-CUR（v2-T7 干净基线）口径复核、LIQ-RATIO-1 正式前瞻、EXIT-9/10/11 ATR 网格；DECISION-6/v2-T7 已完成，后续研究统一在 HIST-FULL vs CLEAN-CUR 双口径上报告。
+- POOL-2 CLEAN-CUR 复核 ✅（2026-08-14）：最新 vs 近7日中位数仅 1 降级 / 0 升级，不落地，转数据治理（`probe_pool2_supply_depth_clean.py` → `data/_exp_pool2_supply_depth_clean.json`）。
+- 后续研究仍排队：LIQ-RATIO-1 正式前瞻、EXIT-9/10/11 ATR 网格；DECISION-6/v2-T7 已完成，后续研究统一在 HIST-FULL vs CLEAN-CUR 双口径上报告。
 
 ## 专家残留风险收口（2026-08-14）
 

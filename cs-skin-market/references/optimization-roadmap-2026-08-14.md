@@ -109,14 +109,15 @@
 - ✅ `P-F`：旁路为有意正优化，不补闸。
 - ✅ `P-B`：panic 与 supply_accum 仓位变体均恶化；**deep_value 0.15 落地（v2-T5）**。
 - ✅ `P-C`：组合 stop/take 使 Calmar 36.42→16.72，不落地；hold21 是组合优势来源。
-- 后续仍开放：`POOL-2`（supply_depth 稳健取值 + 联动重放，CLEAN-CUR 复核）、`LIQ-RATIO-1` 正式前瞻、`DECISION-5/7/9`、`EXIT-9/10/11` 的 ATR 自适应网格；DECISION-6/v2-T7 已完成。
+- ✅ POOL-2（CLEAN-CUR 复核，2026-08-14）：supply_depth 最新 vs 近7日中位数仅 1 降级 / 0 升级，不落地，转数据治理；`probe_pool2_supply_depth_clean.py` → `data/_exp_pool2_supply_depth_clean.json`。
+- 后续仍开放：`LIQ-RATIO-1` 正式前瞻、`DECISION-5/7/9`、`EXIT-9/10/11` 的 ATR 自适应网格；DECISION-6/v2-T7 已完成。
 ## 7. 专家复核补正（2026-08-14）
 
 - ✅ 止损路径信任提示已加到持仓建议卡（`analysis.html`）。
 - ✅ deep_value 落地证据等级改为“低置信/方向性”，并挂 deep 成交≥30 / 生产 N≥30 复验触发器。
 - ✅ 后置族旁路表写入 `decision4-guard-coverage.md`。
 - ✅ Calmar 唯一标尺：`references/calmar_standard.py` + `data/_exp_calmar_standard.json`；EXIT-1 组合模拟与门槛符号已修复并重跑。
-- 仍未执行：`POOL-2`（CLEAN-CUR 复核）、`LIQ-RATIO-1` 正式前瞻、`EXIT-9/10/11` ATR 网格；双基线展示已落地。
+- 仍未执行：`LIQ-RATIO-1` 正式前瞻、`EXIT-9/10/11` ATR 网格；双基线展示与 POOL-2 复核已落地。
 
 ## 8. 专家残留风险收口（2026-08-14）
 
@@ -132,3 +133,8 @@
 - 官方 317 回放因 365d 保留已删除 2025-08-10 前数据，不可重跑；已备份并回滚，`sync_expectancy_config` 复跑无变化。
 - **队列重排**：`POOL-2` 原「仅 4 条翻转」结论作废，必须在 DECISION-6 新口径（140 buy）上复核；随后 `LIQ-RATIO-1` → `EXIT-9/10/11`。
 - **中间数废弃（2026-08-14）**：`290` / `140` / `163` / `149` 均为中间推导，**已废弃，不得作为基线**；唯一基线=HIST-FULL 317 / CLEAN-CUR 150，见 `config.BASELINE_LEDGER.deprecated_intermediates` 与 `SIGNAL_FAMILY_TAXONOMY`。
+
+
+## 10. 常驻数据治理项（2026-08-14）
+
+- **`DATA-GOV-1`（常驻，不再挂在 POOL-2/DECISION-6 名下漂）**：`in_sale_count` 的「缺失（NULL/断档）」与「单日脏值」是同一治理对象：读侧统一 missing 标记 + 写侧单日跳变闸门（已有 `_guard_batch_write` 可复用），目标让 supply_depth / 地板 / 供给收缩三处消费同一份「已治理」序列。触发条件：再次发现单日在售量跳变/污染或任一消费点因脏值判定反转时启动；启动后必须回测先行 + 三件套 + 双基线复跑 sync。

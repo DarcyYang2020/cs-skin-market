@@ -3406,3 +3406,14 @@ Fluxo 25→280 约 11 倍），尖顶后 3 天 -86~94%，与枪皮统计反转�
 - **下游接入**：`j1_event_counts` / `j2_channel_monitor` / `sync_expectancy_config` / `portfolio_attribution` / `benchmark_compare` 全部改为从 `SIGNAL_FAMILY_TAXONOMY` 取 `fine_order`、`fine_keywords`、`fine_labels`、`display_keys`、`fine_to_display`；`assign_fine_family` / `display_key_for_label` 位于 config 单一实现。禁止各脚本再硬编码「恐慌/深值/其余」。
 - **中间数废弃**：`290`（DECISION-4 对齐 buy）、`140`（DECISION-6 翻转 buy）、`163`（v2-T6 干净回放含 below_floor 泄漏）、`149`（v2-T7 估算）均标注在 `BASELINE_LEDGER.deprecated_intermediates`，只作推导历史，不得再作为基线；唯一基线=HIST-FULL 317 / CLEAN-CUR 150。
 - **验证**：同步重跑后两基线的展示键计数保持 HIST-FULL panic92/deep27/accumulate198、CLEAN-CUR panic85/deep18/accumulate47；`t_expectancy_sync` 升级为双基线硬校验（两个 config 常量各自来自各自 replay 且使用同一 taxonomy）；`python tests/test_smoke.py` 107 passed / 0 failed / 0 skipped、pyflakes 无新增告警。
+
+
+## POOL-2 复核：supply_depth 最新 vs 7 日中位数（CLEAN-CUR，2026-08-14，只读研究，不落地）
+
+- **任务**：在 CLEAN-CUR（150 信号，v2-T7，`data/_exp_v2t7_win_replay.json`）上复核「 supply_depth 取最新一条 vs 近 7 日非零中位数」的 200/100 地板块翻转敏感性。
+- **探针**：`references/probe_pool2_supply_depth_clean.py` → `data/_exp_pool2_supply_depth_clean.json`（只读，未改引擎/地板/回放产物）。
+- **结果**：150 信号中 147 可解析（3 条名称未命中当前 items 表：`指挥官 梅 “极寒” 贾米森 | 特警`×1、`AWP | 无畏战神 (略有磨损)`×2）。翻转：same_pass 145、same_fail 1、latest_pass_median_fail 1；升级 0。
+  - 唯一「中位数会降级」信号：`M4A4 | 彼岸花 (崭新出厂)` 2026-06-21，latest 204 / median7 194（floor 200），fwd14 +2.88% / net14 +0.88%——改用中位数会误杀一条正期望信号。
+  - `沙漠之鹰 | 指挥 (崭新出厂)` 2026-06-20 latest 112 / median7 105 双口径均低于 200（same_fail），属当前市场库与 `replay_v2t6_win.db` 快照在售量差异或 below_floor 边界残留，仅记录、不影响本项口径结论。
+- **结论**：中位数口径在 CLEAN-CUR 上仅 1 条会降级（且为正期望）、0 条升级，无稳健性收益；**POOL-2 维持不落地，根因转数据治理**（单日脏值治理 + 200/100 地板与回放快照同源）。若未来落地中位数，必须联动重放 + `sync_expectancy_config` 双基线复跑（旧纪律不变）。
+- **验证**：探针只读，未改引擎；`python tests/test_smoke.py` 仍 107 passed（本轮未改动代码）。
