@@ -1,0 +1,117 @@
+{
+  "probe": "K3 成交量分离度",
+  "n_W1": 4,
+  "n_W3": 6,
+  "separation": {
+    "K3_量能跟随": {
+      "W1_median": 5.609,
+      "W3_median": 0.0
+    },
+    "K3_放量滞涨": {
+      "W1_median": 0.861,
+      "W3_median": null
+    }
+  },
+  "rows": [
+    {
+      "win": "W1",
+      "name": "AK-47 | 抽象派 1337 (略有磨损)",
+      "date": "2025-09-06",
+      "err": "",
+      "vol_follow": 11.217,
+      "vol_surge": 0.303,
+      "t_ret": -50.0,
+      "s_ret": -4.5
+    },
+    {
+      "win": "W1",
+      "name": "亚诺（野草） | 游击队",
+      "date": "2025-10-02",
+      "err": "",
+      "vol_follow": 0.0,
+      "vol_surge": 2.02,
+      "t_ret": 0.0,
+      "s_ret": 4.5
+    },
+    {
+      "win": "W3",
+      "name": "格洛克 18 型 | 拉美西斯之触 (崭新出厂)",
+      "date": "2026-03-17",
+      "err": "",
+      "vol_follow": 0.0,
+      "vol_surge": null,
+      "t_ret": 0.0,
+      "s_ret": 14.6
+    },
+    {
+      "win": "W3",
+      "name": "格洛克 18 型 | 拉美西斯之触 (崭新出厂)",
+      "date": "2026-03-18",
+      "err": "",
+      "vol_follow": 0.0,
+      "vol_surge": null,
+      "t_ret": 0.0,
+      "s_ret": 2.2
+    },
+    {
+      "win": "W3",
+      "name": "M4A4 | 死寂空间 (崭新出厂)",
+      "date": "2026-03-17",
+      "err": "",
+      "vol_follow": 0.0,
+      "vol_surge": null,
+      "t_ret": 0.0,
+      "s_ret": 14.0
+    },
+    {
+      "win": "W3",
+      "name": "M4A4 | 死寂空间 (崭新出厂)",
+      "date": "2026-03-18",
+      "err": "",
+      "vol_follow": 0.0,
+      "vol_surge": null,
+      "t_ret": 0.0,
+      "s_ret": 8.1
+    },
+    {
+      "win": "W1",
+      "name": "法玛斯 | 目皆转睛 (崭新出厂)",
+      "date": "2025-09-01",
+      "err": "",
+      "vol_follow": -29.54,
+      "vol_surge": 1.297,
+      "t_ret": 171.4,
+      "s_ret": -5.8
+    },
+    {
+      "win": "W1",
+      "name": "AK-47 | 霓虹骑士 (崭新出厂)",
+      "date": "2025-08-31",
+      "err": "",
+      "vol_follow": 15.042,
+      "vol_surge": 0.426,
+      "t_ret": -66.7,
+      "s_ret": -4.4
+    },
+    {
+      "win": "W3",
+      "name": "AK-47 | 霓虹骑士 (崭新出厂)",
+      "date": "2026-03-18",
+      "err": "",
+      "vol_follow": 0.0,
+      "vol_surge": null,
+      "t_ret": 0.0,
+      "s_ret": 4.7
+    },
+    {
+      "win": "W3",
+      "name": "AK-47 | 深海复仇 (崭新出厂)",
+      "date": "2026-03-17",
+      "err": "",
+      "vol_follow": 0.0,
+      "vol_surge": null,
+      "t_ret": 0.0,
+      "s_ret": 11.2
+    }
+  ]
+}

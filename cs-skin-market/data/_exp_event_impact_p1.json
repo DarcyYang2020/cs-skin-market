@@ -1,0 +1,264 @@
+{
+ "generated": "2026-08-15",
+ "per_baseline": {
+  "HIST-FULL_317": {
+   "total": 317,
+   "families": {
+    "deep_value": {
+     "n": 27,
+     "impacted_n": 13,
+     "impacted_pct": 48.1,
+     "events": {
+      "五合一崩盘": 10,
+      "2025 布达佩斯 Major": 10,
+      "终端机手套（四代手套）": 3
+     },
+     "clean_n": 14,
+     "clean_win14": 50.0,
+     "clean_avg14": 16.41,
+     "clean_win30": 50.0,
+     "clean_avg30": 74.42
+    },
+    "deep_dip": {
+     "n": 34,
+     "impacted_n": 34,
+     "impacted_pct": 100.0,
+     "events": {
+      "五合一崩盘": 1,
+      "2025 布达佩斯 Major": 1,
+      "纪念品炼金": 32,
+      "终端机手套（四代手套）": 1
+     },
+     "clean_n": 0,
+     "clean_win14": null,
+     "clean_avg14": null,
+     "clean_win30": null,
+     "clean_avg30": null
+    },
+    "supply_accum": {
+     "n": 142,
+     "impacted_n": 102,
+     "impacted_pct": 71.8,
+     "events": {
+      "终端机手套（四代手套）": 96,
+      "五合一崩盘": 2,
+      "2025 布达佩斯 Major": 5,
+      "纪念品炼金": 1
+     },
+     "clean_n": 40,
+     "clean_win14": 72.5,
+     "clean_avg14": 11.16,
+     "clean_win30": 82.5,
+     "clean_avg30": 24.02
+    },
+    "panic": {
+     "n": 92,
+     "impacted_n": 92,
+     "impacted_pct": 100.0,
+     "events": {
+      "纪念品炼金": 92
+     },
+     "clean_n": 0,
+     "clean_win14": null,
+     "clean_avg14": null,
+     "clean_win30": null,
+     "clean_avg30": null
+    },
+    "base": {
+     "n": 22,
+     "impacted_n": 21,
+     "impacted_pct": 95.5,
+     "events": {
+      "终端机手套（四代手套）": 18,
+      "2025 布达佩斯 Major": 2,
+      "五合一崩盘": 1,
+      "纪念品炼金": 1
+     },
+     "clean_n": 1,
+     "clean_win14": 100.0,
+     "clean_avg14": 55.3,
+     "clean_win30": 100.0,
+     "clean_avg30": 25.03
+    }
+   }
+  },
+  "CLEAN-CUR_230": {
+   "total": 230,
+   "families": {
+    "deep_value": {
+     "n": 33,
+     "impacted_n": 21,
+     "impacted_pct": 63.6,
+     "events": {
+      "五合一崩盘": 9,
+      "2025 布达佩斯 Major": 9,
+      "终端机手套（四代手套）": 12
+     },
+     "clean_n": 12,
+     "clean_win14": 41.7,
+     "clean_avg14": 17.13,
+     "clean_win30": 50.0,
+     "clean_avg30": 84.53
+    },
+    "deep_dip": {
+     "n": 32,
+     "impacted_n": 32,
+     "impacted_pct": 100.0,
+     "events": {
+      "五合一崩盘": 1,
+      "2025 布达佩斯 Major": 1,
+      "纪念品炼金": 31
+     },
+     "clean_n": 0,
+     "clean_win14": null,
+     "clean_avg14": null,
+     "clean_win30": null,
+     "clean_avg30": null
+    },
+    "panic": {
+     "n": 81,
+     "impacted_n": 81,
+     "impacted_pct": 100.0,
+     "events": {
+      "纪念品炼金": 79,
+      "五合一崩盘": 2
+     },
+     "clean_n": 0,
+     "clean_win14": null,
+     "clean_avg14": null,
+     "clean_win30": null,
+     "clean_avg30": null
+    },
+    "base": {
+     "n": 28,
+     "impacted_n": 27,
+     "impacted_pct": 96.4,
+     "events": {
+      "终端机手套（四代手套）": 21,
+      "2025 布达佩斯 Major": 2,
+      "纪念品炼金": 4,
+      "五合一崩盘": 1
+     },
+     "clean_n": 1,
+     "clean_win14": 100.0,
+     "clean_avg14": 55.3,
+     "clean_win30": 100.0,
+     "clean_avg30": 25.03
+    },
+    "supply_accum": {
+     "n": 56,
+     "impacted_n": 51,
+     "impacted_pct": 91.1,
+     "events": {
+      "纪念品炼金": 41,
+      "五合一崩盘": 5,
+      "2025 布达佩斯 Major": 8,
+      "终端机手套（四代手套）": 1
+     },
+     "clean_n": 5,
+     "clean_win14": 60.0,
+     "clean_avg14": 58.79,
+     "clean_win30": 60.0,
+     "clean_avg30": 60.22
+    }
+   }
+  },
+  "CYCLE_186": {
+   "total": 186,
+   "families": {
+    "base": {
+     "n": 35,
+     "impacted_n": 17,
+     "impacted_pct": 48.6,
+     "events": {
+      "2025 奥斯汀 Major": 4,
+      "五合一崩盘": 1,
+      "2025 布达佩斯 Major": 2,
+      "黄盾": 2,
+      "终端机手套（四代手套）": 5,
+      "纪念品炼金": 4
+     },
+     "clean_n": 18,
+     "clean_win14": 66.7,
+     "clean_avg14": 6.43,
+     "clean_win30": 72.2,
+     "clean_avg30": 6.62
+    },
+    "panic": {
+     "n": 76,
+     "impacted_n": 76,
+     "impacted_pct": 100.0,
+     "events": {
+      "纪念品炼金": 76,
+      "终端机手套（四代手套）": 4
+     },
+     "clean_n": 0,
+     "clean_win14": null,
+     "clean_avg14": null,
+     "clean_win30": null,
+     "clean_avg30": null
+    },
+    "supply_accum": {
+     "n": 37,
+     "impacted_n": 14,
+     "impacted_pct": 37.8,
+     "events": {
+      "终端机手套（四代手套）": 2,
+      "2025 布达佩斯 Major": 7,
+      "黄盾": 1,
+      "2025 奥斯汀 Major": 4,
+      "五合一崩盘": 3
+     },
+     "clean_n": 23,
+     "clean_win14": 60.9,
+     "clean_avg14": 13.18,
+     "clean_win30": 69.6,
+     "clean_avg30": 20.66
+    },
+    "deep_value": {
+     "n": 21,
+     "impacted_n": 8,
+     "impacted_pct": 38.1,
+     "events": {
+      "2025 奥斯汀 Major": 2,
+      "黄盾": 4,
+      "五合一崩盘": 1,
+      "2025 布达佩斯 Major": 1,
+      "终端机手套（四代手套）": 1
+     },
+     "clean_n": 13,
+     "clean_win14": 38.5,
+     "clean_avg14": 14.95,
+     "clean_win30": 46.2,
+     "clean_avg30": 75.31
+    },
+    "deep_dip": {
+     "n": 16,
+     "impacted_n": 16,
+     "impacted_pct": 100.0,
+     "events": {
+      "纪念品炼金": 16
+     },
+     "clean_n": 0,
+     "clean_win14": null,
+     "clean_avg14": null,
+     "clean_win30": null,
+     "clean_avg30": null
+    },
+    "other": {
+     "n": 1,
+     "impacted_n": 1,
+     "impacted_pct": 100.0,
+     "events": {
+      "2025 奥斯汀 Major": 1
+     },
+     "clean_n": 0,
+     "clean_win14": null,
+     "clean_avg14": null,
+     "clean_win30": null,
+     "clean_avg30": null
+    }
+   }
+  }
+ }
+}

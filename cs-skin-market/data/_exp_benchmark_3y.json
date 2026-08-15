@@ -1,0 +1,53 @@
+{
+ "baseline": "CYCLE-3Y",
+ "signals": 186,
+ "window": [
+  "2023-11-17",
+  "2026-08-05"
+ ],
+ "legs": {
+  "strategy": {
+   "total_return_pct": 277.36,
+   "max_drawdown_pct": -15.38,
+   "days": 915,
+   "annualized_pct": 69.85,
+   "first": "2024-02-15",
+   "last": "2026-08-18"
+  },
+  "pool_buy_hold": {
+   "total_return_pct": 539.43,
+   "max_drawdown_pct": -54.33,
+   "days": 992,
+   "annualized_pct": 97.92,
+   "first": "2023-11-17",
+   "last": "2026-08-05"
+  },
+  "market_index": {
+   "total_return_pct": 12.45,
+   "max_drawdown_pct": -58.21,
+   "days": 992,
+   "annualized_pct": 4.41,
+   "first": "2023-11-17",
+   "last": "2026-08-05"
+  }
+ },
+ "annual_maxdd": {
+  "strategy": {
+   "2024": -12.13,
+   "2025": -15.38,
+   "2026": -12.02
+  },
+  "pool_buy_hold": {
+   "2023": -8.89,
+   "2024": -17.99,
+   "2025": -54.33,
+   "2026": -48.12
+  },
+  "market_index": {
+   "2023": -6.16,
+   "2024": -10.0,
+   "2025": -58.21,
+   "2026": -40.04
+  }
+ }
+}

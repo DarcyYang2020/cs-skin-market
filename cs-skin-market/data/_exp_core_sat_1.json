@@ -1,0 +1,57 @@
+{
+ "probe": "CORE-SAT-1 三组对照",
+ "A_pure_engine": {
+  "total_return_pct": 277.36,
+  "max_drawdown_pct": -15.38,
+  "days": 915,
+  "annualized_pct": 69.85,
+  "first": "2024-02-15",
+  "last": "2026-08-18"
+ },
+ "B_pool_buy_hold": {
+  "total_return_pct": 539.43,
+  "max_drawdown_pct": -54.33,
+  "days": 992,
+  "annualized_pct": 97.92,
+  "first": "2023-11-17",
+  "last": "2026-08-05"
+ },
+ "C_core70_sat30": {
+  "total_return_pct": 249.57,
+  "max_drawdown_pct": -24.42,
+  "days": 915,
+  "annualized_pct": 64.75,
+  "first": "2024-02-15",
+  "last": "2026-08-18"
+ },
+ "satellite_standalone": {
+  "total_return_pct": 184.71,
+  "max_drawdown_pct": -51.37,
+  "days": 1170,
+  "annualized_pct": 38.6,
+  "first": "2023-06-01",
+  "last": "2026-08-14"
+ },
+ "satellite_windows": {
+  "W1真趋势": {
+   "on_days": 55,
+   "pnl_pct": 1.51
+  },
+  "W2V反弹": {
+   "on_days": 19,
+   "pnl_pct": -1.09
+  },
+  "W3陷阱": {
+   "on_days": 15,
+   "pnl_pct": -6.63
+  },
+  "W4恐慌反弹": {
+   "on_days": 0,
+   "pnl_pct": 0.0
+  }
+ },
+ "window": [
+  "2023-11-17",
+  "2026-08-05"
+ ]
+}

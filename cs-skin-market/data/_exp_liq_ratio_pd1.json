@@ -62,9 +62,9 @@
      "avg_pct": -6.439
     },
     "fwd30": {
-     "n": 166,
-     "win_pct": 25.3,
-     "avg_pct": -5.528
+     "n": 167,
+     "win_pct": 25.15,
+     "avg_pct": -5.62
     }
    }
   },
@@ -75,7 +75,7 @@
    "trials": 300
   },
   "permutation_fwd30": {
-   "observed_diff": -12.855,
+   "observed_diff": -12.947,
    "p_greater": 1.0,
    "trials": 300
   }
@@ -120,20 +120,20 @@
      "avg_pct": -0.651
     },
     "fwd30": {
-     "n": 128,
-     "win_pct": 25.0,
-     "avg_pct": -6.405
+     "n": 129,
+     "win_pct": 24.81,
+     "avg_pct": -6.517
     }
    }
   },
   "monotone_win14": true,
   "permutation_fwd14": {
    "observed_diff": 0.539,
-   "p_greater": 0.37,
+   "p_greater": 0.4567,
    "trials": 300
   },
   "permutation_fwd30": {
-   "observed_diff": 7.865,
+   "observed_diff": 7.753,
    "p_greater": 0.0267,
    "trials": 300
   }

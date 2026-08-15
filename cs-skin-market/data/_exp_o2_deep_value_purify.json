@@ -1,0 +1,206 @@
+{
+ "probe": "O2 深值提纯阶段0",
+ "clean": [
+  {
+   "name": "沙漠之鹰 | 蓝色层压板 (崭新出厂)",
+   "date": "2025-12-29",
+   "impacted": false,
+   "fwd14": 12.11,
+   "net14": 10.11,
+   "spread_chg5d_pp": -5.44,
+   "supply_change_30d": -16.9
+  },
+  {
+   "name": "格洛克 18 型 | 异星世界 (崭新出厂)",
+   "date": "2025-12-29",
+   "impacted": false,
+   "fwd14": 184.21,
+   "net14": 182.21,
+   "spread_chg5d_pp": -6.91,
+   "supply_change_30d": 2.8
+  },
+  {
+   "name": "MP7 | 卷云 (崭新出厂)",
+   "date": "2026-01-05",
+   "impacted": false,
+   "fwd14": 25.57,
+   "net14": 23.57,
+   "spread_chg5d_pp": -7.81,
+   "supply_change_30d": -5.4
+  },
+  {
+   "name": "SSG 08 | 无尽深海 (崭新出厂)",
+   "date": "2024-06-27",
+   "impacted": false,
+   "fwd14": -7.35,
+   "net14": -9.35,
+   "spread_chg5d_pp": -3.64,
+   "supply_change_30d": 3.2
+  },
+  {
+   "name": "SSG 08 | 蓝色云杉 (崭新出厂)",
+   "date": "2025-12-29",
+   "impacted": false,
+   "fwd14": -6.99,
+   "net14": -8.99,
+   "spread_chg5d_pp": 11.63,
+   "supply_change_30d": -31.5
+  },
+  {
+   "name": "SSG 08 | 蓝色云杉 (崭新出厂)",
+   "date": "2026-01-06",
+   "impacted": false,
+   "fwd14": 6.43,
+   "net14": 4.43,
+   "spread_chg5d_pp": 10.78,
+   "supply_change_30d": -18.0
+  },
+  {
+   "name": "SSG 08 | 炎龙之焰 (崭新出厂)",
+   "date": "2024-06-26",
+   "impacted": false,
+   "fwd14": -8.52,
+   "net14": -10.52,
+   "spread_chg5d_pp": 0.21,
+   "supply_change_30d": 2.7
+  },
+  {
+   "name": "格洛克 18 型 | 本生灯 (崭新出厂)",
+   "date": "2024-06-26",
+   "impacted": false,
+   "fwd14": -3.55,
+   "net14": -5.55,
+   "spread_chg5d_pp": 0.21,
+   "supply_change_30d": -16.7
+  },
+  {
+   "name": "M4A4 | 沙漠精英 (崭新出厂)",
+   "date": "2024-06-26",
+   "impacted": false,
+   "fwd14": -2.24,
+   "net14": -4.24,
+   "spread_chg5d_pp": -0.95,
+   "supply_change_30d": -9.0
+  },
+  {
+   "name": "AK-47 | 火神 (崭新出厂)",
+   "date": "2026-01-19",
+   "impacted": false,
+   "fwd14": -3.63,
+   "net14": -5.63,
+   "spread_chg5d_pp": -3.76,
+   "supply_change_30d": 0.3
+  },
+  {
+   "name": "AK-47 | 火神 (崭新出厂)",
+   "date": "2026-07-12",
+   "impacted": false,
+   "fwd14": -0.77,
+   "net14": -2.77,
+   "spread_chg5d_pp": -6.69,
+   "supply_change_30d": -8.8
+  },
+  {
+   "name": "AK-47 | 血腥运动 (崭新出厂)",
+   "date": "2026-07-11",
+   "impacted": false,
+   "fwd14": -3.95,
+   "net14": -5.95,
+   "spread_chg5d_pp": -0.59,
+   "supply_change_30d": -4.2
+  },
+  {
+   "name": "德拉戈米尔 | 军刀勇士",
+   "date": "2026-07-11",
+   "impacted": false,
+   "fwd14": 3.0,
+   "net14": 1.0,
+   "spread_chg5d_pp": -0.64,
+   "supply_change_30d": 4.5
+  }
+ ],
+ "impacted": [
+  {
+   "name": "沙漠之鹰 | 蓝色层压板 (崭新出厂)",
+   "date": "2025-06-06",
+   "impacted": true,
+   "fwd14": 6.17,
+   "net14": 4.17,
+   "spread_chg5d_pp": -4.72,
+   "supply_change_30d": -3.8
+  },
+  {
+   "name": "格洛克 18 型 | 粉碎者 (崭新出厂)",
+   "date": "2025-07-28",
+   "impacted": true,
+   "fwd14": 18.85,
+   "net14": 16.85,
+   "spread_chg5d_pp": -6.64,
+   "supply_change_30d": -1.7
+  },
+  {
+   "name": "SSG 08 | 无尽深海 (崭新出厂)",
+   "date": "2025-07-28",
+   "impacted": true,
+   "fwd14": 3.57,
+   "net14": 1.57,
+   "spread_chg5d_pp": 3.14,
+   "supply_change_30d": 4.8
+  },
+  {
+   "name": "沙漠之鹰 | 后发制人 (崭新出厂)",
+   "date": "2025-07-28",
+   "impacted": true,
+   "fwd14": 5.94,
+   "net14": 3.94,
+   "spread_chg5d_pp": -3.78,
+   "supply_change_30d": -2.5
+  },
+  {
+   "name": "AWP | 猫猫狗狗 (崭新出厂)",
+   "date": "2025-06-06",
+   "impacted": true,
+   "fwd14": 7.69,
+   "net14": 5.69,
+   "spread_chg5d_pp": -9.23,
+   "supply_change_30d": 1.8
+  },
+  {
+   "name": "AWP | 猫猫狗狗 (崭新出厂)",
+   "date": "2025-08-13",
+   "impacted": true,
+   "fwd14": 154.27,
+   "net14": 152.27,
+   "spread_chg5d_pp": -8.51,
+   "supply_change_30d": 3.9
+  },
+  {
+   "name": "AWP | 猫猫狗狗 (崭新出厂)",
+   "date": "2025-11-14",
+   "impacted": true,
+   "fwd14": -0.62,
+   "net14": -2.62,
+   "spread_chg5d_pp": 1.5,
+   "supply_change_30d": -0.9
+  },
+  {
+   "name": "AK-47 | 血腥运动 (崭新出厂)",
+   "date": "2026-02-11",
+   "impacted": true,
+   "fwd14": 3.73,
+   "net14": 1.73,
+   "spread_chg5d_pp": 0.69,
+   "supply_change_30d": -0.9
+  }
+ ],
+ "clean_stats": {
+  "n": 13,
+  "win14": 38.5,
+  "avg14": 14.95
+ },
+ "impacted_stats": {
+  "n": 8,
+  "win14": 87.5,
+  "avg14": 24.95
+ }
+}

@@ -1,0 +1,36 @@
+{
+  "probe": "A2-2 spread 硬闸门",
+  "fit_n": 1947,
+  "val_n": 1961,
+  "T_fit": 8.935,
+  "fit_top_avg14": -10.67,
+  "val_le": {
+    "n": 1831,
+    "win14": 49.3,
+    "avg14": 8.71,
+    "neg14_pct": 50.7
+  },
+  "val_gt": {
+    "n": 130,
+    "win14": 30.8,
+    "avg14": -2.82,
+    "neg14_pct": 69.2
+  },
+  "val_all": {
+    "n": 1961,
+    "win14": 48.1,
+    "avg14": 7.94,
+    "neg14_pct": 51.9
+  },
+  "obs_effect": -11.53,
+  "permutation_p": 0.0,
+  "gt_clusters": 16,
+  "gates": {
+    "① 验证段 >T 组 14d net <=0": true,
+    "② >T 显著低于 <=T 组 >=3pp": true,
+    "③ >T 负期望占比>=70% 且 <=T <=60%": false,
+    "④ 置换 p<0.05": true,
+    "⑤ 去簇后 >T 组 n>=15": true
+  },
+  "verdict": "维持候选登记"
+}

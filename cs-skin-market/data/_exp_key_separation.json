@@ -1,0 +1,149 @@
+{
+  "probe": "陷阱识别钥匙分离度（K1修正+K2）",
+  "n_W1": 4,
+  "n_W3": 6,
+  "separation": {
+    "K2_求购跟随率": {
+      "W1_median": 0.907,
+      "W3_median": 0.907,
+      "opposite": false
+    },
+    "K2_价差走阔": {
+      "W1_median": -0.003,
+      "W3_median": 0.011,
+      "opposite": true
+    },
+    "K1_供缩持续(下降天数)": {
+      "W1_median": 2.5,
+      "W3_median": 3.0,
+      "opposite": true
+    },
+    "K1_单日骤降占比": {
+      "W1_median": 0.692,
+      "W3_median": 0.488,
+      "opposite": true
+    }
+  },
+  "rows": [
+    {
+      "win": "W1",
+      "item": 3,
+      "name": "AK-47 | 抽象派 1337 (略有磨损)",
+      "date": "2025-09-06",
+      "follow": 1.012,
+      "widen": 0.0006,
+      "down_days": 3,
+      "conc_ratio": 0.645,
+      "sell_ret": -4.5,
+      "buy_ret": -4.5
+    },
+    {
+      "win": "W1",
+      "item": 34,
+      "name": "亚诺（野草） | 游击队",
+      "date": "2025-10-02",
+      "follow": 0.924,
+      "widen": 0.0032,
+      "down_days": 2,
+      "conc_ratio": 0.739,
+      "sell_ret": 4.5,
+      "buy_ret": 4.2
+    },
+    {
+      "win": "W3",
+      "item": 36,
+      "name": "格洛克 18 型 | 拉美西斯之触 (崭新出厂)",
+      "date": "2026-03-17",
+      "follow": 0.867,
+      "widen": 0.0166,
+      "down_days": 2,
+      "conc_ratio": 0.809,
+      "sell_ret": 14.6,
+      "buy_ret": 12.6
+    },
+    {
+      "win": "W3",
+      "item": 36,
+      "name": "格洛克 18 型 | 拉美西斯之触 (崭新出厂)",
+      "date": "2026-03-18",
+      "follow": 0.0,
+      "widen": 0.0216,
+      "down_days": 3,
+      "conc_ratio": 0.787,
+      "sell_ret": 2.2,
+      "buy_ret": 0.0
+    },
+    {
+      "win": "W3",
+      "item": 48,
+      "name": "M4A4 | 死寂空间 (崭新出厂)",
+      "date": "2026-03-17",
+      "follow": 0.947,
+      "widen": 0.0064,
+      "down_days": 5,
+      "conc_ratio": 0.341,
+      "sell_ret": 14.0,
+      "buy_ret": 13.3
+    },
+    {
+      "win": "W3",
+      "item": 48,
+      "name": "M4A4 | 死寂空间 (崭新出厂)",
+      "date": "2026-03-18",
+      "follow": 0.801,
+      "widen": 0.0148,
+      "down_days": 4,
+      "conc_ratio": 0.367,
+      "sell_ret": 8.1,
+      "buy_ret": 6.5
+    },
+    {
+      "win": "W1",
+      "item": 63,
+      "name": "法玛斯 | 目皆转睛 (崭新出厂)",
+      "date": "2025-09-01",
+      "follow": 0.891,
+      "widen": -0.0064,
+      "down_days": 2,
+      "conc_ratio": 0.947,
+      "sell_ret": -5.8,
+      "buy_ret": -5.2
+    },
+    {
+      "win": "W1",
+      "item": 91,
+      "name": "AK-47 | 霓虹骑士 (崭新出厂)",
+      "date": "2025-08-31",
+      "follow": 0.806,
+      "widen": -0.0089,
+      "down_days": 4,
+      "conc_ratio": 0.303,
+      "sell_ret": -4.4,
+      "buy_ret": -3.6
+    },
+    {
+      "win": "W3",
+      "item": 91,
+      "name": "AK-47 | 霓虹骑士 (崭新出厂)",
+      "date": "2026-03-18",
+      "follow": 1.095,
+      "widen": -0.0042,
+      "down_days": 3,
+      "conc_ratio": 0.55,
+      "sell_ret": 4.7,
+      "buy_ret": 5.2
+    },
+    {
+      "win": "W3",
+      "item": 98,
+      "name": "AK-47 | 深海复仇 (崭新出厂)",
+      "date": "2026-03-17",
+      "follow": 0.948,
+      "widen": 0.0051,
+      "down_days": 3,
+      "conc_ratio": 0.426,
+      "sell_ret": 11.2,
+      "buy_ret": 10.6
+    }
+  ]
+}

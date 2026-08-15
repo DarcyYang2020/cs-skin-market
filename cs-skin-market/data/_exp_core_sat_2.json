@@ -1,0 +1,43 @@
+{
+ "probe": "CORE-SAT-1 不择时等权三变体",
+ "A_pure_engine": {
+  "total_return_pct": 277.36,
+  "max_drawdown_pct": -15.38,
+  "days": 915,
+  "annualized_pct": 69.85,
+  "first": "2024-02-15",
+  "last": "2026-08-18"
+ },
+ "B_equal_weight": {
+  "total_return_pct": 859.82,
+  "max_drawdown_pct": -51.11,
+  "days": 1170,
+  "annualized_pct": 102.49,
+  "first": "2023-06-01",
+  "last": "2026-08-14"
+ },
+ "C1_20pct": {
+  "total_return_pct": 393.86,
+  "max_drawdown_pct": -29.0,
+  "days": 1174,
+  "annualized_pct": 64.3,
+  "first": "2023-06-01",
+  "last": "2026-08-18"
+ },
+ "C2_30pct": {
+  "total_return_pct": 452.1,
+  "max_drawdown_pct": -35.38,
+  "days": 1174,
+  "annualized_pct": 70.1,
+  "first": "2023-06-01",
+  "last": "2026-08-18"
+ },
+ "C3_20pct_veto": {
+  "total_return_pct": 271.39,
+  "max_drawdown_pct": -18.14,
+  "days": 1174,
+  "annualized_pct": 50.37,
+  "first": "2023-06-01",
+  "last": "2026-08-18"
+ }
+}
