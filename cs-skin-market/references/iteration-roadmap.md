@@ -564,3 +564,37 @@ eferences/refit_pipeline.py → data/refit_pipeline_report.json（A2 三件套�
 - 真 v2-T8 回放（`data/replay_v2t6_win.db` → `data/_exp_v2t8_win_replay.json`）：**149 信号**，三族闭合 panic 85 / deep_value 18 / accumulate 46；panic 单事件占 57.0%（仍集中于 2026-05 单事件），same_fail（沙漠之鹰|指挥）消失。
 - CLEAN-CUR 组合：strategy total +257.16% / maxDD −7.61%；attribution accumulate +129.95pp(n=46) / deep_value +83.80pp(n=18) / panic +65.14pp(n=85)。
 - 验证：`sync_expectancy_config` / `benchmark_compare` / `portfolio_attribution` / `j1_event_counts` / `j2_channel_monitor` 全链路重跑；`tests/test_smoke.py` 108 passed / 0 failed / 0 skipped；pyflakes 无新增告警。
+
+## 专项工作底稿归档（2026-08-15，工程卫生；无版本号变更）
+
+- 唯一活 roadmap = 本文件。`references/optimization-roadmap-2026-08-14.md` 与 `references/optimization-opportunities-2026-08-14.md` 已归档到 `references/archive/`；后者作为外审分析存证，不维护。
+- 本节只折入专项底稿中仍未收口的问题台账；已完成/已否决结论仍以版本历史与 decision-log 为准。
+
+### 未收口问题台账（折入自 optimization-roadmap-2026-08-14 §4）
+
+- `LIQ-RATIO-1`：相对挂单率方向证伪（2026-08-15），不立项。P1（前瞻观察仅在新证据后复核）。
+- `POOL-1`：双层淘汰口径并存、`notes` 自由文本不可回滚。P1。
+- `POOL-2`：`supply_depth` 取最新一条，单日脏值三处漂移。P0/P1（已转 DATA-GOV-1 常驻治理）。
+- `POOL-3`：自动淘汰无观察期。P1。
+- `POOL-4`：200/100 按单价而非成交金额。P1。
+- `DECISION-1`：稳定性分与恐慌/超跌买点方向相反。P1。
+- `DECISION-2`：大盘走弱与深值/恐慌的隐式旁路。P1。
+- `DECISION-3`：连买抑制与供给收缩的隐式旁路。P1。
+- `DECISION-5`：Z 门与周期反转方向不一致。P2。
+- `DECISION-7`：`sent∈(30,40)`、`pct∈(20,25)` 族覆盖空洞。P2。
+- `DECISION-8`：供给扩张过滤与供给收缩吸筹语义冲突。P2。
+- `DECISION-9`：阈值边界重叠。P2。
+- `DECISION-10`：守卫链无规则表。P0。
+- `POS-7`：族级固定仓位与基础分档的策略缺口。P2。
+- `POS-8`：族级仓位网格未复验。P1。
+- `EXIT-9/10/11`：已不立项，维持 hold21；仅留 EXIT 门槛语义统一待定。
+- `POS-12`：评级线与仓位线间隙。P3。
+
+### 常驻数据治理项（DATA-GOV-1）
+
+- `in_sale_count` 的「缺失（NULL/断档）」与「单日脏值」统一治理：读侧统一 missing 标记 + 写侧单日跳变闸门；目标让 supply_depth / 地板 / 供给收缩三处消费同一份已治理序列。触发条件：再次发现单日在售量跳变/污染或任一消费点因脏值判定反转时启动；启动后必须回测先行 + 三件套 + 双基线复跑 sync。
+
+### EXIT 门槛语义待定
+
+- `Calmar 提升 ≥15%` 应统一为 walk-forward 折上 Calmar 均值的相对提升；样本不足无 fold 时改用「全局 Calmar 绝对差 ≥1.0 且前后半段方向一致」，禁止与全局相对提升混用。
+- 队列状态：本批专项候选（DECISION-6 → POOL-2 → LIQ-RATIO-1 → EXIT-9/10/11）已全部走完；转入自然积累，等待 A 通道独立事件 ≥3 或 B 通道 260 天（约 2027-04）。

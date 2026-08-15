@@ -584,7 +584,7 @@ async def analyze_fresh(item, good_id, exact_name, *, db_item_id=None, apply_anc
                 ]
                 _log.warning(f'supply DB backfill for {exact_name} (chart in_sale 缺失)')
         except Exception:
-            pass
+            _log.warning("cs-skin-market/webapp/analysis_service.py unexpected error near line 586", exc_info=True)
 
     conn_r = db.get_conn()
     try:

@@ -2,30 +2,35 @@
 
 > 本文档为项目文件结构唯一事实源（AGENTS.md/SKILL.md 不再维护重复文件树）。
 
-> 最后更新: 2026-08-13（文档事实同步 + 数据卫生说明）
+> 最后更新: 2026-08-15（工程卫生收口：单一文件树 + 产物归口 + 术语表）
 
 ## 目录结构
 
 ```
 cs-skin-market/
 ├── run_server.py              # Web 服务入口（uvicorn，唯一启动方式）
-├── run_daily_collect.py       # 每日自动采集总调度（大盘/宏观/K线全量每日 + 全市场快照/大户集中度/B-5 求购观察每周一 + 数据健康 + J-2 刷新 + 信号回填 + 监控事件 + DB 备份）
+├── run_daily_collect.py       # 每日自动采集总调度
+├── run_daily_monitor.py       # 每日健康监控入口
 ├── run_data_health.py         # 数据源健康检查（全量可采集品动态基线，写 health_checks）
 ├── run_health_monitor.py      # 健康监控独立入口（run_monitor，退出码 0/2 供告警）
-├── references/scripts-archive/ # 历史回测/回填脚本归档（run_backtest/run_item_backtest/run_item_exit/run_item_9grid/run_portfolio/run_backfill_history，2026-08-08；当前回测统一走 refit_pipeline.py）
+├── run_night_push.py          # 夜间推送调度
 ├── backup_db.py               # SQLite online backup（每日，保留 14 份）
 ├── collect_data_reserve_p0.py # P0 数据储备采集（活跃池基本面+求购日聚合，研究层，默认 dry-run）
 ├── collect_data_reserve_p1.py # P1 数据储备采集（存世量+系列面板+大户Top20，研究层，默认 dry-run）
 ├── notify_alert.py            # 告警/监控推送（钉钉 webhook，.env NOTIFY_WEBHOOK_URL 配置）
 ├── install_tasks.ps1          # Windows 计划任务安装（每日采集/备份/告警）
-├── install_hooks.ps1          # pre-commit hook 安装（提交前自动跑冒烟测试）
+├── install_hooks.ps1          # pre-commit hook 安装
+├── deploy_server.ps1          # 服务部署脚本
 ├── start_webapp.bat           # Windows 一键启动
+├── requirements.txt           # Python 依赖
 ├── AGENTS.md / SKILL.md       # Agent 指令 / Skill 定义
 ├── agents/openai.yaml         # Agent 展示配置
+├── design-system/             # UI/UX 设计系统文档
 ├── pipeline/                  # 核心分析引擎（见下）
 ├── webapp/                    # Web 层（见下）
 ├── tests/                     # 冒烟测试 + 编码健康 + 回放快照
 ├── references/                # 策略文档 + 研究脚本（见下）
+├── docs/archive/              # 已归档文档（code_structure 等）
 └── data/                      # 运行时数据（market.db + 回放/研究产物 JSON）
 ```
 
@@ -43,9 +48,9 @@ cs-skin-market/
 | 文件 | 功能 |
 |---|---|
 | `collector.py` | csQAQ HTTP：大盘指数/品类排名/搜索/hash→good_id（requests） |
-| `collector_csqaq.py` | csQAQ Playwright：单品搜索/详情/90日K线/深历史（响应拦截 `chart/`info API，StatTrak/纪念品过滤） |
+| `collector_csqaq.py` | csQAQ Playwright：单品搜索/详情/90日K线/深历史（响应拦截 `chart/info` API，StatTrak/纪念品过滤） |
 | `collector_snapshot.py` | 全市场快照：get_page_list 翻页拉全市场价格+在售数，存 market_snapshot（每周一） |
-| `collector_monitor.py` | 大户集中度快照：`monitor/`rank 每周 Top50，存 monitor_rank_snapshot |
+| `collector_monitor.py` | 大户集中度快照：`monitor/rank` 每周 Top50，存 monitor_rank_snapshot |
 
 ### 分析引擎
 
@@ -88,23 +93,24 @@ cs-skin-market/
 | `main.py` | FastAPI 应用：全部 REST API + Jinja2 渲染 + 批量扫描进度落盘持久化 |
 | `analysis_service.py` | 公共分析服务层：analyze_fresh 统一核心 + 锚价校验/DB K线兜底/market_snapshot 等助手 |
 | `render_html.py` | HTML 渲染纯函数（报告/发现榜/闪光图） |
-| `static/css/style.`css | 全局样式 |
-| `static/js/app.`js | 前端交互（HTMX/模态/表单） |
-| `templates/` | `base/dashboard/search/watchlist/discover/`replay + `partials/*` |
+| `static/css/style.css` | 全局样式 |
+| `static/js/app.js` | 前端交互（HTMX/模态/表单） |
+| `templates/` | `base/dashboard/search/watchlist/discover/replay + partials/*` |
 
 ## `tests/` 测试
 
 | 文件 | 功能 |
 |---|---|
-| `test_smoke.py` | 冒烟测试（108 用例，当前 108 passed / 0 failed / 0 skipped；支持 CS_MODEL_SKIP_NET 离线跳过网络用例） |
+| `test_smoke.py` | 冒烟测试（108 用例；0 failed 为硬指标，CS_MODEL_SKIP_NET=1 时离线跳过网络用例，skip 数随环境浮动） |
 | `check_encoding.py` | 仓库文本编码健康检查（UTF-8 无 BOM / 无乱码） |
-| `snapshots/replay_v2.`json | 回放口径快照（aggregate+月度，防无意漂移） |
+| `snapshots/replay_v2.json` | 回放口径快照（aggregate+月度，防无意漂移） |
 
 ## `references/` 策略文档与研究脚本
 
 ### 文档
 
 - `decision-log.md` — 关键决策历史（去量/扩池/补仓止损等全部决策）；`iteration-roadmap.md` — 迭代方案（版本历史 + 状态追踪）
+- `terminology.md` — 口径词表（HIST-FULL=317 / CLEAN-CUR=149 / SIGNAL_FAMILY_TAXONOMY / BASELINE_LEDGER / calmar_standard 唯一标尺）
 - `project-principles.md` — 项目三原则 + 数据先行/风控上线标准/J-2 复验条款
 - `engine-unified.md` — 统一大脑架构（信号族注册制 + 期望条件表 + 参数治理）
 - `data-layer.md` — **数据层手册**（数据源/采集链路/每日任务/表结构/维护/故障 SOP，唯一权威）
@@ -115,7 +121,7 @@ cs-skin-market/
 - `data-source-health.md` — 数据源健康检查口径；`cs-knowledge.md` — csQAQ 接口/CS 市场知识
 - `trend_leg_research.md` / `first-principles-gap.md` / `bid-data-accumulation.md` — 专项研究（趋势腿 / 第一性差距 / 求购单数据积累）
 
-### 研究脚本（产出 `data/*.`json）
+### 研究脚本（产出 `data/*.json`）
 
 - `j2_channel_monitor.py` — J-2 三通道监测（A 恐慌事件/B 新数据天数/C 胜率+期望）→ `j2_channel_status.json`
 - `refit_pipeline.py` — Phase 3 重拟合流水线（A2 三件套 + 达标判定）→ `refit_pipeline_report.json`
@@ -129,8 +135,9 @@ cs-skin-market/
 - `sync_expectancy_config.py` / `sync_replay_snapshot.py` — 期望统计/回放口径同步
 - `j1_event_counts.py` — 各族独立事件数 → `signal_event_counts.json`
 - `run_item_backtest_full.py` — 全窗口单品回放（产出 HIST-FULL 冻结归档 `item_backtest_full_2025.json`）
-- `t`rend_leg_*.`py` / `t`h_*_study.`py` / `topup_replay.py` / `t`ranche_fit*.`py` / `c1_p10_replay.py` / `advice_layer_fit.py` / `portfolio_cap_fit.py` — 历史研究脚本
+- `trend_leg_*.py / th_*_study.py / topup_replay.py / tranche_fit*.py / c1_p10_replay.py / advice_layer_fit.py / portfolio_cap_fit.py` — 历史研究脚本
 - `scripts-archive/` — 已下线脚本归档（成交量时代等，仅存证）
+- `archive/` — 已完成专项文档存证（optimization-roadmap-2026-08-14 / optimization-opportunities-2026-08-14）
 
 ## 数据文件（data/）
 
@@ -138,13 +145,24 @@ cs-skin-market/
 |---|---|
 | `market.db` | SQLite 主库（gitignore） |
 | `item_backtest_full_2025.json` | **HIST-FULL 冻结归档**（去量 v2-T4/T5，365d 窗口 317 信号，不可复现） |
-| `item_backtest_full_2025.baseline450.`json / `.devol_v1.`json | 去量演进对比存档（旧引擎产物，仅存证） |
+| `_exp_v2t7_win_replay_deprecated_20260814.json` | 已废中间产物（v2-T7 泄漏基线，仅存证） |
+| `item_backtest_full_2025.baseline450.json / .devol_v1.json` | 去量演进对比存档（旧引擎产物，仅存证） |
 | `j2_channel_status.json` / `refit_pipeline_report.json` / `portfolio_backtest.json` 等 | 研究产物 |
 | `backup/` | 每日 DB 备份（保留 14 份，gitignore） |
 | `pool_maintenance_log.jsonl` | 池维护台账（daily/prune/discover 三类，F-3.2） |
-| `scan_history/` / `scan_progress_*.`json / `batch_scan_latest.json` | 批量扫描归档/进度/缓存（gitignore） |
+| `scan_history/` / `scan_progress_*.json` / `batch_scan_latest.json` | 批量扫描归档/进度/缓存（gitignore） |
 
-## 数据库表（schema_version = 1）
+
+## 文件/产物归口规则
+
+- `references/` 根目录放活跳研究脚本与文档；已下线脚本归 `references/scripts-archive/`，已完成专项文档归 `references/archive/`。
+- 研究产物命名约定：`references/probe_*.py` → `data/_exp*.json`；已废产物统一 `_deprecated_YYYYMMDD` 后缀并在本文数据文件表登记，禁止裸留。
+- `data/market.db` 为二进制（不提交）；`data/*.json` 为研究产物（提交）；`discover_latest.json` / `batch_scan_latest.json` / `scan_history/` / `backups/` 为运行时缓存/归档（不提交）；`pool_maintenance_log.jsonl` 为台账（提交）。
+- 口径词表：`references/terminology.md`（HIST-FULL=317 / CLEAN-CUR=149 / SIGNAL_FAMILY_TAXONOMY / BASELINE_LEDGER / calmar_standard 唯一标尺）。
+
+- `references/` 分层规则：根目录放活跃策略文档/研究脚本；`scripts-archive/` 只放已下线脚本；`archive/` 只放已完成专项底稿。本轮不物理迁移；未来触发条件为根目录 .py/.md 增长到难以维护或出现导入环及维护问题，且必须单独一轮做 import graph + 108 断言映射验证。
+- `tests/test_smoke.py` 本轮不拆分；后续拆分必须保持 108 用例一一对应、断言不丢，且与功能改动分开验证。
+## 数据库表（schema_version = 4）
 
 items / price_history / market_index / macro_history / snapshots / positions / settings /
 executions（执行记录+复盘）/ market_snapshot（全市场快照）/ monitor_rank_snapshot（大户集中度）/
@@ -156,5 +174,5 @@ health_checks（数据健康）/ signal_tracking（生产信号跟踪）/ `backt
 - 每日 23:30 DB 备份：python `backup_db.py`（保留 14 份）
 - 健康告警：python `notify_alert.py` --monitor（钉钉 webhook）
 - pre-commit：`install_hooks.ps1` → git commit 自动跑 test_smoke
-- 本地/CI 冒烟：python `tests/test_smoke.`py（CI 设 CS_MODEL_SKIP_NET=1 跳网络用例）
+- 本地/CI 冒烟：python `tests/test_smoke.py`（CI 设 CS_MODEL_SKIP_NET=1 跳网络用例）
 - 完整调度与维护口径见 `references/data-layer.md`

@@ -48,7 +48,7 @@ async def _attempt(browser, good_id: int, top_n: int):
                 if "monitor/rank" in response.url and response.ok:
                     captured["body"] = await response.text()
             except Exception:
-                pass
+                _log.warning("cs-skin-market/pipeline/collector_monitor.py unexpected error near line 50", exc_info=True)
 
         await page.route("**/monitor/rank**", rewrite)
         page.on("response", on_response)

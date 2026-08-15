@@ -77,5 +77,11 @@ cs-skin-market/data/_audit_*.jsonl
 
 # Runtime DB/file backups (local restore points) - not source
 cs-skin-market/data/backups/
+# File product classification (keep in sync with PROJECT_STRUCTURE.md):
+# - binary/runtime: *.db, *.db-wal, *.db-shm, data/*.db -> ignore
+# - runtime caches: batch_scan_latest.json, discover_latest.json, scan_history/, discover_history/, backups/ -> ignore
+# - research/ledger to commit: data/_exp*.json, references/probe_*.py, pool_maintenance_log.jsonl -> tracked
+# - deprecated research artifacts keep _deprecated_YYYYMMDD suffix and register in BASELINE_LEDGER.deprecated_intermediates
+
 # Runtime UI screenshot artifact
 discover-before.png

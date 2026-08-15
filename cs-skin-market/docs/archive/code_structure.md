@@ -1,4 +1,5 @@
 # CS-Skin-Market 项目代码文件说明
+> 已归档（2026-08-15）。文件结构唯一事实源见 `cs-skin-market/PROJECT_STRUCTURE.md`；本文仅存证。
 
 > 最后更新: 2026-08-04
 

@@ -93,34 +93,7 @@ J-2 三通道监测数据照常收集：A 独立恐慌事件≥3 / B v2 样本�
 
 ## 文件结构
 
-    cs-skin-market/
-      run_server.py            -- Web 服务入口（uvicorn）
-      SKILL.md / AGENTS.md     -- Skill 元数据 / 详细说明
-      data/market.db           -- SQLite 数据库
-      pipeline/
-        config.py              -- 配置（API/权重/评分表/阈值）
-        collector.py           -- 大盘指数采集（HTTP）
-        collector_csqaq.py     -- 单品采集（Playwright）
-        db.py                  -- SQLite 存储（含数据保留清理 run_retention_cleanup）
-        item_analysis.py       -- 单品分析引擎（2050行）
-        index_analysis.py      -- 大盘分析引擎（1192行）
-        trend_health.py        -- 趋势健康度 + 融合决策（932行）
-        valuation.py           -- 估值分位 + 估值宫格
-        supply.py              -- 供给分析
-        market_th.py           -- 大盘趋势健康度
-        market_macro.py        -- 市场宏观情绪
-        market_context.py      -- 大盘上下文
-        batch_scan.py          -- 自选批量扫描
-        scan_tasks.py          -- 批量扫描异步任务与进度
-        discover_tasks.py      -- 发现高分品异步任务
-      webapp/
-        main.py                -- FastAPI 应用（1732行，路由 + 页面编排）
-        analysis_service.py    -- 单品分析服务层（2026-08-07 重构）：kline兜底/脏价校验/锚价校正/大盘上下文/快照落库 + 统一分析核心 analyze_fresh
-        render_html.py         -- HTML 渲染纯函数
-        templates/             -- Jinja2 模板
-        static/                -- CSS/JS
-      references/              -- 估值模型 + 策略手册
-      tests/test_smoke.py      -- 冒烟测试
+> 文件结构唯一事实源：`cs-skin-market/PROJECT_STRUCTURE.md`。本文不再复制文件树，也不再标注代码行数；仅保留启动入口与关键口径。
 
 ## Web API 端点
 

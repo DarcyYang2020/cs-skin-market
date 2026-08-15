@@ -522,7 +522,7 @@ async def _fetch_item_detail_once(good_id: int):
                     body = await response.text()
                     captured["detail"] = body
             except Exception:
-                pass
+                _csq_log.warning("cs-skin-market/pipeline/collector_csqaq.py unexpected error near line 524", exc_info=True)
         async def modify_chart(route, request):
             if "info/chart" in request.url:
                 try:
@@ -559,7 +559,7 @@ async def _fetch_item_detail_once(good_id: int):
                 if _ysp0 > 0:
                     item.price_rmb = _ysp0
             except Exception:
-                pass
+                _csq_log.warning("cs-skin-market/pipeline/collector_csqaq.py unexpected error near line 561", exc_info=True)
         # 2026-08-10：等待窗口 2.5s→5s（并发/限流下 platform=2 chart 偶发慢响应，
         # 过早判空会误落 Buff/C5GAME，后者因在售量差异几乎必被锚校验拒绝）
         await _wait_chart(page, captured, key='charts', timeout=5.0)
@@ -571,13 +571,13 @@ async def _fetch_item_detail_once(good_id: int):
                     if _pd > 0:
                         item.price_rmb = _pd
             except Exception:
-                pass
+                _csq_log.warning("cs-skin-market/pipeline/collector_csqaq.py unexpected error near line 573", exc_info=True)
         _best_chart = _pick_best_chart(captured.get('charts') or [], item.price_rmb, item.sell_num_yyyp)
         if _best_chart:
             try:
                 _extract_chart(item, json.loads(_best_chart))
             except Exception:
-                pass
+                _csq_log.warning("cs-skin-market/pipeline/collector_csqaq.py unexpected error near line 579", exc_info=True)
         # 2026-08-10：platform=2 偶发空响应，同平台重试一次（避免过早落 Buff/C5GAME）
         if not item.kline_90d:
             _csq_log.info(f"Empty chart from platform=2, retrying platform=2 once good_id={good_id}")
@@ -593,7 +593,7 @@ async def _fetch_item_detail_once(good_id: int):
                     try:
                         _extract_chart(item, json.loads(_best2))
                     except Exception:
-                        pass
+                        _csq_log.warning("cs-skin-market/pipeline/collector_csqaq.py unexpected error near line 595", exc_info=True)
         # Retry with Buff (platform=1) / C5GAME (platform=3) if chart still empty
         for fb_platform, fb_name in ((1, "Buff"), (3, "C5GAME")):
             if item.kline_90d:
@@ -621,7 +621,7 @@ async def _fetch_item_detail_once(good_id: int):
                     _gi = ((_dd.get('data') or {}).get('goods_info')) or {}
                     _api_anchor = float(_gi.get('yyyp_sell_price') or 0)
                 except Exception:
-                    pass
+                    _csq_log.warning("cs-skin-market/pipeline/collector_csqaq.py unexpected error near line 623", exc_info=True)
             if _api_anchor > 0:
                 item.price_rmb = _api_anchor
             else:
@@ -631,7 +631,7 @@ async def _fetch_item_detail_once(good_id: int):
                     if p > 0:
                         item.price_rmb = p
         except Exception:
-            pass
+            _csq_log.warning("cs-skin-market/pipeline/collector_csqaq.py unexpected error near line 633", exc_info=True)
         if captured['detail']:
             try:
                 dd = json.loads(captured['detail'])
@@ -649,7 +649,7 @@ async def _fetch_item_detail_once(good_id: int):
                                     item.price_rmb = float(pv)
                                     break
                         except (TypeError, ValueError):
-                            pass
+                            _csq_log.warning("cs-skin-market/pipeline/collector_csqaq.py unexpected error near line 651", exc_info=True)
                     item.in_sale_count = int(gi.get('in_sale_count', gi.get('sale_num', gi.get('buff_sell_num', 0))) or 0)
                     item.sell_num_yyyp = int(gi.get('yyyp_sell_num', 0) or 0)
                     # 存世量：statistic_list 按 good_id 匹配当前磨损档的 statistic（普通版仅留帖纹盘面）
@@ -663,7 +663,7 @@ async def _fetch_item_detail_once(good_id: int):
                     item.turnover_number = int(gi.get('turnover_number', 0) or 0)
                     item.yyyp_id = str(gi.get('yyyp_id', '') or '')
             except Exception:
-                pass
+                _csq_log.warning("cs-skin-market/pipeline/collector_csqaq.py unexpected error near line 665", exc_info=True)
         # Build order_book from the page native 求购价 chart (uses browser session,
         # bypasses the ApiToken IP whitelist that blocks direct /info/chart POST).
         if not page.is_closed() and item.price_rmb > 0:
@@ -725,7 +725,7 @@ async def _fetch_item_detail_once(good_id: int):
                             "spread_7d_avg": spread_7d_avg,
                         }
             except Exception:
-                pass
+                _csq_log.warning("cs-skin-market/pipeline/collector_csqaq.py unexpected error near line 727", exc_info=True)
         item.collected_at = datetime.now(TZ_BJ).strftime("%Y-%m-%d %H:%M:%S")
         return item
     finally:
@@ -747,7 +747,7 @@ async def _capture_proxies_api(browser, keyword: str, tries: int = 3):
                 if keyword in response.url and response.ok:
                     captured["body"] = await response.text()
             except Exception:
-                pass
+                _csq_log.warning("cs-skin-market/pipeline/collector_csqaq.py unexpected error near line 749", exc_info=True)
         page.on("response", on_response)
         for attempt in range(tries):
             captured["body"] = None
@@ -827,7 +827,7 @@ async def fetch_kline_90d(good_id: int):
                 if "info/good?id=" in url and response.ok:
                     captured["detail"] = await response.text()
             except Exception:
-                pass
+                _csq_log.warning("cs-skin-market/pipeline/collector_csqaq.py unexpected error near line 829", exc_info=True)
         async def modify_chart(route, request):
             if "info/chart" in request.url:
                 try:
@@ -865,7 +865,7 @@ async def fetch_kline_90d(good_id: int):
                     _ap = float(gi.get('yyyp_sell_price') or 0)
                     _as = int(gi.get('yyyp_sell_num', 0) or 0)
                 except Exception:
-                    pass
+                    _csq_log.warning("cs-skin-market/pipeline/collector_csqaq.py unexpected error near line 867", exc_info=True)
             if not _ap:
                 try:
                     yyyp_price = await page.evaluate(
@@ -875,7 +875,7 @@ async def fetch_kline_90d(good_id: int):
                         if _pd > 0:
                             _ap = _pd
                 except Exception:
-                    pass
+                    _csq_log.warning("cs-skin-market/pipeline/collector_csqaq.py unexpected error near line 877", exc_info=True)
             return _ap, _as
 
         def _suspect(ohlc, anchor_price, anchor_sell):
@@ -906,7 +906,7 @@ async def fetch_kline_90d(good_id: int):
                 if cd.get('code') == 200 and cd.get('data'):
                     return _chart_to_daily_ohlc(cd['data']), _chart_to_raw(cd['data'])
             except Exception:
-                pass
+                _csq_log.warning("cs-skin-market/pipeline/collector_csqaq.py unexpected error near line 908", exc_info=True)
             return [], []
 
         await _capture_once()
@@ -968,7 +968,7 @@ async def fetch_simple_kline(good_id: int, max_time_ms: int):
                     if "info/simple/chartAll" in response.url and response.ok:
                         captured["chart"] = await response.text()
                 except Exception:
-                    pass
+                    _csq_log.warning("cs-skin-market/pipeline/collector_csqaq.py unexpected error near line 970", exc_info=True)
 
             async def rewrite(route, request):
                 if "info/chart" in request.url:
@@ -1022,7 +1022,7 @@ async def fetch_history_deep(good_id: int, min_date: str = "2025-01-01", start_d
             start_ts = int(_dt.strptime(start_date, "%Y-%m-%d").replace(tzinfo=TZ_BJ).timestamp() * 1000)
             now_ts = min(now_ts, start_ts - 86400000)  # 只取已有起点之前
         except ValueError:
-            pass
+            _csq_log.warning("cs-skin-market/pipeline/collector_csqaq.py unexpected error near line 1024", exc_info=True)
     if now_ts < min_ts:
         return []
     points: list = []

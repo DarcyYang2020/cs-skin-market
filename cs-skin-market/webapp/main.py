@@ -1322,7 +1322,7 @@ async def api_health_status():
         finally:
             conn_d.close()
     except Exception:
-        pass
+        _web_log.warning("cs-skin-market/webapp/main.py unexpected error near line 1324", exc_info=True)
     return {"found": True, "date": datetime.now().strftime("%Y-%m-%d"), "data_date": data_date,
             "status": "fail" if fail_list else "pass",
             "checked_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -1459,7 +1459,7 @@ async def api_watchlist_batch_scan_item_refresh(request: Request):
     try:
         cache_path.write_text(_json_r.dumps(data, ensure_ascii=False, default=str), encoding="utf-8")
     except Exception:
-        pass
+        _web_log.warning("cs-skin-market/webapp/main.py unexpected error near line 1461", exc_info=True)
     return JSONResponse({"ok": True, "name": result.get("name", name), "html": html,
                          "composite": result.get("composite")})
 # ---- Batch Scan Progress Polling ----

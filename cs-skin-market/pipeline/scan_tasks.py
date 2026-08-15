@@ -47,7 +47,7 @@ def _persist_scan_progress(scan_id):
             _json.dumps({k: p.get(k) for k in ("current", "total", "name", "done", "html", "ts")},
                         ensure_ascii=False), encoding="utf-8")
     except Exception:
-        pass
+        _web_log.warning("cs-skin-market/pipeline/scan_tasks.py unexpected error near line 49", exc_info=True)
 
 def _load_scan_progress(scan_id):
     """内存优先，磁盘恢复兜底（Phase 4）。"""
@@ -302,7 +302,7 @@ async def _run_batch_scan_task(scan_id: str, rows: list, force_refresh=False, co
             _cache_path = _data_dir / "batch_scan_latest.json"
             _cache_path.write_text(_json.dumps(_payload, ensure_ascii=False, default=str), encoding="utf-8")
         except Exception:
-            pass
+            _web_log.warning("cs-skin-market/pipeline/scan_tasks.py unexpected error near line 304", exc_info=True)
         # 历史归档: 每次扫描留存（信号中心/复盘数据源），保留最近 30 份
         try:
             from pipeline.batch_scan import extract_signals

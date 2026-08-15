@@ -51,7 +51,7 @@ async def fetch_market_snapshot(max_pages: int = DEFAULT_MAX_PAGES, page_size: i
                     if "info/get_page_list" in response.url and response.ok:
                         captured["body"] = await response.text()
                 except Exception:
-                    pass
+                    _log.warning("cs-skin-market/pipeline/collector_snapshot.py unexpected error near line 53", exc_info=True)
 
             await page.route("**/info/get_page_list**", rewrite)
             page.on("response", on_response)

@@ -27,6 +27,7 @@
   监测 `python references/j2_channel_monitor.py` → `data/j2_channel_status.json`（dashboard 展示）。
 - **期望统计双基线**：当前唯一事实源 = `pipeline/config.py:BASELINE_LEDGER` 双基线——HIST-FULL（`data/item_backtest_full_2025.json`，317 信号，v2-T4/T5，冻结归档）+ CLEAN-CUR（`data/_exp_v2t8_win_replay.json`，149 信号，v2-T8，仅展示参考，panic 单事件占 57.0%）。
   `python references/sync_expectancy_config.py` 自动同步 `config.ITEM_EXPECTANCY_STATS`（HIST-FULL）+ `config.ITEM_EXPECTANCY_STATS_CLEAN_CUR`（CLEAN-CUR）+ `data/signal_event_counts.json`；`t_expectancy_sync` 双基线全字段硬校验防漂移。
+- **口径词表**：`references/terminology.md` 是 HIST-FULL=317 / CLEAN-CUR=149 / SIGNAL_FAMILY_TAXONOMY / BASELINE_LEDGER / calmar_standard 唯一口径指针；活跃文档禁止再引用中间数或多种读法。
 - **基准对照**：`python references/benchmark_compare.py` → `data/benchmark_compare.json`
   （策略 cap0.8 vs 池内等权买入持有 vs 大盘指数，full/active 双窗口）。2026-08-10 结论（365d 窗口，317 信号，组合模拟口径 hold21——2026-08-10 对齐单品 hold_guidance，见 decision-log）：策略 +200.55%/-9.13%
   大幅跑赢大盘 -24.20%/-58.21%，但低于池内等权 +252.32%/-55.59% —— 引擎边际价值在风险控制（maxDD 9.13% vs 55~58%）。
@@ -289,62 +290,7 @@ python references/scripts-archive/run_item_backtest.py --items "AWP | 冥界之�
 
 ## 文件结构
 
-> 文件结构唯一事实源：`PROJECT_STRUCTURE.md`；本清单仅保留运行要点，改动时两处同步。
-
-
-cs-skin-market/
-  AGENTS.md              -- 本文件
-  SKILL.md               -- Codex Skill 元数据
-  run_server.py          -- Web 服务启动脚本（uvicorn）
-  run_daily_collect.py   -- 每日自动采集总调度（大盘/宏观/K线全量每日 + 全市场快照/大户/B-5 求购观察每周一 + 健康 + J-2 刷新 + 信号回填 + DB 备份）
-  run_data_health.py     -- 数据源健康检查（全量可采集品动态基线）
-  run_health_monitor.py  -- 健康监控入口（run_monitor，退出码 0/2）
-  backup_db.py           -- 每日 SQLite 备份（保留 14 份）
-  collect_data_reserve_p0.py -- P0 数据储备采集（活跃池基本面+求购日聚合，研究层）
-  collect_data_reserve_p1.py -- P1 数据储备采集（存世量+系列面板+大户Top20，研究层）
-  notify_alert.py        -- 告警/监控推送（钉钉，.env NOTIFY_WEBHOOK_URL；M2 监控日报复用）
-  references/scripts-archive/ -- 历史回测/回填脚本归档（run_backtest/run_item_backtest/run_item_9grid/run_item_exit/run_portfolio/run_backfill_history，2026-08-08 归档；当前回测统一走 references/refit_pipeline.py）
-  data/market.db         -- SQLite 数据库
-  data/item_backtest_full_2025.json -- HIST-FULL 冻结归档（去量 v2-T4/T5，365d 窗口 317 信号，不可复现）
-  pipeline/
-    config.py            -- 配置（TOKEN/BASE_URL/权重/PARAM_REGIME/J2_THRESHOLDS/ENGINE_VERSION）
-    collector.py         -- csQAQ HTTP 采集（大盘指数/品类/搜索）
-    collector_csqaq.py   -- csQAQ Playwright 采集（单品搜索/详情/K线/fetch_history_deep 深历史）
-    collector_snapshot.py -- 全市场快照采集（get_page_list 翻页，存 market_snapshot，每周一）
-    collector_monitor.py -- 大户集中度快照采集（monitor/rank 每周 Top50，存 monitor_rank_snapshot）
-    db.py                -- SQLite 存储（schema 版本化 + 全表 CRUD）
-    item_analysis.py     -- 单品分析主流程（信号族注册制 + 12 闸门融合决策）
-    trend_health.py      -- 趋势健康度 + 融合决策
-    valuation.py         -- 估值分位（百分位 + Z-score + 标签）
-    index_analysis.py    -- 大盘指数分析引擎
-    market_macro.py      -- 市场宏观（涨跌比/贪婪/在线/活跃卡/抄底信号）
-    market_th.py         -- 大盘趋势健康度 + 大盘融合决策
-    market_context.py    -- 大盘上下文构建 + state_bucket 状态桶
-    portfolio_risk.py    -- B1 风险预算层（组合回撤熔断 + 单票敞口提示）
-    supply.py            -- 供给端追踪（在售量唯一量源）
-    buy_distance.py      -- 买点参考位（批量扫描排序/信号提取用；展示卡片 F-3.8 移除）
-    signal_tracking.py   -- 生产实盘信号跟踪（J-2 C 通道）
-    monitor.py           -- M1/M2 监控模式（每日自选品异动事件生成 + 日报 + 钉钉推送，纯提醒层）
-    backtest_common.py   -- 回测公共模块（build_market_context 等）
-    backtest_methodology.py -- A2 三件套（walk-forward/聚类/置换检验）
-    batch_scan.py        -- 自选批量扫描（信号提取/按建议执行按钮）
-    scan_tasks.py        -- 批量扫描异步任务与进度
-    discover_tasks.py    -- 发现高分品异步任务
-    dashboards.py        -- 仪表盘数据（数据积累进度/J-2 三通道/组合仓位）
-    factor_monitor.py    -- 因子衰减监控
-  webapp/
-    main.py              -- FastAPI 应用（含批量扫描进度落盘持久化）
-    render_html.py       -- HTML 渲染纯函数
-    analysis_service.py  -- 公共分析服务层（analyze_fresh 统一核心 + 锚价/兜底助手）
-    templates/           -- Jinja2 模板
-    static/css/style.css -- 样式
-    static/js/app.js     -- 公共 JS（Modal/导航）
-  references/            -- 文档 + 研究脚本（j2_channel_monitor.py / refit_pipeline.py / portfolio_backtest.py 等）
-  tests/
-    test_smoke.py        -- 冒烟测试（108 用例，当前 108 passed / 0 failed / 0 skipped；支持 CS_MODEL_SKIP_NET；P1.2 起含 Web 只读 API 冒烟）
-    check_encoding.py    -- 编码健康检查
-    snapshots/replay_v2.json -- 回放口径快照
-
+> 文件结构唯一事实源：`PROJECT_STRUCTURE.md`。本文不再复制文件树；仅保留运行要点、数据口径与决策规则。
 
 ## 数据库表
 

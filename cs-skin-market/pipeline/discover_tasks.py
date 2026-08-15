@@ -33,7 +33,7 @@ def _persist_discover_progress(task_id):
             _json.dumps({k: p.get(k) for k in ("current", "total", "name", "done", "html", "ts", "skipped")},
                         ensure_ascii=False), encoding="utf-8")
     except Exception:
-        pass
+        _web_log.warning("cs-skin-market/pipeline/discover_tasks.py unexpected error near line 35", exc_info=True)
 
 def _finalize_discover(task_id: str, note: str = "completed"):
     """discover 扫描收尾台账（F-3.2）：无论成功/空结果/搜索失败/浏览器失败都留痕。"""
@@ -57,7 +57,7 @@ def _finalize_discover(task_id: str, note: str = "completed"):
             "pool_size_now": _pool_now,
         })
     except Exception:
-        pass
+        _web_log.warning("cs-skin-market/pipeline/discover_tasks.py unexpected error near line 59", exc_info=True)
 
 _discover_progress: dict = {}
 # F-3 扩容 (2026-08-08 第二轮): 8 -> 13 个武器；仍只采「崭新出厂 + 非 StatTrak + 非纪念品」
@@ -187,7 +187,7 @@ async def _run_discover_task(task_id: str, items: list):
                 finally:
                     _conn_rb.close()
             except Exception:
-                pass
+                _web_log.warning("cs-skin-market/pipeline/discover_tasks.py unexpected error near line 189", exc_info=True)
             analysis = await asyncio.get_running_loop().run_in_executor(
                 None,
                 lambda: _ia.run_item_analysis(
@@ -477,7 +477,7 @@ async def _run_discover_scan_all_task(task_id: str):
                             if d.get("code") == 200 and d.get("data"):
                                 suggest["items"] = d["data"]
                         except Exception:
-                            pass
+                            _web_log.warning("cs-skin-market/pipeline/discover_tasks.py unexpected error near line 479", exc_info=True)
                 page.on("response", _on_suggest)
                 for _attempt in range(3):
                     try:
