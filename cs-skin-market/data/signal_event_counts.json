@@ -3,7 +3,7 @@
  "window": 3,
  "total_signals": 317,
  "note": "去量引擎 v2 回放同源（item_backtest_full_2025.json）；事件簇数=±3天去簇；细族按 action_label 关键词，展示键按「恐慌/深值」匹配（与 config.ITEM_EXPECTANCY_STATS 同口径，config 由 sync_expectancy_config.py 同步生成）",
- "source": "data/item_backtest_full_2025.json",
+ "source": "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\item_backtest_full_2025.json",
  "baseline": "HIST-FULL",
  "panic_resonance": {
   "signals": 44,
@@ -154,7 +154,7 @@
    "window": 3,
    "total_signals": 317,
    "note": "去量引擎 v2 回放同源（item_backtest_full_2025.json）；事件簇数=±3天去簇；细族按 action_label 关键词，展示键按「恐慌/深值」匹配（与 config.ITEM_EXPECTANCY_STATS 同口径，config 由 sync_expectancy_config.py 同步生成）",
-   "source": "data/item_backtest_full_2025.json",
+   "source": "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\item_backtest_full_2025.json",
    "baseline": "HIST-FULL",
    "panic_resonance": {
     "signals": 44,
@@ -304,8 +304,8 @@
    "generated": "2026-08-15",
    "window": 3,
    "total_signals": 230,
-   "note": "去量引擎 v2 回放同源（item_backtest_full_2025.json）；事件簇数=±3天去簇；细族按 action_label 关键词，展示键按「恐慌/深值」匹配（与 config.ITEM_EXPECTANCY_STATS 同口径，config 由 sync_expectancy_config.py 同步生成）",
-   "source": "data/_exp_v2t9_win_replay.json",
+   "note": "CLEAN-CUR baseline (C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\_exp_v2t9_win_replay.json): same display-key mapping as HIST-FULL",
+   "source": "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\_exp_v2t9_win_replay.json",
    "baseline": "CLEAN-CUR",
    "panic_resonance": {
     "signals": 33,

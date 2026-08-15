@@ -111,8 +111,8 @@ def sync():
     clean_stats, clean_total, clean_comp = compute_display_stats(REPLAY_CLEAN)
     clean_panic_share = round(100.0 * clean_stats["panic"]["n"] / clean_total, 1) if clean_total else 0.0
     clean_caveat = ("CLEAN-CUR: %d signals, v2-T9, panic family share %.1f%% "
-                    "(97.5%% of panic concentrated in 2026-05 single-event cluster), "
-                    "in_sale NULL + 0-value gap backfilled via csQAQ period=1095") % (clean_total, clean_panic_share)
+                    "(of which 97.5%% = 2026-05 single-event panic cluster, least extrapolable), "
+                    "missing early bull segment; in_sale NULL + 0-value gap backfilled via csQAQ period=1095") % (clean_total, clean_panic_share)
 
     hist_block = render_block(hist_stats, hist_total, hist_comp,
                               var_name="ITEM_EXPECTANCY_STATS", replay_path=str(REPLAY),

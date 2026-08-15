@@ -3,9 +3,9 @@
 > 工程卫生收口建立的唯一术语指针。文档中凡出现下列口径，应指向本文，禁止再引用历史中间数或多种读法。
 
 ## 双基线
-- `HIST-FULL = 317`：历史全窗口冻结基线；`data/item_backtest_full_2025.json`，v2-T4/T5，不可复现，作为 C 通道监测主口径。
-- `CLEAN-CUR = 230`：当前引擎回填后干净基线（NULL + 0-value gap 回填）；`data/_exp_v2t9_win_replay.json`，v2-T9，仅展示参考。
-- 引用数据定义请取 `pipeline/config.py:BASELINE_LEDGER`；禁止直接使用 290/140/163/150 等中间数作为基线。
+- `HIST-FULL = 317`：历史全窗口基线（period-complete，含缺失深度 caveat）；`data/item_backtest_full_2025.json`，v2-T4/T5，不可复现；用于看引擎穿越完整周期的整体表现；C 通道监测主口径。
+- `CLEAN-CUR = 230`：当前干净基线（data-clean，含缺早期牛市段 + panic 单事件 35.2% caveat）；`data/_exp_v2t9_win_replay.json`，v2-T9；用于看引擎在无污染数据上的表现；仅展示参考，不作监测告警。panic 族 35.2% 中 97.5%（79/81）是 2026-05 单事件恐慌，是本基线最不能外推之处。
+- 引用数据定义请取 `pipeline/config.py:BASELINE_LEDGER`；禁止直接使用 290/140/163/149/150/297 等中间数作为基线。
 
 ## 信号族分类
 - 唯一事实源：`pipeline/config.py:SIGNAL_FAMILY_TAXONOMY`。

@@ -3732,3 +3732,11 @@ Fluxo 25→280 约 11 倍），尖顶后 3 天 -86~94%，与枪皮统计反转�
 - **全链路**：`sync_expectancy_config` → `benchmark_compare` → `portfolio_attribution` → `j1_event_counts` → `j2_channel_monitor` → `probe_pool2` / `probe_exit` 均重跑；`BASELINE_LEDGER.CLEAN-CUR` = v2-T9 / 230；`deprecated_intermediates` 新增 297（NULL-only 中间基线）。
 - **版本**：ENGINE_VERSION 维持 v2-T9（仅数据修正 + 回放 provenance 字符串，未改引擎评分/决策/阈值/权重/信号族）。
 - **未 commit**。
+
+## 双基线角色裁定 + CLEAN-CUR 单事件 caveat 修正（2026-08-15，展示/口径层，零引擎参数）
+
+- **裁定（不收敛，维持双基线）**：HIST-FULL 与 CLEAN-CUR 回答两个不同问题，谁也不能替代谁——HIST-FULL=完整牛熊周期下引擎纸面成绩（period-complete，脏但全）；CLEAN-CUR=干净数据下引擎成绩（data-clean，净但偏：缺早期牛市段 + panic 单事件 35.2%）。收敛会丢失信息，只改角色标签不改存废。
+- **角色写死**（`config.BASELINE_LEDGER.role`）：HIST-FULL=看引擎穿越完整周期的整体表现、C 通道监测主口径；CLEAN-CUR=看引擎在无污染数据上的表现、仅展示参考不作监测告警。
+- **caveat 修正**：CLEAN-CUR 的 panic 35.2% 中 97.5%（79/81）是 2026-05 单事件恐慌，单事件占比才是本基线最不能外推之处——已写入 `BASELINE_LEDGER.CLEAN-CUR.caveat` 与 `sync_expectancy_config` 自动生成的展示 caveat。
+- **C 通道**：胜率+期望监测继续用 HIST-FULL（全窗口），CLEAN-CUR 永远只做展示参考、不做告警（随 230 数字再强调）。
+- **同步**：terminology.md 双基线角色同步；`sync_expectancy_config` 重跑刷新展示 caveat。
