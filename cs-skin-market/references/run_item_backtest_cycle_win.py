@@ -61,7 +61,7 @@ def main():
     agg["signals"] = len(sigs_out)
     out = {"args": {"start": START, "end": END, "warmup": WARMUP,
                     "pool": "A(96\u8001\u54c1,3\u5e74\u7a97\u53e3)", "db": os.environ["CS_MODEL_DB"],
-                    "engine": "v2-T9 (DECISION-6/7 + liquidity_filtered + csQAQ period=1095 NULL+0gap backfill + cycle window)"},
+                    "engine": "v2-T10 (DECISION-6/7 + liquidity_filtered + csQAQ period=1095 NULL+0gap backfill + O1 仓位网格 supply_accum0.15/deep_value0.20 + cycle window)"},
            "generated": datetime.now().strftime("%Y-%m-%d %H:%M"),
            "aggregate": agg, "per_item": rows, "signals": sigs_out}
     with open(OUT, "w", encoding="utf-8") as f:

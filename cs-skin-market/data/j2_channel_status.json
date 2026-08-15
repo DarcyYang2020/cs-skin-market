@@ -1,6 +1,6 @@
 {
- "generated": "2026-08-15",
- "engine_version": "v2-T9",
+ "generated": "2026-08-16",
+ "engine_version": "v2-T10",
  "monitor_start": "2026-08-07",
  "sample_target_days": 260,
  "channels": {
@@ -14,9 +14,9 @@
   },
   "B": {
    "label": "v2 引擎样本积累",
-   "value_days": 8,
+   "value_days": 9,
    "threshold_days": 260,
-   "progress_pct": 3.1,
+   "progress_pct": 3.5,
    "target_date": "2027-04-24",
    "status": "积累中",
    "note": "自 v2 引擎起点 2026-08-07 起累计新数据；满 260 天（约 2027-04-24）即样本完整性观察点"

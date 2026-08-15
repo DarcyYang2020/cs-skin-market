@@ -67,6 +67,7 @@ cs-skin-market/data/uu_headers.json
 
 # DB backups (P0 restore points) - not source
 cs-skin-market/data/market.db.bak*
+cs-skin-market/data/*.bak*
 
 # Runtime audit/stream logs (keep on disk, not tracked)
 cs-skin-market/data/caliber_override_log.jsonl

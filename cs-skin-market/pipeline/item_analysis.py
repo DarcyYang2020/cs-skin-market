@@ -1047,7 +1047,7 @@ SIGNAL_FAMILIES = (
         key="deep_value",
         label="🟢 深值·大盘企稳·分批建仓",
         priority=50,
-        limit=0.15,
+        limit=0.20,  # v2-T10（2026-08-15 O1 干净数据仓位网格）：0.15→0.20，cycle 186 组合 total +13.1pp / maxDD −12.63（改善）/ Calmar 23.0，前后半段一致
         trigger=lambda F: (
             F["pct"] is not None and F["pct"] <= 20
             and F["z"] is not None and F["z"] <= -0.5
@@ -1063,7 +1063,7 @@ SIGNAL_FAMILIES = (
         detail=lambda F: (
             f"深值低估(pct={F['pct']:.0f}%,Z={F['z']:.1f})"
             f"+大盘企稳(TH={F['market_th']},21日跌幅{F['drop21']:.1f}%)·"
-            f"回测14d+14.9%/30d+52.4%(56信号14d75%胜率,轻仓0.15)·分批:首仓10%→跌10%加20%→跌15%加30%（单票敞口≤30%缩放）"
+            f"回测14d+14.9%/30d+52.4%(56信号14d75%胜率,轻仓0.20)·分批:首仓10%→跌10%加20%→跌15%加30%（单票敞口≤30%缩放）"
         ),
         sources=("deep_value_stable_market",),
         hypothesis="大盘企稳/修复环境(mchg30≤-3)下低分位(pct≤20%)+低估(Z≤-0.5)品均值回归；回放 56 信号 14d 75%/avg +14.9",
@@ -1100,7 +1100,7 @@ SIGNAL_FAMILIES = (
         key="supply_accum",
         label="🟢 供给收缩·启动前吸筹·分批建仓",
         priority=30,
-        limit=0.10,  # 2026-08-10 组合验证后维持 0.10：14d 期望 +9.4 弱于整体，但降仓致组合收益 -12.9pp（最大族被砍半），回测先行证伪降仓
+        limit=0.15,  # v2-T10（2026-08-15 O1 干净数据仓位网格）：0.10→0.15，cycle 186 组合 total +19.2pp / maxDD −14.64（改善）/ Calmar 20.26；旧 2026-08-10「降仓证伪」建立在伪零污染数据上，P2 证实 supply_accum 为稳族后重验通过
         trigger=lambda F: (
             len(F["supply_hist"]) >= 30 and len(F["prices"]) >= 8
             and not (F["survive"] > 0 and F["survive"] < 3000)
@@ -1120,7 +1120,7 @@ SIGNAL_FAMILIES = (
         guards=(),
         detail=lambda F: (
             f"在售量收缩(7日均{F['s7']:.0f}≤30日均{F['s30']:.0f}×0.85)+价格平稳(7日{F['chg7']:+.1f}%)·"
-            f"启动前吸筹·回测14d+11.2%/30d+27.2%(轻仓0.10)·强牛段(sent<40+大盘TH≥60)30d+46.3%·"
+            f"启动前吸筹·回测14d+11.2%/30d+27.2%(轻仓0.15)·强牛段(sent<40+大盘TH≥60)30d+46.3%·"
             f"分批:首仓10%→跌10%加20%→跌15%加30%（单票敞口≤30%缩放）"
         ),
         sources=("supply_contraction_accumulation",),

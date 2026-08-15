@@ -110,12 +110,14 @@ ITEM_EXIT_RULES = {
 #       未来事件（Major/大促/新箱等）由用户按真实赛程/公告在下方添加，格式相同。
 #       实时事件风险开关仍走 settings.event_active（event_risk_coefficient）。
 EVENT_CALENDAR = [
-    {"name": "纪念品炼金", "date": "2025-05-25", "impact_days": 30, "type": "souvenir_recipe"},
+    {"name": "纪念品炼金", "date": "2026-05-22", "impact_days": 30, "type": "souvenir_recipe"},
     {"name": "黄盾", "date": "2025-07-16", "impact_days": 30, "type": "collection"},
     {"name": "五合一崩盘", "date": "2025-10-24", "impact_days": 35, "type": "crash"},
     # 2025 双 Major（S-5 收尾 2026-08-12）：历史事件仅用于回测外生冲击标注；贴纸与 Major 已脱钩（S-2 证伪），不作买点依赖
     {"name": "2025 奥斯汀 Major", "date": "2025-06-03", "impact_days": 20, "type": "major"},
     {"name": "2025 布达佩斯 Major", "date": "2025-11-24", "impact_days": 21, "type": "major"},
+    # 四代手套（终端机手套，2026-03-12）：开启的是「缓跌」不是单日崩，impact 窗口 30~60 天，待 event_study 校准
+    {"name": "终端机手套（四代手套）", "date": "2026-03-12", "impact_days": 45, "type": "glove_gen4"},
 ]
 
 ITEM_EXPECTANCY_STATS = {
@@ -341,6 +343,13 @@ PARAM_REGIME = {
     "monitor_start": "2026-08-07",        # v2 引擎起点（B 通道样本积累天数基准，非冻结起点）
     "sample_target_days": 260,            # B 通道样本积累目标（约 2027-04-25 覆盖完整牛熊循环）
     "north_star": "期望 + Calmar/maxDD 为主指标，胜率作为下限约束；方向是把引擎从「减仓器/风控器」转化为「收益增强器」（2026-08-14）",
+    "event_sensitivity": [
+        "panic 恐慌族（共振+退潮）：事件依赖——三基线 100% 信号落黑天鹅窗口（纪念品炼金 2026-05-22），干净样本 0；89.5% 胜率=单事件指纹（共振 100%/+46.77、退潮 86.2%/+23.76 全炼金事件）；A 通道≥3 独立恐慌事件前禁止重拟合（2026-08-15 P1/P2 实测 probe_event_impact_p1.py / probe_event_sensitivity_p2.py）",
+        "deep_dip 深度回调：事件依赖——三基线 100% 受影响（纪念品炼金），干净样本 0；同恐慌族锁参（2026-08-15 P2）",
+        "supply_accum 供给收缩：稳——CYCLE 3 年 37.8% 受影响，干净 23 条，漂移 win14 −1.3pp/avg14 −2.2pp（全 62.2%/+15.38 → 干净 60.9%/+13.18），参数对事件不敏感（2026-08-15 P2）",
+        "base 基础分批：稳——CYCLE 干净 18 条，漂移 win14 −1.9pp/avg14 +0.5pp（全 68.6%/+5.9 → 干净 66.7%/+6.43）（2026-08-15 P2）",
+        "deep_value 深值：中度——CYCLE 干净 13 条 win14 38.5%/avg14 +14.95；漂移 win14 −18.6pp（全 57.1%→干净 38.5%，胜率部分被事件窗口抬高）但 avg14 仅 −3.81pp（+18.76→+14.95，右尾稳）；参数为结构性条件非事件拟合，但对外评估数字须引用干净口径（2026-08-15 P2）",
+    ],
     "param_history": [
         "去量引擎 v2（I-13）全参数", "组合层 cap0.8", "单票敞口提示 30%",
         "ITEM_EXPECTANCY_STATS 展示口径",
@@ -354,6 +363,7 @@ PARAM_REGIME = {
         "v2-T7（2026-08-14）：流动性地板 below_floor 同样禁后置升级（对齐 missing），堵住 panic/accumulate 等后置族在在售量 45~196 时绕过 200/100 地板的泄漏；v2-T7）",
         "v2-T8（2026-08-14）：吸筹周期 watch->buy 尊重 liquidity_filtered，并给深度回调低吸变换加防御守卫，堵住 below_floor 经 cycle_accumulation_boost 重新升回 buy 的残留旁路（外审确认 same_fail=1：沙漠之鹰|指挥 2026-06-20）；v2-T8）",
         "v2-T9（2026-08-15）：csQAQ period=1095 回补 2026-02~04 及历史 in_sale NULL 断档（4802 行）+ 断档 0 值（14487 行，仅更新 NULL 与断档 0 值，保留真实 0）；supply_depth_missing 改为仅以 NULL 判定缺失。CLEAN-CUR 基线 150→297(NULL-only 中间)→230（panic 81 / deep_value 33 / accumulate 116，摘除 84 条伪供给收缩信号），仍需按 BASELINE_LEDGER 双口径展示；v2-T9）",
+        "v2-T10（2026-08-15，O1 干净数据仓位网格落地）：supply_accum 0.10→0.15、deep_value 0.15→0.20。依据=cycle 186（3 年干净日线）组合模拟 cap0.8/hold21/2%：baseline +277.36%/−15.38%/Calmar18.03 → both +324.22%/−13.89%/Calmar23.34；单变体 supply_accum0.15 +296.56%/−14.64%、deep_value0.20 +290.44%/−12.63%；前后半段（2025-08-10 切）方向一致（front +16.22→+24.29、back +220.53→+235.72）。旧 2026-08-10「supply_accum 降仓证伪」建立在伪零污染数据上，P2 证实 supply_accum 为稳族（干净 23 条 +13.18）后重验通过；恐慌族仍锁参（event_sensitivity）",
 
     ],
     "monitors": [
@@ -400,4 +410,4 @@ J2_THRESHOLDS = {
 # ---- 引擎参数版本（Phase 0 版本化）----
 # signal_tracking 记录每条生产信号时的引擎版本；重拟合发布新参数时 bump，
 # 使新旧引擎产生的实盘信号可区分、可分别统计。
-ENGINE_VERSION = "v2-T9"  # v2-T8 + csQAQ period=1095 回补 in_sale 断档；supply_depth_missing 仅以 NULL 判定缺失（2026-08-15）
+ENGINE_VERSION = "v2-T10"  # v2-T9 + O1 干净数据仓位网格（supply_accum 0.10→0.15、deep_value 0.15→0.20，cycle 186 组合 total +46.9pp/Calmar 18.03→23.34，2026-08-15）

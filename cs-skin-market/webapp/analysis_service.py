@@ -886,6 +886,50 @@ def market_expectancy_card():
     }
 
 
+def _spread_trap_note(name):
+    """O4（2026-08-15）：Δspread 走阔陷阱指纹软标注——只读提示，不改变决策。
+
+    口径与 A2-2 资产一致：信号日 5 日价差走阔 > +8.9pp = 强陷阱指纹
+    （effect −11.53pp、p=0.0、去簇 16；负期望占比 69.2% 差 0.8pp 未过 70% 门槛 → 候选）。
+    数据：market.db bid_history.buy_price_last（3 年直连回填）+ price_history.price_rmb。
+    任何异常返回 None（展示层绝不阻断分析）。
+    """
+    try:
+        from pipeline import db as _db
+        conn = _db.get_conn()
+        r = conn.execute("SELECT id, good_id FROM items WHERE name=? AND good_id>0", (name,)).fetchone()
+        if not r:
+            conn.close()
+            return None
+        iid, gid = r["id"], r["good_id"]
+        bids = conn.execute(
+            "SELECT date, buy_price_last FROM bid_history WHERE good_id=? AND buy_price_last IS NOT NULL "
+            "ORDER BY date DESC LIMIT 6", (gid,)).fetchall()
+        if len(bids) < 2:
+            conn.close()
+            return None
+        d_now, b_now = bids[0]["date"], bids[0]["buy_price_last"]
+        d_prev, b_prev = bids[1]["date"], bids[1]["buy_price_last"]
+        p_now = conn.execute(
+            "SELECT price_rmb FROM price_history WHERE item_id=? AND date<=? AND price_rmb IS NOT NULL "
+            "ORDER BY date DESC LIMIT 1", (iid, d_now)).fetchone()
+        p_prev = conn.execute(
+            "SELECT price_rmb FROM price_history WHERE item_id=? AND date<=? AND price_rmb IS NOT NULL "
+            "ORDER BY date DESC LIMIT 1", (iid, d_prev)).fetchone()
+        conn.close()
+        if not p_now or not p_prev or p_now["price_rmb"] <= 0 or p_prev["price_rmb"] <= 0:
+            return None
+        sp_now = (p_now["price_rmb"] - b_now) / p_now["price_rmb"] * 100
+        sp_prev = (p_prev["price_rmb"] - b_prev) / p_prev["price_rmb"] * 100
+        chg = sp_now - sp_prev
+        if chg <= 8.9:
+            return None
+        return (f"陷阱指纹候选（仅研究标注，不改变决策）：5 日价差走阔 +{chg:.1f}pp（>8.9pp）——"
+                f"A2-2 大样本验证的强陷阱指纹（effect −11.53pp、p=0.0），当前为候选闸门、未接入 buy 拦截。")
+    except Exception:
+        return None
+
+
 def _fd_display(fd, analysis=None):
     """融合决策展示层注入（决策链 trace）。纯展示，不改引擎输出。
 
@@ -933,6 +977,11 @@ def _fd_display(fd, analysis=None):
             _caveats.append(
                 "供给收缩三态：当前未满足 s7≤s30×0.85 的严格收缩口径，仍按现有动作展示，不改变结论。"
             )
+    # O4（2026-08-15）：Δspread 走阔陷阱指纹软标注——buy 信号时提示，不改决策
+    if (fd.get("action") == "buy") and getattr(analysis, "name", None):
+        _trap = _spread_trap_note(analysis.name)
+        if _trap:
+            _caveats.append(_trap)
     fd["trace"] = {
         "zone": fd.get("zone_label", ""),
         "bucket": fd.get("state_bucket", ""),

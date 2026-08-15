@@ -427,7 +427,7 @@ def t_p08_deep_value_tranche():
         assert fd['action'] == 'buy', fd['action']
         assert 'deep_value_stable_market' in fd['deduction_sources'], fd['deduction_sources']
         assert '深值' in fd['action_label'], fd['action_label']
-        assert fd['position_limit'] == 0.15, fd['position_limit']
+        assert fd['position_limit'] == 0.20, fd['position_limit']
         # 2026-08-04 分批落地: action_detail 带档位与加权期望
         assert '分批' in fd['action_detail'] and '跌10%加20%' in fd['action_detail'], fd['action_detail']
     finally:
@@ -508,13 +508,13 @@ def t_p1_supply_accumulation():
     kw = dict(name='Test', supply_hist=supply, market_pct_90d=50.0,
               market_cycle='volatile', market_zscore=0.0, market_th_score=50,
               market_30d_change=-5.0, market_drop21=-3.0, recent_buy_dates=[], signal_date='2026-03-01')
-    # 1) 供给收缩+价格平稳+门控放行 -> P1-0 buy(轻仓0.10)
+    # 1) 供给收缩+价格平稳+门控放行 -> P1-0 buy(轻仓0.15)
     res = ia.run_item_analysis(prices=prices, **kw)
     fd = res.fusion_decision
     assert fd['action'] == 'buy', fd['action']
     assert 'supply_contraction_accumulation' in fd['deduction_sources'], fd['deduction_sources']
     assert '吸筹' in fd['action_label'], fd['action_label']
-    assert fd['position_limit'] == 0.10, fd['position_limit']
+    assert fd['position_limit'] == 0.15, fd['position_limit']
     # 2) 门控拦截: 贪婪(sent=30) + 大盘弱TH(40) -> 不触发
     ia.compute_sentiment_score = lambda: 30
     kw2 = dict(kw, market_th_score=40)
@@ -542,7 +542,7 @@ def t_p1_supply_accumulation():
     res7 = ia.run_item_analysis(prices=prices, **dict(kw, market_th_score=60))
     fd7 = res7.fusion_decision
     assert fd7['action'] == 'buy', fd7['action']
-    assert fd7['position_limit'] == 0.10, fd7['position_limit']
+    assert fd7['position_limit'] == 0.15, fd7['position_limit']
     ia.compute_sentiment_score = lambda: 50
     (ia._analyze_position, ia.compute_sentiment_score, ia.compute_sentiment_factor,
      ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision) = orig
@@ -1684,7 +1684,8 @@ def t_event_calendar():
     from pipeline.market_macro import historical_event_impact
     assert '五合一崩盘' in historical_event_impact('2025-10-16', horizon_days=30), '10-16 未命中五合一崩盘'
     assert '黄盾' in historical_event_impact('2025-07-10', horizon_days=30), '07-10 未命中黄盾'
-    assert '纪念品炼金' in historical_event_impact('2025-05-28', horizon_days=30), '05-28 未命中纪念品炼金'
+    assert '纪念品炼金' in historical_event_impact('2026-05-28', horizon_days=30), '05-28 未命中纪念品炼金'
+    assert '终端机手套（四代手套）' in historical_event_impact('2026-03-20', horizon_days=30), '03-20 未命中终端机手套'
     assert historical_event_impact('2026-01-01') == [], '无事件日期误命中'
     assert historical_event_impact('bad-date') == [], '非法日期应返回空'
 check('事件日历: 黑天鹅 impact 窗口标注', t_event_calendar)
