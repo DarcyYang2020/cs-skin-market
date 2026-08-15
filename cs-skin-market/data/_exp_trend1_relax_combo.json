@@ -1,0 +1,24 @@
+{
+  "probe": "TREND-1 放宽实验",
+  "dd_range": "5.0~20.0%",
+  "pct_cap": 75.0,
+  "sent_gt30": {
+    "n": 84,
+    "per_month": 9.3,
+    "win14": 45.2,
+    "avg14": 3.85,
+    "win30": 63.1,
+    "avg30": 20.84
+  },
+  "sent_le30": {
+    "n": 3,
+    "per_month": 0.3,
+    "win14": 0.0,
+    "avg14": -4.87,
+    "win30": 100.0,
+    "avg30": 85.34
+  },
+  "baseline_avg14": 0.98,
+  "excess_vs_baseline_pp": 2.87,
+  "verdict": "达标 = 参与度>=8条/月 且 excess>=+2pp"
+}

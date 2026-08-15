@@ -1,0 +1,16 @@
+{
+  "probe": "TREND-1 逐层漏斗",
+  "window": "2024-09-01~2025-05-31",
+  "funnel": {
+    "L0_all": 26013,
+    "L1_regime": 22911,
+    "L2a_above_ma30": 13137,
+    "L2b_th55": 10926,
+    "L3_drawdown": 614,
+    "L4_no_new_low": 367,
+    "L5_supply": 219,
+    "L6_pct60": 11,
+    "L7_sent_gt30": 10,
+    "L7_sent_le30": 1
+  }
+}
