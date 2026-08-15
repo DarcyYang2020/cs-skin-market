@@ -1,0 +1,1830 @@
+{
+ "generated": "2026-08-15 14:59:03",
+ "period": "1095",
+ "target_goods": 87,
+ "failed_goods": 0,
+ "total_zero_rows": 14487,
+ "total_written": 14487,
+ "total_zero_kept": 0,
+ "total_missing_still": 0,
+ "results": [
+  {
+   "good_id": 8,
+   "name": "Tec-9 | 冰冠 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 28,
+   "name": "FN57 | 霸意大名 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 77,
+     "written": 77,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 77,
+     "written": 77,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 30,
+   "name": "AK-47 | 精英之作 (战痕累累)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 76,
+     "written": 76,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 38,
+   "name": "AK-47 | 深海复仇 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 50,
+   "name": "AK-47 | 蓝色层压板 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 58,
+   "name": "AK-47 | 表面淬火 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 91,
+   "name": "AK-47 | 水栽竹 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 111,
+   "name": "AK-47 | 霓虹革命 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 144,
+   "name": "AK-47 | 皇后 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 149,
+   "name": "AK-47 | 火神 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 240,
+   "name": "AWP | 珊瑚树 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 269,
+   "name": "AWP | 无畏战神 (略有磨损)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 275,
+   "name": "AWP | 鬼退治 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 279,
+   "name": "AWP | 火卫一 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 77,
+     "written": 77,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 77,
+     "written": 77,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 534,
+   "name": "沙漠之鹰 | 炽烈之炎 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 544,
+   "name": "沙漠之鹰 | 阴谋者 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 557,
+   "name": "沙漠之鹰 | 指挥 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 86,
+     "written": 86,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 86,
+     "written": 86,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 561,
+   "name": "沙漠之鹰 | 黄金锦鲤 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 590,
+   "name": "沙漠之鹰 | 纳迦蛇神 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 739,
+   "name": "法玛斯 | 殖民侵略者 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 81,
+     "written": 81,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 81,
+     "written": 81,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 769,
+   "name": "法玛斯 | 机械工业 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 863,
+   "name": "FN57 | 神祗 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 80,
+     "written": 80,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 80,
+     "written": 80,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 998,
+   "name": "加利尔 AR | 黑砂 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 1002,
+   "name": "加利尔 AR | 蓝钛 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 85,
+     "written": 85,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 85,
+     "written": 85,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 1058,
+   "name": "加利尔 AR | 冷石 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 78,
+     "written": 78,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 78,
+     "written": 78,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 1099,
+   "name": "格洛克 18 型 | 本生灯 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 1114,
+   "name": "格洛克 18 型 | 黑龙纹身 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 1118,
+   "name": "格洛克 18 型 | 粉碎者 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 1137,
+   "name": "格洛克 18 型 | 异星世界 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 78,
+     "written": 78,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 78,
+     "written": 78,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 1168,
+   "name": "格洛克 18 型 | 水灵 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 78,
+     "written": 78,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 78,
+     "written": 78,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 1196,
+   "name": "M4A1消音版 | 原子合金 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 1226,
+   "name": "M4A1消音版 | 次时代 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 1238,
+   "name": "M4A1消音版 | 闪回 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 1251,
+   "name": "M4A1消音版 | 赤红新星 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 1254,
+   "name": "M4A1消音版 | 暴怒野兽 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 1258,
+   "name": "M4A1消音版 | 伊卡洛斯殒落 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 1262,
+   "name": "M4A1消音版 | 破碎铅秋 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 78,
+     "written": 78,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 78,
+     "written": 78,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 1272,
+   "name": "M4A1消音版 | 机械工业 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 1309,
+   "name": "M4A4 | 沙漠精英 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 1328,
+   "name": "M4A4 | 狮鹫 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 1332,
+   "name": "M4A4 | 地狱烈焰 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 1349,
+   "name": "M4A4 | 波塞冬 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 1516,
+   "name": "MP7 | 卷云 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 78,
+     "written": 78,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 78,
+     "written": 78,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 1576,
+   "name": "MP9 | 气密 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 2291,
+   "name": "SSG 08 | 无尽深海 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 2321,
+   "name": "SSG 08 | 炎龙之焰 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 6543,
+   "name": "USP 消音版 | 次时代 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 78,
+     "written": 78,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 78,
+     "written": 78,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 6554,
+   "name": "USP 消音版 | 守护者 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 77,
+     "written": 77,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 77,
+     "written": 77,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 6620,
+   "name": "电竞 2013 冬季武器箱",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 81,
+     "written": 81,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 81,
+     "written": 81,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 8460,
+   "name": "AWP | 猫猫狗狗 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 8506,
+   "name": "M4A1消音版 | 梦魇 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 8566,
+   "name": "AK-47 | 霓虹骑士 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 9563,
+   "name": "AWP | 冥界之河 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 77,
+     "written": 77,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 77,
+     "written": 77,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 9583,
+   "name": "MP7 | 渐变之色 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 9655,
+   "name": "M4A1消音版 | 控制台 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 10360,
+   "name": "沙漠之鹰 | 轻轨 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 10548,
+   "name": "M4A4 | 皇帝 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 11553,
+   "name": "沙漠之鹰 | 翡翠巨蟒 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 12196,
+   "name": "沙漠之鹰 | 蓝色层压板 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 77,
+     "written": 77,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 77,
+     "written": 77,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 12248,
+   "name": "AK-47 | 幻影破坏者 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 12304,
+   "name": "M4A1消音版 | 二号玩家 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 12598,
+   "name": "指挥官 梅 “极寒” 贾米森 | 特警",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 78,
+     "written": 78,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 12659,
+   "name": "M4A4 | 全球攻势 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 12800,
+   "name": "M4A1消音版 | 印花集 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 12832,
+   "name": "M4A4 | 赛博 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 12884,
+   "name": "沙漠之鹰 | 午夜凶匪 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 12919,
+   "name": "AWP | 锦虎 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 13031,
+   "name": "AK-47 | X 射线 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 86,
+     "written": 86,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 86,
+     "written": 86,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 13198,
+   "name": "沙漠之鹰 | 后发制人 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 13263,
+   "name": "加利尔 AR | 迷人眼 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 84,
+     "written": 84,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 84,
+     "written": 84,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 13283,
+   "name": "M4A4 | 活色生香 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 13342,
+   "name": "沙漠之鹰 | 人造卫星 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 77,
+     "written": 77,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 77,
+     "written": 77,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 13363,
+   "name": "AK-47 | 抽象派 1337 (略有磨损)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 77,
+     "written": 77,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 77,
+     "written": 77,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 13373,
+   "name": "M4A4 | 合纵 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 78,
+     "written": 78,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 78,
+     "written": 78,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 13463,
+   "name": "AWP | 复古流行 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 13470,
+   "name": "亚诺（野草） | 游击队",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 85,
+     "written": 85,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 85,
+     "written": 85,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 13493,
+   "name": "AK-47 | 抽象派 1337 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 78,
+     "written": 78,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 78,
+     "written": 78,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 13623,
+   "name": "M4A4 | 彼岸花 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 13691,
+   "name": "SSG 08 | 速度激情 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 13812,
+   "name": "USP 消音版 | 银装素裹 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 82,
+     "written": 82,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 82,
+     "written": 82,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 14712,
+   "name": "USP 消音版 | 地狱门票 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 14758,
+   "name": "MP9 | 星使 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 14771,
+   "name": "法玛斯 | 目皆转睛 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 16544,
+   "name": "格洛克 18 型 | 拉美西斯之触 (崭新出厂)",
+   "series_days": 1171,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 19357,
+   "name": "AK-47 | 轨道 Mk01 (崭新出厂)",
+   "series_days": 1010,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 20459,
+   "name": "AWP | CMYK (崭新出厂)",
+   "series_days": 673,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 87,
+     "written": 87,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 20840,
+   "name": "印花 | MOUZ（全息）| 2024年上海锦标赛",
+   "series_days": 618,
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "zero_count": 77,
+     "written": 77,
+     "zero_kept": 0,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "zero_count": 77,
+     "written": 77,
+     "zero_kept": 0,
+     "missing_still": 0
+    }
+   }
+  }
+ ],
+ "apply": {
+  "updated_rows": 14487,
+  "zero_kept": 0,
+  "missing_still": 0,
+  "backups": {
+   "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.bak-insale0gap-20260815-145903",
+   "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.bak-insale0gap-20260815-145903"
+  }
+ }
+}

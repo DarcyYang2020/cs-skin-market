@@ -1,0 +1,805 @@
+{
+ "generated": "2026-08-15 13:56:26",
+ "period": "1095",
+ "target_goods": 38,
+ "failed_goods": 0,
+ "total_null_rows": 4802,
+ "total_fillable_rows": 4802,
+ "results": [
+  {
+   "good_id": 28,
+   "name": "FN57 | 霸意大名 (崭新出厂)",
+   "series_days": 1171,
+   "series_first": "2023-06-01",
+   "series_last": "2026-08-14",
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "null_count": 13,
+     "fillable": 13,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "null_count": 13,
+     "fillable": 13,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 30,
+   "name": "AK-47 | 精英之作 (战痕累累)",
+   "series_days": 1171,
+   "series_first": "2023-06-01",
+   "series_last": "2026-08-14",
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "null_count": 12,
+     "fillable": 12,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 50,
+   "name": "AK-47 | 蓝色层压板 (崭新出厂)",
+   "series_days": 1171,
+   "series_first": "2023-06-01",
+   "series_last": "2026-08-14",
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "null_count": 1,
+     "fillable": 1,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "null_count": 1,
+     "fillable": 1,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 55,
+   "name": "AK-47 | 卡特尔 (崭新出厂)",
+   "series_days": 1171,
+   "series_first": "2023-06-01",
+   "series_last": "2026-08-14",
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "null_count": 265,
+     "fillable": 265,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "null_count": 270,
+     "fillable": 270,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 240,
+   "name": "AWP | 珊瑚树 (崭新出厂)",
+   "series_days": 1171,
+   "series_first": "2023-06-01",
+   "series_last": "2026-08-14",
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "null_count": 1,
+     "fillable": 1,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "null_count": 1,
+     "fillable": 1,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 279,
+   "name": "AWP | 火卫一 (崭新出厂)",
+   "series_days": 1171,
+   "series_first": "2023-06-01",
+   "series_last": "2026-08-14",
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "null_count": 13,
+     "fillable": 13,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "null_count": 13,
+     "fillable": 13,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 735,
+   "name": "法玛斯 | 残影 (崭新出厂)",
+   "series_days": 1171,
+   "series_first": "2023-06-01",
+   "series_last": "2026-08-14",
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "null_count": 265,
+     "fillable": 265,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "null_count": 270,
+     "fillable": 270,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 739,
+   "name": "法玛斯 | 殖民侵略者 (崭新出厂)",
+   "series_days": 1171,
+   "series_first": "2023-06-01",
+   "series_last": "2026-08-14",
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "null_count": 5,
+     "fillable": 5,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "null_count": 5,
+     "fillable": 5,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 863,
+   "name": "FN57 | 神祗 (崭新出厂)",
+   "series_days": 1171,
+   "series_first": "2023-06-01",
+   "series_last": "2026-08-14",
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "null_count": 10,
+     "fillable": 10,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "null_count": 10,
+     "fillable": 10,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 1002,
+   "name": "加利尔 AR | 蓝钛 (崭新出厂)",
+   "series_days": 1171,
+   "series_first": "2023-06-01",
+   "series_last": "2026-08-14",
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "null_count": 5,
+     "fillable": 5,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "null_count": 5,
+     "fillable": 5,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 1058,
+   "name": "加利尔 AR | 冷石 (崭新出厂)",
+   "series_days": 1171,
+   "series_first": "2023-06-01",
+   "series_last": "2026-08-14",
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "null_count": 12,
+     "fillable": 12,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "null_count": 12,
+     "fillable": 12,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 1118,
+   "name": "格洛克 18 型 | 粉碎者 (崭新出厂)",
+   "series_days": 1171,
+   "series_first": "2023-06-01",
+   "series_last": "2026-08-14",
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "null_count": 3,
+     "fillable": 3,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "null_count": 3,
+     "fillable": 3,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 1137,
+   "name": "格洛克 18 型 | 异星世界 (崭新出厂)",
+   "series_days": 1171,
+   "series_first": "2023-06-01",
+   "series_last": "2026-08-14",
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "null_count": 12,
+     "fillable": 12,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "null_count": 12,
+     "fillable": 12,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 1168,
+   "name": "格洛克 18 型 | 水灵 (崭新出厂)",
+   "series_days": 1171,
+   "series_first": "2023-06-01",
+   "series_last": "2026-08-14",
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "null_count": 12,
+     "fillable": 12,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "null_count": 12,
+     "fillable": 12,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 1262,
+   "name": "M4A1消音版 | 破碎铅秋 (崭新出厂)",
+   "series_days": 1171,
+   "series_first": "2023-06-01",
+   "series_last": "2026-08-14",
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "null_count": 12,
+     "fillable": 12,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "null_count": 12,
+     "fillable": 12,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 1290,
+   "name": "M4A4 | 弹雨 (崭新出厂)",
+   "series_days": 1171,
+   "series_first": "2023-06-01",
+   "series_last": "2026-08-14",
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "null_count": 265,
+     "fillable": 265,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "null_count": 270,
+     "fillable": 270,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 1295,
+   "name": "M4A4 | 喧嚣杀戮 (崭新出厂)",
+   "series_days": 1171,
+   "series_first": "2023-06-01",
+   "series_last": "2026-08-14",
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "null_count": 265,
+     "fillable": 265,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "null_count": 270,
+     "fillable": 270,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 1304,
+   "name": "M4A4 | 沙漠风暴 (崭新出厂)",
+   "series_days": 1171,
+   "series_first": "2023-06-01",
+   "series_last": "2026-08-14",
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "null_count": 265,
+     "fillable": 265,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "null_count": 270,
+     "fillable": 270,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 1516,
+   "name": "MP7 | 卷云 (崭新出厂)",
+   "series_days": 1171,
+   "series_first": "2023-06-01",
+   "series_last": "2026-08-14",
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "null_count": 12,
+     "fillable": 12,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "null_count": 12,
+     "fillable": 12,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 2291,
+   "name": "SSG 08 | 无尽深海 (崭新出厂)",
+   "series_days": 1171,
+   "series_first": "2023-06-01",
+   "series_last": "2026-08-14",
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "null_count": 2,
+     "fillable": 2,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "null_count": 2,
+     "fillable": 2,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 2301,
+   "name": "SSG 08 | 水中之血 (崭新出厂)",
+   "series_days": 1171,
+   "series_first": "2023-06-01",
+   "series_last": "2026-08-14",
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "null_count": 265,
+     "fillable": 265,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "null_count": 270,
+     "fillable": 270,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 2305,
+   "name": "SSG 08 | 蓝色云杉 (崭新出厂)",
+   "series_days": 1171,
+   "series_first": "2023-06-01",
+   "series_last": "2026-08-14",
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "null_count": 265,
+     "fillable": 265,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "null_count": 270,
+     "fillable": 270,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 6543,
+   "name": "USP 消音版 | 次时代 (崭新出厂)",
+   "series_days": 1171,
+   "series_first": "2023-06-01",
+   "series_last": "2026-08-14",
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "null_count": 12,
+     "fillable": 12,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "null_count": 12,
+     "fillable": 12,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 6554,
+   "name": "USP 消音版 | 守护者 (崭新出厂)",
+   "series_days": 1171,
+   "series_first": "2023-06-01",
+   "series_last": "2026-08-14",
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "null_count": 13,
+     "fillable": 13,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "null_count": 13,
+     "fillable": 13,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 6620,
+   "name": "电竞 2013 冬季武器箱",
+   "series_days": 1171,
+   "series_first": "2023-06-01",
+   "series_last": "2026-08-14",
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "null_count": 8,
+     "fillable": 8,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "null_count": 8,
+     "fillable": 8,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 9563,
+   "name": "AWP | 冥界之河 (崭新出厂)",
+   "series_days": 1171,
+   "series_first": "2023-06-01",
+   "series_last": "2026-08-14",
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "null_count": 13,
+     "fillable": 13,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "null_count": 13,
+     "fillable": 13,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 12196,
+   "name": "沙漠之鹰 | 蓝色层压板 (崭新出厂)",
+   "series_days": 1171,
+   "series_first": "2023-06-01",
+   "series_last": "2026-08-14",
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "null_count": 13,
+     "fillable": 13,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "null_count": 13,
+     "fillable": 13,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 12598,
+   "name": "指挥官 梅 “极寒” 贾米森 | 特警",
+   "series_days": 1171,
+   "series_first": "2023-06-01",
+   "series_last": "2026-08-14",
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "null_count": 12,
+     "fillable": 12,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 12659,
+   "name": "M4A4 | 全球攻势 (崭新出厂)",
+   "series_days": 1171,
+   "series_first": "2023-06-01",
+   "series_last": "2026-08-14",
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "null_count": 3,
+     "fillable": 3,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "null_count": 3,
+     "fillable": 3,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 12791,
+   "name": "德拉戈米尔 | 军刀勇士",
+   "series_days": 1171,
+   "series_first": "2023-06-01",
+   "series_last": "2026-08-14",
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "null_count": 262,
+     "fillable": 262,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "null_count": 267,
+     "fillable": 267,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 13263,
+   "name": "加利尔 AR | 迷人眼 (崭新出厂)",
+   "series_days": 1171,
+   "series_first": "2023-06-01",
+   "series_last": "2026-08-14",
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "null_count": 6,
+     "fillable": 6,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "null_count": 6,
+     "fillable": 6,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 13342,
+   "name": "沙漠之鹰 | 人造卫星 (崭新出厂)",
+   "series_days": 1171,
+   "series_first": "2023-06-01",
+   "series_last": "2026-08-14",
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "null_count": 13,
+     "fillable": 13,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "null_count": 13,
+     "fillable": 13,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 13363,
+   "name": "AK-47 | 抽象派 1337 (略有磨损)",
+   "series_days": 1171,
+   "series_first": "2023-06-01",
+   "series_last": "2026-08-14",
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "null_count": 13,
+     "fillable": 13,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "null_count": 13,
+     "fillable": 13,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 13373,
+   "name": "M4A4 | 合纵 (崭新出厂)",
+   "series_days": 1171,
+   "series_first": "2023-06-01",
+   "series_last": "2026-08-14",
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "null_count": 12,
+     "fillable": 12,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "null_count": 12,
+     "fillable": 12,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 13470,
+   "name": "亚诺（野草） | 游击队",
+   "series_days": 1171,
+   "series_first": "2023-06-01",
+   "series_last": "2026-08-14",
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "null_count": 5,
+     "fillable": 5,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "null_count": 5,
+     "fillable": 5,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 13493,
+   "name": "AK-47 | 抽象派 1337 (崭新出厂)",
+   "series_days": 1171,
+   "series_first": "2023-06-01",
+   "series_last": "2026-08-14",
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "null_count": 12,
+     "fillable": 12,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "null_count": 12,
+     "fillable": 12,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 16544,
+   "name": "格洛克 18 型 | 拉美西斯之触 (崭新出厂)",
+   "series_days": 1171,
+   "series_first": "2023-06-01",
+   "series_last": "2026-08-14",
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "null_count": 3,
+     "fillable": 3,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "null_count": 3,
+     "fillable": 3,
+     "missing_still": 0
+    }
+   }
+  },
+  {
+   "good_id": 20840,
+   "name": "印花 | MOUZ（全息）| 2024年上海锦标赛",
+   "series_days": 618,
+   "series_first": "2024-12-05",
+   "series_last": "2026-08-14",
+   "status": "ok",
+   "error": "",
+   "dbs": {
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": {
+     "null_count": 13,
+     "fillable": 13,
+     "missing_still": 0
+    },
+    "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": {
+     "null_count": 13,
+     "fillable": 13,
+     "missing_still": 0
+    }
+   }
+  }
+ ],
+ "apply": {
+  "updated_rows": 4802,
+  "backups": {
+   "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.db": "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\market.bak-insale1095-20260815-135626",
+   "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.db": "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_v2t6_win.bak-insale1095-20260815-135626"
+  }
+ }
+}
