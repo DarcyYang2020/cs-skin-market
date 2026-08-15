@@ -3740,3 +3740,33 @@ Fluxo 25→280 约 11 倍），尖顶后 3 天 -86~94%，与枪皮统计反转�
 - **caveat 修正**：CLEAN-CUR 的 panic 35.2% 中 97.5%（79/81）是 2026-05 单事件恐慌，单事件占比才是本基线最不能外推之处——已写入 `BASELINE_LEDGER.CLEAN-CUR.caveat` 与 `sync_expectancy_config` 自动生成的展示 caveat。
 - **C 通道**：胜率+期望监测继续用 HIST-FULL（全窗口），CLEAN-CUR 永远只做展示参考、不做告警（随 230 数字再强调）。
 - **同步**：terminology.md 双基线角色同步；`sync_expectancy_config` 重跑刷新展示 caveat。
+
+## BUY-1 求购直连 gate 探针 + 有条件通过裁定（2026-08-15，数据层，零引擎改动）
+
+- **探针**：`references/probe_buy1_gate.py` → `data/_exp_buy1_gate.json`。10 品（5 品 bid30 极端负值 / 3 品 panic+supply_accum / 2 品高价×低价），对比直连 `period=1095` vs 现有 `bid_history`（period=90 十分钟点）。
+- **结果**：buy_price 全局一致率 93.4%（<95% 门槛），任一品 <80% 无；buy_num 一致率 27.5%~74.7%；`bid_30d_chg` 直连口径中位数 −47.4%、与售价 30d sign 一致率 **100%**、背离 **0**。
+- **裁定（外审，有条件通过，分字段走）**：
+  - buy_price 用直连 1095 日线回填——93.4%「不通过」是**粒度伪差**（1095 日线 vs 90 十分钟末点），非口径错。
+  - bid_30d_chg 用直连重算——sign 100%、背离 0，之前的「极端负值背离售价」是 **Playwright 抓错/误判**，真相是 bid 与 sell 同步崩。
+  - buy_num 维持现有 90 十分钟点口径，不用直连日线——求购量是「盘口深度快照」、单点跳变，日级一致率测不准它，**别再拿 buy_num 做高精度日级对比**。
+- **门槛修正**：95% 硬卡废弃 → buy_price 用「日级偏差中位数 ≤5% 且无系统性单向偏」（或对比同日均值/收盘）。
+- **执行**：`references/backfill_buy1_buy_price.py` 回填 buy_price（updated=18340 / inserted=207468，范围 2023-06-27~2026-08-14，225849 行），buy_num 不动（18381 行原样）；备份 `data/market.bak-buy1-20260815-161852`；写日志 `price_history_write_log.jsonl`（mode=backfill-buy1-buy-price）。
+- **连带修正**：`references/bid-data-accumulation.md` 的「bid_30d_chg 口径不可信」历史结论作废——BID-1 求购因子被该误判挡着，现重开（仍走 A2）。
+- **未 commit**。
+
+## 历史扩窗口重拟合立项（2026-08-15，外审立项基线 cycle-refit-2026-08-15.md）
+
+- 技术方案折入 iteration-roadmap.md **v69**（引用本文，不复制粘贴）；研发答「本轮能排」（回填 + 闸门 + walk-forward，零引擎风险）。
+- 遗留待办登记（外审已裁定，登记不执行）：
+  1. `references/_buy1_draft_reviewer.md`（未跟踪草稿，结论「不通过」已过时）裁定**丢弃**；其中 2 条自检抄录存证——① buy_num 重叠日不对称（overlap 以 buy_price 为基准，buy_num 直连缺日即计 bad，系统性拉低 buy_num 一致率）；② 中位数取上中位数（`sorted[len//2]` 偶数长度非中间两值均值）。
+  2. 「每日增量 buy_price」的 `run_daily_collect.py` 改造**暂不放行**，作为本方案定稿后子项一并评审，不单独提前动生产链路。
+
+## 历史扩窗口重拟合执行（2026-08-15，数据层 + 研究层，零引擎改动）
+
+- **数据准备**：`references/backfill_cycle_window.py` 建 `data/replay_cycle_win.db`（replay_hybrid.db 拷贝），回放池 A **96 品** `sell_price period=1095` 回填 price+in_sale → price_history 120641 行（2023-06-01~2026-08-14）。
+- **质量闸门（通过）**：① 重叠段价偏差中位数 0.02%、<5% 占 98.2%、p95 3.12%；② 96 品中 93 品完整 3 年、3 品后上市（2023-11-09/2024-10-11/2024-12-05）；极值 nonpos=0；in_sale NULL 427（0.35%，集中 2025，引擎按缺失正确拦截）。
+- **重放**（`run_item_backtest_cycle_win.py`，DB 指针切 replay_cycle_win.db，全窗口 2023-11-17~2026-08-05）：**186 信号** = 拟合段 53（2023-11~2025-08）+ 验证段 133（2025-08~2026-08）。
+- **粒度伪差 caveat（PRICE-GRAIN-1 登记）**：验证段 133 < CLEAN-CUR 230，根因是 replay_cycle_win.db 用 `period=1095` 日线价（good 279 2025-09-01=32.50），CLEAN-CUR 用原采集十分钟末点价（=32.74），在售量同日完全一致——是**价格粒度差**（日线 vs 十分钟末点），非引擎退步。已登记 `PRICE-GRAIN-1` 常驻项（回放价源口径统一），触发=任何跨库对比。**cycle 回放内部自洽（拟合段+验证段同用日线价），不能与 CLEAN-CUR 比绝对值。**
+- **walk-forward 重拟合**：外审裁定「证据不足维持旧参数」但补 1 组候选钉死——周期权重吸筹 2.0→1.5（洗盘/吸筹/拉升 2.5/2.0/1.2 → 2.5/1.5/1.2），跑验证段对照。见下节结论。
+- **结论（三选一 = 证据不足，维持旧参数）**：候选（吸筹 2.0→1.5）重放 186 信号，与旧参数**信号集完全一致**（identical set，0 diff）——周期权重这一格在验证段不构成杠杆，未优于旧参数；坐实「证据不足维持」。ENGINE_VERSION 维持 v2-T9。产物 `data/_exp_cycle_refit_2026.json`。**注意**：`item_analysis.py` 已回滚（吸筹 cyc_score 恢复 2.0），未留候选改动。
+- **纪律登记（2026-08-15）**：以后重拟合候选参数一律走 `CS_ENGINE_*` 环境变量开关（先例 `CS_ENGINE_SUPPLY_ACCUM_CHG7_CAP`），**禁止直接改源码测参数再回滚**——防未来某次回滚不干净把测试参数带进生产。

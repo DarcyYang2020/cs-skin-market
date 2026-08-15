@@ -1,0 +1,24 @@
+{
+  "probe": "历史扩窗口重拟合（v69，walk-forward）",
+  "generated": "2026-08-15",
+  "baseline_doc": "references/cycle-refit-2026-08-15.md",
+  "db": "data/replay_cycle_win.db",
+  "conclusion": "证据不足，维持旧参数",
+  "engine_version": "v2-T9 维持（不动）",
+  "fit_validate_split": {"anchor": "2025-08-10", "fit": "2023-11-17~2025-08-09", "validate": "2025-08-10~2026-08-05"},
+  "old_params": {
+    "cycle_weight": "洗盘2.5 / 吸筹2.0 / 拉升1.2",
+    "total_signals": 186,
+    "fit_signals": 53,
+    "validate_signals": 133
+  },
+  "candidate": {
+    "cycle_weight": "洗盘2.5 / 吸筹1.5 / 拉升1.2",
+    "total_signals": 186,
+    "validate_signals": 133,
+    "vs_old": "完全一致（signal set identical，0 diff）"
+  },
+  "verdict": "候选（吸筹 2.0→1.5）在验证段未优于旧参数——信号集完全一致，周期权重这一格不构成杠杆；坐实「证据不足，维持旧参数」。拟合段仅 53 信号、样本稀疏，本质撑不起参数更新。",
+  "caveat": "186 < CLEAN-CUR 230 是价格粒度伪差（周期回放用 period=1095 日线价，CLEAN-CUR 用原采集十分钟末点价，同日价差 ~1-2%）；已登记 PRICE-GRAIN-1。cycle 回放内部自洽（拟合段+验证段同用日线价），不能与 CLEAN-CUR 比绝对值。",
+  "preregistered_gate": "只看验证段；新参数未在验证段显著优于旧参数 → 证据不足维持旧参数"
+}

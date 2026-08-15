@@ -6,6 +6,8 @@
 > 变更纪律：每次更新先写版本变更说明，再改映射表/批次/状态。
 
 ## 版本历史
+- **v69（2026-08-15，进行中）**：历史扩窗口重拟合技术方案（外审立项基线 `references/cycle-refit-2026-08-15.md`）——回填 2024~2025（优先 2023-06）价格+在售量到新回放库 → 质量闸门 → walk-forward 重拟合；零引擎风险、不碰四项审计。详见本文「历史扩窗口重拟合技术方案」。
+- **v68（2026-08-15，进行中）**：BUY-1 求购直连技术方案（外审立项基线 `references/optimization-initiation-2026-08-15.md`）——研发补表结构/字段映射 + 数据质量闸门阈值回滚 + 排期三块；BUY-1 10 品口径验证探针本轮可跑。详见本文「BUY-1 求购直连技术方案」。
 - **v67（2026-08-15，进行中）**：csQAQ 长历史回补 + supply_depth_missing 口径修复——确认 `/info/chart` `period=1095` 可返回 2023-06 起在售量，`key=sell_price` 同时返回 `num_data`；对两个库 NULL 行回补 4802 条 + 断档 0 值 14487 条（只更新 NULL 与断档 0 值、保留真实 0）。`pipeline/db.supply_depth_missing` 改为仅以 NULL 判定缺失。CLEAN-CUR 升级为 v2-T9 / 230 信号（panic 81 / deep_value 33 / accumulate 116）；官方 HIST-FULL 317 仍冻结不覆盖。详见 decision-log「v2-T9 csQAQ 长历史回补 + supply_depth_missing 口径修复」与「v2-T9 0-value gap 回补 + CLEAN-CUR 297→230」。
 - **v66（2026-08-15，进行中）**：LIQ-RATIO-1 方向证伪收口 + EXIT-9/10/11 ATR 网格不立项——相对挂单率横截面反向、时序无稳定增量；ATR stop/trailing 双基线均未过门槛，维持 hold21；登记两轮 EXIT 门槛语义统一待定项。详见 decision-log「LIQ-RATIO-1 P-D-0/P-D-1：方向证伪」「EXIT-9/10/11 ATR 自适应止损网格」。
 - **v65（2026-08-14，已完成）**：v2-T8 真基线重跑 + below_floor 吸筹旁路修复——`compute_fusion_decision` 吸筹周期 watch→buy 尊重 `liquidity_filtered`，`_deep_dip_transform` 加防御守卫；真 v2-T8 回放 149 信号（三族闭合 panic 85 / deep_value 18 / accumulate 46，panic 单事件占 57.0%），same_fail（沙漠之鹰|指挥）消失；CLEAN-CUR 改为 `data/_exp_v2t8_win_replay.json` / v2-T8 / 149。详见 decision-log「v2-T8 真基线重跑 + below_floor 吸筹旁路修复」。
@@ -604,8 +606,65 @@ eferences/refit_pipeline.py → data/refit_pipeline_report.json（A2 三件套�
 ### 常驻数据治理项（DATA-GOV-1）
 
 - `in_sale_count` 的「缺失（NULL/断档）」与「单日脏值」统一治理：读侧统一 missing 标记 + 写侧单日跳变闸门；目标让 supply_depth / 地板 / 供给收缩三处消费同一份已治理序列。触发条件：再次发现单日在售量跳变/污染或任一消费点因脏值判定反转时启动；启动后必须回测先行 + 三件套 + 双基线复跑 sync。
+- `PRICE-GRAIN-1`（2026-08-15 登记）：**回放价源口径统一（日线 vs 十分钟末点）**。已在三处冒头：BUY-1 buy_price 粒度伪差（93.4%「不通过」）、cycle 回放 186 vs CLEAN-CUR 230、B-3 在售量末点/中位偏差。触发复验 = 任何跨库对比（cycle vs CLEAN-CUR、或未来任何新回放）；根治方向 = 回放价源统一到单一粒度（日线或十分钟末点），未根治前跨库比数字必须挂粒度 caveat。
 
 ### EXIT 门槛语义待定
 
 - `Calmar 提升 ≥15%` 应统一为 walk-forward 折上 Calmar 均值的相对提升；样本不足无 fold 时改用「全局 Calmar 绝对差 ≥1.0 且前后半段方向一致」，禁止与全局相对提升混用。
-- 队列状态：本批专项候选（DECISION-6 → POOL-2 → LIQ-RATIO-1 → EXIT-9/10/11）已全部走完；转入自然积累，等待 A 通道独立事件 ≥3 或 B 通道 260 天（约 2027-04）。
+- 队列状态：本批专项候选（DECISION-6 → POOL-2 → LIQ-RATIO-1 → EXIT-9/10/11）已全部走完；转入自然积累，等待 A 通道独立事件 ≥3 或 B 通道 260 天（约 2027-04）。BUY-1 求购直连见下节（v68，本轮启动）。
+
+## BUY-1 求购直连技术方案（2026-08-15，外审立项基线 optimization-initiation-2026-08-15.md）
+
+> 范围/红线/门槛基准 = `references/optimization-initiation-2026-08-15.md`（本文不复制粘贴，仅引用；方向/优先级/不做清单不重议）。研发补三块：① 表结构字段映射 ② 数据质量闸门阈值回滚 ③ 排期。
+
+### ① 表结构与字段映射
+- 落库：复用现有 `bid_history`（`UNIQUE(date, good_id)`，`source='csqaq_direct'`，`platform=2`），不新建表（立项书「新表/补 bid_history」取「补」）。
+- 通道：`info/chart key=buy_price / buy_num platform=2 period=1095`；现有 `collect_data_reserve_p0.py::_chart_body` 仅需 period `"90"→"1095"`（全量回填用 1095，每日增量沿用 90）。
+- 映射：buy_price `main_data` → `_series_by_date` 按日聚合 → `buy_price_last/min/max/mean`；buy_num `main_data` → `buy_num_last/min/max/mean`；`point_count`=当日点数；与现有 `aggregate_bid` 同构。
+- 边界：不碰 `items`/`price_history`，不接引擎，不采 `turnover_number`（红线）。
+
+### ② 数据质量闸门阈值与回滚（2026-08-15 门槛修正）
+- ~~一致率 ≥95% 硬卡~~ → **修正判据**：buy_price 直连 1095 是「日线」，现有 bid_history 是「period=90 十分钟点取末点」，两者本不同源，95% 硬卡会伪不通过。正确判据 = **日级偏差中位数 ≤5% 且无系统性单向偏**（或改对比同日均值/收盘而非末点）。
+- 通过 = buy_price 日级偏差中位数 ≤5% 且无系统性单向偏，且 `bid_30d_chg` 不再极端背离 → 全量回填 + 每日增量。
+- 有条件通过 = 价格一致但 `bid_30d_chg` 仍背离 → 悠悠自身口径问题，仅快照。
+- 不通过 = 偏差中位数 >5% 或系统性单向偏 → 不同源，暂停查明。
+- 回滚：全量回填前备份 `bid_history`（`data/*.bak-buy1-*`）；通过才写回；写日志 `price_history_write_log.jsonl`（mode=backfill-buy1-buy-price）。
+- 判定输出：`data/_exp_buy1_gate.json`（10 品直连 vs bid_history 对照表 + 三档结论）。
+
+### ③ 排期
+- **BUY-1 10 品探针（本轮可跑）**：`references/probe_buy1_gate.py`，10 品 × 2 次 API ≈ 30s，输出 `_exp_buy1_gate.json`；脚本编写 + 跑通 < 1 小时。
+- 全量回填（gate 通过后）：202 品 × 2 次 API ≈ 6-10 min（限流 1.1-1.5s）。
+- 每日增量（后续）：只增量 buy_price（直连），buy_num 维持现状；挂 `run_daily_collect.py` 低峰任务。
+
+### ④ 裁定与执行结果（2026-08-15，外审裁定「有条件通过，分字段走」）
+- **buy_price**：用直连 1095 日线回填 bid_history（buy_price_last/min/max/mean + point_count=1）——已执行：`references/backfill_buy1_buy_price.py`，updated=18340 / inserted=207468，范围 2023-06-27~2026-08-14（225849 行）；**buy_num 不动**（18381 行原样保留，老日期 buy_num=NULL）。备份 `data/market.bak-buy1-20260815-161852`。
+- **bid_30d_chg**：用直连口径重算（研究层 buy_price 可靠后派生）——10 品 sign 一致率 100%、背离 0；**历史「bid_30d_chg 极端负值背离售价=不可信」是误判，真相是 bid 与 sell 同步崩**，BID-1 重开。
+- **buy_num**：维持现有 period=90 十分钟点口径，不用直连日线——一致率 27.5%~74.7%，因求购量是「盘口深度快照」、单点跳变，任何日级一致率都测不准它；**别再拿 buy_num 做高精度日级对比**。
+- 状态：未 commit、未动引擎、未碰红线。
+
+### 10 品选样（当前快照，探针按准则自动选、不写死）
+- 5 品 = bid_30d_chg 极端负值：good 1619（MP9 橡皮涂装 −60.5%）/ 8（Tec-9 地下水 −53.8%）/ 1044（加利尔AR 冰河涂装 −53.7%）/ 24（沙漠之鹰 腐蚀 −53.5%）/ 28（FN57 生化泄漏 −53.1%）。
+- 3 品 = panic/supply_accum 高贡献（replay 信号 top3，join items→good_id 后确认有 bid_history）：M4A4 全球攻势 / USP 消音版 枪响人亡 / M4A1消音版 机械工业。
+- 2 品 = 高价×低价：高价 good 91（AK-47 水栽竹，buy_price 27010）/ 低价 good 13（MP9 水灵，buy_price 4.5）。
+
+## 历史扩窗口重拟合技术方案（2026-08-15，外审立项基线 cycle-refit-2026-08-15.md）
+
+> 范围/红线/门槛基准 = `references/cycle-refit-2026-08-15.md`（本文不复制粘贴，仅引用）。研发补三块：① 数据准备 ② walk-forward 重拟合 ③ 排期。红线：不采成交量/租赁、不把回填当 OOS、不推翻四项审计、新参数必须 bump ENGINE_VERSION + 全链路 sync。
+
+### ① 数据准备（回填 price+in_sale 到新回放库）
+- **新回放库**：`data/replay_cycle_win.db`（复用 `replay_hybrid.db` 的 market_index 997 根 2023-11-17~2026-08-09 + 生产 items 表 + 回填 price_history），不污染生产 `market.db` 90 天滚动。
+- **回填**：扩展 `backfill_csqaq_long_history.py` 骨架——`key=sell_price` `period=1095` 同时取 `main_data`（价格→price_rmb）+ `num_data`（在售量→in_sale_count），按日对齐，回填到 2024-01-01（优先 2023-06）。**回填对象 = 回放池 A 96 品**（replay_v2t6_win.db 中 first_date≤2025-08-10 且排除水栽竹/珊瑚树），非全库 362 品、更非 9698。
+- **质量闸门**（同 BUY-1 那套）：日级偏差、断档 0/NULL 清零、极值审计；过闸才进重拟合。
+
+### ② walk-forward 重拟合（核心，防过拟合）
+- **切分**：拟合段 2023-06~2025-08，验证段 2025-08~2026-08。**切点锚定 2025-08-10**（价格历史真实起点 = 牛→崩分界），**不用 `ANCHOR_RATIO=0.7` 机械比例**——否则验证段会混入拟合段见过的数据，walk-forward 作废。
+- **重拟合对象**（只动已定论参数里允许动的）：周期权重、分级仓位、族级阈值；**不碰四项审计**（周期反转 / panic 分级 / 概率去 z / 供给降仓证伪）。
+- **判定**：north_star（期望 + Calmar/maxDD，胜率下限）+ 三件套（信号数/期望/风险调整后收益增量）+ 前后半段一致 + 置换检验。
+- **反证检查（核心纪律）**：只看验证段、不看拟合段；必须额外报「旧参数 vs 新参数在验证段」直接对照——新参数未在验证段显著优于旧参数 → 结论=证据不足维持旧参数；拟合段提升多少都不算数（那是过拟合）。
+- **产出**：`data/_exp_cycle_refit_2026.json`（拟合段 vs 验证段参数对比 + 验证段胜率/Calmar + 三选一结论：维持/更新(bump+A2+sync)/证据不足维持）。
+
+### ③ 排期
+- 回填 + 质量闸门（数据准备）：~2-3h（**96 品**回放池 A × 1 次 API，限流 ~1.5s ≈ 3min + 闸门脚本）。
+- replay 重放 + walk-forward 重拟合：~3-5h（重放 96 品 ≈ 5-10min + 拟合/验证切分 + 参数网格 + 置换）。
+- 合计：本轮可排，约 1 个工作日；零引擎风险（新库独立），随时可中断。
+- **纪律**：候选参数一律走 `CS_ENGINE_*` 环境变量开关（先例 `CS_ENGINE_SUPPLY_ACCUM_CHG7_CAP`），禁止直接改源码测参数再回滚。
