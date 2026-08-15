@@ -548,6 +548,58 @@ def t_p1_supply_accumulation():
      ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision) = orig
 check('P1-0 supply-contraction accumulation buy + gate/dedup/survive', t_p1_supply_accumulation)
 
+def t_xishou_mid_family():
+    """O3（2026-08-15）惜售中段族：CS_ENGINE_XISHOU_MID 开关钉死——默认关（不触发）、开时
+    供缩+5日跌<-3%+中段分位触发 buy，且 supply_accum(|chg7|≤3) 因价跌不抢占。"""
+    import os
+    from types import SimpleNamespace
+    import pipeline.item_analysis as ia
+    pos = SimpleNamespace(percentile_90d=45.0, zscore_90d=-0.3, high_90d=100.0,
+                          low_90d=50.0, mean_90d=80.0, median_90d=82.0,
+                          current_price=55.2, data_points=90, valuation_tier='fair')
+    orig = (ia._analyze_position, ia.compute_sentiment_score, ia.compute_sentiment_factor,
+            ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision)
+    ia._analyze_position = lambda prices: pos
+    ia.compute_sentiment_score = lambda: 50
+    ia.compute_sentiment_factor = lambda: 0.0
+    ia.event_risk_coefficient = lambda: 1.0
+    ia.compute_micro_th = lambda prices: 30
+    def fake_fd(*a, **k):
+        return SimpleNamespace(action='watch', action_label='🟡 观望', action_detail='',
+                               deduction_sources=[], zone='fair', zone_label='合理',
+                               liquidity_filtered=False, percentile_90d=45.0,
+                               raw_th_score=40, corrected_th_score=40, position_limit=0.0)
+    ia.compute_fusion_decision = fake_fd
+    supply = [100] * 23 + [60] * 7        # s7/s30 = 60/90.7 ≈ 0.66 收缩
+    # 5 日跌 -4.9%、7 日跌 -3.5%（chg7 超 3 → supply_accum 不抢占）
+    prices = [60.0] * 80 + [60.0, 59.5, 59.0, 58.5, 58.0, 57.6, 56.8, 56.4, 56.0, 55.6, 55.2, 54.8]
+    kw = dict(name='Test', supply_hist=supply, market_pct_90d=50.0,
+              market_cycle='volatile', market_zscore=0.0, market_th_score=50,
+              market_30d_change=-5.0, market_drop21=-3.0, recent_buy_dates=[], signal_date='2026-03-01')
+    old = os.environ.get("CS_ENGINE_XISHOU_MID")
+    try:
+        # 1) 默认关：不触发，保持 watch
+        os.environ.pop("CS_ENGINE_XISHOU_MID", None)
+        res = ia.run_item_analysis(prices=prices, **kw)
+        assert res.fusion_decision['action'] == 'watch', res.fusion_decision['action']
+        assert 'xishou_mid_oversold' not in res.fusion_decision['deduction_sources']
+        # 2) 开：触发 buy，来源 xishou_mid_oversold，仓位 0.10
+        os.environ["CS_ENGINE_XISHOU_MID"] = "1"
+        res = ia.run_item_analysis(prices=prices, **kw)
+        fd = res.fusion_decision
+        assert fd['action'] == 'buy', fd['action']
+        assert 'xishou_mid_oversold' in fd['deduction_sources'], fd['deduction_sources']
+        assert '惜售' in fd['action_label'], fd['action_label']
+        assert fd['position_limit'] == 0.10, fd['position_limit']
+    finally:
+        if old is None:
+            os.environ.pop("CS_ENGINE_XISHOU_MID", None)
+        else:
+            os.environ["CS_ENGINE_XISHOU_MID"] = old
+        (ia._analyze_position, ia.compute_sentiment_score, ia.compute_sentiment_factor,
+         ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision) = orig
+check('O3 惜售中段族 CS_ENGINE_XISHOU_MID 开关（默认关）', t_xishou_mid_family)
+
 print('[Batch Scan: 信号提取]')
 def t_extract_signals():
     from pipeline.batch_scan import extract_signals

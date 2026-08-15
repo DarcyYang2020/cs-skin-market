@@ -3981,3 +3981,12 @@ Fluxo 25→280 约 11 倍），尖顶后 3 天 -86~94%，与枪皮统计反转�
 - **O2 深值提纯阶段0**（`probe_o2_deep_value_purify.py` → `data/_exp_o2_deep_value_purify.json`）：cycle 186 的 21 条 deep_value 逐条列 spread5d/supply30d——干净 13 条 win14 38.5%/avg14 +14.95（其中 2024-06-26/27 一簇 4 条全负，拖低胜率），事件 8 条 win14 87.5%/+24.95。**单变量（spread 收窄/供给不扩）无干净分离，n=13 不足以落地过滤 → 登记待样本（干净 n≥30 时重开提纯）。**
 - **O4 spread 陷阱指纹软标注**（`webapp/analysis_service.py::_spread_trap_note`）：buy 信号时查 market.db bid_history（3 年直连回填）+ price_history，算 5 日价差变化，>+8.9pp 时在报告研究提示区追加「陷阱指纹候选」警告。**纯展示层、不改 action/limit，任何异常返回 None 不阻断分析。**
 - **验证**：`python tests/test_smoke.py` 110 passed / 0 failed / 0 skipped；pyflakes 0 告警。
+
+## O3 惜售中段腿 A2 通过 + 候选族落地（2026-08-15，引擎行为变更待 bump v2-T11）
+
+- **A2 阶段1（数据层，`probe_o3_a2.py` → `data/_exp_o3_a2.json`）**：候选族条件=供缩 s7≤0.85s30 且 s30>0 且 5日价跌<-3% 且 pct90∈(20,60]，加地板 200/100；walk-forward 切 2025-08-10；事件去簇 ±3 天；对照=同段中段无条件基线；置换=中段全事件打乱标签 500 次。
+- **结果**：拟合段 cand n=21 win14 52.4%/+6.01 vs base 35.8%/−0.37；**验证段 cand n=27 win14 59.3%/+10.77 vs base 38.8%/+1.41（超额 win +20.5pp / avg +9.36pp）**；置换 p_win=0.018 / p_avg=0.034；五门全过（n≥15 / win≥base+8pp / avg≥base+3pp / 方向一致 / p<0.05）。
+- **候选族落地（引擎层）**：`item_analysis.py` 新增 SignalFamily `xishou_mid`（priority 25 / limit 0.10 / guards=supply_expansion / 开关 `CS_ENGINE_XISHOU_MID` 默认 "0"）；F 新增 `chg5`（current vs 6 个交易日前的 5 日动量）；`tests/test_smoke.py` 新增 `t_xishou_mid_family`（默认关不触发 + 开时触发 buy 0.10 + supply_accum 因价跌不抢占）；`signal-family-registry.md` 注册。
+- **待引擎级回放验证**：CS_ENGINE_XISHOU_MID=1 跑 cycle 回放 → 看新族信号数与组合贡献；正贡献则默认开会 + bump v2-T11 + 全链路 sync。
+- **引擎级回放验证（200 信号，xishou on）**：惜售中段族 15 信号（全 buy / limit 0.10），win14 73.3% / avg14 +10.93、win30 71.4% / avg30 +33.49——单族本身强。**但组合级对照（cap0.8/hold21/2%）**：v2-T11 候选（200 信号）+321.43%/−14.59%/Calmar 22.03 vs v2-T10 基线（O1 both，186 信号）+324.22%/−13.89%/Calmar 23.34——**组合级 −2.79pp / maxDD −0.7pp / Calmar −1.31，非正贡献**（cap 0.8 下与后置族抢占资金 + 15 条中含 3 条负信号：SSG 蓝色云杉 −16.5、AK 深海复仇 −18.0、SSG 炎龙 −7.7 的 30d）。
+- **最终裁定：候选族注册但默认关（CS_ENGINE_XISHOU_MID 默认 "0"），不默认开、不 bump 版本**。单族 alpha 成立（A2 五门全过）但组合级整合无增量；留作注册候选，待未来条件（cap 冲突缓解/负尾过滤/样本扩大）复验。回放产物恢复无 env 的 v2-T10 口径（186 信号）。

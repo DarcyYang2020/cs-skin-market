@@ -364,6 +364,7 @@ PARAM_REGIME = {
         "v2-T8（2026-08-14）：吸筹周期 watch->buy 尊重 liquidity_filtered，并给深度回调低吸变换加防御守卫，堵住 below_floor 经 cycle_accumulation_boost 重新升回 buy 的残留旁路（外审确认 same_fail=1：沙漠之鹰|指挥 2026-06-20）；v2-T8）",
         "v2-T9（2026-08-15）：csQAQ period=1095 回补 2026-02~04 及历史 in_sale NULL 断档（4802 行）+ 断档 0 值（14487 行，仅更新 NULL 与断档 0 值，保留真实 0）；supply_depth_missing 改为仅以 NULL 判定缺失。CLEAN-CUR 基线 150→297(NULL-only 中间)→230（panic 81 / deep_value 33 / accumulate 116，摘除 84 条伪供给收缩信号），仍需按 BASELINE_LEDGER 双口径展示；v2-T9）",
         "v2-T10（2026-08-15，O1 干净数据仓位网格落地）：supply_accum 0.10→0.15、deep_value 0.15→0.20。依据=cycle 186（3 年干净日线）组合模拟 cap0.8/hold21/2%：baseline +277.36%/−15.38%/Calmar18.03 → both +324.22%/−13.89%/Calmar23.34；单变体 supply_accum0.15 +296.56%/−14.64%、deep_value0.20 +290.44%/−12.63%；前后半段（2025-08-10 切）方向一致（front +16.22→+24.29、back +220.53→+235.72）。旧 2026-08-10「supply_accum 降仓证伪」建立在伪零污染数据上，P2 证实 supply_accum 为稳族（干净 23 条 +13.18）后重验通过；恐慌族仍锁参（event_sensitivity）",
+        "xishou_mid 惜售中段候选族注册（2026-08-15，默认关 CS_ENGINE_XISHOU_MID=0）：O3 A2 五门全过（验证段超额 win+20.5pp/avg+9.36pp，置换 p=0.018/0.034），引擎级单族 win14 73.3%/+10.93；但组合级整合 −2.79pp（cap0.8 抢占+3 负信号）→ 不默认开、不 bump 版本，留作注册候选待复验",
 
     ],
     "monitors": [

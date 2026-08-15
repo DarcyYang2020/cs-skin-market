@@ -1129,6 +1129,34 @@ SIGNAL_FAMILIES = (
         scenario="供给收缩期（中性企稳/弱市观望桶）；强牛段(sent<40+大盘TH≥60)增强",
         failure_signal="假挂单/对倒虚缩（在售量口径失真，CS 庄家操纵）；泵后横盘追高段（chg8>3% 26 信号 42.3% 胜率已剔除）；开箱/赛事事件供给突变",
     ),
+    SignalFamily(
+        key="xishou_mid",
+        label="🟢 惜售中段·超跌反弹·分批建仓",
+        priority=25,
+        limit=0.10,
+        trigger=lambda F: (
+            os.environ.get("CS_ENGINE_XISHOU_MID", "0") == "1"
+            and len(F["supply_hist"]) >= 30 and len(F["prices"]) >= 8
+            and not (F["survive"] > 0 and F["survive"] < 3000)
+            and F["s30"] is not None and F["s30"] > 0
+            and F["s7"] is not None and F["s7"] <= F["s30"] * 0.85
+            and F["chg5"] is not None and F["chg5"] < -3
+            and F["pct"] is not None and 20 < F["pct"] <= 60
+            and not (F["sent"] < 40 and F["market_th"] < 45)
+            and not _dedup_hit(F["recent_buy_dates"], F["signal_date"])
+        ),
+        buckets=("中性企稳", "弱市观望"),
+        guards=("supply_expansion",),
+        detail=lambda F: (
+            f"惜售中段(供缩s7≤0.85s30+5日跌{F['chg5']:+.1f}%+分位{F['pct']:.0f}%)·"
+            f"A2验证14d超额win+20.5pp/avg+9.36pp(置换p=0.018/0.034)·轻仓0.10"
+        ),
+        sources=("xishou_mid_oversold",),
+        hypothesis="供缩(s7≤0.85s30)+价跌(5日<-3%)+中段分位(pct20~60)=下跌惜售/超跌反弹；O3 A2 验证段去簇 27 win14 59.3%/avg14 +10.77 vs 中段无条件基线 38.8%/+1.41，置换 p=0.018/0.034",
+        counterparty="恐慌性抛售/止损盘（中段分位非深跌，卖方惜售遇反弹）",
+        scenario="供缩+价跌的中段回调（pct 20~60 为引擎当前无覆盖带）；拟合/验证段方向一致",
+        failure_signal="供缩+价跌后继续阴跌（惜售转恐慌）；地板以下无深度；供给扩张>5%",
+    ),
 )
 
 SIGNAL_FAMILY_BY_KEY = {fam.key: fam for fam in SIGNAL_FAMILIES}
@@ -1555,6 +1583,7 @@ def decide_fusion_signal(
         "s7": sum(supply_hist[-7:]) / 7 if len(supply_hist) >= 7 else None,
         "s30": sum(supply_hist[-30:]) / 30 if len(supply_hist) >= 30 else None,
         "chg7": (current / prices[-8] - 1) * 100 if len(prices) >= 8 else None,
+        "chg5": (current / prices[-6] - 1) * 100 if len(prices) >= 6 else None,
         # T4（2026-08-10）：8 日动量（current vs 8 个交易日前），供吸筹族泵后横盘门使用
         "chg8": (current / prices[-9] - 1) * 100 if len(prices) >= 9 else None,
         "dd30": (current / max(prices[-30:]) - 1) * 100 if len(prices) >= 30 else 0.0,
