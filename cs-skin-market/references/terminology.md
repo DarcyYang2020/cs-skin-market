@@ -4,7 +4,7 @@
 
 ## 双基线
 - `HIST-FULL = 317`：历史全窗口冻结基线；`data/item_backtest_full_2025.json`，v2-T4/T5，不可复现，作为 C 通道监测主口径。
-- `CLEAN-CUR = 149`：当前引擎回调段基线；`data/_exp_v2t8_win_replay.json`，v2-T8，仅展示参考。
+- `CLEAN-CUR = 230`：当前引擎回填后干净基线（NULL + 0-value gap 回填）；`data/_exp_v2t9_win_replay.json`，v2-T9，仅展示参考。
 - 引用数据定义请取 `pipeline/config.py:BASELINE_LEDGER`；禁止直接使用 290/140/163/150 等中间数作为基线。
 
 ## 信号族分类
@@ -17,9 +17,9 @@
 - EXIT 门槛待定语义：`Calmar 提升 ≥15%` 应统一为 walk-forward 折上 Calmar 均值的相对提升；样本不足无 fold 时改用全局 Calmar 绝对差 ≥1.0 且前后半段方向一致。
 
 ## 使用规则
-- 活跃文档（AGENTS / PROJECT_STRUCTURE / roadmap / 研究报告）不得裸写 317 / 149 / accumulate 等口径，应指向本文或代码唯一事实源。
+- 活跃文档（AGENTS / PROJECT_STRUCTURE / roadmap / 研究报告）不得裸写 317 / 230 / accumulate 等口径，应指向本文或代码唯一事实源。
 - `decision-log.md` 为历史账本，原文不改；其中旧口径仅代表当时判断，不作为当前基线。
 
 ## 强制规则
 
-- 任何新文档/新代码不得裸写 317 / 149 / accumulate 等口径，必须指向本文或代码唯一事实源。
+- 任何新文档/新代码不得裸写 317 / 230 / accumulate 等口径，必须指向本文或代码唯一事实源。

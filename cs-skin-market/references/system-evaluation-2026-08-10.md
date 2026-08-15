@@ -227,7 +227,7 @@
 - 系统级主指标贯穿 ✅（2026-08-14，见 decision-log「系统级主指标贯穿」）：`PARAM_REGIME.north_star` 固定「期望+Calmar/maxDD 为主指标、胜率为下限」，期望卡展示策略/池内等权/大盘的 active 风险调整后收益，`/checkup` 增加主指标摘要与月度期望列；收益增强器路线先走 EXIT-1 / #5-down / 族期望加权仓位的 A2 验证，不直接改引擎。零引擎参数，冒烟 104/0/0。
 - EXIT-1 正式 A2 关闭 ✅（2026-08-14，见 decision-log「EXIT-1 正式 A2 结果」）：317 信号、3 折 walk-forward + 事件级去簇 + 1000 次置换；hold21 基线 Calmar 7.68，所有 trailing/chandelier/regime 变体均未过门槛，退出规则维持 hold21。零引擎参数。
 - 周期权重 Calmar 重评分 + #10 双轨收敛 ✅（2026-08-14，见 decision-log「周期权重 Calmar 重评分 + #10 双轨收敛」）：周期相位 Calmar 洗盘 5.35 > 吸筹 3.19 > 拉升 1.07，支持现行权重反转；`market_context` 统一接受 `[(date,value)]` 与 `[value]` 两种口径，消除旧值列表路径 fallback traceback。零引擎参数，冒烟 104/0/0。
-- 双基线展示/同步落地 ✅（2026-08-14，见 decision-log「双基线落地：HIST-FULL / CLEAN-CUR」）：HIST-FULL（官方 317，v2-T4/T5，含缺失深度污染）与 CLEAN-CUR（149，v2-T8，panic 单事件占 57.0%）并存；expectancy/benchmark/attribution/J-3 全部挂基线标签，C 通道监测主口径 HIST-FULL、CLEAN-CUR 仅展示参考。零引擎参数。
+- 双基线展示/同步落地 ✅（2026-08-15，见 decision-log「v2-T9 csQAQ 长历史回补 + supply_depth_missing 口径修复」）：HIST-FULL（官方 317，v2-T4/T5，含缺失深度污染）与 CLEAN-CUR（230，v2-T9，panic 族占 35.2%）并存；expectancy/benchmark/attribution/J-3 全部挂基线标签，C 通道监测主口径 HIST-FULL、CLEAN-CUR 仅展示参考。
 
 ## 附录：与「评估指标体系第一性审计」的边界
 

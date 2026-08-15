@@ -6,6 +6,7 @@
 > 变更纪律：每次更新先写版本变更说明，再改映射表/批次/状态。
 
 ## 版本历史
+- **v67（2026-08-15，进行中）**：csQAQ 长历史回补 + supply_depth_missing 口径修复——确认 `/info/chart` `period=1095` 可返回 2023-06 起在售量，`key=sell_price` 同时返回 `num_data`；对两个库 NULL 行回补 4802 条 + 断档 0 值 14487 条（只更新 NULL 与断档 0 值、保留真实 0）。`pipeline/db.supply_depth_missing` 改为仅以 NULL 判定缺失。CLEAN-CUR 升级为 v2-T9 / 230 信号（panic 81 / deep_value 33 / accumulate 116）；官方 HIST-FULL 317 仍冻结不覆盖。详见 decision-log「v2-T9 csQAQ 长历史回补 + supply_depth_missing 口径修复」与「v2-T9 0-value gap 回补 + CLEAN-CUR 297→230」。
 - **v66（2026-08-15，进行中）**：LIQ-RATIO-1 方向证伪收口 + EXIT-9/10/11 ATR 网格不立项——相对挂单率横截面反向、时序无稳定增量；ATR stop/trailing 双基线均未过门槛，维持 hold21；登记两轮 EXIT 门槛语义统一待定项。详见 decision-log「LIQ-RATIO-1 P-D-0/P-D-1：方向证伪」「EXIT-9/10/11 ATR 自适应止损网格」。
 - **v65（2026-08-14，已完成）**：v2-T8 真基线重跑 + below_floor 吸筹旁路修复——`compute_fusion_decision` 吸筹周期 watch→buy 尊重 `liquidity_filtered`，`_deep_dip_transform` 加防御守卫；真 v2-T8 回放 149 信号（三族闭合 panic 85 / deep_value 18 / accumulate 46，panic 单事件占 57.0%），same_fail（沙漠之鹰|指挥）消失；CLEAN-CUR 改为 `data/_exp_v2t8_win_replay.json` / v2-T8 / 149。详见 decision-log「v2-T8 真基线重跑 + below_floor 吸筹旁路修复」。
 - **v64（2026-08-14，已完成）**：族分类唯一事实源 + 中间数废弃——新增 `pipeline/config.py:SIGNAL_FAMILY_TAXONOMY`，`panic / deep_value / accumulate` 三展示键与六细族映射唯一化，j1/j2/sync/attribution/benchmark 全部改为从该表取定义；290/140/163/149 显式标为中间推导、已废弃（后续 v65 把 149 转为 CLEAN-CUR 真基线、150 进入废弃中间数）。详见 decision-log「族分类唯一事实源 + 中间数废弃」。
@@ -553,9 +554,9 @@ eferences/refit_pipeline.py → data/refit_pipeline_report.json（A2 三件套�
 ## DECISION-6 收口（2026-08-14）
 
 - 四条硬验收：NULL/断档与真实 0 分流 ✅；翻转双数=生产 0 / 回放 150 ✅；supply_accum 免疫未动 ✅；冒烟新增边界测试且 106 passed ✅。
-- 重放产物：`data/_exp_guard_coverage_decision6.json` / `_exp_aligned_replay_decision6.json` / `data/_exp_decision6_audit.json`；官方 317 因数据保留不可重跑，已冻结为 HIST-FULL（v2-T4/T5，仍为 C 通道监测主口径）；新增 CLEAN-CUR（149 信号，v2-T8）仅展示参考。`sync_expectancy_config.py` 已改为双基线同步。
-- 队列重排：`POOL-2` 原「仅 4 条翻转」结论作废，必须在 CLEAN-CUR（149 信号，v2-T8）口径上复核；之后 `LIQ-RATIO-1` → `EXIT-9/10/11`。全部研究在 HIST-FULL vs CLEAN-CUR 双口径报告。
-- **中间数废弃**：`290`（DECISION-4 对齐中间 buy）、`140`（DECISION-6 翻转中间 buy）、`163`（v2-T6 干净回放含 below_floor 泄漏）、`149`（v2-T7 估算）均为中间推导，**已废弃，不得再作为基线**；唯一基线=HIST-FULL 317 / CLEAN-CUR 149（v2-T8），见 `config.BASELINE_LEDGER.deprecated_intermediates`。
+- 重放产物：`data/_exp_guard_coverage_decision6.json` / `_exp_aligned_replay_decision6.json` / `data/_exp_decision6_audit.json`；官方 317 因数据保留不可重跑，已冻结为 HIST-FULL（v2-T4/T5，仍为 C 通道监测主口径）；当时新增 CLEAN-CUR（149 信号，v2-T8）仅展示参考。`sync_expectancy_config.py` 已改为双基线同步。v67 后 CLEAN-CUR 已升级为 230 / v2-T9。
+- 队列重排：`POOL-2` 原「仅 4 条翻转」结论作废，必须在 CLEAN-CUR 口径上复核；之后 `LIQ-RATIO-1` → `EXIT-9/10/11`。全部研究在 HIST-FULL vs CLEAN-CUR 双口径报告。
+- **中间数废弃**：`290`（DECISION-4 对齐中间 buy）、`140`（DECISION-6 翻转中间 buy）、`163`（v2-T6 干净回放含 below_floor 泄漏）、`149`（v2-T7 估算）均为中间推导，**已废弃，不得再作为基线**；当前唯一基线=HIST-FULL 317 / CLEAN-CUR 230（v2-T9），见 `config.BASELINE_LEDGER.deprecated_intermediates`。
 
 
 ## v2-T8 真基线重跑 + 残留旁路修复（2026-08-14）
@@ -564,6 +565,15 @@ eferences/refit_pipeline.py → data/refit_pipeline_report.json（A2 三件套�
 - 真 v2-T8 回放（`data/replay_v2t6_win.db` → `data/_exp_v2t8_win_replay.json`）：**149 信号**，三族闭合 panic 85 / deep_value 18 / accumulate 46；panic 单事件占 57.0%（仍集中于 2026-05 单事件），same_fail（沙漠之鹰|指挥）消失。
 - CLEAN-CUR 组合：strategy total +257.16% / maxDD −7.61%；attribution accumulate +129.95pp(n=46) / deep_value +83.80pp(n=18) / panic +65.14pp(n=85)。
 - 验证：`sync_expectancy_config` / `benchmark_compare` / `portfolio_attribution` / `j1_event_counts` / `j2_channel_monitor` 全链路重跑；`tests/test_smoke.py` 108 passed / 0 failed / 0 skipped；pyflakes 无新增告警。
+
+## v2-T9 csQAQ 长历史回补 + supply_depth_missing 口径修复（2026-08-15）
+
+- 验证：`POST https://api.csqaq.com/api/v1/info/chart` `period=1095` 可返回 2023-06-01 起 1171 根日线；`key=sell_price` 的 `num_data` 完整覆盖 2026-02~04 与历史 NULL。
+- 回补：`references/backfill_csqaq_long_history.py` 对 `market.db` + `replay_v2t6_win.db` 仅更新 `in_sale_count IS NULL` 行，共 4802 条，保留真实 0；备份 `data/*.bak-insale1095-20260815-*`。
+- 引擎行为变更：`pipeline/db.supply_depth_missing` 改为仅以 `None` 判定缺失；日期断档不再强制 missing。`ENGINE_VERSION v2-T8→v2-T9`。
+- CLEAN-CUR：`data/_exp_v2t9_win_replay.json` / v2-T9 / 230 信号；action_label 展示键 panic 81 / deep_value 33 / accumulate 116（细族 panic_resonance 33 / panic_easing 48 / deep_value 33 / supply_accum 56 / deep_dip 32 / base 28）。panic 族占 35.2%，其中 97.5% 集中在 2026-05 单事件簇。
+- 组合标尺：CLEAN-CUR cap0.8 / hold21 / 2% 费，strategy total +262.30% / maxDD −14.17%；HIST-FULL 仍 +201.06% / −9.13%。
+- 归档：`data/_exp_v2t8_win_replay_deprecated_20260815.json`（150 中间产物）；旧 149 只作历史推导。
 
 ## 专项工作底稿归档（2026-08-15，工程卫生；无版本号变更）
 
@@ -574,7 +584,8 @@ eferences/refit_pipeline.py → data/refit_pipeline_report.json（A2 三件套�
 
 - `LIQ-RATIO-1`：相对挂单率方向证伪（2026-08-15），不立项。P1（前瞻观察仅在新证据后复核）。
 - `POOL-1`：双层淘汰口径并存、`notes` 自由文本不可回滚。P1。
-- `POOL-2`：`supply_depth` 取最新一条，单日脏值三处漂移。P0/P1（已转 DATA-GOV-1 常驻治理）。
+- `POOL-2`：`supply_depth` 取最新一条，单日脏值三处漂移。P0/P1（单日脏值治理已转 DATA-GOV-1 常驻治理）。
+- `SUPPLY-CALIBER-1`（由 POOL-2 拆分，2026-08-15 重新立项）：`supply_depth` 取值口径 latest vs 7 日中位数复验。新基线 230 下中位数降级样本仅 3 条且负期望（avg14 −2.287），样本不足不翻地板（200/100 维持）；触发复验=中位数降级样本 ≥15 或 CLEAN-CUR 样本再扩时。P1。
 - `POOL-3`：自动淘汰无观察期。P1。
 - `POOL-4`：200/100 按单价而非成交金额。P1。
 - `DECISION-1`：稳定性分与恐慌/超跌买点方向相反。P1。

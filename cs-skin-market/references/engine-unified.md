@@ -252,7 +252,7 @@ train 估计「族×状态桶」net14 期望表（6 格 n>=3），test 段应用
 
 ### 6.2 期望统计双基线（③）
 
-当前唯一事实源 = `pipeline/config.py:BASELINE_LEDGER` 双基线：HIST-FULL（`data/item_backtest_full_2025.json`，317 信号，v2-T4/T5，冻结归档）+ CLEAN-CUR（`data/_exp_v2t8_win_replay.json`，149 信号，v2-T8，仅展示参考，panic 单事件占 57.0%）。
+当前唯一事实源 = `pipeline/config.py:BASELINE_LEDGER` 双基线：HIST-FULL（`data/item_backtest_full_2025.json`，317 信号，v2-T4/T5，冻结归档）+ CLEAN-CUR（`data/_exp_v2t9_win_replay.json`，230 信号，v2-T9，仅展示参考，panic 族占 35.2%、其中 97.5% 集中在 2026-05 单事件簇）。
 `references/sync_expectancy_config.py` 自动重算 `config.ITEM_EXPECTANCY_STATS`（HIST-FULL）与 `config.ITEM_EXPECTANCY_STATS_CLEAN_CUR`（CLEAN-CUR）
 （n/events/win14/avg14/ci14/win30/avg30，win30 为 n30 口径）及 `data/signal_event_counts.json`；`tests/test_smoke.py::t_expectancy_sync` 双基线全字段硬校验，改回放不重跑同步即失败。
 

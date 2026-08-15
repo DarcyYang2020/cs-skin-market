@@ -110,7 +110,7 @@ cs-skin-market/
 ### 文档
 
 - `decision-log.md` — 关键决策历史（去量/扩池/补仓止损等全部决策）；`iteration-roadmap.md` — 迭代方案（版本历史 + 状态追踪）
-- `terminology.md` — 口径词表（HIST-FULL=317 / CLEAN-CUR=149 / SIGNAL_FAMILY_TAXONOMY / BASELINE_LEDGER / calmar_standard 唯一标尺）
+- `terminology.md` — 口径词表（HIST-FULL=317 / CLEAN-CUR=230 / SIGNAL_FAMILY_TAXONOMY / BASELINE_LEDGER / calmar_standard 唯一标尺）
 - `project-principles.md` — 项目三原则 + 数据先行/风控上线标准/J-2 复验条款
 - `engine-unified.md` — 统一大脑架构（信号族注册制 + 期望条件表 + 参数治理）
 - `data-layer.md` — **数据层手册**（数据源/采集链路/每日任务/表结构/维护/故障 SOP，唯一权威）
@@ -158,7 +158,7 @@ cs-skin-market/
 - `references/` 根目录放活跳研究脚本与文档；已下线脚本归 `references/scripts-archive/`，已完成专项文档归 `references/archive/`。
 - 研究产物命名约定：`references/probe_*.py` → `data/_exp*.json`；已废产物统一 `_deprecated_YYYYMMDD` 后缀并在本文数据文件表登记，禁止裸留。
 - `data/market.db` 为二进制（不提交）；`data/*.json` 为研究产物（提交）；`discover_latest.json` / `batch_scan_latest.json` / `scan_history/` / `backups/` 为运行时缓存/归档（不提交）；`pool_maintenance_log.jsonl` 为台账（提交）。
-- 口径词表：`references/terminology.md`（HIST-FULL=317 / CLEAN-CUR=149 / SIGNAL_FAMILY_TAXONOMY / BASELINE_LEDGER / calmar_standard 唯一标尺）。
+- 口径词表：`references/terminology.md`（HIST-FULL=317 / CLEAN-CUR=230 / SIGNAL_FAMILY_TAXONOMY / BASELINE_LEDGER / calmar_standard 唯一标尺）。
 
 - `references/` 分层规则：根目录放活跃策略文档/研究脚本；`scripts-archive/` 只放已下线脚本；`archive/` 只放已完成专项底稿。本轮不物理迁移；未来触发条件为根目录 .py/.md 增长到难以维护或出现导入环及维护问题，且必须单独一轮做 import graph + 108 断言映射验证。
 - `tests/test_smoke.py` 本轮不拆分；后续拆分必须保持 108 用例一一对应、断言不丢，且与功能改动分开验证。

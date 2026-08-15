@@ -234,8 +234,11 @@
 - [族分类唯一事实源 + 中间数废弃（2026-08-14，展示/统计层，零引擎参数）](#族分类唯一事实源-中间数废弃2026-08-14展示统计层零引擎参数)
 - [POOL-2 复核：supply_depth 最新 vs 7 日中位数（CLEAN-CUR，2026-08-14，只读研究，不落地）](#pool-2-复核supplydepth-最新-vs-7-日中位数clean-cur2026-08-14只读研究不落地)
 - [v2-T8 真基线重跑 + below_floor 吸筹旁路修复（2026-08-14，引擎行为变更）](#v2-t8-真基线重跑-belowfloor-吸筹旁路修复2026-08-14引擎行为变更)
+- [v2-T9 csQAQ 长历史回补 + supply_depth_missing 口径修复（2026-08-15，引擎行为变更）](#v2-t9-csqaq-长历史回补-supplydepthmissing-口径修复2026-08-15引擎行为变更)
 - [LIQ-RATIO-1 P-D-0/P-D-1：方向证伪，不立项（2026-08-15，只读研究，不落地）](#liq-ratio-1-p-d-0p-d-1方向证伪不立项2026-08-15只读研究不落地)
 - [EXIT-9/10/11 ATR 自适应止损网格：不立项，维持 hold21（2026-08-15，只读研究）](#exit-91011-atr-自适应止损网格不立项维持-hold212026-08-15只读研究)
+- [EXIT-9/10/11 v2-T9 复跑：CLEAN-CUR 出现一个通过门槛的候选（2026-08-15，待复核）](#exit-91011-v2-t9-复跑clean-cur-出现一个通过门槛的候选2026-08-15待复核)
+- [v2-T9 0-value gap 回补 + CLEAN-CUR 297→230（2026-08-15，数据修正，引擎代码未改）](#v2-t9-0-value-gap-回补-clean-cur-2972302026-08-15数据修正引擎代码未改)
 
 ---
 
@@ -3651,6 +3654,7 @@ Fluxo 25→280 约 11 倍），尖顶后 3 天 -86~94%，与枪皮统计反转�
   - `沙漠之鹰 | 指挥 (崭新出厂)` 2026-06-20 latest 112 / median7 105 双口径均低于 200（same_fail），属当前市场库与 `replay_v2t6_win.db` 快照在售量差异或 below_floor 边界残留，仅记录、不影响本项口径结论。
 - **结论**：中位数口径在 CLEAN-CUR 上仅 1 条会降级（且为正期望）、0 条升级，无稳健性收益；**POOL-2 维持不落地，根因转数据治理**（单日脏值治理 + 200/100 地板与回放快照同源）。若未来落地中位数，必须联动重放 + `sync_expectancy_config` 双基线复跑（旧纪律不变）。
 - **验证**：探针只读，未改引擎；`python tests/test_smoke.py` 仍 107 passed（本轮未改动代码）。
+- **v2-T9 复跑（2026-08-15）**：CLEAN-CUR 升级为 297 信号后重跑同一探针（`probe_pool2_supply_depth_clean.py` → `data/_exp_pool2_supply_depth_clean.json`）。297 行中 290 命中、7 条名称未命中；翻转 same_pass 173 / median_unavailable 115 / latest_pass_median_fail 2 / 升级 0。两条中位数降级均为正期望（win14 100%、avg14 +5.285pp），无升级收益。**结论仍为不落地，根因转数据治理**；绝对计数以 v2-T9 复跑为准。
 ## v2-T8 真基线重跑 + below_floor 吸筹旁路修复（2026-08-14，引擎行为变更）
 
 - **根因（外审 A 方案）**：v2-T7 已对 `below_floor` 置 `liquidity_filtered=True`，但 `compute_fusion_decision` 的吸筹周期分支把 `watch` 无条件升回 `buy`，未尊重 `liquidity_filtered`；随后 `_deep_dip_transform` 又把它重贴为「深度回调低吸」，形成残留旁路。实证：`沙漠之鹰 | 指挥 (崭新出厂)` 2026-06-20（supply_depth 112 < floor 200，net14 −1.92%）仍为 buy。
@@ -3666,6 +3670,16 @@ Fluxo 25→280 约 11 倍），尖顶后 3 天 -86~94%，与枪皮统计反转�
 - **验证**：新增 `tests/test_smoke.py::t_accumulation_floor_leak` 钉死「below_floor + 吸筹周期不得升 buy」；`python tests/test_smoke.py` **108 passed / 0 failed / 0 skipped**；pyflakes 仅 test_smoke 存量告警，无新增。
 - **未改红线**：未改阈值/权重/信号族/研究开关默认值；HIST-FULL `item_backtest_full_2025.json` 未覆盖；未 commit（沿用本会话暂缓提交约定）。
 
+
+## v2-T9 csQAQ 长历史回补 + supply_depth_missing 口径修复（2026-08-15，引擎行为变更）
+
+- **证据**：csQAQ `/info/chart` `period=1095` 实测返回 2023-06-01 起 1171 根日线；`key=sell_price` 同时返回 `num_data`，2026-02~04 在售量完整非空。推翻此前「chart 仅 90 天、断档不可补」的定论。
+- **回补**：`references/backfill_csqaq_long_history.py` 只更新 `price_history.in_sale_count IS NULL` 行，共 4802 条；真实 0 保留。两个库均已 0 NULL。备份 `data/market.bak-insale1095-20260815-135626` / `data/replay_v2t6_win.bak-insale1095-20260815-135626`。
+- **引擎行为变更**：`pipeline/db.supply_depth_missing` 由「NULL 或日期落在 2026-02-01~04-30」改为仅「raw_value is None」。日期断档不再强制 missing。`ENGINE_VERSION v2-T8→v2-T9`。
+- **重放**：源 `data/replay_v2t6_win.db` 回补后按当前引擎重跑 → `data/_exp_v2t9_win_replay.json`，297 信号。action_label 展示键：panic 80 / deep_value 24 / accumulate 193；细族 panic_resonance 33 / panic_easing 47 / deep_value 24 / supply_accum 140 / deep_dip 32 / base 21。panic 族占 26.9%，其中 97.5% 集中在 2026-05 单事件簇。
+- **组合标尺**（cap0.8 / hold21 / 2% 费，`calmar_standard` 唯一口径）：CLEAN-CUR strategy total +271.47% / maxDD −8.55%；HIST-FULL 仍 +201.06% / −9.13%。旧 `data/_exp_v2t8_win_replay.json`（回补后 150 中间产物）已归档为 `data/_exp_v2t8_win_replay_deprecated_20260815.json`。
+- **全链路**：`sync_expectancy_config` → `benchmark_compare` → `portfolio_attribution` → `j1_event_counts` → `j2_channel_monitor` 均重跑；`BASELINE_LEDGER.CLEAN-CUR` = v2-T9 / 297；`deprecated_intermediates` 保留 149/150 推导历史。
+- **验证**：新增 `t_supply_depth_missing_backfilled_gap` 钉死「NULL missing / 回补后日期非 missing / 真实 0 非 missing」；冒烟待重跑确认；pyflakes 待复核。
 
 ## LIQ-RATIO-1 P-D-0/P-D-1：方向证伪，不立项（2026-08-15，只读研究，不落地）
 
@@ -3689,3 +3703,32 @@ Fluxo 25→280 约 11 倍），尖顶后 3 天 -86~94%，与枪皮统计反转�
 - **待定项（登记）**：两轮 EXIT 门槛语义不统一——EXIT-1 用「三折 Calmar 均值相对提升」，EXIT-9/10/11 用「全局 Calmar 相对提升」。待定唯一语义：`Calmar 提升 ≥15%` 一律指 walk-forward 折上 Calmar 均值的相对提升；样本不足无 fold 时，改用「全局 Calmar 绝对差 ≥1.0 且前后半段方向一致」，不得混用全局相对提升。
 - **产物**：`references/probe_exit_9_10_11_atr_grid.py` → `data/_exp_exit_9_10_11_atr_grid.json`（只读，未改引擎/阈值/信号族，未 commit）。
 
+
+## EXIT-9/10/11 v2-T9 复跑：CLEAN-CUR 出现一个通过门槛的候选（2026-08-15，待复核）
+
+- **触发**：csQAQ period=1095 回补后 CLEAN-CUR 从 149/150 升级为 297，按「v2-T9 基线」重跑 `probe_exit_9_10_11_atr_grid.py`。
+- **结果**：HIST-FULL 仍 6/6 不通过；CLEAN-CUR 出现 **`atr_stop_3.0` 通过预注册门槛**：hold21 `+271.47% / −8.55% / Calmar 39.15` → atr_stop_3.0 `+327.55% / −7.80% / Calmar 52.40`；全局 Calmar 相对提升 +33.84%、总收益 +56.08pp、前后半段 Calmar 均改善（前半 +3.53% / 后半 +17.83%），方向一致。
+- **但暂不直接落地，列为待复核**：① 该门槛仍是此前外审点名的「全局 Calmar 相对提升」口径，尚未升级为唯一语义（walk-forward 折均值，样本不足用绝对差 ≥1.0 且前后半段一致）；② 只在 CLEAN-CUR 通过、HIST-FULL 未通过，不能单凭单基线拍板；③ CLEAN-CUR 含 2026-05 panic 单事件与回补后 2026-02 牛市段，需确认不是单事件/回补样本在主导。
+- **下一步建议**：把 `atr_stop_3.0` 纳入 EXIT 待定项复核，先钉死门槛唯一语义，再在 HIST-FULL / CLEAN-CUR 双基线与 walk-forward/前后半段口径上复核；通过前不改组合退出规则。
+
+## 执行飞轮诊断与 E1 收口（2026-08-15，产品/工程层，零引擎改动）
+
+- **诊断**：2026-08-15 执行飞轮诊断 = **在转但慢，非断裂**；见 `references/execution-flywheel-audit.md`。
+- **E1**：飞轮健康度仪表落地（只读展示层）：`pipeline/dashboards.py::execution_flywheel` + `webapp/main.py::/api/executions/flywheel` + `webapp/templates/watchlist.html` 四格卡。仅复用 `executions` / `signal_tracking` / `execution_review` 已有数字；未新增采集，未改任何评分/决策/闸门逻辑。
+- **P2 触发条件（写死）**：`executions` 已结算记录 ≥10 条 **且** `signal_tracking` 已回填 ≥10 条时再议组合净值曲线；当前均 <10，P2 不启动。
+- **验证**：pyflakes 改动文件 0 新增告警；`python tests/test_smoke.py` **108 passed / 0 failed / 0 skipped**（先运行 `j2_channel_monitor.py` 刷新日期滚动导致的 B 通道断言，再跑冒烟）。
+- **未 commit**。
+
+## v2-T9 0-value gap 回补 + CLEAN-CUR 297→230（2026-08-15，数据修正，引擎代码未改）
+
+- **触发**：上一轮只回填了 NULL，未回填 2026-02-01~04-30 断档段被存成 0 值的伪零。审计：market.db 断档 0 值 7123 行、replay_v2t6_win.db 7364 行，API 全部可解析为非零，断档内 API 也为 0 的行数=0；区间外 0 值 market 173 / replay 176 为真实 0。
+- **回填**：`references/backfill_csqaq_long_history.py` 新增 `--zero-gap` 模式，仅处理 `date BETWEEN 2026-02-01 AND 2026-04-30 AND in_sale_count=0`；按 API timestamp→YYYY-MM-DD 精确按日对齐，三分支（API 非零→写回 / API 也为 0→保留真实 0 / API 缺失→保留并记 missing_still）；区间外 0 与非 0 行一律不动。回填前备份 `data/market.bak-insale0gap-20260815-145903` / `data/replay_v2t6_win.bak-insale0gap-20260815-145903`；变更追加 `data/price_history_write_log.jsonl`（mode=backfill-insale0gap，B-1 纪律）。
+- **回填结果**：14487 行全部写回（market 7123 + replay 7364），zero_kept=0、missing_still=0、failed_goods=0。二次审计硬验收：两库 gap 区间 in_sale_count=0 行数=0；gap 区间 >0 行数 1052→8175 / 1076→8440（各增 7123/7364）；区间外 0 行数 173/176 不变；gap NULL=0。`supply_depth_missing` 维持仅以 NULL 判缺失（伪零清空后该 v2-T9 逻辑才真正成立）。
+- **重放**：`run_item_backtest_v2t8_win.py` 重跑（源 replay_v2t6_win.db）→ `data/_exp_v2t9_win_replay.json`，**297→230 信号**。展示键 panic 81 / deep_value 33 / accumulate 116（细族 panic_resonance 33 / panic_easing 48 / deep_value 33 / supply_accum 56 / deep_dip 32 / base 28）。旧 297 回放已备份为 `data/_exp_v2t9_win_replay_pre0gap_20260815.json`。
+- **机制（不是 bug）**：消失 142 条 / 新增 75 条（净 −67）。消失中 125 条为 supply_accum，全部落在 2026-02（108）/2026-03（17）——断档伪零使 30 日供给变化呈现虚假收缩，制造 84 条净伪「供给收缩吸筹」信号；新增 41 条真实 supply_accum + deep_value +9 + base +7（伪零清除后地板/供给趋势恢复正常）。panic 族占 35.2%（81/230，原 26.9%），其中 97.5%（79/81）仍集中于 2026-05 单事件簇。
+- **组合标尺**（cap0.8 / hold21 / 2% 费）：CLEAN-CUR strategy total **+262.30% / maxDD −14.17%**（原 +271.47% / −8.55%）；HIST-FULL 仍 +201.06% / −9.13%。伪零污染曾高估收益、低估回撤。
+- **EXIT-9/10/11**：0-gap 重跑后双基线均无通过变体——先前 CLEAN-CUR `atr_stop_3.0` 的「通过」本身是伪零污染产物，现已消失，退出规则维持 hold21。
+- **POOL-2**：0-gap 重跑后 230 行中 226 命中（4 条名称未命中）；same_pass 223 / latest_pass_median_fail 3 / 升级 0；3 条中位数降级 win14 66.67%、avg14 −2.287（负期望）——较旧 297 口径（2 条正期望降级）结论可能反转，需在 230 基线上重新裁定是否有降级收益，仍归数据治理，不擅自改地板。
+- **全链路**：`sync_expectancy_config` → `benchmark_compare` → `portfolio_attribution` → `j1_event_counts` → `j2_channel_monitor` → `probe_pool2` / `probe_exit` 均重跑；`BASELINE_LEDGER.CLEAN-CUR` = v2-T9 / 230；`deprecated_intermediates` 新增 297（NULL-only 中间基线）。
+- **版本**：ENGINE_VERSION 维持 v2-T9（仅数据修正 + 回放 provenance 字符串，未改引擎评分/决策/阈值/权重/信号族）。
+- **未 commit**。
