@@ -4,7 +4,7 @@
     <span class="card-subtitle" style="font-size:12px;color:var(--text-muted);">{{ last_update }}</span>
     <button class="btn btn-outline btn-sm"
             hx-post="/api/market/refresh"
-            hx-target="#dashboard-content"
+            hx-target="#market-index-block"
             hx-swap="innerHTML"
             hx-indicator="#refresh-spinner">
       <span id="refresh-spinner" class="htmx-indicator">⏳</span>

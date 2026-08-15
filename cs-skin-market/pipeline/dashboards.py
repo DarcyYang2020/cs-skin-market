@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """仪表盘数据（P0-3 数据积累进度 / P0-4 组合仓位）——纯展示层，只读 DB + 最近扫描缓存，不触碰信号引擎。"""
 import json
+from datetime import date, timedelta
 from pathlib import Path
 from statistics import median
 
@@ -144,6 +145,54 @@ def execution_review(conn):
         "slippage": {"n": len(slips), "avg": round(sum(slips) / len(slips), 2) if slips else None},
     }
     return {"real": real, "paper": signal_tracking.tracking_summary(conn)}
+
+
+def execution_flywheel(conn, today=None):
+    """E1 执行飞轮健康度（2026-08-15）：只读聚合已有 executions / signal_tracking。
+
+    四个口径全部复用现有数据，不新增采集、不碰信号引擎：
+    1) 执行记录数 + A1-4 N/20；
+    2) 北极星 30 天进度 = 近 30 天内有执行记录的日期数 / 30；
+    3) action 分布（buy/add/reduce/sell/hold）；
+    4) 纸面 vs 真实：复用 execution_review 的 real/paper 计数。
+    """
+    today = date.fromisoformat(today) if today else date.today()
+    cutoff = (today - timedelta(days=29)).isoformat()
+    action_rows = conn.execute(
+        "SELECT action, COUNT(*) AS n FROM executions GROUP BY action").fetchall()
+    actions = {r["action"]: r["n"] for r in action_rows}
+    dist = {k: actions.get(k, 0) for k in ("buy", "add", "reduce", "sell", "hold")}
+    exec_count = sum(dist.values())
+    active_days = conn.execute(
+        "SELECT COUNT(DISTINCT advice_date) AS n FROM executions WHERE advice_date >= ?",
+        (cutoff,)).fetchone()["n"] or 0
+    review = execution_review(conn)
+    real = review.get("real") or {}
+    paper = review.get("paper") or {}
+    paper_total = paper.get("n_total") or 0
+    paper_filled14 = paper.get("n_filled14") or 0
+    paper_filled30 = paper.get("n_filled30") or 0
+    return {
+        "exec_count": exec_count,
+        "a1_4_n20": {"current": exec_count, "target": 20,
+                     "pct": round(100.0 * exec_count / 20, 1)},
+        "north_star_30d": {
+            "active_days": active_days,
+            "target_days": 30,
+            "pct": round(100.0 * active_days / 30, 1),
+            "window_start": cutoff,
+        },
+        "action_distribution": dist,
+        "paper_vs_real": {
+            "real_executions": real.get("n") or 0,
+            "real_settled": real.get("n_settled") or 0,
+            "paper_signals": paper_total,
+            "paper_filled14": paper_filled14,
+            "paper_filled30": paper_filled30,
+            "paper_pending14": max(0, paper_total - paper_filled14),
+            "paper_pending30": max(0, paper_total - paper_filled30),
+        },
+    }
 
 
 def portfolio_dashboard(conn):

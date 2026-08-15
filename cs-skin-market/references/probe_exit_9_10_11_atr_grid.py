@@ -5,7 +5,7 @@ Pre-registered (2026-08-15 external review):
 - Baseline: hold21, canonical admission priority panic > accumulate/base > deep_value.
 - Ruler: portfolio_backtest.risk_metrics on b1_risk_backtest_v2-style portfolio curve,
   cap=0.8, cost=2%, window = replay args.start~end.
-- Dual baselines: HIST-FULL (317, frozen v2-T4/T5) and CLEAN-CUR (149, v2-T8).
+- Dual baselines: HIST-FULL (317, frozen v2-T4/T5) and CLEAN-CUR (230, v2-T9).
 - Variants: atr_stop 2.5x/3x/4x and atr_trailing 2.5x/3x/4x, max hold 21.
 - ATR: mean abs close-to-close over preceding 14 rows (>=10 required), price units,
   ATR% = ATR / entry_price. Trailing stop = rolling high - mult*ATR, fixed entry ATR.
@@ -23,7 +23,7 @@ from pathlib import Path
 BASE = Path(__file__).resolve().parent.parent
 ROOT = BASE
 HIST_REPLAY = ROOT / "data" / "item_backtest_full_2025.json"
-CLEAN_REPLAY = ROOT / "data" / "_exp_v2t8_win_replay.json"
+CLEAN_REPLAY = ROOT / "data" / "_exp_v2t9_win_replay.json"
 DB = ROOT / "data" / "replay_v2t6_win.db"
 OUT = ROOT / "data" / "_exp_exit_9_10_11_atr_grid.json"
 
@@ -296,7 +296,7 @@ def main():
             "ruler": "portfolio_backtest.risk_metrics on b1-style portfolio curve; cap=0.8, cost=2%, window=replay args.start~end; annualized Calmar",
             "baselines": {
                 "HIST-FULL": {"replay": "data/item_backtest_full_2025.json", "signals": 317, "engine": "v2-T4/T5 frozen"},
-                "CLEAN-CUR": {"replay": "data/_exp_v2t8_win_replay.json", "signals": 149, "engine": "v2-T8"},
+                "CLEAN-CUR": {"replay": "data/_exp_v2t9_win_replay.json", "signals": 230, "engine": "v2-T9"},
             },
             "variants": ["atr_stop_2.5/3.0/4.0", "atr_trailing_2.5/3.0/4.0", "max_hold=21"],
             "atr": "mean abs close-to-close over preceding 14 rows (>=10 required); ATR%=ATR/entry; trailing stop=rolling high - mult*ATR (fixed entry ATR)",
@@ -308,7 +308,7 @@ def main():
     }
     for label, path, engine in (
         ("HIST-FULL", HIST_REPLAY, "v2-T4/T5 frozen"),
-        ("CLEAN-CUR", CLEAN_REPLAY, "v2-T8"),
+        ("CLEAN-CUR", CLEAN_REPLAY, "v2-T9"),
     ):
         signals, args = load_signals(path)
         atr_map = build_atr_map(signals)

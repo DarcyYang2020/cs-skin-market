@@ -7,7 +7,7 @@ BASELINE_LEDGER CLEAN-CUR replay source) and compares the current production
 "latest in_sale_count" floor against a "7-day nonzero median" alternative.
 It does NOT change the floor, engine, or replay product.
 
-Input : data/_exp_v2t8_win_replay.json (CLEAN-CUR baseline, 149 signals)
+Input : data/_exp_v2t9_win_replay.json (CLEAN-CUR baseline, 230 signals)
 Output: data/_exp_pool2_supply_depth_clean.json
 """
 import json
@@ -24,7 +24,7 @@ from pipeline import db
 from pipeline.trend_health import liquidity_supply_floor
 from pipeline.config import SIGNAL_FAMILY_TAXONOMY, display_key_for_label
 
-REPLAY = ROOT / "data" / "_exp_v2t8_win_replay.json"
+REPLAY = ROOT / "data" / "_exp_v2t9_win_replay.json"
 OUT = ROOT / "data" / "_exp_pool2_supply_depth_clean.json"
 
 

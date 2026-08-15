@@ -2,7 +2,7 @@
  "baseline": "HIST-FULL",
  "caveat": "HIST-FULL: accumulate leave-out +111.69pp is hold21 portfolio attribution; contains ~50% missing-depth signals",
  "meta": "组合绩效归因双基线（A1-3）：与 portfolio_backtest 同源口径；leave-one-out=剔除该族后组合总收益差值(pp)。",
- "generated": "2026-08-14",
+ "generated": "2026-08-15",
  "base": {
   "total_return_pct": 201.06,
   "n_signals": 317
@@ -143,7 +143,7 @@
    "baseline": "HIST-FULL",
    "caveat": "HIST-FULL: accumulate leave-out +111.69pp is hold21 portfolio attribution; contains ~50% missing-depth signals",
    "meta": "组合绩效归因双基线（A1-3）：与 portfolio_backtest 同源口径；leave-one-out=剔除该族后组合总收益差值(pp)。",
-   "generated": "2026-08-14",
+   "generated": "2026-08-15",
    "base": {
     "total_return_pct": 201.06,
     "n_signals": 317
@@ -282,37 +282,37 @@
   },
   "CLEAN-CUR": {
    "baseline": "CLEAN-CUR",
-   "caveat": "CLEAN-CUR: clean current-engine window; panic single-event share 57.0%",
+   "caveat": "CLEAN-CUR: clean after csQAQ period=1095 backfill; panic 26.9% family share, 97.5% of panic in 2026-05 single-event cluster",
    "meta": "组合绩效归因双基线（A1-3）：与 portfolio_backtest 同源口径；leave-one-out=剔除该族后组合总收益差值(pp)。",
-   "generated": "2026-08-14",
+   "generated": "2026-08-15",
    "base": {
-    "total_return_pct": 257.16,
-    "n_signals": 149
+    "total_return_pct": 262.3,
+    "n_signals": 230
    },
    "family_contribution": {
     "deep_value": {
      "label": "深值企稳",
-     "n_signals": 18,
-     "win14_pct": 50.0,
-     "avg14_net_pct": 14.75,
-     "leave_out_contrib_pp": 83.8,
-     "share_of_signals_pct": 12.1
+     "n_signals": 33,
+     "win14_pct": 63.6,
+     "avg14_net_pct": 10.24,
+     "leave_out_contrib_pp": 112.67,
+     "share_of_signals_pct": 14.3
     },
     "accumulate": {
      "label": "吸筹/回补组（供给收缩 + 深度回调 + 基础分批）",
-     "n_signals": 46,
-     "win14_pct": 63.0,
-     "avg14_net_pct": 21.29,
-     "leave_out_contrib_pp": 129.95,
-     "share_of_signals_pct": 30.9
+     "n_signals": 116,
+     "win14_pct": 37.9,
+     "avg14_net_pct": 3.27,
+     "leave_out_contrib_pp": 107.78,
+     "share_of_signals_pct": 50.4
     },
     "panic": {
      "label": "恐慌族",
-     "n_signals": 85,
-     "win14_pct": 90.6,
-     "avg14_net_pct": 31.51,
-     "leave_out_contrib_pp": 65.14,
-     "share_of_signals_pct": 57.0
+     "n_signals": 81,
+     "win14_pct": 91.4,
+     "avg14_net_pct": 31.82,
+     "leave_out_contrib_pp": 118.41,
+     "share_of_signals_pct": 35.2
     }
    },
    "monthly_pnl": {
@@ -327,29 +327,39 @@
      "win14_pct": 100.0
     },
     "2025-11": {
-     "n": 11,
-     "pnl_weighted": 17.81,
-     "win14_pct": 63.6
+     "n": 13,
+     "pnl_weighted": 15.03,
+     "win14_pct": 61.5
     },
     "2025-12": {
-     "n": 8,
-     "pnl_weighted": 37.65,
-     "win14_pct": 62.5
+     "n": 10,
+     "pnl_weighted": 36.61,
+     "win14_pct": 60.0
     },
     "2026-01": {
-     "n": 3,
-     "pnl_weighted": 32.74,
-     "win14_pct": 66.7
+     "n": 4,
+     "pnl_weighted": 33.4,
+     "win14_pct": 75.0
+    },
+    "2026-02": {
+     "n": 30,
+     "pnl_weighted": 19.0,
+     "win14_pct": 60.0
+    },
+    "2026-03": {
+     "n": 6,
+     "pnl_weighted": -2.27,
+     "win14_pct": 50.0
     },
     "2026-05": {
-     "n": 83,
-     "pnl_weighted": 637.99,
-     "win14_pct": 90.4
+     "n": 120,
+     "pnl_weighted": 489.84,
+     "win14_pct": 60.8
     },
     "2026-06": {
-     "n": 32,
-     "pnl_weighted": 76.85,
-     "win14_pct": 62.5
+     "n": 35,
+     "pnl_weighted": 78.15,
+     "win14_pct": 62.9
     },
     "2026-07": {
      "n": 6,
@@ -360,24 +370,14 @@
    "item_concentration": {
     "top10": [
      {
+      "name": "AK-47 | 抽象派 1337 (略有磨损)",
+      "n": 2,
+      "pnl": 49.77
+     },
+     {
       "name": "格洛克 18 型 | 异星世界 (崭新出厂)",
       "n": 3,
-      "pnl": 67.03
-     },
-     {
-      "name": "AK-47 | 抽象派 1337 (略有磨损)",
-      "n": 1,
-      "pnl": 51.17
-     },
-     {
-      "name": "MP7 | 渐变之色 (崭新出厂)",
-      "n": 3,
-      "pnl": 46.31
-     },
-     {
-      "name": "沙漠之鹰 | 蓝色层压板 (崭新出厂)",
-      "n": 3,
-      "pnl": 41.31
+      "pnl": 44.61
      },
      {
       "name": "格洛克 18 型 | 本生灯 (崭新出厂)",
@@ -386,32 +386,42 @@
      },
      {
       "name": "沙漠之鹰 | 午夜凶匪 (崭新出厂)",
-      "n": 1,
-      "pnl": 35.53
-     },
-     {
-      "name": "AWP | 火卫一 (崭新出厂)",
       "n": 3,
-      "pnl": 32.35
+      "pnl": 37.27
      },
      {
       "name": "AK-47 | 霓虹革命 (崭新出厂)",
-      "n": 1,
-      "pnl": 32.04
+      "n": 2,
+      "pnl": 31.22
      },
      {
       "name": "M4A4 | 地狱烈焰 (崭新出厂)",
-      "n": 1,
-      "pnl": 28.99
+      "n": 3,
+      "pnl": 29.71
+     },
+     {
+      "name": "MP7 | 渐变之色 (崭新出厂)",
+      "n": 2,
+      "pnl": 28.32
      },
      {
       "name": "格洛克 18 型 | 粉碎者 (崭新出厂)",
       "n": 2,
       "pnl": 27.62
+     },
+     {
+      "name": "沙漠之鹰 | 轻轨 (崭新出厂)",
+      "n": 2,
+      "pnl": 27.15
+     },
+     {
+      "name": "AWP | 石墨黑 (崭新出厂)",
+      "n": 2,
+      "pnl": 24.4
      }
     ],
-    "top10_share_pct": 48.0,
-    "total_pnl": 838.5
+    "top10_share_pct": 48.3,
+    "total_pnl": 705.21
    },
    "pool_buy_hold_concentration": {
     "n_items": 0,

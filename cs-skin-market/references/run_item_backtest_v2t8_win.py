@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-"""True v2-T8 engine replay against data/replay_v2t6_win.db.
+"""True v2-T9 engine replay against data/replay_v2t6_win.db.
 
 Read-only with respect to the official product: writes to
-data/_exp_v2t8_win_replay.json, never touches data/item_backtest_full_2025.json.
+data/_exp_v2t9_win_replay.json, never touches data/item_backtest_full_2025.json.
 """
 import os, sys, json
 from pathlib import Path
@@ -50,14 +50,15 @@ def main():
                   f"elapsed={str(datetime.now()-t0)[:8]}", flush=True)
     sigs_out = [s for r in results for s in r.get("signals", []) if s.get("fwd14") is not None]
     rows, agg = rib.summarize(results)
+    agg["signals"] = len(sigs_out)
     out = {"args": {"start": START, "end": END, "warmup": WARMUP,
                     "pool": "A(98\u8001\u54c1,365\u5929\u7a97\u53e3)", "db": os.environ["CS_MODEL_DB"],
-                    "engine": "v2-T8 (DECISION-6 missing/zero + DECISION-7 below_floor + accumulation liquidity_filtered)"},
+                    "engine": "v2-T9 (DECISION-6 missing/zero + DECISION-7 below_floor + accumulation liquidity_filtered + csQAQ period=1095 NULL backfill + 0-gap backfill)"},
            "generated": datetime.now().strftime("%Y-%m-%d %H:%M"),
            "aggregate": agg, "per_item": rows, "signals": sigs_out}
-    with open(ROOT / "data" / os.environ.get("V2T8_OUT", "_exp_v2t8_win_replay.json"), "w", encoding="utf-8") as f:
+    with open(ROOT / "data" / os.environ.get("V2T8_OUT", "_exp_v2t9_win_replay.json"), "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, indent=1)
-    print("signals:", len(sigs_out), "| saved", os.environ.get("V2T7_OUT", "data/_exp_v2t8_win_replay.json"), flush=True)
+    print("signals:", len(sigs_out), "| saved", os.environ.get("V2T8_OUT", "data/_exp_v2t9_win_replay.json"), flush=True)
     print("by signal_type:", dict(Counter(s.get("signal_type") for s in sigs_out)), flush=True)
 
 if __name__ == "__main__":

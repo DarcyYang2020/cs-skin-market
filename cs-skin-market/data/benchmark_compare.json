@@ -1,6 +1,6 @@
 {
  "baseline": "HIST-FULL",
- "generated": "2026-08-14T22:25",
+ "generated": "2026-08-15T15:08",
  "note": "策略腿=信号组合模拟（cap0.8/hold21/手续费2%/拒绝优先级 panic>accumulate>deep_value，权益曲线未部署资金按现金计，首信号日前无仓位故 full/active 同区间）；strategy_nocap_ref=同模拟去掉 cap 上限（仅信息参考，实盘不采用）；pool_buy_hold=策略池等权买入持有（price_history.price_rmb 前向填充，2025 低价品暴涨主导，未计一次性 2% 成本）；market_index=大盘指数同期。本基线输出必须挂 baseline 标签，禁止裸数字。",
  "caveat": "HIST-FULL: contains ~50% missing-depth signals",
  "replay": {
@@ -32,19 +32,19 @@
     "last": "2026-08-05"
    },
    "pool_buy_hold": {
-    "total_return_pct": 227.32,
-    "max_drawdown_pct": -54.92,
-    "days": 356,
-    "annualized_pct": 237.28,
-    "first": "2025-08-14",
+    "total_return_pct": 213.81,
+    "max_drawdown_pct": -55.01,
+    "days": 355,
+    "annualized_pct": 224.09,
+    "first": "2025-08-15",
     "last": "2026-08-05"
    },
    "market_index": {
-    "total_return_pct": -24.21,
+    "total_return_pct": -25.23,
     "max_drawdown_pct": -58.21,
-    "days": 356,
-    "annualized_pct": -24.74,
-    "first": "2025-08-14",
+    "days": 355,
+    "annualized_pct": -25.84,
+    "first": "2025-08-15",
     "last": "2026-08-05"
    }
   },
@@ -70,10 +70,10 @@
     "last": "2026-08-12"
    },
    "pool_buy_hold": {
-    "total_return_pct": 40.56,
-    "max_drawdown_pct": -50.08,
+    "total_return_pct": 41.81,
+    "max_drawdown_pct": -49.51,
     "days": 271,
-    "annualized_pct": 58.18,
+    "annualized_pct": 60.08,
     "first": "2025-11-14",
     "last": "2026-08-12"
    },
@@ -95,7 +95,7 @@
  "baselines": {
   "HIST-FULL": {
    "baseline": "HIST-FULL",
-   "generated": "2026-08-14T22:25",
+   "generated": "2026-08-15T15:08",
    "note": "策略腿=信号组合模拟（cap0.8/hold21/手续费2%/拒绝优先级 panic>accumulate>deep_value，权益曲线未部署资金按现金计，首信号日前无仓位故 full/active 同区间）；strategy_nocap_ref=同模拟去掉 cap 上限（仅信息参考，实盘不采用）；pool_buy_hold=策略池等权买入持有（price_history.price_rmb 前向填充，2025 低价品暴涨主导，未计一次性 2% 成本）；market_index=大盘指数同期。本基线输出必须挂 baseline 标签，禁止裸数字。",
    "caveat": "HIST-FULL: contains ~50% missing-depth signals",
    "replay": {
@@ -127,19 +127,19 @@
       "last": "2026-08-05"
      },
      "pool_buy_hold": {
-      "total_return_pct": 227.32,
-      "max_drawdown_pct": -54.92,
-      "days": 356,
-      "annualized_pct": 237.28,
-      "first": "2025-08-14",
+      "total_return_pct": 213.81,
+      "max_drawdown_pct": -55.01,
+      "days": 355,
+      "annualized_pct": 224.09,
+      "first": "2025-08-15",
       "last": "2026-08-05"
      },
      "market_index": {
-      "total_return_pct": -24.21,
+      "total_return_pct": -25.23,
       "max_drawdown_pct": -58.21,
-      "days": 356,
-      "annualized_pct": -24.74,
-      "first": "2025-08-14",
+      "days": 355,
+      "annualized_pct": -25.84,
+      "first": "2025-08-15",
       "last": "2026-08-05"
      }
     },
@@ -165,10 +165,10 @@
       "last": "2026-08-12"
      },
      "pool_buy_hold": {
-      "total_return_pct": 40.56,
-      "max_drawdown_pct": -50.08,
+      "total_return_pct": 41.81,
+      "max_drawdown_pct": -49.51,
       "days": 271,
-      "annualized_pct": 58.18,
+      "annualized_pct": 60.08,
       "first": "2025-11-14",
       "last": "2026-08-12"
      },
@@ -190,11 +190,11 @@
   },
   "CLEAN-CUR": {
    "baseline": "CLEAN-CUR",
-   "generated": "2026-08-14T22:25",
+   "generated": "2026-08-15T15:08",
    "note": "策略腿=信号组合模拟（cap0.8/hold21/手续费2%/拒绝优先级 panic>accumulate>deep_value，权益曲线未部署资金按现金计，首信号日前无仓位故 full/active 同区间）；strategy_nocap_ref=同模拟去掉 cap 上限（仅信息参考，实盘不采用）；pool_buy_hold=策略池等权买入持有（price_history.price_rmb 前向填充，2025 低价品暴涨主导，未计一次性 2% 成本）；market_index=大盘指数同期。本基线输出必须挂 baseline 标签，禁止裸数字。",
-   "caveat": "CLEAN-CUR: clean, panic single event 57.0%, missing 2026-02~04 bull segment",
+   "caveat": "CLEAN-CUR: clean after csQAQ period=1095 backfill; panic 26.9% family share, 97.5% of panic in 2026-05 single-event cluster",
    "replay": {
-    "signals": 149,
+    "signals": 230,
     "pool": "A(98老品,365天窗口)",
     "start": "2025-08-10",
     "end": "2026-08-05"
@@ -206,35 +206,35 @@
       "2026-08-05"
      ],
      "strategy": {
-      "total_return_pct": 257.16,
-      "max_drawdown_pct": -7.61,
+      "total_return_pct": 262.3,
+      "max_drawdown_pct": -14.17,
       "days": 326,
-      "annualized_pct": 315.92,
+      "annualized_pct": 322.62,
       "first": "2025-09-13",
       "last": "2026-08-05"
      },
      "strategy_nocap_ref": {
-      "total_return_pct": 870.12,
-      "max_drawdown_pct": -58.92,
+      "total_return_pct": 711.52,
+      "max_drawdown_pct": -79.66,
       "days": 326,
-      "annualized_pct": 1173.16,
+      "annualized_pct": 942.51,
       "first": "2025-09-13",
       "last": "2026-08-05"
      },
      "pool_buy_hold": {
-      "total_return_pct": 217.03,
-      "max_drawdown_pct": -53.97,
-      "days": 356,
-      "annualized_pct": 226.41,
-      "first": "2025-08-14",
+      "total_return_pct": 209.06,
+      "max_drawdown_pct": -54.78,
+      "days": 355,
+      "annualized_pct": 219.04,
+      "first": "2025-08-15",
       "last": "2026-08-05"
      },
      "market_index": {
-      "total_return_pct": -24.21,
+      "total_return_pct": -25.23,
       "max_drawdown_pct": -58.21,
-      "days": 356,
-      "annualized_pct": -24.74,
-      "first": "2025-08-14",
+      "days": 355,
+      "annualized_pct": -25.84,
+      "first": "2025-08-15",
       "last": "2026-08-05"
      }
     },
@@ -244,26 +244,26 @@
       "2026-08-07"
      ],
      "strategy": {
-      "total_return_pct": 257.16,
-      "max_drawdown_pct": -7.61,
+      "total_return_pct": 262.3,
+      "max_drawdown_pct": -14.17,
       "days": 328,
-      "annualized_pct": 312.32,
+      "annualized_pct": 318.92,
       "first": "2025-09-13",
       "last": "2026-08-07"
      },
      "strategy_nocap_ref": {
-      "total_return_pct": 870.62,
-      "max_drawdown_pct": -58.92,
+      "total_return_pct": 712.02,
+      "max_drawdown_pct": -79.66,
       "days": 328,
-      "annualized_pct": 1154.28,
+      "annualized_pct": 928.42,
       "first": "2025-09-13",
       "last": "2026-08-07"
      },
      "pool_buy_hold": {
-      "total_return_pct": 79.31,
-      "max_drawdown_pct": -53.97,
+      "total_return_pct": 82.38,
+      "max_drawdown_pct": -54.78,
       "days": 328,
-      "annualized_pct": 91.52,
+      "annualized_pct": 95.17,
       "first": "2025-09-13",
       "last": "2026-08-07"
      },
@@ -278,9 +278,9 @@
     }
    },
    "signal_stats": {
-    "n14": 149,
-    "win14_pct": 77.2,
-    "avg14": 26.33
+    "n14": 230,
+    "win14_pct": 60.4,
+    "avg14": 14.33
    }
   }
  }

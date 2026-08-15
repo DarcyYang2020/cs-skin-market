@@ -343,8 +343,8 @@ def compute_market_fusion_decision(percentile_90d, th, zscore_90d=0.0, cycle_pha
         # Original: deep undervalue + strong trend (p≤30 + TH≥55 + Z≤0)
         elif effective_pct <= 30 and score >= T["TH_STRONG"] and zscore_90d <= 0:
             if rebound_late:
-                fd.action = "watch"; fd.action_label = "🟡 反弹末期·轻仓试探"
-                fd.action_detail = "低估+趋势健康但处于反弹后半段，轻仓试探，严格止损"
+                fd.action = "watch"; fd.action_label = "🟡 反弹末期·观察"
+                fd.action_detail = "低估+趋势健康但处于反弹后半段，纳入观察，不追涨，等待回调确认"
                 fd.global_position_limit = 0.15
             else:
                 # V5 fake-bottom gate (2026-07 数据验证): 建仓区域需 30日深跌 OR 14日急跌
@@ -391,7 +391,7 @@ def compute_market_fusion_decision(percentile_90d, th, zscore_90d=0.0, cycle_pha
         elif effective_pct <= 30:
             if cycle_phase == "accumulation":
                 fd.action = "watch"; fd.action_label = "🟡 筑底观察"
-                fd.action_detail = "大盘低估+吸筹期，趋势弱但底部特征明显，可轻仓参与，分批建仓"
+                fd.action_detail = "大盘低估+吸筹期，趋势弱但底部特征明显，纳入观察，等待趋势确认"
                 fd.global_position_limit = 0.15
             else:
                 fd.action = "avoid"; fd.action_label = "🔴 下跌中继"
@@ -490,7 +490,7 @@ def compute_market_fusion_decision(percentile_90d, th, zscore_90d=0.0, cycle_pha
         if fd.action in ("avoid",) and micro_th_score >= micro_up and fd.zone == "undervalued":
             fd.action = "watch"
             fd.action_label = "🟡 短期反转·观察"
-            fd.action_detail = "大盘长期仍弱，但短期反转确认，可轻仓尝试"
+            fd.action_detail = "大盘长期仍弱，但短期反转确认，纳入观察，等待进一步确认"
             fd.global_position_limit = max(fd.global_position_limit, 0.12)
         if fd.action in ("watch",) and fd.zone == "undervalued" and micro_th_score >= micro_strong:
             if (is_bear and not cap_triggered) or fd.rally_decay:
@@ -528,7 +528,7 @@ def compute_market_fusion_decision(percentile_90d, th, zscore_90d=0.0, cycle_pha
         if fd.action in ("avoid", "sell", "reduce") and percentile_90d <= 20:
             fd.action = "watch"
             fd.action_label = "🟡 抛压衰竭·底部观察"
-            fd.action_detail = "卖方力量枯竭+止跌企稳，底部特征显现，轻仓观察"
+            fd.action_detail = "卖方力量枯竭+止跌企稳，底部特征显现，纳入观察，等待确认"
             fd.global_position_limit = max(fd.global_position_limit, 0.10)
         if selling_pressure_score >= 85 and percentile_90d <= 15 and (micro_th_score or 0) >= 55:
             fd.action = "buy"
@@ -553,7 +553,7 @@ def compute_market_fusion_decision(percentile_90d, th, zscore_90d=0.0, cycle_pha
     if fd.action == "avoid" and sentiment_score >= 85 and percentile_90d <= 5 and zscore_90d <= -2.0 and (th.z_floor_applied or score < 25):
         fd.action = "watch"
         fd.action_label = "🟡 极限超跌·底部观察"
-        fd.action_detail = "极度恐惧+深度超卖，V型底部特征明显，轻仓观察"
+        fd.action_detail = "极度恐惧+深度超卖，V型底部特征明显，纳入观察，等待确认"
         fd.global_position_limit = max(fd.global_position_limit, 0.10)
 
     # Bear market safety net: weak buy without capitulation + falling price -> hold

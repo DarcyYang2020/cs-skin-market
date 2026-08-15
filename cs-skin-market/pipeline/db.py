@@ -32,20 +32,18 @@ def _today() -> str:
     return datetime.now(TZ_BJ).strftime("%Y-%m-%d")
 
 
-SUPPLY_GAP_START = "2026-02-01"
+SUPPLY_GAP_START = "2026-02-01"  # historical known-gap window; no longer used for missing classification after 2026-08-15 backfill
 SUPPLY_GAP_END = "2026-04-30"
 
 
 def supply_depth_missing(raw_value, date_str=None):
-    """Return True when raw in_sale_count is absent (NULL/None) or the date is in the known gap.
+    """Return True only when raw in_sale_count is absent (NULL/None).
 
-    DECISION-6 (2026-08-14): NULL and 2026-02-01~04-30 are missing depth, not true zero.
-    True zero (raw_value == 0 outside the gap) is deliberately NOT treated as missing here.
+    2026-08-15: 2026-02-01~04-30 was backfilled from csQAQ period=1095, so
+    date-in-gap alone is no longer treated as missing. True zero remains a
+    real zero, not missing.
     """
-    if raw_value is None:
-        return True
-    day = (date_str or "")[:10]
-    return SUPPLY_GAP_START <= day <= SUPPLY_GAP_END
+    return raw_value is None
 
 
 def latest_supply_missing(daily_bars):

@@ -347,7 +347,7 @@ def compute():
                                        and production.get("net14") and production["net14"].get("win") is not None
                                        and production["net14"]["win"] < C14_2M)) else "未触发",
             "trigger_state": "待启动重拟合流水线" if (c["two_month_flags"] or any(r["flags"] for r in c["monthly"])) else "监测中",
-            "note": "回放口径：官方回放产物 365d 窗口 317 信号为 HIST-FULL（v2-T4/T5，C 通道主口径），当前引擎 ENGINE_VERSION=v2-T7；CLEAN-CUR 仅展示参考，不参与 C 通道告警；月度 n>=10 判定，去簇(±3天) n>=10 判定；2026-08-10 事件簇复核：6 月劣化为独立簇(06-12~21)非恐慌簇退出，恐慌簇 win30 76.3~79.6% 优秀、6 月 avg30 +9.65 期望仍正，按事件级样本不足处理；"
+            "note": "回放口径：官方回放产物 365d 窗口 317 信号为 HIST-FULL（v2-T4/T5，C 通道主口径），当前引擎 ENGINE_VERSION=v2-T9；CLEAN-CUR 仅展示参考，不参与 C 通道告警；月度 n>=10 判定，去簇(±3天) n>=10 判定；2026-08-10 事件簇复核：6 月劣化为独立簇(06-12~21)非恐慌簇退出，恐慌簇 win30 76.3~79.6% 优秀、6 月 avg30 +9.65 期望仍正，按事件级样本不足处理；"
                     "生产实盘口径：signal_tracking 表（buy 信号 14/30 交易日后按真实价格回填，net 扣 2%），回填满 20 条后实盘胜率纳入判定；"
                     "回放告警仅提示复核，正式重拟合评估以 C 通道监测为准，触发后动作见 overall.trigger_action",
         },

@@ -231,6 +231,20 @@ def t_panic():
          ia.event_risk_coefficient, ia.compute_fusion_decision, ia.compute_micro_th) = orig
 check('panic-resonance upgrade + micro-TH confirm', t_panic)
 
+print('[watch wording: observation signals must not suggest buying]')
+def t_bid_boost_watch_wording():
+    from types import SimpleNamespace
+    import pipeline.item_analysis as ia
+    fd = SimpleNamespace(action='watch', action_label='', action_detail='', position_limit=None)
+    ia._g_bid_boost(fd, {'bid_score': 80, 'pct': 20})
+    assert fd.action_label == '🟡 底部观察·承接增强'
+    assert '可轻仓' not in fd.action_detail
+    assert '试探' not in fd.action_detail
+    assert '纳入观察' in fd.action_detail
+    assert '不直接建仓' in fd.action_detail
+    assert fd.position_limit is None
+check('bid_boost watch keeps observation wording without position', t_bid_boost_watch_wording)
+
 print('[Analysis: Item price_zones sentiment-adaptive stop/take]')
 def t_zones():
     from types import SimpleNamespace
@@ -1694,7 +1708,7 @@ def t_expectancy_sync():
     assert BASELINE_LEDGER['family_taxonomy'] is SIGNAL_FAMILY_TAXONOMY, 'family taxonomy object drift'
     baselines = {
         'HIST-FULL': ('item_backtest_full_2025.json', ITEM_EXPECTANCY_STATS),
-        'CLEAN-CUR': ('_exp_v2t8_win_replay.json', ITEM_EXPECTANCY_STATS_CLEAN_CUR),
+        'CLEAN-CUR': ('_exp_v2t9_win_replay.json', ITEM_EXPECTANCY_STATS_CLEAN_CUR),
     }
     for baseline, (replay_file, cfg_stats) in baselines.items():
         stats, _total, _comp = mod.compute_display_stats(str(base / 'data' / replay_file))
@@ -2689,6 +2703,18 @@ def t_accumulation_floor_leak():
 check("F-3.5 accumulation cycle respects liquidity_filtered (v2-T8)", t_accumulation_floor_leak)
 
 
+def t_supply_depth_missing_backfilled_gap():
+    """v2-T9 (2026-08-15): after csQAQ period=1095 backfill, a date in the
+    former 2026-02~04 gap is no longer missing when it has a numeric value."""
+    from pipeline.db import supply_depth_missing
+    assert supply_depth_missing(None, "2026-03-01") is True
+    assert supply_depth_missing(0, "2026-03-01") is False
+    assert supply_depth_missing(200, "2026-03-01") is False
+    assert supply_depth_missing(200, "2026-06-01") is False
+
+check("supply_depth_missing: NULL missing / backfilled gap non-missing (v2-T9)", t_supply_depth_missing_backfilled_gap)
+
+
 def t_liquidity_gate_e2e():
     """F-3.5 端到端：渐变斑纹（在售 13，avg7≈12）整链分析最终不得为 buy——
     决策层闸门 + 升级族禁升级（supply_contraction 不再把 watch 升回 buy）。"""
@@ -2837,6 +2863,10 @@ def t_http_api_smoke():
             r = client.get(url)
             assert r.status_code == 200, (url, r.status_code)
             assert marker in r.text, (url, marker)
+
+        r = client.get("/")
+        assert 'id="market-index-block"' in r.text, r.text[:200]
+        assert 'hx-target="#market-index-block"' in r.text, r.text[:200]
 
         r = client.get("/api/analysis/results")
         assert r.status_code == 200, r.status_code

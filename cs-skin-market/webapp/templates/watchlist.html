@@ -225,6 +225,15 @@
 </div>
 
 <!-- 执行记录与复盘 (P0-2, 2026-08-04) -->
+<!-- 执行飞轮健康度 (E1, 2026-08-15) -->
+<div class="card" id="exec-flywheel-card" style="display:none;margin-top:16px;">
+  <div class="card-header" style="justify-content:space-between;">
+    <span class="card-title">🔄 执行飞轮健康度</span>
+    <span style="font-size:11px;color:var(--text-muted);">北极星 30 天 / 生产信号 / 纸面 vs 真实</span>
+  </div>
+  <div id="exec-flywheel-body" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;padding:10px 14px;"></div>
+</div>
+
 <div class="card" id="exec-section" style="display:none;margin-top:16px;">
   <div class="card-header" style="justify-content:space-between;">
     <span class="card-title">📒 执行记录与复盘</span>
@@ -1057,8 +1066,37 @@ function loadExecutions() {
 }
 loadExecReview();
 loadExecutions();
+loadExecFlywheel();
 
 
+
+function loadExecFlywheel() {
+  fetch('/api/executions/flywheel')
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    var card = document.getElementById('exec-flywheel-card');
+    var body = document.getElementById('exec-flywheel-body');
+    if (!card || !body || !d.ok) return;
+    var act = d.action_distribution || {};
+    var pv = d.paper_vs_real || {};
+    var ns = d.north_star_30d || {};
+    function cell(title, main, sub) {
+      return '<div style="background:rgba(15,23,42,0.04);border:1px solid var(--border);border-radius:8px;padding:10px;">'
+        + '<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">' + title + '</div>'
+        + '<div style="font-size:20px;font-weight:800;color:var(--text-primary);">' + main + '</div>'
+        + '<div style="font-size:11px;color:var(--text-secondary);margin-top:4px;">' + sub + '</div></div>';
+    }
+    body.innerHTML = cell('执行记录数', d.exec_count + ' 条',
+        'buy ' + (act.buy || 0) + ' · add ' + (act.add || 0) + ' · reduce ' + (act.reduce || 0) + ' · sell ' + (act.sell || 0))
+      + cell('北极星 30 天', (ns.active_days || 0) + ' / ' + (ns.target_days || 30) + ' 天', (ns.pct || 0) + '%')
+      + cell('生产信号', (pv.paper_signals || 0) + ' 条',
+        '已回填14 ' + (pv.paper_filled14 || 0) + ' · 待回填 ' + (pv.paper_pending14 || 0))
+      + cell('纸面 vs 真实', (pv.real_executions || 0) + ' / ' + (pv.paper_signals || 0),
+        '真实已结算 ' + (pv.real_settled || 0) + ' 条');
+    card.style.display = 'block';
+  })
+  .catch(function() {});
+}
 
 function loadExecReview() {
   fetch('/api/executions/review')

@@ -413,11 +413,11 @@ def compute_bottom_signal(pct_90d: float, zscore_90d: float, prices: list, accum
     elif bs.score >= 40:
         bs.level = "neutral"
         bs.level_label = "中性偏底"
-        bs.action = "具备部分底部特征，可结合周期阶段轻仓参与"
+        bs.action = "具备部分底部特征，纳入观察，等待确认信号"
     elif bs.score >= 20:
         bs.level = "no_bottom"
         bs.level_label = "底部未确认"
-        bs.action = "未触发极端底部信号。若吸筹期概率较高，可按仓位上限轻仓分批试探"
+        bs.action = "未触发极端底部信号，继续观察，等待确认后再按信号执行"
     else:
         bs.level = "strong_market"
         bs.level_label = "强势行情"

@@ -1,5 +1,5 @@
 {
- "generated": "2026-08-14",
+ "generated": "2026-08-15",
  "window": 3,
  "total_signals": 317,
  "note": "去量引擎 v2 回放同源（item_backtest_full_2025.json）；事件簇数=±3天去簇；细族按 action_label 关键词，展示键按「恐慌/深值」匹配（与 config.ITEM_EXPECTANCY_STATS 同口径，config 由 sync_expectancy_config.py 同步生成）",
@@ -150,7 +150,7 @@
  },
  "baselines": {
   "HIST-FULL": {
-   "generated": "2026-08-14",
+   "generated": "2026-08-15",
    "window": 3,
    "total_signals": 317,
    "note": "去量引擎 v2 回放同源（item_backtest_full_2025.json）；事件簇数=±3天去簇；细族按 action_label 关键词，展示键按「恐慌/深值」匹配（与 config.ITEM_EXPECTANCY_STATS 同口径，config 由 sync_expectancy_config.py 同步生成）",
@@ -301,29 +301,29 @@
    }
   },
   "CLEAN-CUR": {
-   "generated": "2026-08-14",
+   "generated": "2026-08-15",
    "window": 3,
-   "total_signals": 149,
+   "total_signals": 230,
    "note": "去量引擎 v2 回放同源（item_backtest_full_2025.json）；事件簇数=±3天去簇；细族按 action_label 关键词，展示键按「恐慌/深值」匹配（与 config.ITEM_EXPECTANCY_STATS 同口径，config 由 sync_expectancy_config.py 同步生成）",
-   "source": "data/_exp_v2t8_win_replay.json",
+   "source": "data/_exp_v2t9_win_replay.json",
    "baseline": "CLEAN-CUR",
    "panic_resonance": {
-    "signals": 42,
+    "signals": 33,
     "events": 2,
     "unique_dates": 8,
-    "max_cluster_share": 0.9524,
+    "max_cluster_share": 0.9394,
     "date_range": [
      "2025-10-23",
      "2026-05-27"
     ],
     "win14": 100.0,
-    "avg14": 46.79,
-    "win30": 81.0,
-    "avg30": 37.72,
+    "avg14": 47.6,
+    "win30": 78.8,
+    "avg30": 37.73,
     "match": "恐慌共振"
    },
    "panic_easing": {
-    "signals": 43,
+    "signals": 48,
     "events": 1,
     "unique_dates": 3,
     "max_cluster_share": 1.0,
@@ -331,40 +331,40 @@
      "2026-05-28",
      "2026-05-31"
     ],
-    "win14": 81.4,
-    "avg14": 16.58,
-    "win30": 83.7,
-    "avg30": 12.34,
+    "win14": 85.4,
+    "avg14": 20.97,
+    "win30": 87.5,
+    "avg30": 18.8,
     "match": "恐慌退潮"
    },
    "deep_value": {
-    "signals": 18,
-    "events": 5,
-    "unique_dates": 10,
-    "max_cluster_share": 0.4444,
+    "signals": 33,
+    "events": 6,
+    "unique_dates": 13,
+    "max_cluster_share": 0.3636,
     "date_range": [
      "2025-11-14",
      "2026-07-12"
     ],
-    "win14": 50.0,
-    "avg14": 14.75,
-    "win30": 61.5,
-    "avg30": 66.67,
+    "win14": 63.6,
+    "avg14": 10.24,
+    "win30": 71.4,
+    "avg30": 50.04,
     "match": "深值企稳"
    },
    "supply_accum": {
-    "signals": 10,
-    "events": 8,
-    "unique_dates": 10,
-    "max_cluster_share": 0.2,
+    "signals": 56,
+    "events": 13,
+    "unique_dates": 21,
+    "max_cluster_share": 0.7321,
     "date_range": [
      "2025-09-13",
      "2026-07-17"
     ],
-    "win14": 60.0,
-    "avg14": 45.36,
-    "win30": 66.7,
-    "avg30": 52.37,
+    "win14": 16.1,
+    "avg14": -3.3,
+    "win30": 20.0,
+    "avg30": -2.54,
     "match": "供给收缩吸筹"
    },
    "deep_dip": {
@@ -383,71 +383,71 @@
     "match": "深度回调低吸"
    },
    "base": {
-    "signals": 4,
-    "events": 4,
-    "unique_dates": 4,
-    "max_cluster_share": 0.25,
+    "signals": 28,
+    "events": 9,
+    "unique_dates": 19,
+    "max_cluster_share": 0.5714,
     "date_range": [
      "2025-11-22",
-     "2026-06-12"
+     "2026-06-14"
     ],
-    "win14": 75.0,
-    "avg14": 11.87,
-    "win30": 50.0,
-    "avg30": 7.94,
+    "win14": 53.6,
+    "avg14": 3.1,
+    "win30": 35.7,
+    "avg30": 1.57,
     "match": "基础分批"
    },
    "display_keys": {
     "panic": {
-     "signals": 85,
+     "signals": 81,
      "events": 2,
      "unique_dates": 11,
-     "max_cluster_share": 0.9765,
+     "max_cluster_share": 0.9753,
      "date_range": [
       "2025-10-23",
       "2026-05-31"
      ],
-     "n": 85,
-     "win14": 90.6,
-     "avg14": 31.51,
-     "ci14_lo": 82.5,
-     "ci14_hi": 95.2,
-     "win30": 82.4,
-     "avg30": 24.88
+     "n": 81,
+     "win14": 91.4,
+     "avg14": 31.82,
+     "ci14_lo": 83.2,
+     "ci14_hi": 95.8,
+     "win30": 84.0,
+     "avg30": 26.51
     },
     "deep_value": {
-     "signals": 18,
-     "events": 5,
-     "unique_dates": 10,
-     "max_cluster_share": 0.4444,
+     "signals": 33,
+     "events": 6,
+     "unique_dates": 13,
+     "max_cluster_share": 0.3636,
      "date_range": [
       "2025-11-14",
       "2026-07-12"
      ],
-     "n": 18,
-     "win14": 50.0,
-     "avg14": 14.75,
-     "ci14_lo": 29.0,
-     "ci14_hi": 71.0,
-     "win30": 61.5,
-     "avg30": 66.67
+     "n": 33,
+     "win14": 63.6,
+     "avg14": 10.24,
+     "ci14_lo": 46.6,
+     "ci14_hi": 77.8,
+     "win30": 71.4,
+     "avg30": 50.04
     },
     "accumulate": {
-     "signals": 46,
-     "events": 10,
-     "unique_dates": 21,
-     "max_cluster_share": 0.6957,
+     "signals": 116,
+     "events": 19,
+     "unique_dates": 47,
+     "max_cluster_share": 0.3534,
      "date_range": [
       "2025-09-13",
       "2026-07-17"
      ],
-     "n": 46,
-     "win14": 63.0,
-     "avg14": 21.29,
-     "ci14_lo": 48.6,
-     "ci14_hi": 75.5,
-     "win30": 51.1,
-     "avg30": 19.03
+     "n": 116,
+     "win14": 37.9,
+     "avg14": 3.27,
+     "ci14_lo": 29.6,
+     "ci14_hi": 47.0,
+     "win30": 31.3,
+     "avg30": 2.24
     }
    }
   }

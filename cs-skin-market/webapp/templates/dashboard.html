@@ -3,8 +3,10 @@
 
 {% block content %}
 <div id="dashboard-content" class="page-dashboard">
+<div id="market-index-block">
 {% include "partials/index_card.html" %}
 {% include "partials/index_analysis.html" %}
+</div>
 
 <!-- 市场状态 × 信号族期望 (2026-08-12): 期望徽章从单品报告抽离为外部常驻卡片
      （市场级信息，同族品/同一时期所有报告显示相同，重复展示冗余） -->

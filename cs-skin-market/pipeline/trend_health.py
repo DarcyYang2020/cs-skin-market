@@ -838,8 +838,8 @@ def compute_fusion_decision(percentile_90d, th, liquidity_score=50, zscore_90d=0
             # Upgrade from avoid to watch - item is cheap AND holding up better than market
             if ts >= 40:
                 fd.action = "watch"
-                fd.action_label = "\U0001f7e1 \u5f31\u5e02\u6297\u8dcc\u00b7\u8f7b\u4ed3\u8bd5\u63a2"
-                fd.action_detail = "\u5927\u76d8\u504f\u5f31\u4f46\u54c1\u79cd\u8868\u73b0\u660e\u663e\u6297\u8dcc(\u8dd1\u8d62\u5927\u76d8%.1f%%)+\u4f4e\u4f30\uff0c\u53ef\u8f7b\u4ed3\u8bd5\u63a2" % market_relative_outperformance
+                fd.action_label = "\U0001f7e1 \u5f31\u5e02\u6297\u8dcc\u00b7\u89c2\u5bdf"
+                fd.action_detail = "\u5927\u76d8\u504f\u5f31\u4f46\u54c1\u79cd\u8868\u73b0\u660e\u663e\u6297\u8dcc(\u8dd1\u8d62\u5927\u76d8%.1f%%)+\u4f4e\u4f30\uff0c\u7eb3\u5165\u89c2\u5bdf\uff0c\u7b49\u5f85\u8d8b\u52bf\u786e\u8ba4" % market_relative_outperformance
                 fd.deduction_sources.append("market_relative_strength_upgrade")
         elif fd.zone == "undervalued" and fd.action == "watch":
             # Upgrade watch to buy if TH >= 50
@@ -987,5 +987,4 @@ def fusion_decision_summary(fd):
 
 # === Market Index Trend Health ===
 # See pipeline/market_th.py for full implementation
-
 

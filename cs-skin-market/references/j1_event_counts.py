@@ -22,7 +22,7 @@ from pipeline.backtest_methodology import signal_cluster_report
 from pipeline.config import SIGNAL_FAMILY_TAXONOMY, assign_fine_family, display_key_for_label
 
 REPLAY = "data/item_backtest_full_2025.json"
-REPLAY_CLEAN = "data/_exp_v2t8_win_replay.json"
+REPLAY_CLEAN = "data/_exp_v2t9_win_replay.json"
 OUT = "data/signal_event_counts.json"
 
 FAMILIES = [(k, SIGNAL_FAMILY_TAXONOMY["fine_labels"][k]) for k in SIGNAL_FAMILY_TAXONOMY["fine_order"]]

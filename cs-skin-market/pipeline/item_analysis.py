@@ -1215,8 +1215,7 @@ def _g_bid_boost(fd, F):
     """求购承接增强注解（仅 watch 状态；与现链路 G7 的 elif 分支位置一致）。"""
     if fd.action == "watch" and F["bid_score"] >= 75 and F["pct"] is not None and F["pct"] <= 30:
         fd.action_label = "🟡 底部观察·承接增强"
-        fd.action_detail = "低位但求购承接增强，可轻仓试探"
-        fd.position_limit = max(fd.position_limit, 0.08)
+        fd.action_detail = "低位且求购承接增强，纳入观察；不直接建仓，等待承接持续确认"
     return None
 
 
@@ -2098,4 +2097,3 @@ def run_item_analysis(
         buy_distance=buy_distance,
         research_metrics=_research_supply_three_state(prices, supply_hist),
     )
-
