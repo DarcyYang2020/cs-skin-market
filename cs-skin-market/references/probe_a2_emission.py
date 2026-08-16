@@ -23,6 +23,8 @@ def main():
     cases = [
         ("xishou_mid", ROOT / "data" / "_exp_xishou_mid_replay.json", "惜售中段"),
         ("rise_accum", ROOT / "data" / "_exp_rise_accum_replay.json", "吸筹型上涨"),
+        ("rise_v2_cap15", ROOT / "data" / "_exp_rise_v2_cap15.json", "吸筹型上涨"),
+        ("g2_upseg", ROOT / "data" / "_exp_g2_upseg_replay.json", "深值"),
     ]
     results = {}
     for name, path, kw in cases:

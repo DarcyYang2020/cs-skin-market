@@ -642,11 +642,17 @@ def t_rise_accum_family():
         assert 'rise_accumulation' in fd['deduction_sources'], fd['deduction_sources']
         assert '吸筹型上涨' in fd['action_label'], fd['action_label']
         assert fd['position_limit'] == 0.10, fd['position_limit']
+        # v2（2026-08-16）：chg7 上限钉死——本例 chg7≈+5%，cap=4 时应被拦（不触发）
+        os.environ["CS_ENGINE_RISE_CHG7_CAP"] = "4"
+        res = ia.run_item_analysis(prices=prices, **kw)
+        assert res.fusion_decision['action'] == 'watch', res.fusion_decision['action']
+        assert 'rise_accumulation' not in res.fusion_decision['deduction_sources']
     finally:
         if old is None:
             os.environ.pop("CS_ENGINE_RISE_ACCUM", None)
         else:
             os.environ["CS_ENGINE_RISE_ACCUM"] = old
+        os.environ.pop("CS_ENGINE_RISE_CHG7_CAP", None)
         (ia._analyze_position, ia.compute_sentiment_score, ia.compute_sentiment_factor,
          ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision) = orig
 check('买涨腿吸筹型上涨族 CS_ENGINE_RISE_ACCUM 开关（默认关）', t_rise_accum_family)

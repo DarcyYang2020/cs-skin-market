@@ -34,7 +34,8 @@
     "p_avg": 0.0,
     "p_win": 0.012,
     "book_avg14": 2.38,
-    "book_win14": 60.4
+    "book_win14": 60.4,
+    "with_replacement": false
    },
    "val": {
     "added": {
@@ -61,7 +62,8 @@
     "p_avg": 0.998,
     "p_win": 0.998,
     "book_avg14": 24.58,
-    "book_win14": 74.4
+    "book_win14": 74.4,
+    "with_replacement": false
    }
   },
   "gates": {
@@ -109,7 +111,8 @@
     "p_avg": 0.134,
     "p_win": 0.71,
     "book_avg14": 2.38,
-    "book_win14": 60.4
+    "book_win14": 60.4,
+    "with_replacement": false
    },
    "val": {
     "added": {
@@ -136,7 +139,162 @@
     "p_avg": 1.0,
     "p_win": 1.0,
     "book_avg14": 24.58,
-    "book_win14": 74.4
+    "book_win14": 74.4,
+    "with_replacement": false
+   }
+  },
+  "gates": {
+   "n_val>=15": true,
+   "val_avg14_excess>=2pp": false,
+   "val_win14>=book": false,
+   "fit_val_direction": false,
+   "p_avg<0.05": false
+  },
+  "passed": false
+ },
+ "rise_v2_cap15": {
+  "probe": "A2 第五件套 发射分布复算",
+  "family": "rise_v2_cap15",
+  "split": "2025-08-10",
+  "added_total": 12,
+  "displaced_total": 4,
+  "added_by_label": {
+   "🟢 吸筹型上涨·强势买涨·分批建仓": 11,
+   "🟢 供给收缩·启动前吸筹·分批建仓": 1
+  },
+  "segments": {
+   "fit": {
+    "added": {
+     "n": 2,
+     "win14": 50.0,
+     "avg14": 1.29,
+     "win30": 100.0,
+     "avg30": 7.27
+    },
+    "displaced": {
+     "n": 2,
+     "win14": 100.0,
+     "avg14": 3.71,
+     "win30": 100.0,
+     "avg30": 10.56
+    },
+    "book": {
+     "n": 53,
+     "win14": 60.4,
+     "avg14": 2.38,
+     "win30": 64.2,
+     "avg30": 10.71
+    },
+    "p_avg": 0.426,
+    "p_win": 0.812,
+    "book_avg14": 2.38,
+    "book_win14": 60.4,
+    "with_replacement": false
+   },
+   "val": {
+    "added": {
+     "n": 10,
+     "win14": 10.0,
+     "avg14": -2.78,
+     "win30": 30.0,
+     "avg30": 2.31
+    },
+    "displaced": {
+     "n": 2,
+     "win14": 50.0,
+     "avg14": 30.57,
+     "win30": 50.0,
+     "avg30": 30.49
+    },
+    "book": {
+     "n": 133,
+     "win14": 74.4,
+     "avg14": 24.58,
+     "win30": 71.0,
+     "avg30": 29.19
+    },
+    "p_avg": 1.0,
+    "p_win": 1.0,
+    "book_avg14": 24.58,
+    "book_win14": 74.4,
+    "with_replacement": false
+   }
+  },
+  "gates": {
+   "n_val>=15": false,
+   "val_avg14_excess>=2pp": false,
+   "val_win14>=book": false,
+   "fit_val_direction": false,
+   "p_avg<0.05": false
+  },
+  "passed": false
+ },
+ "g2_upseg": {
+  "probe": "A2 第五件套 发射分布复算",
+  "family": "g2_upseg",
+  "split": "2025-08-10",
+  "added_total": 257,
+  "displaced_total": 18,
+  "added_by_label": {
+   "🟢 深值·大盘企稳·分批建仓": 255,
+   "🟢 深度回调低吸·分批建仓": 2
+  },
+  "segments": {
+   "fit": {
+    "added": {
+     "n": 169,
+     "win14": 42.6,
+     "avg14": 0.11,
+     "win30": 55.0,
+     "avg30": 5.68
+    },
+    "displaced": {
+     "n": 10,
+     "win14": 90.0,
+     "avg14": 2.22,
+     "win30": 100.0,
+     "avg30": 8.43
+    },
+    "book": {
+     "n": 53,
+     "win14": 60.4,
+     "avg14": 2.38,
+     "win30": 64.2,
+     "avg30": 10.71
+    },
+    "p_avg": 0.996,
+    "p_win": 1.0,
+    "book_avg14": 2.38,
+    "book_win14": 60.4,
+    "with_replacement": true
+   },
+   "val": {
+    "added": {
+     "n": 88,
+     "win14": 46.6,
+     "avg14": 2.0,
+     "win30": 35.2,
+     "avg30": 0.24
+    },
+    "displaced": {
+     "n": 8,
+     "win14": 75.0,
+     "avg14": 15.54,
+     "win30": 50.0,
+     "avg30": 15.8
+    },
+    "book": {
+     "n": 133,
+     "win14": 74.4,
+     "avg14": 24.58,
+     "win30": 71.0,
+     "avg30": 29.19
+    },
+    "p_avg": 1.0,
+    "p_win": 1.0,
+    "book_avg14": 24.58,
+    "book_win14": 74.4,
+    "with_replacement": false
    }
   },
   "gates": {

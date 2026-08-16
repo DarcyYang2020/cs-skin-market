@@ -53,16 +53,20 @@ def _stats(recs):
 
 
 def _perm_p(added, book, n_iter=500, seed=0):
-    """零假设：新增信号的 avg14/win14 不优于现存买书同段同规模随机子集。"""
-    if not added or len(book) < len(added):
-        return {"p_avg": None, "p_win": None, "book_avg": None, "book_win": None}
+    """零假设：新增信号的 avg14/win14 不优于现存买书同段同规模随机子集。
+    买书规模不足时放回抽样（choices），并标注。"""
+    if not added or not book:
+        return {"p_avg": None, "p_win": None, "book_avg14": None, "book_win14": None,
+                "with_replacement": None}
     obs_avg = sum(r["net14"] for r in added) / len(added)
     obs_win = sum(1 for r in added if r["net14"] > 0) / len(added)
     rng = random.Random(seed)
     k = len(added)
+    with_rep = len(book) < k
+    pick = (lambda: rng.choices(book, k=k)) if with_rep else (lambda: rng.sample(book, k))
     ge_avg = ge_win = 0
     for _ in range(n_iter):
-        sample = rng.sample(book, k)
+        sample = pick()
         if sum(r["net14"] for r in sample) / k >= obs_avg:
             ge_avg += 1
         if sum(1 for r in sample if r["net14"] > 0) / k >= obs_win:
@@ -70,7 +74,8 @@ def _perm_p(added, book, n_iter=500, seed=0):
     book_avg = sum(r["net14"] for r in book) / len(book)
     book_win = sum(1 for r in book if r["net14"] > 0) / len(book)
     return {"p_avg": round(ge_avg / n_iter, 3), "p_win": round(ge_win / n_iter, 3),
-            "book_avg14": round(book_avg, 2), "book_win14": round(100.0 * book_win, 1)}
+            "book_avg14": round(book_avg, 2), "book_win14": round(100.0 * book_win, 1),
+            "with_replacement": with_rep}
 
 
 def analyze(fam_on_path, baseline_path, family_keyword, label, out=None, n_iter=500, seed=0):

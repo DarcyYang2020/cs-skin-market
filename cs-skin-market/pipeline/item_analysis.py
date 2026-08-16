@@ -1016,6 +1016,16 @@ def _state_bucket(sentiment_score, market_th_score, market_30d_change):
     return state_bucket(sentiment_score, market_th_score, market_30d_change)
 
 
+def _rise_chg7_cap():
+    """买涨腿 v2（2026-08-16）：chg7 上限开关。默认 15（3<chg7≤15 剔抛物线追涨）；
+    ≤0 = 不设上限（v1 旧口径，已引擎级证伪）。env: CS_ENGINE_RISE_CHG7_CAP。"""
+    try:
+        cap = float(os.environ.get("CS_ENGINE_RISE_CHG7_CAP", "15"))
+    except ValueError:
+        cap = 15.0
+    return cap
+
+
 SIGNAL_FAMILIES = (
     SignalFamily(
         key="panic_resonance",
@@ -1142,6 +1152,9 @@ SIGNAL_FAMILIES = (
             and F["s30"] is not None and F["s30"] > 0
             and F["s7"] is not None and F["s7"] <= F["s30"] * 0.85
             and F["chg7"] is not None and F["chg7"] > 3
+            # v2（2026-08-16）：chg7 上限（默认 15）——v1 无上限致 2025-11 泵拉簇全灭
+            # （德拉戈米尔 chg7 46/−27.97、闪回 37/−19.85、异星世界 29/−29.42 等）；≤0 关上限
+            and (_rise_chg7_cap() <= 0 or F["chg7"] <= _rise_chg7_cap())
             and F["supply_change_30d"] is not None and F["supply_change_30d"] > 5
             and not _dedup_hit(F["recent_buy_dates"], F["signal_date"])
         ),
