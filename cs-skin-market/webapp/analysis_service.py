@@ -946,6 +946,43 @@ def _spread_trap_note(name):
         return None
 
 
+def _family_card_note(action_label):
+    """第一批（2026-08-16）：族特征卡接入单品报告（研究提示区，纯展示）。
+
+    从 data/family_feature_cards.json 取该信号所属族的历史特征（14/30/60d 胜率/期望），
+    让报告「用族的历史说话」；卡缺失/异常静默返回 None，不改变任何决策。缓存按 mtime 失效。
+    """
+    global _CARD_CACHE
+    try:
+        import json as _json
+        from pathlib import Path as _P
+        _path = _P(__file__).resolve().parent.parent / "data" / "family_feature_cards.json"
+        _mtime = _path.stat().st_mtime if _path.exists() else None
+        if not _mtime:
+            return None
+        if _CARD_CACHE.get("mtime") != _mtime:
+            with open(_path, encoding="utf-8") as _f:
+                _CARD_CACHE = {"mtime": _mtime, "data": _json.load(_f)}
+        _cards = (_CARD_CACHE.get("data") or {}).get("families") or {}
+        from pipeline.signal_tracking import family_key_for_label as _fk
+        _card = _cards.get(_fk(action_label))
+        if not _card:
+            return None
+        _h14 = _card.get("horizons", {}).get("14") or {}
+        _h30 = _card.get("horizons", {}).get("30") or {}
+        _h60 = _card.get("horizons", {}).get("60") or {}
+        if _h14.get("n", 0) < 5:
+            return None
+        _fmt = lambda h: "%s%%/期望%s%%" % (h.get("win"), h.get("avg"))  # noqa: E731
+        return (f"族历史特征（3 年回放 n={_card.get('n')}）：14d 胜率/期望 {_fmt(_h14)}、"
+                f"30d {_fmt(_h30)}、60d {_fmt(_h60)}——仅展示族历史，不改变当前决策。")
+    except Exception:
+        return None
+
+
+_CARD_CACHE = {}
+
+
 def _fd_display(fd, analysis=None):
     """融合决策展示层注入（决策链 trace）。纯展示，不改引擎输出。
 
@@ -998,6 +1035,11 @@ def _fd_display(fd, analysis=None):
         _trap = _spread_trap_note(analysis.name)
         if _trap:
             _caveats.append(_trap)
+    # 第一批（2026-08-16）：族特征卡软标注——buy 信号时展示所属族的历史特征，不改决策
+    if fd.get("action") == "buy":
+        _fc = _family_card_note(fd.get("action_label") or "")
+        if _fc:
+            _caveats.append(_fc)
     fd["trace"] = {
         "zone": fd.get("zone_label", ""),
         "bucket": fd.get("state_bucket", ""),

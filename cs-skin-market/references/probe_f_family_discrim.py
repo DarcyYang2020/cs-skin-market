@@ -145,10 +145,44 @@ def main():
             else:
                 rs = [r for r in events if r[key] is not None and a <= r[key] < b]
             print("  %-10s 14d %s | 30d %s" % (lab, st(rs, 14), st(rs, 30)))
-            out.setdefault(key, {})[lab] = {"14d": st(rs, 14), "30d": st(rs, 30)}
+        out.setdefault(key, {})[lab] = {"14d": st(rs, 14), "30d": st(rs, 30)}
     with open(OUT, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, indent=1)
     print("wrote", OUT)
+
+    # ---- 2c 交互视图：承接×大盘×拉阳量级；路径形态（V型首反 vs 平台二波）----
+    print("\n== 2c 三因子交互（承接≥0 × 牛 × 急拉≥15%）==")
+    out2c = {}
+    for sup_ok in (True, False):
+        for bull in (True, False):
+            for big in (True, False):
+                rs = [r for r in events
+                      if r["sup"] is not None and (r["sup"] >= 0) == sup_ok
+                      and (r["cyc"] > 0) == bull and (r["chg3"] >= 15) == big]
+                if len(rs) < 10:
+                    continue
+                lab = "承接%s×%s×拉%s" % ("+" if sup_ok else "-", "牛" if bull else "非牛",
+                                          "大" if big else "小")
+                print("  %-16s 14d %s | 30d %s" % (lab, st(rs, 14), st(rs, 30)))
+                out2c[lab] = {"14d": st(rs, 14), "30d": st(rs, 30)}
+    print("\n== 2c 路径形态 ==")
+    vx = [r for r in events if r["dd60"] <= -25 and not r["rebounded"]]
+    pf = [r for r in events if r["dd60"] > -25 and r["rebounded"]]
+    other = [r for r in events if r not in vx and r not in pf]
+    for lab, rs in (("V型首反(深坑未反弹)", vx), ("平台二波(已反弹20%+)", pf), ("其他", other)):
+        print("  %-18s 14d %s | 30d %s" % (lab, st(rs, 14), st(rs, 30)))
+        out2c[lab] = {"14d": st(rs, 14), "30d": st(rs, 30)}
+    # 当前窗口分布
+    cur = [e for e in events if "2026-06-01" <= e["d"] <= "2026-08-14"]
+    print("\n== 当前窗口（2026-06~08）在各形态的分布（n=%d）==" % len(cur))
+    for lab, rs in (("V型首反", vx), ("平台二波", pf), ("其他", other)):
+        cc = [e for e in cur if e in rs]
+        print("  %-10s n=%d | 14d %s | 30d %s" % (lab, len(cc), st(cc, 14), st(cc, 30)))
+        out2c.setdefault("current_window", {})[lab] = {"14d": st(cc, 14), "30d": st(cc, 30)}
+    out["2c"] = out2c
+    with open(OUT, "w", encoding="utf-8") as f:
+        json.dump(out, f, ensure_ascii=False, indent=1)
+    print("wrote 2c ->", OUT)
 
 
 if __name__ == "__main__":
