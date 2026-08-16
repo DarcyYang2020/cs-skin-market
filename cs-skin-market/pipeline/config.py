@@ -363,8 +363,8 @@ PARAM_REGIME = {
         "v2-T7（2026-08-14）：流动性地板 below_floor 同样禁后置升级（对齐 missing），堵住 panic/accumulate 等后置族在在售量 45~196 时绕过 200/100 地板的泄漏；v2-T7）",
         "v2-T8（2026-08-14）：吸筹周期 watch->buy 尊重 liquidity_filtered，并给深度回调低吸变换加防御守卫，堵住 below_floor 经 cycle_accumulation_boost 重新升回 buy 的残留旁路（外审确认 same_fail=1：沙漠之鹰|指挥 2026-06-20）；v2-T8）",
         "v2-T9（2026-08-15）：csQAQ period=1095 回补 2026-02~04 及历史 in_sale NULL 断档（4802 行）+ 断档 0 值（14487 行，仅更新 NULL 与断档 0 值，保留真实 0）；supply_depth_missing 改为仅以 NULL 判定缺失。CLEAN-CUR 基线 150→297(NULL-only 中间)→230（panic 81 / deep_value 33 / accumulate 116，摘除 84 条伪供给收缩信号），仍需按 BASELINE_LEDGER 双口径展示；v2-T9）",
-        "v2-T10（2026-08-15，O1 干净数据仓位网格落地）：supply_accum 0.10→0.15、deep_value 0.15→0.20。依据=cycle 186（3 年干净日线）组合模拟 cap0.8/hold21/2%：baseline +277.36%/−15.38%/Calmar18.03 → both +324.22%/−13.89%/Calmar23.34；单变体 supply_accum0.15 +296.56%/−14.64%、deep_value0.20 +290.44%/−12.63%；前后半段（2025-08-10 切）方向一致（front +16.22→+24.29、back +220.53→+235.72）。旧 2026-08-10「supply_accum 降仓证伪」建立在伪零污染数据上，P2 证实 supply_accum 为稳族（干净 23 条 +13.18）后重验通过；恐慌族仍锁参（event_sensitivity）",
-        "xishou_mid 惜售中段候选族注册（2026-08-15，默认关 CS_ENGINE_XISHOU_MID=0）：O3 A2 五门全过（验证段超额 win+20.5pp/avg+9.36pp，置换 p=0.018/0.034），引擎级单族 win14 73.3%/+10.93；但组合级整合 −2.79pp（cap0.8 抢占+3 负信号）→ 不默认开、不 bump 版本，留作注册候选待复验",
+        "v2-T10（2026-08-15，O1 干净数据仓位网格落地）：supply_accum 0.10→0.15、deep_value 0.15→0.20。依据=cycle 186（3 年干净日线）组合模拟 cap0.8/hold21/2%：baseline +277.36%/−15.38%/Calmar18.03 → both +324.22%/−13.89%/Calmar23.34；单变体 supply_accum0.15 +296.56%/−14.64%、deep_value0.20 +290.44%/−12.63%；前后半段（2025-08-10 切）方向一致（front +16.22→+24.29、back +220.53→+235.72）。旧 2026-08-10「supply_accum 降仓证伪」建立在伪零污染数据上，P2 证实 supply_accum 为稳族（干净 23 条 +13.18）后重验通过；恐慌族仍锁参（event_sensitivity）。【2026-08-16 失真修正】落地产物 canonical 复现 = +317.89%/−14.59%/Calmar21.78（324.22 系内存变体：落地重放另有 10 条基础族分级仓位 0.12→0.2/0.3 的 vintage 变化，见 decision-log 2026-08-16）；官方口径一律 317.89/−14.59/21.78",
+        "xishou_mid 惜售中段候选族注册（2026-08-15，默认关 CS_ENGINE_XISHOU_MID=0）：O3 A2 五门全过（验证段超额 win+20.5pp/avg+9.36pp，置换 p=0.018/0.034），引擎级单族 win14 73.3%/+10.93。【2026-08-16 失真修正+重放复验】旧「组合级 −2.79pp 拒绝」对照基线失真；正确基线 317.89 下 xishou on 200 信号 = +321.43%/−14.59%/Calmar22.03（全期 +3.54pp/maxDD 持平）但 front +1.40pp（8 条全胜，2025-05 簇集中）/ back −0.82pp（7 条 2 胜）方向不一致 → 维持默认关，不 bump；发射选择偏差见 decision-log 2026-08-16",
 
     ],
     "monitors": [
@@ -411,4 +411,4 @@ J2_THRESHOLDS = {
 # ---- 引擎参数版本（Phase 0 版本化）----
 # signal_tracking 记录每条生产信号时的引擎版本；重拟合发布新参数时 bump，
 # 使新旧引擎产生的实盘信号可区分、可分别统计。
-ENGINE_VERSION = "v2-T10"  # v2-T9 + O1 干净数据仓位网格（supply_accum 0.10→0.15、deep_value 0.15→0.20，cycle 186 组合 total +46.9pp/Calmar 18.03→23.34，2026-08-15）
+ENGINE_VERSION = "v2-T10"  # v2-T9 + O1 干净数据仓位网格（supply_accum 0.10→0.15、deep_value 0.15→0.20，cycle 186 组合 277.36%/−15.38% → 317.89%/−14.59%/Calmar21.78，2026-08-15；2026-08-16 台账失真修正）

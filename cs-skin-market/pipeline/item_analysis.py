@@ -1054,7 +1054,8 @@ SIGNAL_FAMILIES = (
             and F["th"] >= 35 and F["market_th"] >= 40
             # I-6 阴跌中继闸门 (2026-08-06 回放验证): 大盘 chg30 在 [-3,3) 横盘段期望 18-53% ，剔除；[-15,-3) 深跌修复段 85-93%
             # I-13 (2026-08-07 去量回测验证): 大盘 chg30>=3 上涨段深值失效（93信号14d 44%胜率/+2.2，跨10月40品，基线与去量版同款），仅保留 <=-3 企稳/修复环境
-            and (F["mchg30"] is None or F["mchg30"] <= -3)
+            and (F["mchg30"] is None or F["mchg30"] <= -3
+                 or os.environ.get("CS_ENGINE_G2_UPSEG", "0") == "1")  # 审计②（2026-08-15）：G2 上涨段重开开关——干净数据 mchg30≥3 桶 +2.2% 反优于 ≤-3 桶 +0.92%
             and 40 <= F["sent"] <= 65 and F["drop21"] >= -5
             and not _dedup_hit(F["recent_buy_dates"], F["signal_date"])
         ),
@@ -1128,6 +1129,33 @@ SIGNAL_FAMILIES = (
         counterparty="派发盘/高位出货盘（供给扩张方）",
         scenario="供给收缩期（中性企稳/弱市观望桶）；强牛段(sent<40+大盘TH≥60)增强",
         failure_signal="假挂单/对倒虚缩（在售量口径失真，CS 庄家操纵）；泵后横盘追高段（chg8>3% 26 信号 42.3% 胜率已剔除）；开箱/赛事事件供给突变",
+    ),
+    SignalFamily(
+        key="rise_accum",
+        label="🟢 吸筹型上涨·强势买涨·分批建仓",
+        priority=28,
+        limit=0.10,
+        trigger=lambda F: (
+            os.environ.get("CS_ENGINE_RISE_ACCUM", "0") == "1"
+            and len(F["supply_hist"]) >= 60 and len(F["prices"]) >= 8
+            and not (F["survive"] > 0 and F["survive"] < 3000)
+            and F["s30"] is not None and F["s30"] > 0
+            and F["s7"] is not None and F["s7"] <= F["s30"] * 0.85
+            and F["chg7"] is not None and F["chg7"] > 3
+            and F["supply_change_30d"] is not None and F["supply_change_30d"] > 5
+            and not _dedup_hit(F["recent_buy_dates"], F["signal_date"])
+        ),
+        buckets=("中性企稳", "弱市观望"),
+        guards=(),
+        detail=lambda F: (
+            f"吸筹型上涨(7日涨{F['chg7']:+.1f}%+供缩s7≤0.85s30+30日扩张{F['supply_change_30d']:+.0f}%)·"
+            f"买涨腿A2验证win14+6.3pp/avg+8.23pp(p=0.002)·轻仓0.10"
+        ),
+        sources=("rise_accumulation",),
+        hypothesis="价涨(chg7>3%)+供缩(s7≤0.85s30)+30日供给扩张(sc30>5%)=强势品吸筹型上涨（抽象派1337/合纵类）；买涨腿 A2 验证段去簇 155 win14 51.6%/avg14 +13.09 vs 价涨基线 45.3%/+4.86，置换 p_avg=0.002",
+        counterparty="追涨盘/散户获利了结（上涨中供缩=买盘吸收挂单，接续上涨）",
+        scenario="牛市中强势品的吸筹型上涨段；引擎唯一「买涨」腿（补齐 pct 高位强势品无覆盖的架构缺陷）",
+        failure_signal="上涨中供缩为假吸筹（陷阱指纹 Δspread>8.9pp 待接入）；放量滞涨；供给扩张转派发",
     ),
     SignalFamily(
         key="xishou_mid",
@@ -1282,6 +1310,12 @@ def _g_supply_expansion(fd, F):
         return None
     chg = F["supply_change_30d"]
     if chg and chg > 5 and "deep_dip_exemption" not in fd.deduction_sources:
+        # 审计③（2026-08-15）：吸筹型上涨豁免开关——30 日扩张 + 7 日收缩 = 强势品吸筹
+        # （avg14 +6.78/avg30 +12.77 全场最强结构，旧「5/5 负期望」是小样本误判）
+        if (os.environ.get("CS_ENGINE_G3_ACCUM", "0") == "1"
+                and F["s30"] is not None and F["s30"] > 0
+                and F["s7"] is not None and F["s7"] <= F["s30"] * 0.85):
+            return None
         return ("🟡 供给扩张·观望",
                 f"在售量30日扩张{round(chg, 1)}%，抛压堆积，历史buy信号30d胜率0%(回测5/5负期望)",
                 "supply_expansion_filter")

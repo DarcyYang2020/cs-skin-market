@@ -1,0 +1,43 @@
+{
+ "probe": "买涨腿 A2",
+ "cand_fit": {
+  "n": 53,
+  "win14": 50.9,
+  "avg14": 10.44,
+  "win30": 52.8,
+  "avg30": 24.87
+ },
+ "cand_val": {
+  "n": 155,
+  "win14": 51.6,
+  "avg14": 13.09,
+  "win30": 56.8,
+  "avg30": 20.81
+ },
+ "base_fit": {
+  "n": 17835,
+  "win14": 36.9,
+  "avg14": -0.75,
+  "win30": 44.4,
+  "avg30": 3.26
+ },
+ "base_val": {
+  "n": 12974,
+  "win14": 45.3,
+  "avg14": 4.86,
+  "win30": 48.5,
+  "avg30": 12.18
+ },
+ "obs_win_pp": 6.3,
+ "obs_avg_pp": 8.23,
+ "p_win": 0.05,
+ "p_avg": 0.002,
+ "gates": {
+  "n_val_dedup>=15": true,
+  "win14_val>=base+5pp": true,
+  "avg14_val>=base+2pp": true,
+  "fit_val_direction": true,
+  "perm_p<0.05": true
+ },
+ "passed": true
+}

@@ -600,6 +600,57 @@ def t_xishou_mid_family():
          ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision) = orig
 check('O3 惜售中段族 CS_ENGINE_XISHOU_MID 开关（默认关）', t_xishou_mid_family)
 
+def t_rise_accum_family():
+    """买涨腿（2026-08-15）吸筹型上涨族：CS_ENGINE_RISE_ACCUM 开关钉死——
+    默认关不触发；开时 价涨+供缩+30日扩张 触发 buy 0.10。"""
+    import os
+    from types import SimpleNamespace
+    import pipeline.item_analysis as ia
+    pos = SimpleNamespace(percentile_90d=80.0, zscore_90d=1.0, high_90d=100.0,
+                          low_90d=50.0, mean_90d=75.0, median_90d=76.0,
+                          current_price=70.0, data_points=90, valuation_tier='overvalued')
+    orig = (ia._analyze_position, ia.compute_sentiment_score, ia.compute_sentiment_factor,
+            ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision)
+    ia._analyze_position = lambda prices: pos
+    ia.compute_sentiment_score = lambda: 30      # 贪婪（弱市禁入门放行需 sent>=40 或 market_th>=45）
+    ia.compute_sentiment_factor = lambda: 0.0
+    ia.event_risk_coefficient = lambda: 1.0
+    ia.compute_micro_th = lambda prices: 30
+    def fake_fd(*a, **k):
+        return SimpleNamespace(action='watch', action_label='🟡 观望', action_detail='',
+                               deduction_sources=[], zone='fair', zone_label='合理',
+                               liquidity_filtered=False, percentile_90d=80.0,
+                               raw_th_score=40, corrected_th_score=40, position_limit=0.0)
+    ia.compute_fusion_decision = fake_fd
+    # 供给：近 30 日均 80、前 30 日均 60（sc30=+33% 扩张）、近 7 日均 65（s7/s30=0.81 收缩）
+    supply = [60] * 30 + [80] * 23 + [65] * 7
+    # 价涨：7 日 +5%
+    prices = [60.0] * 85 + [62.0, 62.5, 63.0, 63.5, 64.0, 64.5, 65.1]
+    kw = dict(name='Test', supply_hist=supply, market_pct_90d=50.0,
+              market_cycle='markup', market_zscore=0.0, market_th_score=60,
+              market_30d_change=8.0, market_drop21=0.0, recent_buy_dates=[], signal_date='2025-03-01')
+    old = os.environ.get("CS_ENGINE_RISE_ACCUM")
+    try:
+        os.environ.pop("CS_ENGINE_RISE_ACCUM", None)
+        res = ia.run_item_analysis(prices=prices, **kw)
+        assert res.fusion_decision['action'] == 'watch', res.fusion_decision['action']
+        assert 'rise_accumulation' not in res.fusion_decision['deduction_sources']
+        os.environ["CS_ENGINE_RISE_ACCUM"] = "1"
+        res = ia.run_item_analysis(prices=prices, **kw)
+        fd = res.fusion_decision
+        assert fd['action'] == 'buy', fd['action']
+        assert 'rise_accumulation' in fd['deduction_sources'], fd['deduction_sources']
+        assert '吸筹型上涨' in fd['action_label'], fd['action_label']
+        assert fd['position_limit'] == 0.10, fd['position_limit']
+    finally:
+        if old is None:
+            os.environ.pop("CS_ENGINE_RISE_ACCUM", None)
+        else:
+            os.environ["CS_ENGINE_RISE_ACCUM"] = old
+        (ia._analyze_position, ia.compute_sentiment_score, ia.compute_sentiment_factor,
+         ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision) = orig
+check('买涨腿吸筹型上涨族 CS_ENGINE_RISE_ACCUM 开关（默认关）', t_rise_accum_family)
+
 print('[Batch Scan: 信号提取]')
 def t_extract_signals():
     from pipeline.batch_scan import extract_signals
