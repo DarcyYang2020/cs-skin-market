@@ -496,6 +496,14 @@ def main():
             log(f"第一批族特征监测: {_mod} -> data/{_out}")
     except Exception as e:
         log(f"第一批族特征监测异常（不中断采集）: {e}")
+    # 模拟盘 v1（2026-08-16）：全自动自主执行（buy 建仓/到期/止盈止损自动出场），不中断采集
+    try:
+        from pipeline.paper_trading import daily_run as _paper_run
+        _paper = _paper_run()
+        log(f"模拟盘: 新开 {_paper['opened']} / 平仓 {len(_paper['closed'])} 笔，"
+            f"总收益 {_paper['status']['total_return_pct']}%")
+    except Exception as e:
+        log(f"模拟盘执行异常（不中断采集）: {e}")
     # M1 监控模式 (2026-08-08): 自选品异动事件生成 + 日报 (纯提醒层, 只读引擎输出, 不触碰引擎参数)
     # 2026-08-08 采集提前至 18:00: 收尾仅生成事件+日报, 推送由独立任务 run_night_push.py 在 21:30 执行
     try:

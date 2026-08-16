@@ -864,6 +864,31 @@ def t_second_wave_family():
          ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision) = orig
 check('C 族二波回调 CS_ENGINE_C_WAVE 开关（默认关）', t_second_wave_family)
 
+def t_paper_trading():
+    """模拟盘 v1（2026-08-16）：三表 schema + 建仓/到期出场闭环（全自动自主执行口径）。"""
+    import sqlite3 as _sq
+    from pipeline import paper_trading as _pt
+    m = _sq.connect(":memory:")
+    m.row_factory = _sq.Row
+    _pt.ensure_schema(m)
+    cash0, init0 = _pt._account(m)
+    assert cash0 == 1000000.0 and init0 == 1000000.0
+    old = _pt.DEFAULT_HOLD
+    _pt.DEFAULT_HOLD = 3  # 建仓前设短持有，使 2026-08-01 的信号已到期
+    try:
+        pid = _pt.open_position(m, item_id=1, item_name="AK", family="rise_accum",
+                                action_label="🟢 吸筹型上涨", signal_date="2026-08-01",
+                                entry_price=100.0, limit_pct=0.05, sentiment_score=50)
+        assert pid is not None
+        closed = _pt.settle_exits(m, {1: 110.0})
+        assert len(closed) == 1 and closed[0]["reason"] == "到期", closed
+    finally:
+        _pt.DEFAULT_HOLD = old
+    st = _pt.status(m)
+    assert st["closed_trades"] == 1 and st["families"]["rise_accum"]["n"] == 1, st
+    m.close()
+check('模拟盘 v1: schema+建仓+到期出场闭环', t_paper_trading)
+
 def t_a2_emission():
     """A2 第五件套（2026-08-16）发射分布复算契约：
     xishou_mid（200 信号产物）与 rise_accum（202 信号产物）发射侧均须 FAILED——复现引擎级拒绝，
