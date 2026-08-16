@@ -31,8 +31,9 @@ def _win_avg(vals):
             "avg": round(sum(vals) / n, 2)}
 
 
-def build_cards(replay_path=None):
+def build_cards(replay_path=None, out_path=None):
     replay_path = Path(replay_path) if replay_path else REPLAY
+    out_path = Path(out_path) if out_path else OUT
     d = json.load(io.open(replay_path, encoding="utf-8"))
     fam = {}
     for s in d.get("signals", []):
@@ -87,7 +88,7 @@ def build_cards(replay_path=None):
         cards[key] = {"n": len(sigs), "horizons": horizons, "t_peaks": peaks, "regime": split}
     out = {"source": str(replay_path), "generated": __import__("datetime").datetime.now().isoformat(timespec="minutes"),
            "families": cards}
-    with io.open(OUT, "w", encoding="utf-8") as f:
+    with io.open(out_path, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, indent=1)
     return out
 

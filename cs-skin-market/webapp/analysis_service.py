@@ -990,8 +990,22 @@ def _family_card_note(action_label):
         if _h14.get("n", 0) < 5:
             return None
         _fmt = lambda h: "%s%%/期望%s%%" % (h.get("win"), h.get("avg"))  # noqa: E731
-        return (f"族历史特征（3 年回放 n={_card.get('n')}）：14d 胜率/期望 {_fmt(_h14)}、"
-                f"30d {_fmt(_h30)}、60d {_fmt(_h60)}——仅展示族历史，不改变当前决策。")
+        _base = (f"族历史特征（3 年回放 n={_card.get('n')}）：14d 胜率/期望 {_fmt(_h14)}、"
+                 f"30d {_fmt(_h30)}、60d {_fmt(_h60)}")
+        # M3（2026-08-16）：当前大盘层（指180d 牛/非牛）族分层历史
+        try:
+            _ms = market_snapshot()
+            _m180 = _ms.get("chg180") or 0
+            _reg = _card.get("regime", {})
+            _layer = _reg.get("bull" if _m180 > 0 else "nonbull") or {}
+            _l14 = _layer.get("net14") or {}
+            _l30 = _layer.get("net30") or {}
+            if _l14.get("n", 0) >= 5:
+                _base += (f"；当前大盘层（指180d {'牛' if _m180 > 0 else '非牛'}）族历史："
+                          f"14d {_fmt(_l14)}、30d {_fmt(_l30)}")
+        except Exception:
+            pass
+        return _base + "——仅展示族历史，不改变当前决策。"
     except Exception:
         return None
 

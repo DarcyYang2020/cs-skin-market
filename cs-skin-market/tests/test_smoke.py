@@ -972,7 +972,7 @@ def t_family_feature_card():
     spec = importlib.util.spec_from_file_location("ffc", str(root / "references" / "family_feature_card.py"))
     ffc = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(ffc)
-    out = ffc.build_cards()
+    out = ffc.build_cards(out_path=str(root / "data" / "_tmp_test_cards.json"))
     fams = out["families"]
     assert "panic_resonance" in fams and "rise_accum" in fams, list(fams)
     for k in ("panic_resonance", "rise_accum"):
