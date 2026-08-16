@@ -483,6 +483,19 @@ def main():
             f"missing={_rec['missing'] or '无'}")
     except Exception as e:
         log(f"信号跟踪对账异常（不中断采集）: {e}")
+    # 第一批（2026-08-16）：族特征卡刷新 + 实盘漂移监测（纯本地秒级，不中断采集）
+    try:
+        import importlib.util as _ilu
+        _root = os.path.dirname(os.path.abspath(__file__))
+        for _mod, _fn, _out in (("family_feature_card", "build_cards", "family_feature_cards.json"),
+                                ("family_drift_monitor", "check_drift", "family_drift.json")):
+            _spec = _ilu.spec_from_file_location(_mod, os.path.join(_root, "references", _mod + ".py"))
+            _m = _ilu.module_from_spec(_spec)
+            _spec.loader.exec_module(_m)
+            getattr(_m, _fn)()
+            log(f"第一批族特征监测: {_mod} -> data/{_out}")
+    except Exception as e:
+        log(f"第一批族特征监测异常（不中断采集）: {e}")
     # M1 监控模式 (2026-08-08): 自选品异动事件生成 + 日报 (纯提醒层, 只读引擎输出, 不触碰引擎参数)
     # 2026-08-08 采集提前至 18:00: 收尾仅生成事件+日报, 推送由独立任务 run_night_push.py 在 21:30 执行
     try:

@@ -823,8 +823,19 @@ def t_signal_tracking_features():
     assert ok
     r = m.execute("SELECT family, pct, sc30, engine_version FROM signal_tracking").fetchone()
     assert r["family"] == "rise_accum" and r["pct"] == 80.0 and r["sc30"] == -9.5
+    # mkt_chg180 实盘填充（缺省时自动从 market_index 算，失败静默为 NULL）
+    from datetime import datetime as _dt, timedelta as _td
+    m.execute("CREATE TABLE market_index (date TEXT, value REAL)")
+    _rows = [((_dt(2024, 1, 1) + _td(days=i)).strftime("%Y-%m-%d"), 100 + i * 0.4) for i in range(400)]
+    m.executemany("INSERT INTO market_index VALUES (?,?)", _rows)
+    ok2 = _st.record_buy_signal(m, item_id=2, item_name="AK", signal_date="2025-02-06",
+                                action="buy", action_label="🟢 分批建仓",
+                                entry_price=50.0)
+    assert ok2
+    r2 = m.execute("SELECT mkt_chg180, family FROM signal_tracking WHERE item_id=2").fetchone()
+    assert r2["family"] == "base" and r2["mkt_chg180"] is not None and r2["mkt_chg180"] > 0
     m.close()
-check('第一批 特征快照: family 映射 + 特征列落库', t_signal_tracking_features)
+check('第一批 特征快照: family 映射 + 特征列落库 + mkt_chg180 实盘填充', t_signal_tracking_features)
 
 def t_family_feature_card():
     """族特征卡聚合：官方产物按族产出分期限胜率/期望 + 做T峰值参考 + 牛熊拆分。"""

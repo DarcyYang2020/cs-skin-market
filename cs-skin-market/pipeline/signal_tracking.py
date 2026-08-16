@@ -112,11 +112,29 @@ def ensure_schema(conn):
     conn.commit()
 
 
+def _mkt_chg180(conn, signal_date):
+    """大盘指数 180 交易日涨幅（实盘特征填充；与族特征卡牛熊拆分同口径，行偏移近似）。"""
+    try:
+        rows = conn.execute("SELECT date, value FROM market_index ORDER BY date").fetchall()
+        dates = [r["date"] for r in rows]
+        vals = [r["value"] for r in rows]
+        i = 0
+        for j, d in enumerate(dates):
+            if d > signal_date:
+                break
+            i = j
+        if i >= 180 and vals[i - 180] > 0:
+            return round((vals[i] / vals[i - 180] - 1.0) * 100, 2)
+    except Exception:
+        pass
+    return None
+
+
 def record_buy_signal(conn, *, item_id, item_name, signal_date, action, action_label,
                       entry_price, position_limit=0.10, source="analyze", engine_version=None,
                       features=None):
     """记录一条生产 buy 信号（去重：同 item + 同日 + 同族只记一次）。返回 True 新插入 / False 重复。
-    features：build_features 产出的特征快照 dict（可空，第一批存料）。"""
+    features：build_features 产出的特征快照 dict（可空，第一批存料）；mkt_chg180 缺省时实盘填充。"""
     if action not in _BUY_ACTIONS:
         return False
     if not item_id or not entry_price or entry_price <= 0:
@@ -127,6 +145,9 @@ def record_buy_signal(conn, *, item_id, item_name, signal_date, action, action_l
     if exists:
         return False
     f = features or {}
+    m180 = f.get("mkt_chg180")
+    if m180 is None:
+        m180 = _mkt_chg180(conn, signal_date)
     cols = ["item_id", "item_name", "signal_date", "action", "action_label",
             "entry_price", "position_limit", "source", "engine_version"] + [c for c, _ in FEATURE_COLUMNS]
     placeholders = ",".join("?" * len(cols))
@@ -138,7 +159,7 @@ def record_buy_signal(conn, *, item_id, item_name, signal_date, action, action_l
          engine_version or ENGINE_VERSION,
          family, f.get("pct"), f.get("z"), f.get("sc30"), f.get("s7_ratio"),
          f.get("bid_price"), f.get("spread_pct"), f.get("sentiment"),
-         f.get("market_th"), f.get("mkt_chg180")))
+         f.get("market_th"), m180))
     conn.commit()
     return True
 
