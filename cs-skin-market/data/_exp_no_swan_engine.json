@@ -1,0 +1,62 @@
+{
+ "probe": "无黑天鹅引擎拆解",
+ "variants": {
+  "全量（v2-T10，186 信号）": {
+   "total": 317.89,
+   "mdd": -14.59,
+   "calmar": 21.78,
+   "ann": 76.8,
+   "front": {
+    "total": 25.23,
+    "mdd": -14.59,
+    "calmar": 1.73,
+    "ann": 16.36
+   },
+   "back": {
+    "total": 228.26,
+    "mdd": -11.36,
+    "calmar": 20.09,
+    "ann": 219.0
+   },
+   "n_signals": 186
+  },
+  "去 panic（无恐慌族）": {
+   "total": 249.3,
+   "mdd": -14.59,
+   "calmar": 17.08,
+   "ann": 64.61,
+   "front": {
+    "total": 25.23,
+    "mdd": -14.59,
+    "calmar": 1.73,
+    "ann": 16.36
+   },
+   "back": {
+    "total": 174.38,
+    "mdd": -11.36,
+    "calmar": 15.34,
+    "ann": 167.8
+   },
+   "n_signals": 110
+  },
+  "去 panic+deep_dip（只留跨周期验证族）": {
+   "total": 250.09,
+   "mdd": -14.59,
+   "calmar": 17.14,
+   "ann": 64.76,
+   "front": {
+    "total": 25.23,
+    "mdd": -14.59,
+    "calmar": 1.73,
+    "ann": 16.36
+   },
+   "back": {
+    "total": 175.01,
+    "mdd": -11.36,
+    "calmar": 15.4,
+    "ann": 168.39
+   },
+   "n_signals": 94
+  }
+ }
+}
