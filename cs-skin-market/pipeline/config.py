@@ -369,6 +369,7 @@ PARAM_REGIME = {
         "v2-T11（2026-08-16，优先级感知去重默认开 CS_ENGINE_DEDUP_PRIO=1）：7 日去重按族优先级过滤（低优先级历史信号不拦高优先级新信号），修复 rise_accum/G2 的跨族抢跑顶替（displaced 5/18 条归零）。依据=cycle 186 干净 3 年回放：开关关=186 基线逐键一致（回归）；开关开=190 信号 +320.72%/−14.59%/Calmar5.30 vs 基线 +317.89%/−14.59%/5.27（+2.83pp/maxDD 持平/front+0.61/back+0.66，新增 4 条深值+供给收缩全胜 avg14 +46.54）。快照新增 action_label 列供实盘打标。rise/xishou 在修复下复测仍 FAILED（rise 自身发射 val −2.78 p=0.998 / xishou front+13.1/back−27.2 方向不一致）→ 两族维持默认关；见 decision-log 2026-08-16 去重修复条目",
         "rise_accum v3/v4 腿定义重设计（2026-08-16，全部默认关，env 开关保留 CS_ENGINE_RISE_PRIO / hold-reduce 升级路径）：结构探针=TH≥55×正常×pct>40 格 n=226 avg14 +8.56（唯一强正期望格，重叠证伪：209/226 无现存族覆盖 avg +8.75）；提权 60 重放与 v2-fix 逐信号一致（上游融合决策 hold/reduce 结构性排除，优先级无关）；hold/reduce 强制升级解锁 68 条（val +7.1 转正）但组合 −25.5pp/maxDD −26.57 回撤爆炸 → 买涨腿=组合构建问题（v5 方向：动量 sleeve 独立风险预算 + 动量退出 + TH≥55×pct>40 触发）。见 decision-log 2026-08-16 条目 J",
         "rise_accum v5 组合构建矩阵（2026-08-16，九变体零重放探针 probe_rise_sleeve.py，全部不自动落地）：无变体同时满足 total≥基线/mdd≤−20/前后一致；最优权衡 E（TH≥55+limit0.05）= +339.42%/−19.98%（+18.7pp/+5.4pp 回撤）与 I（+跟踪止损8%）= +331.95%/−18.07%（+11.2pp/+3.5pp 回撤）为 north_star 用户风险预算决策项，落地需引擎 TH 门/limit/跟踪止损实现 + 重放复验；见 decision-log 2026-08-16 条目 K",
+        "v2-T12（2026-08-16，买涨腿方案I落地，用户决策推进）：rise_accum 默认开（CS_ENGINE_RISE_ACCUM=0 关闭）——TH≥55 趋势段门（CS_ENGINE_RISE_TH_MIN 默认55）+ limit 0.05（CS_ENGINE_RISE_LIMIT）+ chg7≤15 + hold/reduce 升级路径；退出=持有21日或自高点回撤5%跟踪止盈（止损宽度网格 5/8/12/15% 中 5% 最优：组合 front/back 双正）。依据=组合级跟踪止损口径重放 +336.29%/−15.73%/Calmar5.08 vs v2-T11 基线 +320.72%/−14.59%/5.30（total +15.57pp/maxDD +1.14pp/front +2.53/back +5.54）；警示=结构正期望 val 段集中（fit 格 +0.73 vs val +24.31），发射侧 vs 买书 FAILED（多元化腿口径），C 通道胜率/期望监测覆盖；自动化跟踪止损退出层=下一阶段。见 decision-log 2026-08-16 条目 L",
 
     ],
     "monitors": [
@@ -415,4 +416,4 @@ J2_THRESHOLDS = {
 # ---- 引擎参数版本（Phase 0 版本化）----
 # signal_tracking 记录每条生产信号时的引擎版本；重拟合发布新参数时 bump，
 # 使新旧引擎产生的实盘信号可区分、可分别统计。
-ENGINE_VERSION = "v2-T11"  # v2-T10 + 优先级感知去重（7日去重按族优先级过滤，修复跨族抢跑顶替；回放 +2.83pp/maxDD 持平，2026-08-16）
+ENGINE_VERSION = "v2-T12"  # v2-T11 + 买涨腿方案I默认开（TH≥55门/limit0.05/hold-reduce升级/跟踪止盈5%指导；+15.57pp/回撤+1.14pp，2026-08-16）

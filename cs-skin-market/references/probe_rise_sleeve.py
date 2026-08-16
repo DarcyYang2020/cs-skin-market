@@ -182,6 +182,13 @@ def main():
     curve, n, t = run(base)
     report("v2-T11 基线 190", curve, n, t)
 
+    # ---- v6 决策（2026-08-16）：TH≥55 + limit 0.05 下止损宽度网格 ----
+    sigs55 = [dict(s, limit=0.05) if s["is_rise"] else s for s in v4
+              if not s["is_rise"] or (s["mkt_th"] is not None and s["mkt_th"] >= 55)]
+    for trail in (0.05, 0.08, 0.12, 0.15):
+        curve, t = sim_trailing(sigs55, cap=0.8, trail=trail)
+        report("grid 止损%.0f%% TH≥55+0.05" % (trail * 100), curve, len(sigs55), t)
+
 
 if __name__ == "__main__":
     main()

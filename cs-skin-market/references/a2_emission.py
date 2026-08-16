@@ -23,6 +23,24 @@ from datetime import date
 
 SPLIT = date(2025, 8, 10)  # walk-forward 切点（拟合/验证）
 
+try:  # 事件日历（regime 过滤用）；导入失败时退化为全样本
+    import sys as _sys
+    from pathlib import Path as _P
+    _sys.path.insert(0, str(_P(__file__).resolve().parent.parent))
+    from pipeline.market_macro import historical_event_impact as _hei
+except Exception:  # pragma: no cover
+    _hei = None
+
+
+def _in_event(d):
+    """信号日是否落在黑天鹅事件窗口（EVENT_CALENDAR ±30 天）。"""
+    if _hei is None:
+        return False
+    try:
+        return bool(_hei(d.isoformat(), horizon_days=30))
+    except Exception:
+        return False
+
 
 def load_signals(path):
     d = json.load(io.open(path, encoding="utf-8"))
@@ -78,7 +96,11 @@ def _perm_p(added, book, n_iter=500, seed=0):
             "with_replacement": with_rep}
 
 
-def analyze(fam_on_path, baseline_path, family_keyword, label, out=None, n_iter=500, seed=0):
+def analyze(fam_on_path, baseline_path, family_keyword, label, out=None, n_iter=500, seed=0,
+            regime="all"):
+    """regime='normal'（2026-08-16 补丁）：正常市腿对照正常市买书——
+    从买书剔除事件窗信号（黑天鹅事件 ±30 天），新增信号同样只计正常窗；
+    防事件簇（2026-05 炼金 panic 群 +25.54）把正常市腿的对照基准抬到不可比。"""
     fam_on = load_signals(fam_on_path)
     base = load_signals(baseline_path)
     bkeys = {(s["name"], s["date"]) for s in base}
@@ -88,6 +110,10 @@ def analyze(fam_on_path, baseline_path, family_keyword, label, out=None, n_iter=
     displaced = [s for s in base if (s["name"], s["date"]) not in fkeys]
     from collections import Counter
     label_breakdown = dict(Counter(s["action_label"] for s in added))
+    if regime == "normal":
+        added = [s for s in added if not _in_event(s["date"])]
+        base = [s for s in base if not _in_event(s["date"])]
+        displaced = [s for s in displaced if not _in_event(s["date"])]
 
     seg = {}
     for tag, pred in (("fit", lambda d: d < SPLIT), ("val", lambda d: d >= SPLIT)):
@@ -113,7 +139,7 @@ def analyze(fam_on_path, baseline_path, family_keyword, label, out=None, n_iter=
     }
     res = {
         "probe": "A2 第五件套 发射分布复算",
-        "family": label, "split": SPLIT.isoformat(),
+        "family": label, "split": SPLIT.isoformat(), "regime": regime,
         "added_total": len(added), "displaced_total": len(displaced),
         "added_by_label": label_breakdown,
         "segments": seg, "gates": gates, "passed": all(gates.values()),

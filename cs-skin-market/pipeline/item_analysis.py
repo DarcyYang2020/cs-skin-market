@@ -1185,9 +1185,10 @@ SIGNAL_FAMILIES = (
         # v3 实验（2026-08-16）：CS_ENGINE_RISE_PRIO 可提权（如 60=后置族首位），
         # 检验「腿本身好但被现存族抢先覆盖」假设；默认 28（supply_accum 30 之下）
         priority=int(os.environ.get("CS_ENGINE_RISE_PRIO", "28")),
-        limit=0.10,
+        # v2-T12（2026-08-16 方案 I 落地）：limit 0.05（网格最优）+ 默认开（CS_ENGINE_RISE_ACCUM=0 关闭）
+        limit=float(os.environ.get("CS_ENGINE_RISE_LIMIT", "0.05")),
         trigger=lambda F: (
-            os.environ.get("CS_ENGINE_RISE_ACCUM", "0") == "1"
+            os.environ.get("CS_ENGINE_RISE_ACCUM", "1") == "1"
             and len(F["supply_hist"]) >= 60 and len(F["prices"]) >= 8
             and not (F["survive"] > 0 and F["survive"] < 3000)
             and F["s30"] is not None and F["s30"] > 0
@@ -1196,14 +1197,17 @@ SIGNAL_FAMILIES = (
             # v2（2026-08-16）：chg7 上限（默认 15）——v1 无上限致 2025-11 泵拉簇全灭
             # （德拉戈米尔 chg7 46/−27.97、闪回 37/−19.85、异星世界 29/−29.42 等）；≤0 关上限
             and (_rise_chg7_cap() <= 0 or F["chg7"] <= _rise_chg7_cap())
+            # v2-T12：TH≥55 趋势段环境门（审计④ 正常市唯一正期望格；CS_ENGINE_RISE_TH_MIN=0 关）
+            and (float(os.environ.get("CS_ENGINE_RISE_TH_MIN", "55")) <= 0
+                 or F["market_th"] is not None and F["market_th"] >= float(os.environ.get("CS_ENGINE_RISE_TH_MIN", "55")))
             and F["supply_change_30d"] is not None and F["supply_change_30d"] > 5
             and not _dedup_gate(F, 28)  # rise_accum
         ),
         buckets=("中性企稳", "弱市观望"),
         guards=(),
         detail=lambda F: (
-            f"吸筹型上涨(7日涨{F['chg7']:+.1f}%+供缩s7≤0.85s30+30日扩张{F['supply_change_30d']:+.0f}%)·"
-            f"买涨腿A2验证win14+6.3pp/avg+8.23pp(p=0.002)·轻仓0.10"
+            f"吸筹型上涨(7日涨{F['chg7']:+.1f}%+供缩s7≤0.85s30+30日扩张{F['supply_change_30d']:+.0f}%+大盘TH≥55趋势段)·"
+            f"轻仓0.05·持有21日或自高点回撤5%跟踪止盈离场（CS快涨快崩，方案I口径）"
         ),
         sources=("rise_accumulation",),
         hypothesis="价涨(chg7>3%)+供缩(s7≤0.85s30)+30日供给扩张(sc30>5%)=强势品吸筹型上涨（抽象派1337/合纵类）；买涨腿 A2 验证段去簇 155 win14 51.6%/avg14 +13.09 vs 价涨基线 45.3%/+4.86，置换 p_avg=0.002",
@@ -1725,10 +1729,11 @@ def decide_fusion_signal(
     # ---- 供给扩张过滤（基础/恐慌/深跌低吸；D方案豁免）----
     _apply_guards(fd, F, ("supply_expansion",))
 
-    # ---- 买涨腿升级（v4 实验，CS_ENGINE_RISE_ACCUM=1）：审计③架构缺口——强势品在基础决策
-    # hold/reduce 段被结构性排除（融合决策对 pct>40 拉升输出持有/减仓 → 后置族循环不评估），
-    # 这正是引擎错过抽象派1337/合纵类单调爬升品的根因。允许 rise_accum 从 hold/reduce 升级 buy。
-    if (os.environ.get("CS_ENGINE_RISE_ACCUM", "0") == "1"
+    # ---- 买涨腿升级（v4 实验，v2-T12 默认开，CS_ENGINE_RISE_ACCUM=0 关闭）：审计③架构缺口——
+    # 强势品在基础决策 hold/reduce 段被结构性排除（融合决策对 pct>40 拉升输出持有/减仓 →
+    # 后置族循环不评估），这正是引擎错过抽象派1337/合纵类单调爬升品的根因。
+    # 允许 rise_accum 从 hold/reduce 升级 buy（TH≥55 门在族 trigger 内）。
+    if (os.environ.get("CS_ENGINE_RISE_ACCUM", "1") == "1"
             and fd.action in ("hold", "reduce")
             and not fd.liquidity_filtered
             and SIGNAL_FAMILY_BY_KEY["rise_accum"].trigger(F)):

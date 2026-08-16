@@ -631,18 +631,21 @@ def t_rise_accum_family():
               market_30d_change=8.0, market_drop21=0.0, recent_buy_dates=[], signal_date='2025-03-01')
     old = os.environ.get("CS_ENGINE_RISE_ACCUM")
     try:
+        # 1) v2-T12 默认开：触发 buy，来源 rise_accumulation，仓位 0.05
         os.environ.pop("CS_ENGINE_RISE_ACCUM", None)
-        res = ia.run_item_analysis(prices=prices, **kw)
-        assert res.fusion_decision['action'] == 'watch', res.fusion_decision['action']
-        assert 'rise_accumulation' not in res.fusion_decision['deduction_sources']
-        os.environ["CS_ENGINE_RISE_ACCUM"] = "1"
         res = ia.run_item_analysis(prices=prices, **kw)
         fd = res.fusion_decision
         assert fd['action'] == 'buy', fd['action']
         assert 'rise_accumulation' in fd['deduction_sources'], fd['deduction_sources']
         assert '吸筹型上涨' in fd['action_label'], fd['action_label']
-        assert fd['position_limit'] == 0.10, fd['position_limit']
+        assert fd['position_limit'] == 0.05, fd['position_limit']
+        # 2) CS_ENGINE_RISE_ACCUM=0 显式关闭：保持 watch
+        os.environ["CS_ENGINE_RISE_ACCUM"] = "0"
+        res = ia.run_item_analysis(prices=prices, **kw)
+        assert res.fusion_decision['action'] == 'watch', res.fusion_decision['action']
+        assert 'rise_accumulation' not in res.fusion_decision['deduction_sources']
         # v2（2026-08-16）：chg7 上限钉死——本例 chg7≈+5%，cap=4 时应被拦（不触发）
+        os.environ.pop("CS_ENGINE_RISE_ACCUM", None)
         os.environ["CS_ENGINE_RISE_CHG7_CAP"] = "4"
         res = ia.run_item_analysis(prices=prices, **kw)
         assert res.fusion_decision['action'] == 'watch', res.fusion_decision['action']
@@ -688,16 +691,18 @@ def t_rise_v4_hold_upgrade():
               market_30d_change=8.0, market_drop21=0.0, recent_buy_dates=[], signal_date='2025-03-01')
     old = os.environ.get("CS_ENGINE_RISE_ACCUM")
     try:
+        # v2-T12 默认开：hold 应被升级 buy 0.05
         os.environ.pop("CS_ENGINE_RISE_ACCUM", None)
-        res = ia.run_item_analysis(prices=prices, **kw)
-        assert res.fusion_decision['action'] == 'hold', res.fusion_decision['action']
-        os.environ["CS_ENGINE_RISE_ACCUM"] = "1"
         res = ia.run_item_analysis(prices=prices, **kw)
         fd = res.fusion_decision
         assert fd['action'] == 'buy', fd['action']
         assert 'rise_accumulation' in fd['deduction_sources'], fd['deduction_sources']
         assert '吸筹型上涨' in fd['action_label'], fd['action_label']
-        assert fd['position_limit'] == 0.10, fd['position_limit']
+        assert fd['position_limit'] == 0.05, fd['position_limit']
+        # CS_ENGINE_RISE_ACCUM=0：保持 hold
+        os.environ["CS_ENGINE_RISE_ACCUM"] = "0"
+        res = ia.run_item_analysis(prices=prices, **kw)
+        assert res.fusion_decision['action'] == 'hold', res.fusion_decision['action']
     finally:
         if old is None:
             os.environ.pop("CS_ENGINE_RISE_ACCUM", None)
@@ -710,20 +715,21 @@ check('买涨腿 v4 hold/reduce 段升级（默认关）', t_rise_v4_hold_upgrad
 def t_a2_emission():
     """A2 第五件套（2026-08-16）发射分布复算契约：
     xishou_mid（200 信号产物）与 rise_accum（202 信号产物）发射侧均须 FAILED——复现引擎级拒绝，
-    防「数据层 A2 通过但发射残留更差」的失真重演。"""
+    防「数据层 A2 通过但发射残留更差」的失真重演。对照买书用冻结的 v2-T11 基线产物
+    （_exp_dedup_prio_base.json，190 信号），不用随引擎版本滚动更新的官方产物。"""
     import importlib.util
     from pathlib import Path
     root = Path(__file__).resolve().parent.parent
     spec = importlib.util.spec_from_file_location("a2e", str(root / "references" / "a2_emission.py"))
     a2e = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(a2e)
-    base = str(root / "data" / "_exp_cycle_replay_2026.json")
+    base = str(root / "data" / "_exp_dedup_prio_base.json")
     xr = a2e.analyze(str(root / "data" / "_exp_xishou_mid_replay.json"), base, "惜售中段", "xishou_mid")
-    assert xr["added_total"] == 15 and xr["displaced_total"] == 1, (xr["added_total"], xr["displaced_total"])
+    assert xr["added_total"] == 15 and xr["displaced_total"] == 5, (xr["added_total"], xr["displaced_total"])
     assert not xr["passed"], xr["gates"]
     assert xr["gates"]["n_val>=15"] is False and xr["gates"]["p_avg<0.05"] is False, xr["gates"]
     rr = a2e.analyze(str(root / "data" / "_exp_rise_accum_replay.json"), base, "吸筹型上涨", "rise_accum")
-    assert rr["added_total"] == 21 and rr["displaced_total"] == 5, (rr["added_total"], rr["displaced_total"])
+    assert rr["added_total"] == 21 and rr["displaced_total"] == 9, (rr["added_total"], rr["displaced_total"])
     assert not rr["passed"], rr["gates"]
 check('A2 第五件套发射侧复算（xishou/rise 双族 FAILED 契约）', t_a2_emission)
 
