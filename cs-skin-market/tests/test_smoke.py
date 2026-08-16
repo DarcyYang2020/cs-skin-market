@@ -762,6 +762,57 @@ def t_rise_contract_family():
          ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision) = orig
 check('v6 深收缩慢涨·合纵型族 CS_ENGINE_RISE_CONTRACT 开关（默认关）', t_rise_contract_family)
 
+def t_volatile_accum_family():
+    """D 族（2026-08-16 落地批次探针）：震荡吸筹——高波+慢涨+30日供缩+分位>40。
+    默认关（重放 620 信号组合劣化）；CS_ENGINE_D_ACCUM=1 开启 pilot。"""
+    import os
+    from types import SimpleNamespace
+    import pipeline.item_analysis as ia
+    pos = SimpleNamespace(percentile_90d=60.0, zscore_90d=-0.3, high_90d=100.0,
+                          low_90d=50.0, mean_90d=75.0, median_90d=76.0,
+                          current_price=62.0, data_points=90, valuation_tier='fair')
+    orig = (ia._analyze_position, ia.compute_sentiment_score, ia.compute_sentiment_factor,
+            ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision)
+    ia._analyze_position = lambda prices: pos
+    ia.compute_sentiment_score = lambda: 50
+    ia.compute_sentiment_factor = lambda: 0.0
+    ia.event_risk_coefficient = lambda: 1.0
+    ia.compute_micro_th = lambda prices: 30
+    def fake_fd(*a, **k):
+        return SimpleNamespace(action='watch', action_label='🟡 观望', action_detail='',
+                               deduction_sources=[], zone='fair', zone_label='合理',
+                               liquidity_filtered=False, percentile_90d=60.0,
+                               raw_th_score=60, corrected_th_score=60, position_limit=0.0)
+    ia.compute_fusion_decision = fake_fd
+    # 供给：前30日均100、近30日均90（sc30=-10%）；s7/s30=1.0（不触发 supply_accum）
+    supply = [100] * 30 + [90] * 30
+    # 高波慢涨：7 日净涨 +1.6%、日内大幅震荡（std≈4.7%）
+    prices = [60.0] * 85 + [61.0, 59.0, 61.5, 58.5, 61.5, 59.0, 62.0]
+    kw = dict(name='Test', supply_hist=supply, market_pct_90d=50.0,
+              market_cycle='volatile', market_zscore=0.0, market_th_score=60,
+              market_30d_change=8.0, market_drop21=0.0, recent_buy_dates=[], signal_date='2025-03-01')
+    old = os.environ.get("CS_ENGINE_D_ACCUM")
+    try:
+        os.environ.pop("CS_ENGINE_D_ACCUM", None)
+        res = ia.run_item_analysis(prices=prices, **kw)
+        assert res.fusion_decision['action'] == 'watch', res.fusion_decision['action']
+        assert 'volatile_accumulation' not in res.fusion_decision['deduction_sources']
+        os.environ["CS_ENGINE_D_ACCUM"] = "1"
+        res = ia.run_item_analysis(prices=prices, **kw)
+        fd = res.fusion_decision
+        assert fd['action'] == 'buy', fd['action']
+        assert 'volatile_accumulation' in fd['deduction_sources'], fd['deduction_sources']
+        assert '震荡吸筹' in fd['action_label'], fd['action_label']
+        assert fd['position_limit'] == 0.05, fd['position_limit']
+    finally:
+        if old is None:
+            os.environ.pop("CS_ENGINE_D_ACCUM", None)
+        else:
+            os.environ["CS_ENGINE_D_ACCUM"] = old
+        (ia._analyze_position, ia.compute_sentiment_score, ia.compute_sentiment_factor,
+         ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision) = orig
+check('D 族震荡吸筹 CS_ENGINE_D_ACCUM 默认关/pilot 开关', t_volatile_accum_family)
+
 def t_a2_emission():
     """A2 第五件套（2026-08-16）发射分布复算契约：
     xishou_mid（200 信号产物）与 rise_accum（202 信号产物）发射侧均须 FAILED——复现引擎级拒绝，

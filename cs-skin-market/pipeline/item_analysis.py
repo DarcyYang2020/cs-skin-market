@@ -1055,6 +1055,21 @@ def _state_bucket(sentiment_score, market_th_score, market_30d_change):
     return state_bucket(sentiment_score, market_th_score, market_30d_change)
 
 
+def _vol7_of(prices):
+    """7 日波动率（近 7 日收益 std；D 族震荡吸筹指纹）。数据不足返回 None。"""
+    try:
+        if not prices or len(prices) < 8:
+            return None
+        rets = [(prices[j] - prices[j - 1]) / prices[j - 1]
+                for j in range(len(prices) - 6, len(prices)) if prices[j - 1] > 0]
+        if len(rets) < 3:
+            return None
+        m = sum(rets) / len(rets)
+        return (sum((r - m) ** 2 for r in rets) / len(rets)) ** 0.5
+    except Exception:
+        return None
+
+
 def _rise_chg7_cap():
     """买涨腿 v2（2026-08-16）：chg7 上限开关。默认 15（3<chg7≤15 剔抛物线追涨）；
     ≤0 = 不设上限（v1 旧口径，已引擎级证伪）。env: CS_ENGINE_RISE_CHG7_CAP。"""
@@ -1247,6 +1262,38 @@ SIGNAL_FAMILIES = (
         counterparty="供给枯竭下的踏空盘/追涨盘（在售量持续收缩=持有人惜售+新供给不足）",
         scenario="TH≥55 趋势段的深供给收缩慢涨品（合纵 2025 型）；分位>40 强势域；长持 180 日口径",
         failure_signal="供给收缩反转（sc30 回升>-5）；开箱/新供给冲击；上涨转派发（s7/s30 回升）",
+    ),
+    SignalFamily(
+        key="volatile_accum",
+        label="🟢 震荡吸筹·启动前·分批建仓",
+        # D 族（2026-08-16 落地批次探针；默认关，重放证据见 decision-log U）：
+        # 探针3 高波×慢涨×供缩（60d +28.7~32.1），但引擎发射口径 620 信号组合 −28.6pp/mdd −28.45
+        # → 触发口径过宽，候选默认关（CS_ENGINE_D_ACCUM=1 开启 pilot）。
+        # vol 阈值 0.03 = 全池 7 日波动率三分位上界（描述性常数，登记为假设）。
+        priority=26,
+        limit=0.05,
+        trigger=lambda F: (
+            os.environ.get("CS_ENGINE_D_ACCUM", "0") == "1"
+            and len(F["supply_hist"]) >= 60 and len(F["prices"]) >= 8
+            and not (F["survive"] > 0 and F["survive"] < 3000)
+            and F["s30"] is not None and F["s30"] > 0
+            and F["chg7"] is not None and 0 < F["chg7"] <= 5
+            and F["supply_change_30d"] is not None and F["supply_change_30d"] <= -5
+            and F["vol7"] is not None and F["vol7"] >= 0.03
+            and F["pct"] is not None and F["pct"] > 40
+            and not _dedup_gate(F, 26)  # volatile_accum
+        ),
+        buckets=("中性企稳",),
+        guards=(),
+        detail=lambda F: (
+            f"震荡吸筹(高波动{F['vol7']:.2f}+慢涨{F['chg7']:+.1f}%+30日供缩{F['supply_change_30d']:+.0f}%+分位{F['pct']:.0f}%)·"
+            f"启动前洗盘结构·轻仓0.05·族特征卡参考退出节奏（live pilot 口径）"
+        ),
+        sources=("volatile_accumulation",),
+        hypothesis="高波动(vol7≥0.03)+慢涨(0<chg7≤5)+30日供给收缩(sc30≤-5)+分位>40 = 庄家震荡洗盘吸筹；探针3 池级 14d win45-46%/+5.6~6.9、60d win55-64%/+28.7~32.1（live-pilot 假设，C 通道监测）",
+        counterparty="震荡中被洗出的散户（高波洗盘 + 供给收缩 = 筹码向庄家集中）",
+        scenario="供给收缩期的震荡慢涨结构；分位>40 强势域（低位蓄势亚型未落地）",
+        failure_signal="波动率转低且价格停滞（洗盘结束无拉升）；供给收缩反转；放量急拉脱离慢涨域（转 rise 域）",
     ),
     SignalFamily(
         key="xishou_mid",
@@ -1718,6 +1765,8 @@ def decide_fusion_signal(
         "recent_buy_dates": recent_buy_dates, "signal_date": signal_date,
         "bid_score": bid_support.get("score", 50) if isinstance(bid_support, dict) else 50,
         "supply_change_30d": getattr(supply, "supply_change_30d", None),
+        # D 族（2026-08-16 落地批次）：7 日波动率（日收益 std，震荡吸筹指纹）
+        "vol7": _vol7_of(prices),
     }
     bucket = _state_bucket(sentiment_score, market_th_score, market_30d_change)
 
@@ -1767,7 +1816,7 @@ def decide_fusion_signal(
     # 后置族循环不评估），这正是引擎错过抽象派1337/合纵类单调爬升品的根因。
     # 允许买涨族（rise_accum 默认开 / rise_contract v6 候选默认关）从 hold/reduce 升级 buy（族内自含环境门）。
     if fd.action in ("hold", "reduce") and not fd.liquidity_filtered:
-        for _fam_key in ("rise_accum", "rise_contract"):
+        for _fam_key in ("rise_accum", "rise_contract", "volatile_accum"):
             _fam = SIGNAL_FAMILY_BY_KEY.get(_fam_key)
             if _fam is not None and _fam.trigger(F):
                 _apply_buy(fd, _fam, F)
