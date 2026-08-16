@@ -669,7 +669,11 @@ async def analyze_fresh(item, good_id, exact_name, *, db_item_id=None, apply_anc
                     signal_date=_today_str(), action=_fd.get("action", "buy"),
                     action_label=_fd.get("action_label", "") or "",
                     entry_price=_entry, position_limit=_fd.get("position_limit") or 0.10,
-                    source="analyze")
+                    source="analyze",
+                    features=_sig_tracking.build_features(
+                        analysis, bars=daily_bars,
+                        order_book=getattr(item, "order_book", None) or None,
+                        market=ms if isinstance(ms, dict) else None))
             finally:
                 conn_t.close()
     except Exception as _te:

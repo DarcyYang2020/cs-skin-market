@@ -18,6 +18,63 @@ _LOG = logging.getLogger(__name__)
 COST_PCT = 2.0  # 双边成本 2%（与回放 net 口径一致）
 _BUY_ACTIONS = ("buy", "oversold_buy")
 
+# 族标签映射（与 item_analysis.SignalFamily 键一致；识别不到的 buy 标签=base）
+FAMILY_LABEL_MAP = [
+    ("恐慌共振", "panic_resonance"), ("深值", "deep_value"), ("恐慌退潮", "panic_easing"),
+    ("供给收缩", "supply_accum"), ("吸筹型上涨", "rise_accum"),
+    ("深收缩慢涨", "rise_contract"), ("惜售中段", "xishou_mid"),
+    ("超跌反弹", "oversold_bounce"),
+]
+
+# 特征快照列（第一批 2026-08-16：族特征卡/漂移监测的存料）
+FEATURE_COLUMNS = [
+    ("family", "TEXT"), ("pct", "REAL"), ("z", "REAL"), ("sc30", "REAL"),
+    ("s7_ratio", "REAL"), ("bid_price", "REAL"), ("spread_pct", "REAL"),
+    ("sentiment", "REAL"), ("market_th", "REAL"), ("mkt_chg180", "REAL"),
+]
+
+
+def family_key_for_label(label):
+    lab = label or ""
+    for kw, key in FAMILY_LABEL_MAP:
+        if kw in lab:
+            return key
+    return "base"
+
+
+def build_features(analysis, *, bars=None, order_book=None, market=None):
+    """从分析结果/行情构建特征快照（任何异常返回空 dict，不阻断记录）。"""
+    f = {}
+    try:
+        fd = getattr(analysis, "fusion_decision", None) or {}
+        if isinstance(fd, dict):
+            f["family"] = family_key_for_label(fd.get("action_label") or "")
+        pos = getattr(analysis, "position", None)
+        if pos is not None:
+            f["pct"] = getattr(pos, "percentile_90d", None)
+            f["z"] = getattr(pos, "zscore_90d", None)
+        if bars:
+            vals = [getattr(b, "in_sale_count", None) for b in bars[-60:]]
+            vals = [v for v in vals if v is not None]
+            if len(vals) >= 30:
+                s30 = sum(vals[-30:]) / 30
+                s7 = sum(vals[-7:]) / 7
+                older = vals[:-30]
+                s30a = sum(older[-30:]) / 30 if len(older) >= 30 else None
+                if s30a:
+                    f["sc30"] = round((s30 / s30a - 1) * 100, 2)
+                if s30 > 0:
+                    f["s7_ratio"] = round(s7 / s30, 4)
+        if isinstance(order_book, dict):
+            f["bid_price"] = order_book.get("highest_buy")
+            f["spread_pct"] = order_book.get("spread_pct")
+        if isinstance(market, dict):
+            f["sentiment"] = market.get("sentiment")
+            f["market_th"] = market.get("th")
+    except Exception:  # 特征采集失败不阻断信号记录
+        return f
+    return f
+
 
 def ensure_schema(conn):
     """建表（独立于 db.get_conn 调用，测试/工具可用内存 DB）。"""
@@ -45,13 +102,21 @@ def ensure_schema(conn):
         conn.execute("ALTER TABLE signal_tracking ADD COLUMN engine_version TEXT")
     except sqlite3.OperationalError:
         pass  # column already exists
+    # 第一批（2026-08-16）：特征快照列（幂等补列）
+    for col, typ in FEATURE_COLUMNS:
+        try:
+            conn.execute("ALTER TABLE signal_tracking ADD COLUMN %s %s" % (col, typ))
+        except sqlite3.OperationalError:
+            pass  # column already exists
     conn.execute("CREATE INDEX IF NOT EXISTS idx_signal_tracking_date ON signal_tracking(signal_date)")
     conn.commit()
 
 
 def record_buy_signal(conn, *, item_id, item_name, signal_date, action, action_label,
-                      entry_price, position_limit=0.10, source="analyze", engine_version=None):
-    """记录一条生产 buy 信号（去重：同 item + 同日 + 同族只记一次）。返回 True 新插入 / False 重复。"""
+                      entry_price, position_limit=0.10, source="analyze", engine_version=None,
+                      features=None):
+    """记录一条生产 buy 信号（去重：同 item + 同日 + 同族只记一次）。返回 True 新插入 / False 重复。
+    features：build_features 产出的特征快照 dict（可空，第一批存料）。"""
     if action not in _BUY_ACTIONS:
         return False
     if not item_id or not entry_price or entry_price <= 0:
@@ -61,13 +126,19 @@ def record_buy_signal(conn, *, item_id, item_name, signal_date, action, action_l
         (item_id, signal_date, action_label)).fetchone()
     if exists:
         return False
+    f = features or {}
+    cols = ["item_id", "item_name", "signal_date", "action", "action_label",
+            "entry_price", "position_limit", "source", "engine_version"] + [c for c, _ in FEATURE_COLUMNS]
+    placeholders = ",".join("?" * len(cols))
+    family = f.get("family") or family_key_for_label(action_label)
     conn.execute(
-        "INSERT INTO signal_tracking "
-        "(item_id, item_name, signal_date, action, action_label, entry_price, position_limit, source, engine_version) "
-        "VALUES (?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO signal_tracking (%s) VALUES (%s)" % (",".join(cols), placeholders),
         (item_id, item_name, signal_date, action, action_label,
          round(float(entry_price), 4), float(position_limit or 0.10), source,
-         engine_version or ENGINE_VERSION))
+         engine_version or ENGINE_VERSION,
+         family, f.get("pct"), f.get("z"), f.get("sc30"), f.get("s7_ratio"),
+         f.get("bid_price"), f.get("spread_pct"), f.get("sentiment"),
+         f.get("market_th"), f.get("mkt_chg180")))
     conn.commit()
     return True
 

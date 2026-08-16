@@ -536,6 +536,14 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE signal_tracking ADD COLUMN engine_version TEXT")
     except sqlite3.OperationalError:
         pass  # column already exists
+    # 第一批（2026-08-16）：特征快照列（与 pipeline/signal_tracking.py FEATURE_COLUMNS 同源，幂等补列）
+    for _col, _typ in (("family", "TEXT"), ("pct", "REAL"), ("z", "REAL"), ("sc30", "REAL"),
+                       ("s7_ratio", "REAL"), ("bid_price", "REAL"), ("spread_pct", "REAL"),
+                       ("sentiment", "REAL"), ("market_th", "REAL"), ("mkt_chg180", "REAL")):
+        try:
+            conn.execute("ALTER TABLE signal_tracking ADD COLUMN %s %s" % (_col, _typ))
+        except sqlite3.OperationalError:
+            pass  # column already exists
     conn.execute("CREATE INDEX IF NOT EXISTS idx_signal_tracking_date ON signal_tracking(signal_date)")
     # 2026-08-13 B-5: separate read-only bid observation accumulator (weekly manual/scheduled probe).
     # Does not feed snapshots or the engine; keeps bid/spread samples bounded independently.

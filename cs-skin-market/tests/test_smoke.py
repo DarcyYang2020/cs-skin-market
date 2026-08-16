@@ -807,6 +807,42 @@ def t_dedup_prio():
         os.environ.pop("CS_ENGINE_DEDUP_PRIO", None)
 check('优先级感知去重（v2-T11 默认开）契约', t_dedup_prio)
 
+def t_signal_tracking_features():
+    """第一批（2026-08-16）特征快照：family 映射 + 特征列落库（不碰决策）。"""
+    import sqlite3 as _sq
+    from pipeline import signal_tracking as _st
+    m = _sq.connect(":memory:")
+    m.row_factory = _sq.Row
+    _st.ensure_schema(m)
+    assert _st.family_key_for_label("🟢 吸筹型上涨·强势买涨·分批建仓") == "rise_accum"
+    assert _st.family_key_for_label("🟢 深收缩慢涨·合纵型·分批建仓") == "rise_contract"
+    assert _st.family_key_for_label("🟢 分批建仓") == "base"
+    ok = _st.record_buy_signal(m, item_id=1, item_name="AWP", signal_date="2026-08-16",
+                               action="buy", action_label="🟢 吸筹型上涨·强势买涨·分批建仓",
+                               entry_price=100.0, features={"pct": 80.0, "sc30": -9.5, "family": "rise_accum"})
+    assert ok
+    r = m.execute("SELECT family, pct, sc30, engine_version FROM signal_tracking").fetchone()
+    assert r["family"] == "rise_accum" and r["pct"] == 80.0 and r["sc30"] == -9.5
+    m.close()
+check('第一批 特征快照: family 映射 + 特征列落库', t_signal_tracking_features)
+
+def t_family_feature_card():
+    """族特征卡聚合：官方产物按族产出分期限胜率/期望 + 做T峰值参考 + 牛熊拆分。"""
+    import importlib.util
+    from pathlib import Path
+    root = Path(__file__).resolve().parent.parent
+    spec = importlib.util.spec_from_file_location("ffc", str(root / "references" / "family_feature_card.py"))
+    ffc = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ffc)
+    out = ffc.build_cards()
+    fams = out["families"]
+    assert "panic_resonance" in fams and "rise_accum" in fams, list(fams)
+    for k in ("panic_resonance", "rise_accum"):
+        assert fams[k]["n"] > 0, k
+        assert fams[k]["horizons"]["14"]["n"] > 0, k
+        assert "t_peaks" in fams[k] and "regime" in fams[k], k
+check('第一批 族特征卡聚合（官方产物）', t_family_feature_card)
+
 print('[Batch Scan: 信号提取]')
 def t_extract_signals():
     from pipeline.batch_scan import extract_signals
