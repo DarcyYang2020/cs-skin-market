@@ -712,6 +712,56 @@ def t_rise_v4_hold_upgrade():
          ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision) = orig
 check('买涨腿 v4 hold/reduce 段升级（默认关）', t_rise_v4_hold_upgrade)
 
+def t_rise_contract_family():
+    """v6 候选（2026-08-16）深收缩慢涨·合纵型：CS_ENGINE_RISE_CONTRACT 默认关（不触发）；
+    开时 30日供给深收缩(≤-10)+7日续缩+温和上涨+TH≥55+分位>40 触发 buy 0.05。"""
+    import os
+    from types import SimpleNamespace
+    import pipeline.item_analysis as ia
+    pos = SimpleNamespace(percentile_90d=80.0, zscore_90d=1.0, high_90d=100.0,
+                          low_90d=50.0, mean_90d=75.0, median_90d=76.0,
+                          current_price=70.0, data_points=90, valuation_tier='overvalued')
+    orig = (ia._analyze_position, ia.compute_sentiment_score, ia.compute_sentiment_factor,
+            ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision)
+    ia._analyze_position = lambda prices: pos
+    ia.compute_sentiment_score = lambda: 50
+    ia.compute_sentiment_factor = lambda: 0.0
+    ia.event_risk_coefficient = lambda: 1.0
+    ia.compute_micro_th = lambda prices: 30
+    def fake_fd(*a, **k):
+        return SimpleNamespace(action='watch', action_label='🟡 观望', action_detail='',
+                               deduction_sources=[], zone='overvalued', zone_label='高估',
+                               liquidity_filtered=False, percentile_90d=80.0,
+                               raw_th_score=60, corrected_th_score=60, position_limit=0.0)
+    ia.compute_fusion_decision = fake_fd
+    # 供给：前30日均100、近30日均66.5（sc30=-33.5%）、近7日均55（s7/s30=0.83）
+    supply = [100] * 30 + [70] * 23 + [55] * 7
+    prices = [60.0] * 85 + [62.0, 62.5, 63.0, 63.5, 64.0, 64.5, 65.1]
+    kw = dict(name='Test', supply_hist=supply, market_pct_90d=50.0,
+              market_cycle='markup', market_zscore=0.0, market_th_score=60,
+              market_30d_change=8.0, market_drop21=0.0, recent_buy_dates=[], signal_date='2025-03-01')
+    old = os.environ.get("CS_ENGINE_RISE_CONTRACT")
+    try:
+        os.environ.pop("CS_ENGINE_RISE_CONTRACT", None)
+        res = ia.run_item_analysis(prices=prices, **kw)
+        assert res.fusion_decision['action'] == 'watch', res.fusion_decision['action']
+        assert 'rise_contract_accumulation' not in res.fusion_decision['deduction_sources']
+        os.environ["CS_ENGINE_RISE_CONTRACT"] = "1"
+        res = ia.run_item_analysis(prices=prices, **kw)
+        fd = res.fusion_decision
+        assert fd['action'] == 'buy', fd['action']
+        assert 'rise_contract_accumulation' in fd['deduction_sources'], fd['deduction_sources']
+        assert '合纵型' in fd['action_label'], fd['action_label']
+        assert fd['position_limit'] == 0.05, fd['position_limit']
+    finally:
+        if old is None:
+            os.environ.pop("CS_ENGINE_RISE_CONTRACT", None)
+        else:
+            os.environ["CS_ENGINE_RISE_CONTRACT"] = old
+        (ia._analyze_position, ia.compute_sentiment_score, ia.compute_sentiment_factor,
+         ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision) = orig
+check('v6 深收缩慢涨·合纵型族 CS_ENGINE_RISE_CONTRACT 开关（默认关）', t_rise_contract_family)
+
 def t_a2_emission():
     """A2 第五件套（2026-08-16）发射分布复算契约：
     xishou_mid（200 信号产物）与 rise_accum（202 信号产物）发射侧均须 FAILED——复现引擎级拒绝，

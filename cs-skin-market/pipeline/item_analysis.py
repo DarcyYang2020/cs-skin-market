@@ -1216,6 +1216,38 @@ SIGNAL_FAMILIES = (
         failure_signal="上涨中供缩为假吸筹（陷阱指纹 Δspread>8.9pp 待接入）；放量滞涨；供给扩张转派发",
     ),
     SignalFamily(
+        key="rise_contract",
+        label="🟢 深收缩慢涨·合纵型·分批建仓",
+        # v6 候选（2026-08-16，默认关 CS_ENGINE_RISE_CONTRACT）：合纵型「30 日供给深收缩+7日续缩+温和上涨」。
+        # 数据：sc30≤-10×正常×pct>40 格 fit n=485 win55%/+1.86、val n=71 win63%/+19.17——四类买涨结构中
+        # 唯一 fit/val 双正的 regime 稳健格（rise 族 sc30>5 格 fit +0.73/val +24.31 系 val 集中）。
+        priority=27,
+        limit=0.05,
+        trigger=lambda F: (
+            os.environ.get("CS_ENGINE_RISE_CONTRACT", "0") == "1"
+            and len(F["supply_hist"]) >= 60 and len(F["prices"]) >= 8
+            and not (F["survive"] > 0 and F["survive"] < 3000)
+            and F["s30"] is not None and F["s30"] > 0
+            and F["s7"] is not None and F["s7"] <= F["s30"] * 0.85
+            and F["chg7"] is not None and 3 < F["chg7"] <= 15
+            and F["supply_change_30d"] is not None and F["supply_change_30d"] <= -10
+            and F["market_th"] is not None and F["market_th"] >= 55
+            and F["pct"] is not None and F["pct"] > 40
+            and not _dedup_gate(F, 27)  # rise_contract
+        ),
+        buckets=("中性企稳",),
+        guards=(),
+        detail=lambda F: (
+            f"深收缩慢涨(30日供给{F['supply_change_30d']:+.0f}%+7日续缩+温和上涨{F['chg7']:+.1f}%+TH≥55+分位{F['pct']:.0f}%)·"
+            f"合纵型吸筹·轻仓0.05·持有21日或自高点回撤5%跟踪止盈离场"
+        ),
+        sources=("rise_contract_accumulation",),
+        hypothesis="30日供给深收缩(sc30≤-10)+7日续缩+温和上涨(3<chg7≤15)+TH≥55+分位>40 = 合纵型慢牛指纹；fit/val 双正（+1.86/+19.17）为四类买涨结构唯一 regime 稳健格",
+        counterparty="供给枯竭下的踏空盘/追涨盘（在售量持续收缩=持有人惜售+新供给不足）",
+        scenario="TH≥55 趋势段的深供给收缩慢涨品（合纵 2025 型）；分位>40 强势域",
+        failure_signal="供给收缩反转（sc30 回升>-10）；开箱/新供给冲击；上涨转派发（s7/s30 回升）",
+    ),
+    SignalFamily(
         key="xishou_mid",
         label="🟢 惜售中段·超跌反弹·分批建仓",
         priority=25,
@@ -1732,12 +1764,13 @@ def decide_fusion_signal(
     # ---- 买涨腿升级（v4 实验，v2-T12 默认开，CS_ENGINE_RISE_ACCUM=0 关闭）：审计③架构缺口——
     # 强势品在基础决策 hold/reduce 段被结构性排除（融合决策对 pct>40 拉升输出持有/减仓 →
     # 后置族循环不评估），这正是引擎错过抽象派1337/合纵类单调爬升品的根因。
-    # 允许 rise_accum 从 hold/reduce 升级 buy（TH≥55 门在族 trigger 内）。
-    if (os.environ.get("CS_ENGINE_RISE_ACCUM", "1") == "1"
-            and fd.action in ("hold", "reduce")
-            and not fd.liquidity_filtered
-            and SIGNAL_FAMILY_BY_KEY["rise_accum"].trigger(F)):
-        _apply_buy(fd, SIGNAL_FAMILY_BY_KEY["rise_accum"], F)
+    # 允许买涨族（rise_accum 默认开 / rise_contract v6 候选默认关）从 hold/reduce 升级 buy（族内自含环境门）。
+    if fd.action in ("hold", "reduce") and not fd.liquidity_filtered:
+        for _fam_key in ("rise_accum", "rise_contract"):
+            _fam = SIGNAL_FAMILY_BY_KEY.get(_fam_key)
+            if _fam is not None and _fam.trigger(F):
+                _apply_buy(fd, _fam, F)
+                break
 
     # ---- 升级族2：后置族（深值企稳 > 恐慌退潮 > 供给收缩，固定优先级）----
     # K-2（2026-08-06，预研 k2_guard_prestudy.json）：deep_value 叠加 supply_expansion 闸门，
