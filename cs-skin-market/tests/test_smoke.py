@@ -647,6 +647,8 @@ def t_rise_accum_family():
         res = ia.run_item_analysis(prices=prices, **kw)
         assert res.fusion_decision['action'] == 'watch', res.fusion_decision['action']
         assert 'rise_accumulation' not in res.fusion_decision['deduction_sources']
+        # 默认优先级 28（supply_accum 30 之下）钉死（v3 提权实验走 CS_ENGINE_RISE_PRIO）
+        assert ia.SIGNAL_FAMILY_BY_KEY["rise_accum"].priority == 28
     finally:
         if old is None:
             os.environ.pop("CS_ENGINE_RISE_ACCUM", None)
@@ -656,6 +658,54 @@ def t_rise_accum_family():
         (ia._analyze_position, ia.compute_sentiment_score, ia.compute_sentiment_factor,
          ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision) = orig
 check('买涨腿吸筹型上涨族 CS_ENGINE_RISE_ACCUM 开关（默认关）', t_rise_accum_family)
+
+def t_rise_v4_hold_upgrade():
+    """买涨腿 v4（2026-08-16）：hold/reduce 段升级——强势品结构在基础决策「高位持有/减仓」段
+    被后置族循环结构性排除（审计③架构缺口）；CS_ENGINE_RISE_ACCUM=1 时 rise_accum 应从 hold 升级 buy 0.10。"""
+    import os
+    from types import SimpleNamespace
+    import pipeline.item_analysis as ia
+    pos = SimpleNamespace(percentile_90d=80.0, zscore_90d=1.0, high_90d=100.0,
+                          low_90d=50.0, mean_90d=75.0, median_90d=76.0,
+                          current_price=70.0, data_points=90, valuation_tier='overvalued')
+    orig = (ia._analyze_position, ia.compute_sentiment_score, ia.compute_sentiment_factor,
+            ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision)
+    ia._analyze_position = lambda prices: pos
+    ia.compute_sentiment_score = lambda: 50
+    ia.compute_sentiment_factor = lambda: 0.0
+    ia.event_risk_coefficient = lambda: 1.0
+    ia.compute_micro_th = lambda prices: 30
+    def fake_fd(*a, **k):
+        return SimpleNamespace(action='hold', action_label='🟢 强势趋势·持有（设移动止盈）', action_detail='',
+                               deduction_sources=[], zone='overvalued', zone_label='高估',
+                               liquidity_filtered=False, percentile_90d=80.0,
+                               raw_th_score=60, corrected_th_score=60, position_limit=0.2)
+    ia.compute_fusion_decision = fake_fd
+    supply = [60] * 30 + [80] * 23 + [65] * 7
+    prices = [60.0] * 85 + [62.0, 62.5, 63.0, 63.5, 64.0, 64.5, 65.1]
+    kw = dict(name='Test', supply_hist=supply, market_pct_90d=50.0,
+              market_cycle='markup', market_zscore=0.0, market_th_score=60,
+              market_30d_change=8.0, market_drop21=0.0, recent_buy_dates=[], signal_date='2025-03-01')
+    old = os.environ.get("CS_ENGINE_RISE_ACCUM")
+    try:
+        os.environ.pop("CS_ENGINE_RISE_ACCUM", None)
+        res = ia.run_item_analysis(prices=prices, **kw)
+        assert res.fusion_decision['action'] == 'hold', res.fusion_decision['action']
+        os.environ["CS_ENGINE_RISE_ACCUM"] = "1"
+        res = ia.run_item_analysis(prices=prices, **kw)
+        fd = res.fusion_decision
+        assert fd['action'] == 'buy', fd['action']
+        assert 'rise_accumulation' in fd['deduction_sources'], fd['deduction_sources']
+        assert '吸筹型上涨' in fd['action_label'], fd['action_label']
+        assert fd['position_limit'] == 0.10, fd['position_limit']
+    finally:
+        if old is None:
+            os.environ.pop("CS_ENGINE_RISE_ACCUM", None)
+        else:
+            os.environ["CS_ENGINE_RISE_ACCUM"] = old
+        (ia._analyze_position, ia.compute_sentiment_score, ia.compute_sentiment_factor,
+         ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision) = orig
+check('买涨腿 v4 hold/reduce 段升级（默认关）', t_rise_v4_hold_upgrade)
 
 def t_a2_emission():
     """A2 第五件套（2026-08-16）发射分布复算契约：

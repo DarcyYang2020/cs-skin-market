@@ -1182,7 +1182,9 @@ SIGNAL_FAMILIES = (
     SignalFamily(
         key="rise_accum",
         label="🟢 吸筹型上涨·强势买涨·分批建仓",
-        priority=28,
+        # v3 实验（2026-08-16）：CS_ENGINE_RISE_PRIO 可提权（如 60=后置族首位），
+        # 检验「腿本身好但被现存族抢先覆盖」假设；默认 28（supply_accum 30 之下）
+        priority=int(os.environ.get("CS_ENGINE_RISE_PRIO", "28")),
         limit=0.10,
         trigger=lambda F: (
             os.environ.get("CS_ENGINE_RISE_ACCUM", "0") == "1"
@@ -1722,6 +1724,15 @@ def decide_fusion_signal(
 
     # ---- 供给扩张过滤（基础/恐慌/深跌低吸；D方案豁免）----
     _apply_guards(fd, F, ("supply_expansion",))
+
+    # ---- 买涨腿升级（v4 实验，CS_ENGINE_RISE_ACCUM=1）：审计③架构缺口——强势品在基础决策
+    # hold/reduce 段被结构性排除（融合决策对 pct>40 拉升输出持有/减仓 → 后置族循环不评估），
+    # 这正是引擎错过抽象派1337/合纵类单调爬升品的根因。允许 rise_accum 从 hold/reduce 升级 buy。
+    if (os.environ.get("CS_ENGINE_RISE_ACCUM", "0") == "1"
+            and fd.action in ("hold", "reduce")
+            and not fd.liquidity_filtered
+            and SIGNAL_FAMILY_BY_KEY["rise_accum"].trigger(F)):
+        _apply_buy(fd, SIGNAL_FAMILY_BY_KEY["rise_accum"], F)
 
     # ---- 升级族2：后置族（深值企稳 > 恐慌退潮 > 供给收缩，固定优先级）----
     # K-2（2026-08-06，预研 k2_guard_prestudy.json）：deep_value 叠加 supply_expansion 闸门，
