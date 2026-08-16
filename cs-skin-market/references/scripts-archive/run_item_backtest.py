@@ -114,8 +114,8 @@ def backtest_item(item_id, name, start, end, warmup, market_ctx, cost=0.02):
                 for j in range(max(1, i - 13), i + 1) if prices[j - 1] > 0]
         atr_pct = (sum(abs(r) for r in rets) / len(rets)) if rets else 0.03
         atr_pct = max(0.01, min(0.10, atr_pct))
-        # Forward series for exit-rule grid (entry close -> up to 60d after)
-        fwd_series = [round(prices[j], 2) for j in range(i + 1, min(i + 61, n))]
+        # Forward series for exit-rule grid (entry close -> up to 200d after；v6c 长持腿需 180d 视野)
+        fwd_series = [round(prices[j], 2) for j in range(i + 1, min(i + 201, n))]
         signals.append({
             "name": name,
             "date": d,

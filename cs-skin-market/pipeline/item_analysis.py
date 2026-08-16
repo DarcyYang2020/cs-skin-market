@@ -1218,9 +1218,10 @@ SIGNAL_FAMILIES = (
     SignalFamily(
         key="rise_contract",
         label="🟢 深收缩慢涨·合纵型·分批建仓",
-        # v6 候选（2026-08-16，默认关 CS_ENGINE_RISE_CONTRACT）：合纵型「30 日供给深收缩+7日续缩+温和上涨」。
-        # 数据：sc30≤-10×正常×pct>40 格 fit n=485 win55%/+1.86、val n=71 win63%/+19.17——四类买涨结构中
-        # 唯一 fit/val 双正的 regime 稳健格（rise 族 sc30>5 格 fit +0.73/val +24.31 系 val 集中）。
+        # v6c（2026-08-16，用户决策「合纵收益最高」）：阈值 −10→−5 + 长持口径。
+        # 数据：C1（sc30≤-5）池级 fit/val 随持有期单调上升——14d +1.19/+18.98、30d +4.93/+38.99、
+        # 60d +13.08/+49.96、90d +21.85/+99.73、180d +49.33(win71%)/+140.41(win85%)；
+        # 合纵 2025-02 入场 14d −2% 而 180d +105%。合纵型收益只在长持视野存在。
         priority=27,
         limit=0.05,
         trigger=lambda F: (
@@ -1230,7 +1231,7 @@ SIGNAL_FAMILIES = (
             and F["s30"] is not None and F["s30"] > 0
             and F["s7"] is not None and F["s7"] <= F["s30"] * 0.85
             and F["chg7"] is not None and 3 < F["chg7"] <= 15
-            and F["supply_change_30d"] is not None and F["supply_change_30d"] <= -10
+            and F["supply_change_30d"] is not None and F["supply_change_30d"] <= -5
             and F["market_th"] is not None and F["market_th"] >= 55
             and F["pct"] is not None and F["pct"] > 40
             and not _dedup_gate(F, 27)  # rise_contract
@@ -1239,13 +1240,13 @@ SIGNAL_FAMILIES = (
         guards=(),
         detail=lambda F: (
             f"深收缩慢涨(30日供给{F['supply_change_30d']:+.0f}%+7日续缩+温和上涨{F['chg7']:+.1f}%+TH≥55+分位{F['pct']:.0f}%)·"
-            f"合纵型吸筹·轻仓0.05·持有21日或自高点回撤5%跟踪止盈离场"
+            f"合纵型长持·轻仓0.05·持有180日（慢牛结构，短线14-30日无边际；供给收缩反转 sc30 回升>-5 离场）"
         ),
         sources=("rise_contract_accumulation",),
-        hypothesis="30日供给深收缩(sc30≤-10)+7日续缩+温和上涨(3<chg7≤15)+TH≥55+分位>40 = 合纵型慢牛指纹；fit/val 双正（+1.86/+19.17）为四类买涨结构唯一 regime 稳健格",
+        hypothesis="30日供给深收缩(sc30≤-5)+7日续缩+温和上涨(3<chg7≤15)+TH≥55+分位>40 = 合纵型慢牛指纹；收益随持有期单调上升（池级 180d fit +49.33/win71%、val +140.41/win85%）——长持结构非摆动结构",
         counterparty="供给枯竭下的踏空盘/追涨盘（在售量持续收缩=持有人惜售+新供给不足）",
-        scenario="TH≥55 趋势段的深供给收缩慢涨品（合纵 2025 型）；分位>40 强势域",
-        failure_signal="供给收缩反转（sc30 回升>-10）；开箱/新供给冲击；上涨转派发（s7/s30 回升）",
+        scenario="TH≥55 趋势段的深供给收缩慢涨品（合纵 2025 型）；分位>40 强势域；长持 180 日口径",
+        failure_signal="供给收缩反转（sc30 回升>-5）；开箱/新供给冲击；上涨转派发（s7/s30 回升）",
     ),
     SignalFamily(
         key="xishou_mid",

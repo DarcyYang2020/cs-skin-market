@@ -1,0 +1,15 @@
+{
+ "probe": "v6c 长持sleeve",
+ "c1_entries": 736,
+ "merged_total": 476.83,
+ "merged_mdd": -17.02,
+ "front": [
+  38.85,
+  -17.02
+ ],
+ "back": [
+  310.44,
+  -13.94
+ ],
+ "baseline_total": 336.56
+}

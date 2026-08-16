@@ -734,8 +734,8 @@ def t_rise_contract_family():
                                liquidity_filtered=False, percentile_90d=80.0,
                                raw_th_score=60, corrected_th_score=60, position_limit=0.0)
     ia.compute_fusion_decision = fake_fd
-    # 供给：前30日均100、近30日均66.5（sc30=-33.5%）、近7日均55（s7/s30=0.83）
-    supply = [100] * 30 + [70] * 23 + [55] * 7
+    # 供给：前30日均100、近30日均90.67（sc30=-9.3% 落在 (-10,-5] 新阈值带）、近7日均70（s7/s30=0.77）
+    supply = [100] * 30 + [97] * 23 + [70] * 7
     prices = [60.0] * 85 + [62.0, 62.5, 63.0, 63.5, 64.0, 64.5, 65.1]
     kw = dict(name='Test', supply_hist=supply, market_pct_90d=50.0,
               market_cycle='markup', market_zscore=0.0, market_th_score=60,
