@@ -1,0 +1,151 @@
+{
+ "xishou_mid": {
+  "probe": "A2 第五件套 发射分布复算",
+  "family": "xishou_mid",
+  "split": "2025-08-10",
+  "added_total": 15,
+  "displaced_total": 1,
+  "added_by_label": {
+   "🟢 惜售中段·超跌反弹·分批建仓": 15
+  },
+  "segments": {
+   "fit": {
+    "added": {
+     "n": 8,
+     "win14": 100.0,
+     "avg14": 19.69,
+     "win30": 100.0,
+     "avg30": 53.35
+    },
+    "displaced": {
+     "n": 1,
+     "win14": 100.0,
+     "avg14": 41.59,
+     "win30": 100.0,
+     "avg30": 147.99
+    },
+    "book": {
+     "n": 53,
+     "win14": 60.4,
+     "avg14": 2.38,
+     "win30": 64.2,
+     "avg30": 10.71
+    },
+    "p_avg": 0.0,
+    "p_win": 0.012,
+    "book_avg14": 2.38,
+    "book_win14": 60.4
+   },
+   "val": {
+    "added": {
+     "n": 7,
+     "win14": 28.6,
+     "avg14": -3.36,
+     "win30": 33.3,
+     "avg30": 2.34
+    },
+    "displaced": {
+     "n": 0,
+     "win14": null,
+     "avg14": null,
+     "win30": null,
+     "avg30": null
+    },
+    "book": {
+     "n": 133,
+     "win14": 74.4,
+     "avg14": 24.58,
+     "win30": 71.0,
+     "avg30": 29.19
+    },
+    "p_avg": 0.998,
+    "p_win": 0.998,
+    "book_avg14": 24.58,
+    "book_win14": 74.4
+   }
+  },
+  "gates": {
+   "n_val>=15": false,
+   "val_avg14_excess>=2pp": false,
+   "val_win14>=book": false,
+   "fit_val_direction": false,
+   "p_avg<0.05": false
+  },
+  "passed": false
+ },
+ "rise_accum": {
+  "probe": "A2 第五件套 发射分布复算",
+  "family": "rise_accum",
+  "split": "2025-08-10",
+  "added_total": 21,
+  "displaced_total": 5,
+  "added_by_label": {
+   "🟢 吸筹型上涨·强势买涨·分批建仓": 20,
+   "🟢 供给收缩·启动前吸筹·分批建仓": 1
+  },
+  "segments": {
+   "fit": {
+    "added": {
+     "n": 5,
+     "win14": 60.0,
+     "avg14": 8.23,
+     "win30": 80.0,
+     "avg30": 23.26
+    },
+    "displaced": {
+     "n": 3,
+     "win14": 100.0,
+     "avg14": 16.34,
+     "win30": 100.0,
+     "avg30": 56.37
+    },
+    "book": {
+     "n": 53,
+     "win14": 60.4,
+     "avg14": 2.38,
+     "win30": 64.2,
+     "avg30": 10.71
+    },
+    "p_avg": 0.134,
+    "p_win": 0.71,
+    "book_avg14": 2.38,
+    "book_win14": 60.4
+   },
+   "val": {
+    "added": {
+     "n": 16,
+     "win14": 25.0,
+     "avg14": -4.61,
+     "win30": 50.0,
+     "avg30": -1.05
+    },
+    "displaced": {
+     "n": 2,
+     "win14": 50.0,
+     "avg14": 30.57,
+     "win30": 50.0,
+     "avg30": 30.49
+    },
+    "book": {
+     "n": 133,
+     "win14": 74.4,
+     "avg14": 24.58,
+     "win30": 71.0,
+     "avg30": 29.19
+    },
+    "p_avg": 1.0,
+    "p_win": 1.0,
+    "book_avg14": 24.58,
+    "book_win14": 74.4
+   }
+  },
+  "gates": {
+   "n_val>=15": true,
+   "val_avg14_excess>=2pp": false,
+   "val_win14>=book": false,
+   "fit_val_direction": false,
+   "p_avg<0.05": false
+  },
+  "passed": false
+ }
+}

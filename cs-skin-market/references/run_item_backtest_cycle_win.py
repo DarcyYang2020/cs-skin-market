@@ -25,7 +25,7 @@ spec.loader.exec_module(rib)
 from pipeline.backtest_common import build_market_context  # noqa: E402
 from pipeline import db  # noqa: E402
 
-OUT = ROOT / "data" / "_exp_cycle_replay_2026.json"
+OUT = ROOT / "data" / os.environ.get("CS_ENGINE_REPLAY_OUT", "_exp_cycle_replay_2026.json")
 
 
 def pool_a_items():
@@ -59,9 +59,12 @@ def main():
     sigs_out = [s for r in results for s in r.get("signals", []) if s.get("fwd14") is not None]
     rows, agg = rib.summarize(results)
     agg["signals"] = len(sigs_out)
+    switches = ",".join("%s=1" % k for k in sorted(os.environ)
+                        if k.startswith("CS_ENGINE_") and os.environ[k] == "1")
     out = {"args": {"start": START, "end": END, "warmup": WARMUP,
                     "pool": "A(96\u8001\u54c1,3\u5e74\u7a97\u53e3)", "db": os.environ["CS_MODEL_DB"],
-                    "engine": "v2-T10 (DECISION-6/7 + liquidity_filtered + csQAQ period=1095 NULL+0gap backfill + O1 仓位网格 supply_accum0.15/deep_value0.20 + cycle window)"},
+                    "engine": "v2-T10 (DECISION-6/7 + liquidity_filtered + csQAQ period=1095 NULL+0gap backfill + O1 仓位网格 supply_accum0.15/deep_value0.20 + cycle window)",
+                    "env_switches": switches or None},
            "generated": datetime.now().strftime("%Y-%m-%d %H:%M"),
            "aggregate": agg, "per_item": rows, "signals": sigs_out}
     with open(OUT, "w", encoding="utf-8") as f:

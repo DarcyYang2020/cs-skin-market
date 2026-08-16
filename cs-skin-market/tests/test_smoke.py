@@ -651,6 +651,26 @@ def t_rise_accum_family():
          ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision) = orig
 check('买涨腿吸筹型上涨族 CS_ENGINE_RISE_ACCUM 开关（默认关）', t_rise_accum_family)
 
+def t_a2_emission():
+    """A2 第五件套（2026-08-16）发射分布复算契约：
+    xishou_mid（200 信号产物）与 rise_accum（202 信号产物）发射侧均须 FAILED——复现引擎级拒绝，
+    防「数据层 A2 通过但发射残留更差」的失真重演。"""
+    import importlib.util
+    from pathlib import Path
+    root = Path(__file__).resolve().parent.parent
+    spec = importlib.util.spec_from_file_location("a2e", str(root / "references" / "a2_emission.py"))
+    a2e = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(a2e)
+    base = str(root / "data" / "_exp_cycle_replay_2026.json")
+    xr = a2e.analyze(str(root / "data" / "_exp_xishou_mid_replay.json"), base, "惜售中段", "xishou_mid")
+    assert xr["added_total"] == 15 and xr["displaced_total"] == 1, (xr["added_total"], xr["displaced_total"])
+    assert not xr["passed"], xr["gates"]
+    assert xr["gates"]["n_val>=15"] is False and xr["gates"]["p_avg<0.05"] is False, xr["gates"]
+    rr = a2e.analyze(str(root / "data" / "_exp_rise_accum_replay.json"), base, "吸筹型上涨", "rise_accum")
+    assert rr["added_total"] == 21 and rr["displaced_total"] == 5, (rr["added_total"], rr["displaced_total"])
+    assert not rr["passed"], rr["gates"]
+check('A2 第五件套发射侧复算（xishou/rise 双族 FAILED 契约）', t_a2_emission)
+
 print('[Batch Scan: 信号提取]')
 def t_extract_signals():
     from pipeline.batch_scan import extract_signals
