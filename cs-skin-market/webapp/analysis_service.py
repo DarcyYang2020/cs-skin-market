@@ -395,13 +395,23 @@ def market_snapshot():
 
 
 def recent_buy_dates(conn, item_id, days=7):
-    """Snapshot buy-signal dates within the last N days (for 7-day signal clustering)."""
+    """Snapshot buy-signal dates within the last N days (for 7-day signal clustering).
+
+    v2-T11（2026-08-16 优先级感知去重）：返回 "YYYY-MM-DD|P"（P=族优先级，item_analysis.dedup_prio_for_label
+    单一事实源）；旧行 action_label 为空 → 返回裸日期（保守拦一切）。
+    """
+    from pipeline.item_analysis import dedup_prio_for_label
     cutoff = (datetime.now(TZ_BJ) - timedelta(days=days)).strftime("%Y-%m-%d")
     rows = conn.execute(
-        "SELECT date FROM snapshots WHERE item_id=? AND action IN ('buy','oversold_buy') AND date >= ? ORDER BY date DESC",
+        "SELECT date, action_label FROM snapshots WHERE item_id=? AND action IN ('buy','oversold_buy') AND date >= ? ORDER BY date DESC",
         (item_id, cutoff),
     ).fetchall()
-    return [r["date"][:10] for r in rows]
+    out = []
+    for r in rows:
+        d = r["date"][:10]
+        label = r["action_label"] or ""
+        out.append("%s|%d" % (d, dedup_prio_for_label(label)) if label else d)
+    return out
 
 
 def save_item_snapshot(conn, item_id, analysis, price_rmb, today=None, order_book=None):
@@ -420,8 +430,10 @@ def save_item_snapshot(conn, item_id, analysis, price_rmb, today=None, order_boo
     score = analysis.value.score
     grade = analysis.value.grade
     action = ""
+    action_label = ""
     if isinstance(getattr(analysis, "fusion_decision", None), dict):
         action = analysis.fusion_decision.get("action", "")
+        action_label = analysis.fusion_decision.get("action_label", "") or ""
     summary_json = json.dumps({
         "valuation_tier": getattr(analysis.position, "valuation_tier", "") if hasattr(analysis, "position") else "",
         "percentile_90d": getattr(analysis.position, "percentile_90d", 50) if hasattr(analysis, "position") else 50,
@@ -437,23 +449,23 @@ def save_item_snapshot(conn, item_id, analysis, price_rmb, today=None, order_boo
     # score_volume 为 DB 兼容字段：去量后恒 0（ValueScore 无成交量维度，勿再引用）
     if existing:
         conn.execute(
-            "UPDATE snapshots SET report_html=?, total_score=?, grade=?, price_rmb=?, score_scarcity=?, score_volume=?, score_market=?, score_liquidity=?, recommendation=?, action=?, bid_highest=?, bid_7d_chg=?, bid_30d_chg=?, spread_pct=?, spread_avg=? WHERE id=?",
+            "UPDATE snapshots SET report_html=?, total_score=?, grade=?, price_rmb=?, score_scarcity=?, score_volume=?, score_market=?, score_liquidity=?, recommendation=?, action=?, action_label=?, bid_highest=?, bid_7d_chg=?, bid_30d_chg=?, spread_pct=?, spread_avg=? WHERE id=?",
             (report_html, score, grade, price_rmb,
              analysis.value.scarcity if hasattr(analysis.value, "scarcity") else 0,
              analysis.value.volume if hasattr(analysis.value, "volume") else 0,
              analysis.value.market_sentiment if hasattr(analysis.value, "market_sentiment") else 0,
              analysis.value.liquidity if hasattr(analysis.value, "liquidity") else 0,
-             summary_json, action, *_bid_vals(order_book), existing["id"]),
+             summary_json, action, action_label, *_bid_vals(order_book), existing["id"]),
         )
     else:
         conn.execute(
-            "INSERT INTO snapshots (item_id, date, report_html, total_score, grade, price_rmb, score_scarcity, score_volume, score_market, score_liquidity, recommendation, action, bid_highest, bid_7d_chg, bid_30d_chg, spread_pct, spread_avg) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO snapshots (item_id, date, report_html, total_score, grade, price_rmb, score_scarcity, score_volume, score_market, score_liquidity, recommendation, action, action_label, bid_highest, bid_7d_chg, bid_30d_chg, spread_pct, spread_avg) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (item_id, today, report_html, score, grade, price_rmb,
              analysis.value.scarcity if hasattr(analysis.value, "scarcity") else 0,
              analysis.value.volume if hasattr(analysis.value, "volume") else 0,
              analysis.value.market_sentiment if hasattr(analysis.value, "market_sentiment") else 0,
              analysis.value.liquidity if hasattr(analysis.value, "liquidity") else 0,
-             summary_json, action, *_bid_vals(order_book)),
+             summary_json, action, action_label, *_bid_vals(order_book)),
         )
     conn.commit()
 

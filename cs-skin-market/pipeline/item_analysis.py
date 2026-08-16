@@ -994,21 +994,60 @@ class SignalFamily:
     failure_signal: str = ""
 
 
-def _dedup_hit(recent_buy_dates, signal_date):
-    """7 天内同品已触发买入信号 → 返回命中日期（用于去重）。"""
+def _dedup_hit(recent_buy_dates, signal_date, min_prio=None):
+    """7 天内同品已触发买入信号 → 返回命中日期（用于去重）。
+
+    min_prio（2026-08-16 优先级感知去重，CS_ENGINE_DEDUP_PRIO=1 时生效）：
+    仅统计优先级 ≥ min_prio 的历史信号——低优先级信号（如买涨腿 28）不得借去重闸门
+    压制高优先级信号（如供给收缩 30）的后续触发。条目格式 "YYYY-MM-DD" 或 "YYYY-MM-DD|P"
+    （P=信号族优先级；无标签按 0=基础族处理）。
+    """
     if not recent_buy_dates:
         return None
     from datetime import datetime as _dt
     if signal_date is None:
         signal_date = _dt.now().strftime("%Y-%m-%d")
     for d0 in recent_buy_dates:
+        tag = d0
+        prio = None  # 无标签（生产实盘路径）= 未知优先级 → 拦一切（保守）
+        if "|" in str(d0):
+            tag, _, p = str(d0).partition("|")
+            try:
+                prio = int(p)
+            except ValueError:
+                prio = None
+        if min_prio is not None and prio is not None and prio < min_prio:
+            continue
         try:
-            gap = (_dt.strptime(signal_date[:10], "%Y-%m-%d") - _dt.strptime(d0[:10], "%Y-%m-%d")).days
+            gap = (_dt.strptime(signal_date[:10], "%Y-%m-%d") - _dt.strptime(tag[:10], "%Y-%m-%d")).days
         except ValueError:
             continue
         if 0 <= gap <= 7:
-            return d0[:10]
+            return tag[:10]
     return None
+
+
+DEDUP_PRIO_BY_LABEL = {"恐慌共振": 60, "深值": 50, "恐慌退潮": 40,
+                       "供给收缩": 30, "吸筹型上涨": 28, "惜售中段": 25}
+
+
+def dedup_prio_for_label(label):
+    """action_label → 去重优先级（单一事实源）；未识别的 buy 标签（基础族/超跌等）按 0。"""
+    lab = label or ""
+    for k, v in DEDUP_PRIO_BY_LABEL.items():
+        if k in lab:
+            return v
+    return 0
+
+
+def _dedup_gate(F, prio):
+    """7 日去重闸门统一入口：优先级感知（v2-T11 默认开）——低优先级历史信号不得拦
+    高优先级新信号（防跨族抢跑顶替，实证见 decision-log 2026-08-16 去重修复条目；
+    回归：开关关=186 基线逐键一致；开关开=+4 信号全胜/+2.83pp/maxDD 持平）。
+    CS_ENGINE_DEDUP_PRIO=0 回退旧口径。"""
+    if os.environ.get("CS_ENGINE_DEDUP_PRIO", "1") == "1":
+        return _dedup_hit(F["recent_buy_dates"], F["signal_date"], min_prio=prio)
+    return _dedup_hit(F["recent_buy_dates"], F["signal_date"])
 
 
 def _state_bucket(sentiment_score, market_th_score, market_30d_change):
@@ -1039,7 +1078,7 @@ SIGNAL_FAMILIES = (
             and F["drop21"] <= -18
             and F["pct"] is not None and F["pct"] <= 15
             and F["z"] is not None and F["z"] <= -1.5
-            and not _dedup_hit(F["recent_buy_dates"], F["signal_date"])
+            and not _dedup_gate(F, 60)  # panic_resonance
         ),
         buckets=("V型底区",),
         guards=("micro_th", "bid", "bid_boost", "market_distribution", "z_gate", "consecutive"),
@@ -1067,7 +1106,7 @@ SIGNAL_FAMILIES = (
             and (F["mchg30"] is None or F["mchg30"] <= -3
                  or os.environ.get("CS_ENGINE_G2_UPSEG", "0") == "1")  # 审计②（2026-08-15）：G2 上涨段重开开关——干净数据 mchg30≥3 桶 +2.2% 反优于 ≤-3 桶 +0.92%
             and 40 <= F["sent"] <= 65 and F["drop21"] >= -5
-            and not _dedup_hit(F["recent_buy_dates"], F["signal_date"])
+            and not _dedup_gate(F, 50)  # deep_value
         ),
         buckets=("中性企稳", "弱市观望"),
         guards=("supply_expansion",),
@@ -1092,7 +1131,7 @@ SIGNAL_FAMILIES = (
             and F["z"] is not None and F["z"] <= -1
             and 55 <= F["sent"] <= 80 and F["mchg30"] <= -15
             and F["stopped"]
-            and not _dedup_hit(F["recent_buy_dates"], F["signal_date"])
+            and not _dedup_gate(F, 40)  # panic_easing
         ),
         buckets=("V型底区", "阴跌中继区"),
         guards=(),
@@ -1125,7 +1164,7 @@ SIGNAL_FAMILIES = (
             and (os.environ.get("CS_ENGINE_SUPPLY_ACCUM_CHG8_CAP", "1") == "0"
                  or F["chg8"] is None or F["chg8"] <= 3)
             and not (F["sent"] < 40 and F["market_th"] < 45)
-            and not _dedup_hit(F["recent_buy_dates"], F["signal_date"])
+            and not _dedup_gate(F, 30)  # supply_accum
         ),
         buckets=("中性企稳", "弱市观望"),
         guards=(),
@@ -1156,7 +1195,7 @@ SIGNAL_FAMILIES = (
             # （德拉戈米尔 chg7 46/−27.97、闪回 37/−19.85、异星世界 29/−29.42 等）；≤0 关上限
             and (_rise_chg7_cap() <= 0 or F["chg7"] <= _rise_chg7_cap())
             and F["supply_change_30d"] is not None and F["supply_change_30d"] > 5
-            and not _dedup_hit(F["recent_buy_dates"], F["signal_date"])
+            and not _dedup_gate(F, 28)  # rise_accum
         ),
         buckets=("中性企稳", "弱市观望"),
         guards=(),
@@ -1184,7 +1223,7 @@ SIGNAL_FAMILIES = (
             and F["chg5"] is not None and F["chg5"] < -3
             and F["pct"] is not None and 20 < F["pct"] <= 60
             and not (F["sent"] < 40 and F["market_th"] < 45)
-            and not _dedup_hit(F["recent_buy_dates"], F["signal_date"])
+            and not _dedup_gate(F, 25)  # xishou_mid
         ),
         buckets=("中性企稳", "弱市观望"),
         guards=("supply_expansion",),
@@ -1245,7 +1284,7 @@ def _g_halfway(fd, F):
 def _g_dedup(fd, F):
     if fd.action != "buy":
         return None
-    hit = _dedup_hit(F["recent_buy_dates"], F["signal_date"])
+    hit = _dedup_gate(F, 0)  # 基础族优先级 0：被任何历史 buy（含各族）拦
     if not hit:
         return None
     return ("🟡 已在买点区·等待回调",

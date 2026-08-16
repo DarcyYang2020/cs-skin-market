@@ -366,6 +366,7 @@ PARAM_REGIME = {
         "v2-T10（2026-08-15，O1 干净数据仓位网格落地）：supply_accum 0.10→0.15、deep_value 0.15→0.20。依据=cycle 186（3 年干净日线）组合模拟 cap0.8/hold21/2%：baseline +277.36%/−15.38%/Calmar18.03 → both +324.22%/−13.89%/Calmar23.34；单变体 supply_accum0.15 +296.56%/−14.64%、deep_value0.20 +290.44%/−12.63%；前后半段（2025-08-10 切）方向一致（front +16.22→+24.29、back +220.53→+235.72）。旧 2026-08-10「supply_accum 降仓证伪」建立在伪零污染数据上，P2 证实 supply_accum 为稳族（干净 23 条 +13.18）后重验通过；恐慌族仍锁参（event_sensitivity）。【2026-08-16 失真修正】落地产物 canonical 复现 = +317.89%/−14.59%/Calmar21.78（324.22 系内存变体：落地重放另有 10 条基础族分级仓位 0.12→0.2/0.3 的 vintage 变化，见 decision-log 2026-08-16）；官方口径一律 317.89/−14.59/21.78",
         "xishou_mid 惜售中段候选族注册（2026-08-15，默认关 CS_ENGINE_XISHOU_MID=0）：O3 A2 五门全过（验证段超额 win+20.5pp/avg+9.36pp，置换 p=0.018/0.034），引擎级单族 win14 73.3%/+10.93。【2026-08-16 失真修正+重放复验】旧「组合级 −2.79pp 拒绝」对照基线失真；正确基线 317.89 下 xishou on 200 信号 = +321.43%/−14.59%/Calmar22.03（全期 +3.54pp/maxDD 持平）但 front +1.40pp（8 条全胜，2025-05 簇集中）/ back −0.82pp（7 条 2 胜）方向不一致 → 维持默认关，不 bump；发射选择偏差见 decision-log 2026-08-16",
         "rise_accum 买涨腿 + G2 重开裁定（2026-08-16，均默认关，env 开关保留）：A2 第五件套（a2_emission.py 发射分布复算）落地为准入硬门槛。rise_accum v2（chg7 上限 15，CS_ENGINE_RISE_CHG7_CAP 默认 15）：发射侧 val 10 条 avg −2.78 p=1.0 + 组合 maxDD 恶化 → FAILED 默认关（v1 −35.0pp→v2 +3.61pp，发射选择偏差仍主导）。G2 上涨段重开（CS_ENGINE_G2_UPSEG=1）：425 信号发射侧 val 88 条 +2.0 vs 买书 +24.58 p=1.0、displaced 18 条 val +15.54 → FAILED，I-13 维持；G3 单独开 0 新增。见 decision-log 2026-08-16 条目 F/G/H",
+        "v2-T11（2026-08-16，优先级感知去重默认开 CS_ENGINE_DEDUP_PRIO=1）：7 日去重按族优先级过滤（低优先级历史信号不拦高优先级新信号），修复 rise_accum/G2 的跨族抢跑顶替（displaced 5/18 条归零）。依据=cycle 186 干净 3 年回放：开关关=186 基线逐键一致（回归）；开关开=190 信号 +320.72%/−14.59%/Calmar5.30 vs 基线 +317.89%/−14.59%/5.27（+2.83pp/maxDD 持平/front+0.61/back+0.66，新增 4 条深值+供给收缩全胜 avg14 +46.54）。快照新增 action_label 列供实盘打标。rise/xishou 在修复下复测仍 FAILED（rise 自身发射 val −2.78 p=0.998 / xishou front+13.1/back−27.2 方向不一致）→ 两族维持默认关；见 decision-log 2026-08-16 去重修复条目",
 
     ],
     "monitors": [
@@ -412,4 +413,4 @@ J2_THRESHOLDS = {
 # ---- 引擎参数版本（Phase 0 版本化）----
 # signal_tracking 记录每条生产信号时的引擎版本；重拟合发布新参数时 bump，
 # 使新旧引擎产生的实盘信号可区分、可分别统计。
-ENGINE_VERSION = "v2-T10"  # v2-T9 + O1 干净数据仓位网格（supply_accum 0.10→0.15、deep_value 0.15→0.20，cycle 186 组合 277.36%/−15.38% → 317.89%/−14.59%/Calmar21.78，2026-08-15；2026-08-16 台账失真修正）
+ENGINE_VERSION = "v2-T11"  # v2-T10 + 优先级感知去重（7日去重按族优先级过滤，修复跨族抢跑顶替；回放 +2.83pp/maxDD 持平，2026-08-16）

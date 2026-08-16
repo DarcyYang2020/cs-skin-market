@@ -1,6 +1,6 @@
 {
  "generated": "2026-08-16",
- "engine_version": "v2-T10",
+ "engine_version": "v2-T11",
  "monitor_start": "2026-08-07",
  "sample_target_days": 260,
  "channels": {
@@ -573,7 +573,7 @@
   }
  },
  "optimization_view": {
-  "north_star": "期望 + Calmar/maxDD 为主指标，胜率作为下限约束；方向是把引擎从「减仓器/风控器」转化为「收益增强器」（2026-08-14）",
+  "north_star": "总收益最大化 + 用户风险预算（软约束）；黑天鹅回撤防不住、不作为设计目标；Calmar/maxDD 从主指标降为监控项（2026-08-15 引擎重建审计——2024 牛市踏空 −5.84%、抽象派1337 +1266%/合纵 +1088% 被架构性排除）；方向=收益增强器，风控器只是当前形态不是终点",
   "win14_pct": 71.0,
   "avg14_net": 15.95,
   "win30_net": 68.1,

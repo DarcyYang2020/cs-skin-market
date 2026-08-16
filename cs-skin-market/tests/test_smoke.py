@@ -677,6 +677,30 @@ def t_a2_emission():
     assert not rr["passed"], rr["gates"]
 check('A2 第五件套发射侧复算（xishou/rise 双族 FAILED 契约）', t_a2_emission)
 
+def t_dedup_prio():
+    """优先级感知去重（2026-08-16，v2-T11 默认开）：低优先级历史信号不拦高优先级新信号
+    （防跨族抢跑顶替），同/更高优先级仍拦；CS_ENGINE_DEDUP_PRIO=0 显式回退旧口径（任何历史 buy 均拦）。"""
+    import os
+    import pipeline.item_analysis as ia
+    F = {"recent_buy_dates": ["2026-03-01|28"], "signal_date": "2026-03-03"}
+    try:
+        os.environ["CS_ENGINE_DEDUP_PRIO"] = "0"
+        assert ia._dedup_gate(F, 30) == "2026-03-01", "旧口径：28 的历史 buy 应拦 30"
+        os.environ.pop("CS_ENGINE_DEDUP_PRIO", None)
+        assert ia._dedup_gate(F, 30) is None, "默认开：低优先级(28)不得拦高优先级(30)"
+        assert ia._dedup_gate(F, 28) == "2026-03-01", "同优先级仍拦"
+        assert ia._dedup_gate(F, 25) == "2026-03-01", "更高优先级历史仍拦更低新信号"
+        F2 = {"recent_buy_dates": ["2026-03-01|60"], "signal_date": "2026-03-03"}
+        assert ia._dedup_gate(F2, 28) == "2026-03-01", "高优先级历史拦低优先级新信号"
+        assert ia._dedup_gate(F2, 60) == "2026-03-01", "同优先级(60)仍拦"
+        F3 = {"recent_buy_dates": ["2026-03-01"], "signal_date": "2026-03-03"}
+        assert ia._dedup_gate(F3, 60) == "2026-03-01", "无标签历史（生产旧行）保守拦一切（含 60）"
+        assert ia.dedup_prio_for_label("🟢 吸筹型上涨·强势买涨·分批建仓") == 28
+        assert ia.dedup_prio_for_label("🟢 分批建仓") == 0
+    finally:
+        os.environ.pop("CS_ENGINE_DEDUP_PRIO", None)
+check('优先级感知去重（v2-T11 默认开）契约', t_dedup_prio)
+
 print('[Batch Scan: 信号提取]')
 def t_extract_signals():
     from pipeline.batch_scan import extract_signals

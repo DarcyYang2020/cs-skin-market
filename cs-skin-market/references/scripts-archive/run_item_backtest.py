@@ -95,7 +95,10 @@ def backtest_item(item_id, name, start, end, warmup, market_ctx, cost=0.02):
         action = fd.get("action", "")
         if action not in ("buy", "oversold_buy"):
             continue
-        recent_buys.append(d)
+        # 优先级感知去重（2026-08-16，v2-T11 默认开）：把发射信号的族优先级打进 recent_buys。
+        # 旧格式 "YYYY-MM-DD" 与 _dedup_hit 向后兼容；|P 标签参与 min_prio 过滤。
+        _lab = fd.get("action_label") or ""
+        recent_buys.append("%s|%d" % (d, ia.dedup_prio_for_label(_lab)))
         fwd14 = (prices[i + 14] / prices[i] - 1) * 100 if i + 14 < n else None
         fwd30 = (prices[i + 30] / prices[i] - 1) * 100 if i + 30 < n else None
         # Net returns after round-trip cost (--cost, default 2% = UU 1% fee x2 + slippage)
