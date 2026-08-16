@@ -999,6 +999,73 @@ def _family_card_note(action_label):
 _CARD_CACHE = {}
 
 
+def _f_pullback_note(name):
+    """F 判别风险提示层（2026-08-16 落地批次，纯展示）：阴跌/派发后 3 日急拉（chg3d≥8%）。
+
+    承接×拉阳双因子（探针2c：14d 差 15.2pp/30d 差 20.8pp 达标）：
+    承接(求购抗跌≥0)+拉大(≥15%) = 真反转候选标注；否则 = 反抽嫌疑（当前窗口此类结构正在失败）。
+    任何异常返回 None，绝不改变决策。
+    """
+    try:
+        from pipeline import db as _db
+        conn = _db.get_conn()
+        r = conn.execute("SELECT id, good_id FROM items WHERE name=? AND good_id>0", (name,)).fetchone()
+        if not r:
+            conn.close()
+            return None
+        iid, gid = r["id"], r["good_id"]
+        rows = conn.execute(
+            "SELECT date, price_rmb, in_sale_count FROM price_history "
+            "WHERE item_id=? AND price_rmb IS NOT NULL ORDER BY date DESC LIMIT 90", (iid,)).fetchall()
+        bids = conn.execute(
+            "SELECT date, buy_price_last FROM bid_history WHERE good_id=? AND buy_price_last IS NOT NULL "
+            "ORDER BY date DESC LIMIT 8", (gid,)).fetchall()
+        conn.close()
+        if len(rows) < 25 or len(bids) < 2:
+            return None
+        rows = list(reversed(rows))  # 升序
+        prices = [x["price_rmb"] for x in rows]
+        ins = [x["in_sale_count"] for x in rows]
+        n = len(prices)
+        # 阴跌前置：前 20 日（不含近 3 日）价跌 ≤-5%
+        if n < 24 or prices[n - 4] <= 0:
+            return None
+        pre = prices[n - 4] / prices[n - 24] - 1
+        if pre > -0.05:
+            return None
+        # 派发：30 日供给扩张
+        ok30 = all(x is not None for x in ins[-30:])
+        ok30a = all(x is not None for x in ins[-60:-30]) if n >= 60 else False
+        if not (ok30 and ok30a):
+            return None
+        s30 = sum(ins[-30:]) / 30
+        s30a = sum(ins[-60:-30]) / 30
+        if s30a <= 0 or s30 / s30a - 1 <= 0:
+            return None
+        # 急拉
+        chg3 = prices[-1] / prices[-4] - 1
+        if chg3 < 0.08:
+            return None
+        # 承接：3 日求购跌幅 vs 价格跌幅
+        bnow = bids[0]["buy_price_last"]
+        bpk = None
+        for b in bids[1:]:
+            if b["date"] <= rows[-4]["date"]:
+                bpk = b["buy_price_last"]
+                break
+        sup = None
+        if bpk and bpk > 0:
+            sup = (bnow / bpk - 1) * 100 - chg3 * 100
+        big = chg3 >= 0.15
+        if sup is not None and sup >= 0 and big:
+            return ("F 判别·真反转候选（研究标注）：阴跌派发后急拉且承接(求购抗跌+%.1fpp)+拉阳大(3日+%.0f%%)——"
+                    "历史 14d/30d 胜率显著高于反抽型；仅标注，不改变决策。" % (sup, chg3 * 100))
+        return ("F 判别·反抽嫌疑（风险提示）：阴跌派发后 3 日急拉 +%.0f%%，承接/拉阳双因子未同时达标——"
+                "当前市场窗口此类结构 30d 胜率仅约 30%%（历史 49%%），谨慎追涨；仅提示，不改变决策。" % (chg3 * 100))
+    except Exception:
+        return None
+
+
 def _fd_display(fd, analysis=None):
     """融合决策展示层注入（决策链 trace）。纯展示，不改引擎输出。
 
@@ -1056,6 +1123,11 @@ def _fd_display(fd, analysis=None):
         _fc = _family_card_note(fd.get("action_label") or "")
         if _fc:
             _caveats.append(_fc)
+    # F 判别风险提示层（2026-08-16 落地批次）：阴跌派发后急拉的反抽/真反转标注（任何动作均提示）
+    if getattr(analysis, "name", None):
+        _fn = _f_pullback_note(analysis.name)
+        if _fn:
+            _caveats.append(_fn)
     fd["trace"] = {
         "zone": fd.get("zone_label", ""),
         "bucket": fd.get("state_bucket", ""),
