@@ -28,14 +28,22 @@ from pipeline import db  # noqa: E402
 OUT = ROOT / "data" / os.environ.get("CS_ENGINE_REPLAY_OUT", "_exp_cycle_replay_2026.json")
 
 
+# 高质量集过滤（2026-08-16 用户裁定：充分用满 188 品，贴纸/角色过滤）：
+# 排除贴纸（印花 | 前缀）、角色特工（游击队/军刀勇士/特警）、手套、武器箱；
+# 不再按 first_date 截断——新品短史一并入池（warmup 不足自动跳过）。
+HQ_EXCLUDE_MARKERS = ("印花 |", "手套", "武器箱", "游击队", "军刀勇士", "特警")
+
+
 def pool_a_items():
     conn = db.get_conn()
     rows = conn.execute(
         """SELECT i.id, i.name, MIN(p.date) first_date
            FROM items i JOIN price_history p ON p.item_id = i.id
-           GROUP BY i.id HAVING first_date <= '2025-08-10'""").fetchall()
+           GROUP BY i.id""").fetchall()
     conn.close()
-    return {r["id"]: r["name"] for r in rows if r["name"] not in rib.EXCLUDED_ITEMS}
+    return {r["id"]: r["name"] for r in rows
+            if r["name"] not in rib.EXCLUDED_ITEMS
+            and not any(m in r["name"] for m in HQ_EXCLUDE_MARKERS)}
 
 
 def main():
@@ -62,7 +70,7 @@ def main():
     switches = ",".join("%s=1" % k for k in sorted(os.environ)
                         if k.startswith("CS_ENGINE_") and os.environ[k] == "1")
     out = {"args": {"start": START, "end": END, "warmup": WARMUP,
-                    "pool": "A(96\u8001\u54c1,3\u5e74\u7a97\u53e3)", "db": os.environ["CS_MODEL_DB"],
+                    "pool": "HQ(\u5168\u5e93\u6b66\u5668\u76ae\u80a4\u7ea6180\u54c1,\u6ee4\u8d34\u7eb8/\u89d2\u8272,3\u5e74\u7a97\u53e3)", "db": os.environ["CS_MODEL_DB"],
                     "engine": "v2-T10 (DECISION-6/7 + liquidity_filtered + csQAQ period=1095 NULL+0gap backfill + O1 仓位网格 supply_accum0.15/deep_value0.20 + cycle window)",
                     "env_switches": switches or None},
            "generated": datetime.now().strftime("%Y-%m-%d %H:%M"),

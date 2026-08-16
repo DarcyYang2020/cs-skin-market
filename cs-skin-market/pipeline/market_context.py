@@ -219,7 +219,7 @@ def market_index_stats(market_history):
     values = _market_values(market_history)
     pct, z = 50.0, 0.0
     cycle, th = "unknown", 50.0
-    chg7 = chg30 = drop21 = 0.0
+    chg7 = chg30 = drop21 = chg180 = 0.0
     if len(values) >= 30:
         from .index_analysis import analyze_index
         _ires = analyze_index(market_history[-90:])
@@ -233,6 +233,7 @@ def market_index_stats(market_history):
         chg7 = round((cur - m7) / m7 * 100, 1) if m7 > 0 else 0
         chg30 = round((cur - m30) / m30 * 100, 1) if m30 > 0 else 0
         drop21 = round((cur - m21) / m21 * 100, 1) if m21 > 0 else 0
+        chg180 = round((cur - values[-180]) / values[-180] * 100, 1) if len(values) >= 180 and values[-180] > 0 else 0
         from .market_th import derive_market_cycle, compute_market_trend_health
         cycle = derive_market_cycle(values, len(values) - 1)
         try:
@@ -242,4 +243,4 @@ def market_index_stats(market_history):
             logger.warning("compute_market_trend_health fallback failed", exc_info=True)
             th = max(0, min(100, 50 + chg30 * 3))
     return {"pct": pct, "z": z, "cycle": cycle, "th": th,
-            "chg7": chg7, "chg30": chg30, "drop21": drop21}
+            "chg7": chg7, "chg30": chg30, "drop21": drop21, "chg180": chg180}

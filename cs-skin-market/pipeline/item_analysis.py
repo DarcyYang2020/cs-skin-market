@@ -1070,6 +1070,56 @@ def _vol7_of(prices):
         return None
 
 
+def _dd20_of(prices):
+    """20 日高点回撤（C 族二波：回调带）。数据不足返回 None。"""
+    try:
+        if not prices or len(prices) < 21:
+            return None
+        return (prices[-1] / max(prices[-21:-1]) - 1.0) * 100
+    except Exception:
+        return None
+
+
+def _dd20_age_of(prices):
+    """距 20 日高点的交易日数（C 族二波：回调龄）。数据不足返回 None。"""
+    try:
+        if not prices or len(prices) < 21:
+            return None
+        win = prices[-21:-1]
+        return len(win) - 1 - win.index(max(win))
+    except Exception:
+        return None
+
+
+def _bid_near(bid_history, date_str, span_days=4):
+    """bid_history: [(date, price)] 升序；返回 ≤date_str 且在其前 span_days 内最近的价。"""
+    try:
+        if not bid_history:
+            return None
+        import bisect as _bis
+        from datetime import datetime as _dt, timedelta as _td
+        ds = str(date_str)[:10]
+        d0 = _dt.strptime(ds, "%Y-%m-%d")
+        lo = (d0 - _td(days=span_days)).strftime("%Y-%m-%d")
+        keys = [x[0] for x in bid_history]
+        i = _bis.bisect_right(keys, ds)
+        cand = [v for dt, v in bid_history[max(0, i - 40):i] if dt >= lo]
+        return cand[-1] if cand else None
+    except Exception:
+        return None
+
+
+def _peak_date_of(signal_date, age):
+    """20 日高点的日历近似日期（信号日减回调龄天）。"""
+    try:
+        from datetime import datetime as _dt, timedelta as _td
+        if not signal_date or age is None:
+            return None
+        return (_dt.strptime(str(signal_date)[:10], "%Y-%m-%d") - _td(days=max(1, age))).strftime("%Y-%m-%d")
+    except Exception:
+        return None
+
+
 def _rise_chg7_cap():
     """买涨腿 v2（2026-08-16）：chg7 上限开关。默认 15（3<chg7≤15 剔抛物线追涨）；
     ≤0 = 不设上限（v1 旧口径，已引擎级证伪）。env: CS_ENGINE_RISE_CHG7_CAP。"""
@@ -1294,6 +1344,45 @@ SIGNAL_FAMILIES = (
         counterparty="震荡中被洗出的散户（高波洗盘 + 供给收缩 = 筹码向庄家集中）",
         scenario="供给收缩期的震荡慢涨结构；分位>40 强势域（低位蓄势亚型未落地）",
         failure_signal="波动率转低且价格停滞（洗盘结束无拉升）；供给收缩反转；放量急拉脱离慢涨域（转 rise 域）",
+    ),
+    SignalFamily(
+        key="second_wave",
+        label="🟢 二波回调·强势承接·分批建仓",
+        # C 族落地（2026-08-16 落地批次，默认关待重放验证 CS_ENGINE_C_WAVE=1 开启）：
+        # 探针1 拐点——牛周期(mkt180>0)+高位(pct≥70)+回调带(-40~-5)+
+        # 浅回调(-5~-10)1-5d 快进 / 深回调(≤-20)6d+ 等止跌且承接(bid抗跌≥0) / 中带任意龄。
+        priority=24,
+        limit=0.05,
+        trigger=lambda F: (
+            os.environ.get("CS_ENGINE_C_WAVE", "0") == "1"
+            and F["mkt180"] is not None and F["mkt180"] > 0
+            and F["pct"] is not None and F["pct"] >= 70
+            and F["dd20"] is not None and -40 <= F["dd20"] <= -5
+            and F["dd20_age"] is not None
+            and (
+                (F["dd20"] >= -10 and F["dd20_age"] <= 5)
+                or (-20 < F["dd20"] < -10)
+                or (F["dd20"] <= -20 and F["dd20_age"] >= 6
+                    and F["bid_now"] is not None and F["bid_peak"] is not None
+                    and F["bid_peak"] > 0
+                    and (F["bid_now"] / F["bid_peak"] - 1) * 100 - F["dd20"] >= 0)
+            )
+            and len(F["supply_hist"]) >= 30 and len(F["prices"]) >= 8
+            and not (F["survive"] > 0 and F["survive"] < 3000)
+            and not _dedup_gate(F, 24)  # second_wave
+        ),
+        buckets=("中性企稳",),
+        guards=(),
+        detail=lambda F: (
+            f"二波回调(牛周期+分位{F['pct']:.0f}%+20日回撤{F['dd20']:+.0f}%+回调龄{F['dd20_age']}d"
+            f"{'+承接' if F['dd20'] <= -20 else ''})·"
+            f"轻仓0.05·浅回调快进/深回调等止跌（探针1 拐点口径）"
+        ),
+        sources=("second_wave_pullback",),
+        hypothesis="牛周期(mkt180>0)+高位(pct≥70)+真实回调(-5~-40)+回调龄匹配深度（浅快进/深等止跌+承接）= 二波；探针1 深回调6-10d+承接 14d win55%/+17.3、60d 71%/+68.9",
+        counterparty="回调中恐慌离场的短线盘（强势品洗盘换手）",
+        scenario="牛市大周期中的强势品回调段；C/A 边界=坑深-30~-40 与恐慌情绪叠加处归 A",
+        failure_signal="回调转阴跌（dd20 破-40 且无承接）；大盘转熊（mkt180 转负）；求购崩塌",
     ),
     SignalFamily(
         key="xishou_mid",
@@ -1735,7 +1824,7 @@ def decide_fusion_signal(
     fd, *, position, cycle, th, value, prices, current, n, name,
     survive_count, sentiment_score, market_th_score, market_30d_change,
     market_drop21, market_cycle, supply, supply_hist, bid_support, micro_th,
-    recent_buy_dates, signal_date,
+    recent_buy_dates, signal_date, market_180d_change=0.0, bid_history=None,
 ):
     """统一决策核心：基础融合决策 + 信号族注册制升级 + 族级闸门。
 
@@ -1767,6 +1856,12 @@ def decide_fusion_signal(
         "supply_change_30d": getattr(supply, "supply_change_30d", None),
         # D 族（2026-08-16 落地批次）：7 日波动率（日收益 std，震荡吸筹指纹）
         "vol7": _vol7_of(prices),
+        # C 族（2026-08-16 落地批次）：二波回调量（回撤/龄/承接）
+        "mkt180": market_180d_change,
+        "dd20": _dd20_of(prices),
+        "dd20_age": _dd20_age_of(prices),
+        "bid_now": _bid_near(bid_history, signal_date),
+        "bid_peak": _bid_near(bid_history, _peak_date_of(signal_date, _dd20_age_of(prices))),
     }
     bucket = _state_bucket(sentiment_score, market_th_score, market_30d_change)
 
@@ -1906,6 +2001,8 @@ def run_item_analysis(
     price_anchor: float = None,
     survive_count: int = 0,
     supply_depth_missing: bool = False,
+    market_180d_change: float = 0,
+    bid_history: list = None,
 ):
     """
     Complete single-item analysis pipeline.
@@ -2028,6 +2125,7 @@ def run_item_analysis(
         supply=supply, supply_hist=supply_hist,
         bid_support=bid_support, micro_th=micro_th,
         recent_buy_dates=recent_buy_dates, signal_date=signal_date,
+        market_180d_change=market_180d_change, bid_history=bid_history,
     )
     fd_dict = fusion_decision_summary(fd)
     fd_dict["state_bucket"] = state_bucket

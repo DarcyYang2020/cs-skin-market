@@ -45,6 +45,30 @@ def load_item_series(item_id):
 # 珊瑚树：在售量极低(日均28/最大73)，价格失真（2026-06-19 信号30d -24%），不作为测试数据（用户声明）
 EXCLUDED_ITEMS = {"AK-47 | 水栽竹 (崭新出厂)", "AWP | 珊瑚树 (崭新出厂)"}
 
+# C 族求购历史（2026-08-16 落地批次）：market.db bid_history 3 年回填，按 item_name 建表
+_BID_SERIES = None
+
+
+def _load_bid_series():
+    global _BID_SERIES
+    if _BID_SERIES is not None:
+        return _BID_SERIES
+    _BID_SERIES = {}
+    try:
+        import sqlite3 as _sq
+        from pathlib import Path as _P
+        _mp = _P(__file__).resolve().parent.parent.parent / "data" / "market.db"
+        if _mp.exists():
+            _c = _sq.connect(str(_mp))
+            _c.row_factory = _sq.Row
+            for _r in _c.execute("SELECT item_name, date, buy_price_last FROM bid_history "
+                                 "WHERE buy_price_last IS NOT NULL ORDER BY date"):
+                _BID_SERIES.setdefault(_r["item_name"], []).append((_r["date"], _r["buy_price_last"]))
+            _c.close()
+    except Exception:
+        _BID_SERIES = {}
+    return _BID_SERIES
+
 
 def load_items(conn=None):
     conn = db.get_conn()
@@ -85,6 +109,8 @@ def backtest_item(item_id, name, start, end, warmup, market_ctx, cost=0.02):
                 market_th_score=mc["th"],
                 market_30d_change=mc.get("chg30", 0),
                 market_drop21=mc.get("drop21", 0),
+                market_180d_change=mc.get("chg180", 0),
+                bid_history=_load_bid_series().get(name),
                 recent_buy_dates=recent_buys,
                 signal_date=d,
             )

@@ -813,6 +813,57 @@ def t_volatile_accum_family():
          ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision) = orig
 check('D 族震荡吸筹 CS_ENGINE_D_ACCUM 默认关/pilot 开关', t_volatile_accum_family)
 
+def t_second_wave_family():
+    """C 族（2026-08-16 落地批次）：二波回调——牛周期+高位+回调带+浅回调快进。
+    默认关；CS_ENGINE_C_WAVE=1 开启（重放验证后定默认）。"""
+    import os
+    from types import SimpleNamespace
+    import pipeline.item_analysis as ia
+    pos = SimpleNamespace(percentile_90d=80.0, zscore_90d=0.5, high_90d=100.0,
+                          low_90d=50.0, mean_90d=75.0, median_90d=76.0,
+                          current_price=61.75, data_points=90, valuation_tier='overvalued')
+    orig = (ia._analyze_position, ia.compute_sentiment_score, ia.compute_sentiment_factor,
+            ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision)
+    ia._analyze_position = lambda prices: pos
+    ia.compute_sentiment_score = lambda: 50
+    ia.compute_sentiment_factor = lambda: 0.0
+    ia.event_risk_coefficient = lambda: 1.0
+    ia.compute_micro_th = lambda prices: 30
+    def fake_fd(*a, **k):
+        return SimpleNamespace(action='watch', action_label='🟡 观望', action_detail='',
+                               deduction_sources=[], zone='overvalued', zone_label='高估',
+                               liquidity_filtered=False, percentile_90d=80.0,
+                               raw_th_score=60, corrected_th_score=60, position_limit=0.0)
+    ia.compute_fusion_decision = fake_fd
+    # 浅回调：20 日高点 65 → 现价 61.75（dd20=-5.0%），高点=昨日（龄 0 ≤5）
+    prices = [60.0] * 85 + [65.0] * 5 + [61.75]
+    supply = [100] * 30
+    kw = dict(name='Test', supply_hist=supply, market_pct_90d=60.0,
+              market_cycle='markup', market_zscore=0.0, market_th_score=60,
+              market_30d_change=5.0, market_drop21=0.0, market_180d_change=10.0,
+              recent_buy_dates=[], signal_date='2025-03-01')
+    old = os.environ.get("CS_ENGINE_C_WAVE")
+    try:
+        os.environ.pop("CS_ENGINE_C_WAVE", None)
+        res = ia.run_item_analysis(prices=prices, **kw)
+        assert res.fusion_decision['action'] == 'watch', res.fusion_decision['action']
+        assert 'second_wave_pullback' not in res.fusion_decision['deduction_sources']
+        os.environ["CS_ENGINE_C_WAVE"] = "1"
+        res = ia.run_item_analysis(prices=prices, **kw)
+        fd = res.fusion_decision
+        assert fd['action'] == 'buy', fd['action']
+        assert 'second_wave_pullback' in fd['deduction_sources'], fd['deduction_sources']
+        assert '二波回调' in fd['action_label'], fd['action_label']
+        assert fd['position_limit'] == 0.05, fd['position_limit']
+    finally:
+        if old is None:
+            os.environ.pop("CS_ENGINE_C_WAVE", None)
+        else:
+            os.environ["CS_ENGINE_C_WAVE"] = old
+        (ia._analyze_position, ia.compute_sentiment_score, ia.compute_sentiment_factor,
+         ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision) = orig
+check('C 族二波回调 CS_ENGINE_C_WAVE 开关（默认关）', t_second_wave_family)
+
 def t_a2_emission():
     """A2 第五件套（2026-08-16）发射分布复算契约：
     xishou_mid（200 信号产物）与 rise_accum（202 信号产物）发射侧均须 FAILED——复现引擎级拒绝，

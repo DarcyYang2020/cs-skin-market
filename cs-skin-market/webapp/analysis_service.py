@@ -386,12 +386,26 @@ def market_snapshot():
             "history": market_history,
             "pct": stats["pct"], "z": stats["z"], "cycle": stats["cycle"],
             "th": stats["th"], "chg7": stats["chg7"], "chg30": stats["chg30"],
-            "drop21": stats["drop21"],
+            "drop21": stats["drop21"], "chg180": stats.get("chg180", 0),
             "sentiment": sentiment,
         }
         _c["data"] = result
         _c["ts"] = time.time()
     return result
+
+
+def _bid_history_for(item_id):
+    """C 族（2026-08-16）：单品求购历史（[(date, buy_price_last)] 升序），供二波承接判定。
+    数据=market.db bid_history 3 年回填；任何异常返回 None（展示/触发层不阻断分析）。"""
+    try:
+        conn = db.get_conn()
+        rows = conn.execute(
+            "SELECT date, buy_price_last FROM bid_history WHERE item_id=? AND buy_price_last IS NOT NULL "
+            "ORDER BY date", (item_id,)).fetchall()
+        conn.close()
+        return [(r["date"], r["buy_price_last"]) for r in rows]
+    except Exception:
+        return None
 
 
 def recent_buy_dates(conn, item_id, days=7):
@@ -618,6 +632,8 @@ async def analyze_fresh(item, good_id, exact_name, *, db_item_id=None, apply_anc
         market_th_score=ms["th"],
         market_30d_change=ms["chg30"],
         market_drop21=ms.get("drop21", 0),
+        market_180d_change=ms.get("chg180", 0),
+        bid_history=_bid_history_for(use_id),
         recent_buy_dates=recent_buys,
         signal_date=_today_str(),
         price_anchor=price_rmb,
