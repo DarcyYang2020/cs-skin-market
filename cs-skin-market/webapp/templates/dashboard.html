@@ -77,6 +77,59 @@
 {% endif %}
 </div>
 
+<!-- 模拟盘 v2（2026-08-17）：生产镜像·全自动执行，纯展示 -->
+<div class="card" style="margin-top:12px;">
+  <div class="card-header">
+    <span class="card-title">🎮 模拟盘（生产镜像 · 全自动执行）</span>
+    <span style="font-size:11px;color:var(--text-muted);margin-left:auto;">跟随 signal_tracking 真实 buy 信号建仓 · 供给扩张全止损 &gt; 止盈/止损 &gt; 到期 · 2% 双边成本 · 基准=生产池等权</span>
+  </div>
+  <div id="paper-card-body" style="padding:10px 14px;font-size:12px;color:var(--text-muted);">加载中…</div>
+</div>
+<script>
+fetch('/api/paper/status')
+.then(function(r){return r.json();})
+.then(function(d){
+  var b = document.getElementById('paper-card-body');
+  if (!b) return;
+  if (!d || !d.ok) { b.textContent = '模拟盘数据不可用' + (d && d.error ? '（' + d.error + '）' : ''); return; }
+  var s = d.status || {};
+  var c = function(v, color){ return '<span style="color:' + (color || 'var(--text-primary)') + ';font-weight:800;">' + v + '</span>'; };
+  var fmt = function(x, suf){ return (x == null) ? '--' : ((x > 0 ? '+' : '') + Number(x).toFixed(1) + (suf || '')); };
+  var ret = s.total_return_pct, ex = s.excess_vs_ew_pct, ew = s.baseline_equal_weight_pct;
+  var html = '<div style="display:flex;gap:18px;flex-wrap:wrap;color:var(--text-secondary);">'
+    + '<span>总收益 ' + c(fmt(ret) + '%', ret >= 0 ? 'var(--green)' : 'var(--red)') + '</span>'
+    + '<span>等权基准 ' + c(fmt(ew) + '%') + '</span>'
+    + '<span>vs 等权超额 ' + c(fmt(ex) + 'pp', ex >= 0 ? 'var(--green)' : 'var(--red)') + '</span>'
+    + '<span>在仓 ' + c(s.open_positions || 0) + ' · 已平 ' + c(s.closed_trades || 0) + '</span></div>';
+  var fams = s.families || {};
+  var fkeys = Object.keys(fams);
+  if (fkeys.length) {
+    html += '<div style="margin-top:6px;color:var(--text-muted);font-size:11px;">已平仓族级：' + fkeys.map(function(k){
+      var f = fams[k];
+      return k + ' n=' + f.n + ' 胜率 ' + f.win_pct + '% 均净 ' + fmt(f.avg_net_pct) + '%';
+    }).join(' · ') + '</div>';
+  }
+  if (d.positions && d.positions.length) {
+    html += '<div style="margin-top:8px;border-top:1px solid rgba(15,23,42,0.08);padding-top:6px;color:var(--text-muted);font-size:11px;">在仓：'
+      + d.positions.map(function(p){
+          var now = p.price_now;
+          var chg = (now && p.entry_price) ? ((now / p.entry_price - 1) * 100) : null;
+          return p.item_name + '（' + p.family + '，' + p.signal_date + ' 开，仓位 ' + Math.round((p.limit_pct||0)*100) + '%'
+            + (chg == null ? '' : '，现 ' + fmt(chg) + '%') + '）';
+        }).join(' · ') + '</div>';
+  }
+  if (d.trades && d.trades.length) {
+    html += '<div style="margin-top:6px;color:var(--text-muted);font-size:11px;">最近平仓：'
+      + d.trades.slice(0, 5).map(function(t){
+          return t.item_name + ' ' + t.exit_reason + ' ' + c(fmt(t.net_pct) + '%', t.net_pct >= 0 ? 'var(--green)' : 'var(--red)') + '（持 ' + t.hold_days + ' 天）';
+        }).join(' · ') + '</div>';
+  }
+  html += '<div style="margin-top:6px;font-size:11px;color:var(--text-muted);">' + (s.date ? ('口径日 ' + s.date + ' · ') : '') + '与执行记录/真实持仓无关，仅检验引擎信号组合（20 笔后判据自动评估，见 paper-trading-design.md）。</div>';
+  b.innerHTML = html;
+})
+.catch(function(){ var b = document.getElementById('paper-card-body'); if (b) b.textContent = '模拟盘数据加载失败'; });
+</script>
+
 <!-- 引擎状态 (J-2 监测, 纯展示) -->
 {% if engine_status %}
 <div class="card" style="margin-top:12px;">

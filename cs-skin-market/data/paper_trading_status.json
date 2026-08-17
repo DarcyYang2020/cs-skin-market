@@ -1,0 +1,27 @@
+{
+ "initial": 1000000.0,
+ "equity": 900112.13,
+ "total_return_pct": -9.99,
+ "baseline_equal_weight_pct": 18.21,
+ "excess_vs_ew_pct": -28.2,
+ "open_positions": 1,
+ "closed_trades": 1,
+ "families": {
+  "supply_accum": {
+   "n": 1,
+   "win_pct": 0.0,
+   "avg_net_pct": -19.91
+  }
+ },
+ "date": "2026-08-17",
+ "closed_today": [
+  {
+   "item": "AK-47 | 轨道 Mk01 (崭新出厂)",
+   "family": "supply_accum",
+   "reason": "止损",
+   "net_pct": -19.91,
+   "held": 8
+  }
+ ],
+ "opened_today": 2
+}

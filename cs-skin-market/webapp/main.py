@@ -1353,6 +1353,42 @@ async def api_portfolio_dashboard():
     finally:
         conn.close()
 
+
+@app.get("/api/paper/status")
+async def api_paper_status():
+    """模拟盘 v2 生产镜像状态（2026-08-17，只读）：
+    读 data/paper_trading_status.json（每日任务产物）+ 实库在仓/最近成交。
+    异常一律返回 ok=False（前端静默降级），不阻断页面。"""
+    try:
+        import json as _json
+        from pathlib import Path as _P
+        from pipeline import paper_trading as _pt
+        _path = _P(__file__).resolve().parent.parent / "data" / "paper_trading_status.json"
+        _st = {}
+        if _path.exists():
+            _st = _json.loads(_path.read_text(encoding="utf-8"))
+        conn = db.get_conn()
+        try:
+            _pt.ensure_schema(conn)
+            _px = _pt._latest_prices(conn)
+            pos = conn.execute(
+                "SELECT item_name, family, signal_date, entry_price, qty, limit_pct, "
+                "stop_pct, take_pct, sc30_open FROM paper_positions WHERE closed=0 "
+                "ORDER BY signal_date DESC").fetchall()
+            trades = conn.execute(
+                "SELECT item_name, family, entry_price, exit_price, net_pct, hold_days, "
+                "exit_reason, closed_at FROM paper_trades ORDER BY closed_at DESC, id DESC LIMIT 20"
+            ).fetchall()
+        finally:
+            conn.close()
+        _pos = [dict(r) for r in pos]
+        for _p in _pos:
+            _p["price_now"] = _px.get(_p.get("item_id")) if _p.get("item_id") is not None else None
+        return {"ok": True, "status": _st,
+                "positions": _pos, "trades": [dict(r) for r in trades]}
+    except Exception as _e:
+        return {"ok": False, "error": str(_e)[:200]}
+
 @app.post("/api/watchlist/batch-scan-selected")
 async def api_watchlist_batch_scan_selected(request: Request):
     body = await request.json()
