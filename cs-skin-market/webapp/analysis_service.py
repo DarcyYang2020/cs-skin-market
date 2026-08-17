@@ -830,7 +830,7 @@ def _load_benchmark_view():
 
 def _period_fire_note(bucket):
     """当前时期可买类型（2026-08-18 最终版，纯展示）：
-    主行只给一个事实（现在能买什么），其余原因收进 detail 折叠说明。"""
+    主行=现在能买什么+历史证据；折叠=为什么大盘说空仓还能买/为什么那两条被禁。"""
     try:
         from pipeline.item_analysis import PERIOD_ROUTE_BAN
         _plain = {"panic_resonance": "恐慌黄金坑抄底", "panic_easing": "恐慌后止跌反弹",
@@ -843,13 +843,20 @@ def _period_fire_note(bucket):
             "S3弱市阴跌": ("base",),
             "S4弱市反弹": ("base", "rise_accum"),
         }
+        # 关键时期×类型的证据后缀（其余不附，避免数字堆砌）
+        _evid = {("S3弱市阴跌", "base"): "此时期历史 14d 78%",
+                 ("S2牛市回调", "deep_value"): "此时期历史 30d 68%"}
+        _active_text = "、".join(
+            (_plain.get(k, k) + ("（%s）" % _evid[(bucket, k)] if (bucket, k) in _evid else ""))
+            for k in _active.get(bucket, ("base",)))
         _banned = [k for k, ps in PERIOD_ROUTE_BAN.items() if bucket in ps]
         _detail = []
+        if bucket in ("S3弱市阴跌", "S4弱市反弹"):
+            _detail.append("大盘\u201c空仓区\u201d是别去抄指数的意思；上面的类型是这个时期历史仍赚钱的精选腿，所以还开着")
         if _banned:
-            _detail.append("已禁用：" + "、".join(_plain.get(k, k) for k in _banned) + "（此时期历史表现差）")
+            _detail.append("已禁用：" + "、".join(_plain.get(k, k) for k in _banned) + "——此时期历史 0~17% 胜率，接刀/吸筹失效")
         _detail.append("长持候选未启用（组合验证不过，仅观察）")
-        return {"active": "、".join(_plain.get(k, k) for k in _active.get(bucket, ("base",))),
-                "detail": "；".join(_detail)}
+        return {"active": _active_text, "detail": "；".join(_detail)}
     except Exception:
         return {"active": "", "detail": ""}
 
