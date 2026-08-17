@@ -52,6 +52,7 @@ TRAIL_PCT = 0.05
 S4_MAX_HOLD = 14
 LEG_FAMS = {"rs_accum", "ct_accum"}   # 2026-08-17 补漏战役：长持腿容量预算（预注册）
 LEG_CAP = 0.3                        # 长持腿合并仓位上限 0.3，防高频长持置换核心族
+SLEEVE_TRAIL = 0.20                  # sleeve 战役预注册：长持腿自峰值 −20% 止损（变体）
 
 
 def load_chg180():
@@ -77,10 +78,13 @@ def hold_for(fam, period):
     return h
 
 
-def simulate(sigs, rule="hold21", cap_map=None):
+def simulate(sigs, rule="hold21", cap_map=None, cap=None):
     """rule: 'hold21'（基线）/ 'family_period'（全量预注册表）/ 单成分消融
-    'panic14'（仅 panic 族 14d）/ 'trail5'（仅 rise 腿跟踪-5%）/ 's4_14'（仅 S4 max14d）。
-    cap_map: {period: cap} 时期乘子（信号入场日时期决定 cap；None=全局 CAP）。"""
+    'panic14'（仅 panic 族 14d）/ 'trail5'（仅 rise 腿跟踪-5%）/ 's4_14'（仅 S4 max14d）/
+    'sleeve_hold'（长持族到期180d）/ 'sleeve_trail'（长持族 180d 内自峰值−20%止损）。
+    cap_map: {period: cap} 时期乘子（信号入场日时期决定 cap；None=全局 _cap）。
+    cap: 全局资金池上限（默认 CAP=0.8；sleeve 独立池传 1.0）。"""
+    _cap_base = cap if cap is not None else CAP
     by_day = {}
     for s in sigs:
         by_day.setdefault(s["date"], []).append(s)
@@ -94,10 +98,10 @@ def simulate(sigs, rule="hold21", cap_map=None):
         for a in active:
             a["idx"] += 1
         for s in sorted(by_day.get(day, []), key=lambda x: -x["prio"]):
-            _cap = CAP if cap_map is None else cap_map.get(s["period"], CAP)
+            _cap = _cap_base if cap_map is None else cap_map.get(s["period"], _cap_base)
             if total_invested + s["limit"] > _cap + 1e-9:
                 continue
-            if s["fam"] in LEG_FAMS and leg_invested + s["limit"] > LEG_CAP + 1e-9:
+            if s["fam"] in LEG_FAMS and leg_invested + s["limit"] > LEG_CAP + 1e-9 and cap is None:
                 continue
             active.append({"s": s, "idx": 0, "peak": s["entry"]})
             total_invested += s["limit"]
@@ -143,6 +147,15 @@ def simulate(sigs, rule="hold21", cap_map=None):
                 h = min(21, S4_MAX_HOLD) if period == "S4弱市反弹" else 21
                 if k >= h:
                     reason = "到期%d" % h
+            elif rule == "sleeve_hold":
+                if k >= hold:
+                    reason = "到期%d" % hold
+            elif rule == "sleeve_trail":
+                # sleeve 战役（2026-08-17）：长持族 180d 内自峰值 −20% 止损 + 到期
+                if k >= hold:
+                    reason = "到期%d" % hold
+                elif fam in LEG_FAMS and px <= a["peak"] * (1 - SLEEVE_TRAIL):
+                    reason = "长持止损-20%"
             if not reason:
                 continue
             pnl = a["s"]["limit"] * (px / a["s"]["entry"] - 1 - COST)

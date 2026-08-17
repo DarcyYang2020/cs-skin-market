@@ -1,0 +1,60 @@
+{
+ "probe": "长持 sleeve 回撤预算测试",
+ "core": {
+  "total_return_pct": 397.02,
+  "max_drawdown_pct": -14.09
+ },
+ "sleeve_n": 1005,
+ "grid": {
+  "sleeve_hold_f0.1": {
+   "f": 0.1,
+   "total_return_pct": 390.14,
+   "max_drawdown_pct": -13.8
+  },
+  "sleeve_hold_f0.2": {
+   "f": 0.2,
+   "total_return_pct": 383.26,
+   "max_drawdown_pct": -14.54
+  },
+  "sleeve_hold_f0.3": {
+   "f": 0.3,
+   "total_return_pct": 376.38,
+   "max_drawdown_pct": -16.33
+  },
+  "sleeve_hold_f0.5": {
+   "f": 0.5,
+   "total_return_pct": 362.63,
+   "max_drawdown_pct": -19.73
+  },
+  "sleeve_trail_f0.1": {
+   "f": 0.1,
+   "total_return_pct": 377.97,
+   "max_drawdown_pct": -14.1
+  },
+  "sleeve_trail_f0.2": {
+   "f": 0.2,
+   "total_return_pct": 358.92,
+   "max_drawdown_pct": -14.1
+  },
+  "sleeve_trail_f0.3": {
+   "f": 0.3,
+   "total_return_pct": 339.87,
+   "max_drawdown_pct": -15.93
+  },
+  "sleeve_trail_f0.5": {
+   "f": 0.5,
+   "total_return_pct": 301.77,
+   "max_drawdown_pct": -20.97
+  }
+ },
+ "budget_verdicts": {
+  "25": {
+   "passed_n": 0,
+   "best": null
+  },
+  "30": {
+   "passed_n": 0,
+   "best": null
+  }
+ }
+}
