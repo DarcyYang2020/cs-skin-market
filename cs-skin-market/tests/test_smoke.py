@@ -2456,7 +2456,7 @@ def t_market_expectancy_card():
     assert _prod.exists(), 'B-1 产物缺失'
     card = market_expectancy_card()
     assert card['bucket'] in ('P恐慌深跌', 'S1牛市上行', 'S2牛市回调', 'S3弱市阴跌', 'S4弱市反弹'), card
-    assert "现在能买的类型" in card.get("fire_note", ""), card  # 2026-08-18 大白话开火标注
+    assert "现在能买" in card.get("fire_note", ""), card  # 2026-08-18 精简可买类型标注
     _fam = {f['key']: f for f in card['families']}
     assert set(_fam) == {'panic', 'deep_value', 'accumulate'}, _fam.keys()
     for _k, _f in _fam.items():

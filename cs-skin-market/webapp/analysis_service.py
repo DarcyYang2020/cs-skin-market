@@ -829,26 +829,26 @@ def _load_benchmark_view():
 
 
 def _period_fire_note(bucket):
-    """当前时期开火族标注（2026-08-18 大白话版，纯展示）：
-    不用族名术语，直接回答「现在能买什么类型的品 / 什么被禁 / 什么未启用」。"""
+    """当前时期可买类型标注（2026-08-18 精简版，纯展示）：
+    只列当前时期真正能触发的类型，不列"名义开着但当前不触发"的族。"""
     try:
         from pipeline.item_analysis import PERIOD_ROUTE_BAN
-        # 大白话映射（含触发条件提示，用户可判断"当前会不会触发"）
-        _plain = {
-            "panic_resonance": "极端恐慌黄金坑抄底（需大盘恐慌+深跌，当前不触发）",
-            "panic_easing": "恐慌后止跌反弹（需大盘深跌≥15%，当前不触发）",
-            "rise_accum": "强势品买涨（需大盘趋势走强，弱市基本不触发）",
-            "base": "低位低估品（当前主力）",
-            "deep_value": "深值接刀",
-            "supply_accum": "供给收缩吸筹",
+        _plain = {"panic_resonance": "恐慌黄金坑抄底", "panic_easing": "恐慌后止跌反弹",
+                  "deep_value": "深值回调买", "supply_accum": "供给收缩吸筹",
+                  "rise_accum": "强势品买涨", "base": "低位低估品"}
+        # 各时期真正可触发的类型（依据：族触发条件与时期大盘状态的实际匹配度）
+        _active = {
+            "P恐慌深跌": ("panic_resonance", "panic_easing", "base"),
+            "S1牛市上行": ("base", "supply_accum"),
+            "S2牛市回调": ("base", "deep_value", "supply_accum"),
+            "S3弱市阴跌": ("base",),
+            "S4弱市反弹": ("base", "rise_accum"),
         }
         _banned = [k for k, ps in PERIOD_ROUTE_BAN.items() if bucket in ps]
-        _fire = [v for k, v in _plain.items()
-                 if k not in _banned and k in ("panic_resonance", "panic_easing", "rise_accum", "base")]
-        _parts = ["现在能买的类型：" + "；".join(_fire)]
+        _parts = ["现在能买：" + "、".join(_plain.get(k, k) for k in _active.get(bucket, ("base",)))]
         if _banned:
             _parts.append("已禁用（此时期历史表现差）：" + "、".join(_plain.get(k, k) for k in _banned))
-        _parts.append("长持结构等候选族未启用")
+        _parts.append("长持候选未启用")
         return " · ".join(_parts)
     except Exception:
         return ""
