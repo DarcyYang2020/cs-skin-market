@@ -1,0 +1,14 @@
+{
+ "probe": "P7 单品级时期折让",
+ "baseline": {
+  "wavg14": 22.07,
+  "total_return_pct": 397.02,
+  "max_drawdown_pct": -14.09
+ },
+ "v1_s4x06": {
+  "wavg14": 22.92,
+  "total_return_pct": 395.54,
+  "max_drawdown_pct": -12.95
+ },
+ "verdict": "证伪"
+}

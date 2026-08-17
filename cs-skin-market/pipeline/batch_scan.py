@@ -34,15 +34,18 @@ def signal_guidance(action_label: str = "", expectancy: dict = None, action: str
     if action and action not in ("buy", "oversold_buy"):
         hold = "未触发买入信号，暂无持有期建议；已持仓按止损止盈/补仓建议管理"
     elif sig_type == "panic":
-        hold = "恐慌共振类：回测最优持有14日退出（30d期望回落），止损建议-25%（恐慌深洗勿收太紧）"
+        hold = ("组合口径统一持有21日（exit 层证伪：时间型早退砍右尾）；"
+                "恐慌共振类单品参考14日（30d期望回落），止损建议-25%（恐慌深洗勿收太紧）")
     elif sig_type == "oversold":
-        hold = "超跌反弹类：默认14日退出，止损建议-20%"
+        hold = "组合口径统一持有21日；超跌反弹类单品参考14日，止损建议-20%"
     elif sig_type == "accumulate":
         hold = "周期吸筹类：建议持有21日退出（同低位低估类回测），止损建议-20%"
     else:
         hold = "低位低估类：回测最优持有21日退出，止损建议-20%；固定止盈会截断反弹利润"
     if expectancy and isinstance(expectancy, dict) and expectancy.get("label"):
         type_label = expectancy["label"]
+    if sig_type == "panic":
+        type_label += "（单事件依赖 2/3）"  # P10（2026-08-17）：事件依赖期望标注，纯展示
     return {"signal_type": sig_type, "type_label": type_label, "hold_guidance": hold}
 
 
