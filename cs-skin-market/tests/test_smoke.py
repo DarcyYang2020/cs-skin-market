@@ -972,6 +972,48 @@ def t_rs_ct_families():
          ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision) = orig
 check('落地(2) rs_accum/ct_accum 长持族候选（默认关）', t_rs_ct_families)
 
+def t_uniqueness_note():
+    """独特性状态行（2026-08-17）：全部预注册形式命中检测——RS30/F2/F5 命中与无命中兜底。"""
+    from datetime import date as _d, timedelta as _td
+    from webapp.analysis_service import _uniqueness_lines
+    base = _d(2026, 5, 1)
+    dts = [(base + _td(days=i)).isoformat() for i in range(120)]
+
+    def item(prices):
+        return dts, prices, [100] * len(prices)
+
+    # 1) RS30：单品 30d +15%（100→115），大盘平稳（1000 恒定）
+    mk1 = [(d, 1000.0) for d in dts]
+    p1 = [100.0] * 89 + [115.0]
+    lines1 = _uniqueness_lines(*item(p1), mk1)
+    assert any("相对强度" in x and "RS30" in x for x in lines1), lines1
+    # 2) F2 逆市抗跌：大盘 30d −10%（1000→900），单品 0%（100 恒定）
+    mk2 = [(d, (1000.0 if i < 89 else 1000.0 - (i - 88) * 3.4)) for i, d in enumerate(dts)]
+    mk2[-1] = (dts[-1], 900.0)
+    p2 = [100.0] * 120
+    lines2 = _uniqueness_lines(*item(p2), mk2)
+    assert any("逆市抗跌" in x for x in lines2), lines2
+    # 3) F5 平静期异动：大盘低波（1000↔1000.5 交替，vol≈0.05%），单品 7d +9%
+    mk3 = [(d, (1000.0 if i % 2 == 0 else 1000.5)) for i, d in enumerate(dts)]
+    p3 = [100.0] * 112 + [109.0]
+    lines3 = _uniqueness_lines(*item(p3), mk3)
+    assert any("平静期异动" in x for x in lines3), lines3
+    # 4) 无命中：大盘与单品同向随机游走（高相关、无极端超额、大盘上行）
+    import random as _rnd
+    _r = _rnd.Random(7)
+    _mv, _pv = 1000.0, 100.0
+    mk4, p4 = [], []
+    for i, d in enumerate(dts):
+        _rm = _r.uniform(-0.01, 0.02)
+        _ri = 0.8 * _rm + _r.uniform(-0.004, 0.004)
+        _mv *= (1 + _rm)
+        _pv *= (1 + _ri)
+        mk4.append((d, round(_mv, 4)))
+        p4.append(round(_pv, 4))
+    lines4 = _uniqueness_lines(dts, p4, [100] * 120, mk4)
+    assert lines4 == [], lines4
+check('独特性状态行 全形式命中检测（假设验证，纯展示）', t_uniqueness_note)
+
 def t_market_signal():
     """大盘信号+风险仪表（2026-08-17 模块 A+D）：动作区映射/统计/风险档位/实库集成。"""
     from pipeline.market_signal import _stats, _risk_level, market_signal, _ACTION

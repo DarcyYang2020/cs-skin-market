@@ -1016,39 +1016,113 @@ def _family_card_note(action_label):
 _CARD_CACHE = {}
 
 
-def _rs_note(name):
-    """独特性状态行（2026-08-17 查漏补缺，纯展示）：RS30=单品30d−大盘30d。
-    RS30>10 → 独立强势（P4 长持结构证据）；大盘走弱且单品走强 → 逆市发声（P11-Fa 证据）。
-    任何异常返回 None（展示层绝不阻断分析）。"""
+def _uniqueness_lines(dates, prices, supply, market_hist):
+    """独特性状态行（2026-08-17，纯计算，纯展示）：全部预注册独特性形式命中检测。
+
+    输入：dates/prices/supply = 单品 K 线（升序，≥90 点）；market_hist = [(date, value), ...] 大盘。
+    形式（证据引用）：RS30>10（P4 60d +39.8/180d +117.6）、F1 逆市走强（P13 60d +47.9）、
+    F2 逆市抗跌（60d +38.7）、F3 低相关独立（60d +18.4，最正常市）、F4 领先见底（60d +16.0）、
+    F5 平静期异动（60d +30.0）、F6 供给锁仓（60d +15.6）。
+    全部标「假设验证」——结构证据来自回放探针，族未落地（rs/ct 默认关），不改变当前决策。
+    """
+    try:
+        n = len(prices)
+        if n < 90 or len(market_hist) < 62:
+            return []
+        cur = prices[-1]
+        if cur <= 0:
+            return []
+        mdates = [d for d, _ in market_hist]
+        mvals = [float(v) for _, v in market_hist]
+        if mvals[-1] <= 0 or mvals[-31] <= 0:
+            return []
+        mkt30 = (mvals[-1] / mvals[-31] - 1) * 100
+        mkt7 = (mvals[-1] / mvals[-8] - 1) * 100 if len(mvals) >= 8 and mvals[-8] > 0 else None
+        mrets = [(mvals[i] / mvals[i - 1] - 1) for i in range(len(mvals) - 20, len(mvals)) if mvals[i - 1] > 0]
+        mvol20 = (sum((r - sum(mrets) / len(mrets)) ** 2 for r in mrets) / len(mrets)) ** 0.5 if mrets else None
+        mlo = min(range(len(mvals) - 60, len(mvals)), key=lambda j: mvals[j])
+        mkt_low_ago = len(mvals) - 1 - mlo
+
+        item30 = (cur / prices[-31] - 1) * 100 if prices[-31] > 0 else None
+        item7 = (cur / prices[-8] - 1) * 100 if prices[-8] > 0 else None
+        w = prices[-90:]
+        pct90 = sum(1 for p in w if p <= cur) / 90 * 100
+        ilo = min(range(n - 60, n), key=lambda j: prices[j])
+        item_low_ago = n - 1 - ilo
+        sc30 = None
+        sup = [s for s in supply[-30:] if s is not None]
+        sup7 = [s for s in supply[-7:] if s is not None]
+        if len(sup) == 30 and len(sup7) == 7 and sum(sup) > 0:
+            sc30 = (sum(sup7) / 7 / (sum(sup) / 30) - 1) * 100
+        # corr60：日期对齐的 60 日收益相关
+        dset = {d: v for d, v in market_hist}
+        pairs = []
+        for i in range(max(1, n - 60), n):
+            if dates[i] in dset and dates[i - 1] in dset and prices[i - 1] > 0:
+                ir = prices[i] / prices[i - 1] - 1
+                j = mdates.index(dates[i])
+                k = mdates.index(dates[i - 1])
+                if j > k and mvals[k] > 0:
+                    pairs.append((ir, mvals[j] / mvals[k] - 1))
+        corr60 = None
+        if len(pairs) >= 30:
+            ia_ = [a for a, _ in pairs]
+            ib_ = [b for _, b in pairs]
+            if __import__("statistics").pstdev(ia_) > 0 and __import__("statistics").pstdev(ib_) > 0:
+                corr60 = __import__("statistics").correlation(ia_, ib_)
+
+        lines = []
+        rs30 = (item30 - mkt30) if item30 is not None else None
+        if rs30 is not None and rs30 > 10:
+            lines.append("独特性[假设验证]：相对强度 RS30 %+.1fpp（单品30d %+.1f%% vs 大盘 %+.1f%%）"
+                         "——P4 证据 60d +39.8/180d +117.6，独立强势长持结构" % (rs30, item30, mkt30))
+        if corr60 is not None and corr60 < 0.2 and item30 is not None and abs(item30) > 8:
+            lines.append("独特性[假设验证]：低相关独立（60d 相关 %.2f，30d %+.1f%%）"
+                         "——P13 F3 证据 60d +18.4，最正常市的独特性形式" % (corr60, item30))
+        if mvol20 is not None and mvol20 <= 0.008 and item7 is not None and abs(item7) >= 8:
+            lines.append("独特性[假设验证]：大盘平静期异动（大盘20d波动 %.1f%% 而单品7d %+.1f%%）"
+                         "——P13 F5 证据 60d +30.0" % (mvol20 * 100, item7))
+        if mkt30 < 0 and item30 is not None and item30 > 5:
+            lines.append("独特性[假设验证]：逆市走强（大盘30d %+.1f%% 走弱而单品 %+.1f%%）"
+                         "——P11-Fa/P13 F1 证据 60d +60.4/180d +92.1" % (mkt30, item30))
+        if mkt30 < -5 and item30 is not None and abs(item30) <= 3:
+            lines.append("独特性[假设验证]：逆市抗跌（大盘30d %+.1f%% 而单品 %+.1f%%）"
+                         "——P13 F2 证据 60d +38.7" % (mkt30, item30))
+        if mkt_low_ago <= 14 and item_low_ago >= mkt_low_ago + 7:
+            lines.append("独特性[假设验证]：领先见底（单品60日低点早于大盘 %d 天）"
+                         "——P13 F4 证据 60d +16.0" % (item_low_ago - mkt_low_ago))
+        if pct90 > 70 and sc30 is not None and sc30 <= -10 and item7 is not None and item7 >= -2:
+            lines.append("独特性[假设验证]：供给锁仓（分位 %.0f%% + 7日供给收缩 %.0f%%）"
+                         "——P13 F6 证据 60d +15.6" % (pct90, sc30))
+        return lines
+    except Exception:
+        return []
+
+
+def _uniqueness_note(name):
+    """独特性状态行 DB 包装（任何异常返回 []，展示层绝不阻断分析）。"""
     try:
         from pipeline import db as _db
         conn = _db.get_conn()
         try:
             r = conn.execute("SELECT id FROM items WHERE name=? AND good_id>0", (name,)).fetchone()
             if not r:
-                return None
+                return []
             rows = conn.execute(
-                "SELECT price_rmb FROM price_history WHERE item_id=? AND price_rmb IS NOT NULL "
-                "ORDER BY date", (r["id"],)).fetchall()
+                "SELECT date, price_rmb, in_sale_count FROM price_history "
+                "WHERE item_id=? AND price_rmb IS NOT NULL ORDER BY date", (r["id"],)).fetchall()
         finally:
             conn.close()
-        if len(rows) < 31 or rows[-31]["price_rmb"] <= 0 or rows[-1]["price_rmb"] <= 0:
-            return None
-        item30 = (rows[-1]["price_rmb"] / rows[-31]["price_rmb"] - 1) * 100
-        _ms = market_snapshot()
-        m30 = _ms.get("chg30") or 0
-        rs30 = item30 - m30
-        if rs30 > 10:
-            return ("独特性：相对强度 RS30 %+.1fpp（单品30d %+.1f%% vs 大盘 %+.1f%%）——"
-                    "独立强势结构，P4 证据 60d +39.8/180d +117.6（长持参考，不改变当前决策）"
-                    % (rs30, item30, m30))
-        if m30 < 0 and item30 > 5:
-            return ("独特性：逆市走强（大盘30d %+.1f%% 走弱而单品 %+.1f%%）——"
-                    "独立行情发声（P11-Fa 证据 180d +92.1；rs/ct 长持族候选默认关，此处仅展示结构）"
-                    % (m30, item30))
-        return None
+        if len(rows) < 90:
+            return []
+        ms = market_snapshot()
+        hist = ms.get("history") or []
+        if len(hist) < 62:
+            return []
+        return _uniqueness_lines([x["date"] for x in rows], [float(x["price_rmb"]) for x in rows],
+                                 [x["in_sale_count"] for x in rows], hist)
     except Exception:
-        return None
+        return []
 
 
 def _f_pullback_note(name):
@@ -1193,11 +1267,9 @@ def _fd_display(fd, analysis=None):
             )
     except Exception:
         pass
-    # 独特性状态行（2026-08-17 查漏补缺，纯展示）：RS30/逆市状态让单品发声（rs/ct 族默认关时仍可见结构）
+    # 独特性状态行（2026-08-17 查漏补缺，纯展示）：全部预注册形式命中标注（假设验证，不改变决策）
     if getattr(analysis, "name", None):
-        _rsn = _rs_note(analysis.name)
-        if _rsn:
-            _caveats.append(_rsn)
+        _caveats.extend(_uniqueness_note(analysis.name))
     fd["trace"] = {
         "zone": fd.get("zone_label", ""),
         "bucket": fd.get("state_bucket", ""),
