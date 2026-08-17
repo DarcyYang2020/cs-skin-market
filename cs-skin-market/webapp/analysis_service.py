@@ -1145,6 +1145,19 @@ def _fd_display(fd, analysis=None):
         _fn = _f_pullback_note(analysis.name)
         if _fn:
             _caveats.append(_fn)
+    # 大盘语境行（2026-08-17 模块 A，纯引擎无关）：当前时期+大盘动作+该时期大盘自身前视证据
+    try:
+        from pipeline.market_signal import market_signal as _ms
+        _msig = _ms()
+        if _msig.get("ok") and _msig.get("period") != "unknown":
+            _fwd = _msig.get("period_forward") or {}
+            _caveats.append(
+                "大盘语境：当前 {}——{}（该时期大盘自身前视 14d {}、30d {}，3 年回放证据，非预测）".format(
+                    _msig["period"], _msig.get("action_note", ""),
+                    _fwd.get("fwd14", "n/a"), _fwd.get("fwd30", "n/a"))
+            )
+    except Exception:
+        pass
     fd["trace"] = {
         "zone": fd.get("zone_label", ""),
         "bucket": fd.get("state_bucket", ""),

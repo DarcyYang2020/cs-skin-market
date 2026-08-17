@@ -65,6 +65,12 @@ def daily_state(conn, today=None):
         "dist_hi180": round((v / max(vals[i - 179:i + 1]) - 1) * 100, 2) if i >= 180 else None,
         "dist_lo180": round((v / min(vals[i - 179:i + 1]) - 1) * 100, 2) if i >= 180 else None,
     }
+    # 广度（2026-08-17 大盘引擎 A+D 补缺口）：HQ 池 5 日上涨品占比，与 market_signal 同源口径
+    try:
+        from .market_signal import _breadth5
+        row["breadth5"] = _breadth5(conn)
+    except Exception:
+        logger.warning("breadth5 compute failed in daily_state", exc_info=True)
     if c180 is not None:
         row["period"] = state_bucket(c180, c30 or 0.0)
     return {"date": dates[i], **row}

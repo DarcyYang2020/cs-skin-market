@@ -916,6 +916,39 @@ def t_period_route():
          ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision) = orig
 check('大盘时期路由 CS_ENGINE_PERIOD_ROUTE（v2-T13 默认开）', t_period_route)
 
+def t_market_signal():
+    """大盘信号+风险仪表（2026-08-17 模块 A+D）：动作区映射/统计/风险档位/实库集成。"""
+    from pipeline.market_signal import _stats, _risk_level, market_signal, _ACTION
+    # 1) 五时期 → 动作区映射齐全
+    assert set(_ACTION) == {'P恐慌深跌', 'S1牛市上行', 'S2牛市回调', 'S3弱市阴跌', 'S4弱市反弹'}, _ACTION
+    assert _ACTION['P恐慌深跌'][0] == 'buy_zone' and _ACTION['S3弱市阴跌'][0] == 'avoid'
+    assert _ACTION['S4弱市反弹'][0] == 'trap' and _ACTION['S2牛市回调'][0] == 'pullback_buy'
+    # 2) _stats 口径（3 年序列，带小噪声——纯线性 vol20=0）
+    n = 300
+    vals = [100 + i * 0.5 + (0.4 if i % 9 == 0 else 0.0) for i in range(n)]  # 单调上涨+微噪
+    hist = [("2024-01-%02d" % (i % 28 + 1), float(v)) for i, v in enumerate(vals)]
+    st = _stats(hist)
+    assert st["chg30"] > 0 and st["chg180"] > 0 and st["vol20"] is not None and st["vol20"] > 0
+    assert st["dist_hi60"] == 0.0 and st["dist_lo60"] > 0  # 60日高点=现值，距高点0%
+    # 3) 风险档位边界（预注册：vol≥0.03 或距60高点≤-15 高；vol≤0.007 且距60低点≥-5 低）
+    assert _risk_level(0.030, 0.0, -1.0) == 'high'
+    assert _risk_level(0.005, -15.0, -10.0) == 'high'
+    assert _risk_level(0.006, -1.0, -4.0) == 'low'
+    assert _risk_level(0.010, -5.0, -10.0) == 'medium'
+    assert _risk_level(None, 0.0, 0.0) == 'unknown'
+    # 4) 实库集成（生产 3 年指数）：ok + 时期在五标签 + 风险档位合法 + 前视证据存在
+    from pipeline import db as _db
+    c = _db.get_conn()
+    try:
+        sig = market_signal(c)
+    finally:
+        c.close()
+    assert sig.get("ok") and sig["period"] in _ACTION, sig
+    assert sig["risk_level"] in ('low', 'medium', 'high', 'unknown'), sig
+    assert isinstance(sig.get("period_forward"), dict), sig
+    assert sig["market_action"] == _ACTION[sig["period"]][0], sig
+check('大盘信号+风险仪表 模块 A+D（引擎无关）', t_market_signal)
+
 def t_paper_trading():
     """模拟盘 v2（2026-08-16）：三表 schema + 建仓/三类出场闭环（生产镜像全自动口径）。"""
     import sqlite3 as _sq
@@ -3375,6 +3408,10 @@ def t_http_api_smoke():
         r = client.get("/api/portfolio/dashboard")
         assert r.status_code == 200, r.status_code
         assert r.json().get("ok") is True, r.text[:200]
+
+        r = client.get("/api/market/signal")
+        assert r.status_code == 200, r.status_code
+        assert "period" in r.json(), r.text[:200]
     finally:
         db.DB_PATH = orig_path
         db._SCHEMA_INIT_PATHS.clear()

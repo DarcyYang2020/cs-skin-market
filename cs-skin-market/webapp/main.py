@@ -632,6 +632,11 @@ async def api_market_refresh(request: Request):
         finally:
             conn.close()
         bust_market_snapshot_cache()
+        try:
+            from pipeline.market_signal import bust_cache as _ms_bust
+            _ms_bust()
+        except Exception:
+            pass
         mi, last_update, chart_data = _dashboard_context()
         analysis_data = index_analysis.analyze_index_full(chart_data) if chart_data else None
         # I-1 市场状态标注: 与首页 / 渲染口径一致（缺 regime_* 会导致 index_card 的「策略」徽章/提示消失）
@@ -1352,6 +1357,21 @@ async def api_portfolio_dashboard():
         return {"ok": True, **dashboards.portfolio_dashboard(conn)}
     finally:
         conn.close()
+
+
+@app.get("/api/market/signal")
+async def api_market_signal():
+    """大盘信号 + 风险仪表（2026-08-17 模块 A+D，只读）：五时期→动作区+大盘前视证据+风险档位。
+    数据=生产库大盘指数（3 年）+ HQ 池广度；纯引擎无关。异常兜底 ok=False。"""
+    try:
+        from pipeline.market_signal import market_signal as _ms
+        conn = db.get_conn()
+        try:
+            return _ms(conn)
+        finally:
+            conn.close()
+    except Exception as _e:
+        return {"ok": False, "error": str(_e)[:200]}
 
 
 @app.get("/api/paper/status")
