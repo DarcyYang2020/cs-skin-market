@@ -1098,6 +1098,12 @@ def t_market_signal():
     assert "暂停新开仓" in _crash(-10.0, -20.0)["response"]
     # 6) 时期持续天数（模块 C）：实库信号带 period_days 且 >0
     assert isinstance(sig.get("period_days"), int) and sig["period_days"] > 0, sig
+    # 7) 主路径(3) R1/R2/R3 文案（2026-08-17）：P 事件窗+共振、S3/S4 独特性指针、caveat 字段
+    assert "黑天鹅" in _ACTION["P恐慌深跌"][2] and "共振" in _ACTION["P恐慌深跌"][2], _ACTION
+    assert "独特性" in _ACTION["S3弱市阴跌"][2] and "独特性" in _ACTION["S4弱市反弹"][2], _ACTION
+    assert "evidence_caveat" in sig, sig
+    from pipeline.market_signal import _EVIDENCE_CAVEAT
+    assert "黑天鹅" in _EVIDENCE_CAVEAT["P恐慌深跌"], _EVIDENCE_CAVEAT
 check('大盘信号+风险仪表 模块 A+D+B+C 指纹（引擎无关）', t_market_signal)
 
 def t_period_boundary_recheck():

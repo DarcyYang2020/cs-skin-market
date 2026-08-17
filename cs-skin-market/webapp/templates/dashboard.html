@@ -105,6 +105,7 @@ fetch('/api/market/signal')
     + '<span>大盘动作 <b style="color:' + actColor + ';">' + d.action_label + '</b> <span style="color:var(--text-muted);">' + (d.action_note || '') + '</span></span>'
     + '<span>风险 <b style="color:' + riskColor + ';">' + riskTxt + '</b></span></div>';
   if (f && f.fwd14) html += '<div style="margin-top:6px;font-size:11px;color:var(--text-muted);">该时期大盘自身前视：14d ' + f.fwd14 + ' · 30d ' + f.fwd30 + '（3 年回放证据，非预测）</div>';
+  if (d.evidence_caveat) html += '<div style="margin-top:4px;font-size:11px;color:var(--yellow);">⚠ ' + d.evidence_caveat + '</div>';
   var facts = [];
   if (rf.vol20 != null) facts.push('20日波动 ' + (rf.vol20*100).toFixed(2) + '%');
   if (rf.breadth5 != null) facts.push('5日广度 ' + rf.breadth5 + '%');
