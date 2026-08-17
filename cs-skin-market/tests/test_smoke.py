@@ -1039,6 +1039,24 @@ def t_cooldown():
     assert _cooldown_hit([], "2026-03-25", 32, 30) is None
 check('族级重发冷却 _cooldown_hit（30d 同族）', t_cooldown)
 
+def t_family_arbitration():
+    """全族边界仲裁表 v2 防漂移（2026-08-17）：族键/优先级与引擎注册制一致 + C/D/F 覆盖状态。"""
+    import pipeline.item_analysis as ia
+    expect = [("panic_resonance", 60), ("deep_value", 50), ("panic_easing", 40),
+              ("rs_accum", 32), ("ct_accum", 31), ("supply_accum", 30),
+              ("rise_accum", 28), ("rise_contract", 27), ("volatile_accum", 26),
+              ("xishou_mid", 25), ("second_wave", 24)]
+    got = [(f.key, f.priority) for f in sorted(ia.SIGNAL_FAMILIES, key=lambda f: -f.priority)]
+    assert got == expect, "仲裁表 v2 与引擎注册制漂移: %s" % got
+    assert ia.PERIOD_ROUTE_BAN == {"rise_accum": ("S1牛市上行",), "deep_value": ("S3弱市阴跌",),
+                                   "supply_accum": ("S3弱市阴跌", "S4弱市反弹")}, ia.PERIOD_ROUTE_BAN
+    from webapp.analysis_service import _f_pullback_note
+    assert callable(_f_pullback_note), "F 判别显示层缺失"
+    # C/D 边界编码在 trigger 内（默认关 env 保留）；D2 亚型=登记缺口（无代码断言，见仲裁表 v2）
+    assert "CS_ENGINE_C_WAVE" in open("pipeline/item_analysis.py", encoding="utf-8").read()
+    assert "CS_ENGINE_D_ACCUM" in open("pipeline/item_analysis.py", encoding="utf-8").read()
+check('全族边界仲裁表 v2 防漂移（族/优先级/路由/C-D-F 覆盖）', t_family_arbitration)
+
 def t_market_signal():
     """大盘信号+风险仪表（2026-08-17 模块 A+D）：动作区映射/统计/风险档位/实库集成。"""
     from pipeline.market_signal import _stats, _risk_level, market_signal, _ACTION
