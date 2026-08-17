@@ -32,8 +32,14 @@
       <span>风险 <b style="color:{{ _rcol }};">{{ _rc }}</b></span>
     </div>
     <div style="margin-top:6px;color:var(--text-secondary);">{{ _s.action_note }}</div>
-    {% if market_status.fire_note %}
-    <div style="margin-top:6px;color:var(--text-secondary);font-weight:600;">🔥 {{ market_status.fire_note }}</div>
+    {% if market_status.fire_note and market_status.fire_note.active %}
+    <div style="margin-top:6px;font-size:14px;font-weight:700;color:var(--text-primary);">🔥 现在能买：{{ market_status.fire_note.active }}</div>
+    {% if market_status.fire_note.detail %}
+    <details style="margin-top:2px;font-size:11px;color:var(--text-muted);">
+      <summary style="cursor:pointer;">为什么只有这类？</summary>
+      <div style="margin-top:2px;">{{ market_status.fire_note.detail }}</div>
+    </details>
+    {% endif %}
     {% endif %}
     <div style="margin-top:6px;font-size:11px;color:var(--text-muted);">
       大盘自身前视：14d {{ _s.period_forward.fwd14 }} · 30d {{ _s.period_forward.fwd30 }}（3 年回放证据，非预测）
