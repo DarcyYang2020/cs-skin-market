@@ -955,7 +955,43 @@ def t_market_signal():
     assert _crash(-2.0, -12.5)["active"] is True
     assert _crash(-2.0, -2.0)["active"] is False
     assert "暂停新开仓" in _crash(-10.0, -20.0)["response"]
-check('大盘信号+风险仪表 模块 A+D+B 指纹（引擎无关）', t_market_signal)
+    # 6) 时期持续天数（模块 C）：实库信号带 period_days 且 >0
+    assert isinstance(sig.get("period_days"), int) and sig["period_days"] > 0, sig
+check('大盘信号+风险仪表 模块 A+D+B+C 指纹（引擎无关）', t_market_signal)
+
+def t_period_boundary_recheck():
+    """模块 C（2026-08-17）：时期边界季度重验台账——四切点 gap 复现 + 台账追加（临时文件）。"""
+    import json as _J
+    import os
+    import importlib.util
+    import shutil
+    import tempfile
+    from pathlib import Path
+    root = Path(__file__).resolve().parent.parent
+    spec = importlib.util.spec_from_file_location("pbr", str(root / "references" / "period_boundary_recheck.py"))
+    pbr = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(pbr)
+    tmp = tempfile.mkdtemp(prefix="smoke_recheck_")
+    try:
+        ledger = Path(tmp) / "recheck.jsonl"
+        old_env = os.environ.get("PERIOD_RECHECK_LEDGER")
+        os.environ["PERIOD_RECHECK_LEDGER"] = str(ledger)
+        try:
+            pbr.main()
+        finally:
+            if old_env is None:
+                os.environ.pop("PERIOD_RECHECK_LEDGER", None)
+            else:
+                os.environ["PERIOD_RECHECK_LEDGER"] = old_env
+        rows = [x for x in ledger.read_text(encoding="utf-8").strip().split("\n") if x]
+        assert len(rows) == 1, rows
+        last = _J.loads(rows[-1])
+        assert set(last["gaps"]) == {"2024-07-01", "2024-10-01", "2025-02-01", "2025-08-10"}, last
+        assert all(v is None or v <= 6.5 for v in last["gaps"].values()), last["gaps"]
+        assert last["note"] == "OK", last
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+check('时期边界季度重验台账 模块 C', t_period_boundary_recheck)
 
 def t_paper_trading():
     """模拟盘 v2（2026-08-16）：三表 schema + 建仓/三类出场闭环（生产镜像全自动口径）。"""

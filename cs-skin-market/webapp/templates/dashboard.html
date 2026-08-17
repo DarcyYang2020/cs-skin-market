@@ -101,7 +101,7 @@ fetch('/api/market/signal')
     ? '<div style="background:rgba(239,68,68,0.08);border-left:3px solid var(--red);padding:6px 10px;margin-bottom:8px;font-size:12px;color:var(--red);font-weight:600;">⚠️ ' + (d.crash.response || '') + '（单日 ' + (d.crash.chg1d != null ? d.crash.chg1d + '%' : '--') + ' · 3日 ' + (d.crash.chg3d != null ? d.crash.chg3d + '%' : '--') + '）</div>'
     : '';
   html += '<div style="display:flex;gap:18px;flex-wrap:wrap;align-items:center;color:var(--text-secondary);">'
-    + '<span>时期 <b style="color:var(--text-primary);">' + d.period + '</b></span>'
+    + '<span>时期 <b style="color:var(--text-primary);">' + d.period + '</b>' + (d.period_days ? ' <span style="color:var(--text-muted);">（持续 ' + d.period_days + ' 天）</span>' : '') + '</span>'
     + '<span>大盘动作 <b style="color:' + actColor + ';">' + d.action_label + '</b> <span style="color:var(--text-muted);">' + (d.action_note || '') + '</span></span>'
     + '<span>风险 <b style="color:' + riskColor + ';">' + riskTxt + '</b></span></div>';
   if (f && f.fwd14) html += '<div style="margin-top:6px;font-size:11px;color:var(--text-muted);">该时期大盘自身前视：14d ' + f.fwd14 + ' · 30d ' + f.fwd30 + '（3 年回放证据，非预测）</div>';

@@ -89,6 +89,32 @@ _CRASH_RESPONSE = (
 )
 
 
+def _period_days():
+    """当前时期持续天数（模块 C）：market_state_daily.json 逐日分类的尾部连续同标签天数。
+    文件缺失/异常返回 None（展示层降级）。"""
+    try:
+        st = json.load(open(_ROOT / "data" / "market_state_daily.json", encoding="utf-8"))
+        labels = []
+        for d in sorted(st):
+            s = st[d]
+            if "chg180" not in s or "chg30" not in s:
+                continue
+            labels.append(state_bucket(s["chg180"], s["chg30"]))
+        if not labels:
+            return None
+        cur = labels[-1]
+        n = 0
+        for x in reversed(labels):
+            if x == cur:
+                n += 1
+            else:
+                break
+        return n
+    except Exception:
+        logger.warning("period_days compute failed", exc_info=True)
+        return None
+
+
 def _crash(chg1d, chg3d):
     if chg1d is None and chg3d is None:
         return None
@@ -128,6 +154,7 @@ def market_signal(conn=None):
     out = {
         "ok": True,
         "period": period,
+        "period_days": _period_days(),
         "market_action": action,
         "action_label": title,
         "action_note": note,
