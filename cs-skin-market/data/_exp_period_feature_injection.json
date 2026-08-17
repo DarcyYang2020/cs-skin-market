@@ -1,0 +1,45 @@
+{
+ "probe": "P2 时期特征注入",
+ "s1_all": {
+  "n": 30,
+  "win": 70.0,
+  "avg": 3.57
+ },
+ "s23_all": {
+  "n": 55,
+  "win": 69.1,
+  "avg": 25.43
+ },
+ "variants": {
+  "G_breadth>=50": {
+   "filtered_s1": {
+    "n": 13,
+    "win": 69.2,
+    "avg": 4.62
+   },
+   "filtered_s23": {
+    "n": 24,
+    "win": 66.7,
+    "avg": 20.94
+   },
+   "gate1": false,
+   "gate2": false,
+   "verdict": "证伪"
+  },
+  "V_vol20<=0.008": {
+   "filtered_s1": {
+    "n": 16,
+    "win": 68.8,
+    "avg": 3.7
+   },
+   "filtered_s23": {
+    "n": 18,
+    "win": 50.0,
+    "avg": 7.18
+   },
+   "gate1": false,
+   "gate2": false,
+   "verdict": "证伪"
+  }
+ }
+}
