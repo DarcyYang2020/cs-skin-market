@@ -274,6 +274,16 @@ strong { font-weight: 600; }
 .page-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
 .page-main-side { display: grid; grid-template-columns: 1fr 300px; gap: var(--space-4); align-items: start; }
 
+/* ============================ Watchlist layout (Plan A) ============================ */
+.wl-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: var(--space-4); align-items: start; }
+.wl-main { min-width: 0; }
+.wl-side { position: sticky; top: 16px; display: flex; flex-direction: column; gap: var(--space-4); }
+.wl-side > .card { margin-bottom: 0; }
+.wl-exec-zone { margin-top: var(--space-2); }
+.wl-exec-zone .card { margin-bottom: var(--space-4); }
+@media (max-width: 1199px) { .wl-layout { grid-template-columns: minmax(0, 1fr) 300px; } }
+@media (max-width: 899px) { .wl-layout { grid-template-columns: 1fr; } .wl-side { position: static; } }
+
 /* ============================ Stats ============================ */
 .stat-row { display: flex; gap: var(--space-6); flex-wrap: wrap; }
 .stat-item { text-align: center; flex: 1; min-width: 0; }

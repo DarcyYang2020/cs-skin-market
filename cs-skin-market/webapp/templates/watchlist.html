@@ -35,271 +35,279 @@
   </div>
 </div>
 
-{% if monitor and monitor.has_focus %}
-<div class="card" style="margin-bottom:12px;border-color:rgba(245,158,11,0.35);">
-  <div class="card-header" style="padding:8px 14px;">
-    <span class="card-title">📌 今日关注（{{ monitor.today }}）</span>
-    <span style="font-size:11px;color:var(--text-muted);margin-left:8px;">采集时间以各行标注为准</span>
-    <button class="btn btn-outline btn-sm" onclick="openScanModal()" style="margin-left:auto;">📊 刷新全部数据</button>
-  </div>
-  <div style="padding:8px 14px;font-size:12px;display:flex;flex-direction:column;gap:8px;">
-    {% for ev in monitor.buy_events %}
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-      <span style="font-weight:800;color:var(--green);">🟢 {{ ev.item_name }}</span>
-      <span style="color:var(--text-muted);">{{ ev.detail }}</span>
-      <span style="color:var(--text-muted);font-size:11px;">采集于 {{ ev.created_at }}</span>
-      <button class="btn btn-outline btn-sm" onclick="showItemReport('{{ ev.item_name|e }}')">📄 报告</button>
-    </div>
-    {% endfor %}
-    {% for it in monitor.buy_signals %}
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-      <span style="font-weight:800;color:var(--green);">🟢 {{ it.name }}</span>
-      <span style="color:var(--text-muted);">{{ it.detail }}</span>
-      <span style="color:var(--text-muted);font-size:11px;">采集于 {{ it.collected_at }}</span>
-      <button class="btn btn-outline btn-sm" onclick="showItemReport('{{ it.name|e }}')">📄 报告</button>
-    </div>
-    {% endfor %}
-    {% for it in monitor.near_buys %}
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-      <span>🎯 <b>{{ it.name }}</b></span>
-      <span>接近买点 <b style="color:{% if it.score >= 90 %}var(--green){% elif it.score >= 70 %}var(--yellow){% else %}var(--text-primary){% endif %};">{{ it.score }}%</b>（{{ it.nearest }}）</span>
-      {% if it.is_sticker %}<span style="padding:1px 8px;border-radius:8px;background:rgba(139,92,246,0.12);color:var(--text-muted);font-size:11px;">🧪 观察桶 · 未进 buy</span>{% endif %}
-      {% if it.dedup_hit %}<span style="padding:1px 8px;border-radius:8px;background:rgba(245,158,11,0.12);color:var(--yellow);font-size:11px;">7 日内已买</span>{% endif %}
-      {% if it.gaps %}<span style="color:var(--text-muted);font-size:11px;">还差：{{ it.gaps[:2]|join(" · ") }}</span>{% endif %}
-      <span style="color:var(--text-muted);font-size:11px;">采集于 {{ it.collected_at }}</span>
-      <button class="btn btn-outline btn-sm" onclick="showItemReport('{{ it.name|e }}')">📄 报告</button>
-    </div>
-    {% endfor %}
-    {% for ev in monitor.warn_events %}
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-      <span style="color:{% if ev.event_type == 'stop_loss' %}var(--red){% else %}var(--yellow){% endif %};font-weight:600;">{{ '⚠️' if ev.event_type == 'stop_loss' else '🔥' }} {{ ev.item_name }}</span>
-      <span style="color:var(--text-secondary);">{{ ev.detail }}</span>
-      <span style="color:var(--text-muted);font-size:11px;">采集于 {{ ev.created_at }}</span>
-      <button class="btn btn-outline btn-sm" onclick="showItemReport('{{ ev.item_name|e }}')">📄 报告</button>
-    </div>
-    {% endfor %}
-    {% for it in monitor.broken %}
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-      <span style="color:var(--red);font-weight:600;">⚠️ <b>{{ it.name }}</b></span>
-      <span>已破止损位（现价 ¥{{ "%.2f"|format(it.latest_price) }} ≤ 成本-25% ¥{{ "%.2f"|format(it.avg_cost*0.75) }}）</span>
-      <span style="color:var(--text-muted);font-size:11px;">采集于 {{ it.collected_at }}</span>
-      <button class="btn btn-outline btn-sm" onclick="showItemReport('{{ it.name|e }}')">📄 报告</button>
-    </div>
-    {% endfor %}
-    <div style="font-size:11px;color:var(--text-muted);border-top:1px dashed var(--border);padding-top:6px;">⚠️ 接近买点 ≠ 买点：队列仅为「距最近 buy 信号族的达标度」，实际买卖以报告决策条为准（buy/watch/avoid）。</div>
-    <div style="font-size:11px;color:var(--text-secondary);border-top:1px dashed var(--border);padding-top:6px;">⚠️ 止损/止盈建议未纳入组合回测；优先按回测最优的 21 日时间退出，止损/止盈仅作减仓参考。</div>
-  </div>
-</div>
-{% endif %}
+<!-- ===== 双列布局（Plan A：主列=自选表/扫描，侧栏=资产/关注） ===== -->
+<div class="wl-layout">
 
-<!-- Holdings Summary Bar -->
-<div class="card" style="padding:14px 18px;margin-bottom:16px;">
-  <div class="row-flex" style="gap:28px;flex-wrap:wrap;">
-    <div>
-      <span class="card-subtitle">总资产（含已实现盈亏）</span>
-      <span style="font-size:18px;font-weight:700;margin-left:8px;color:var(--accent);">¥{{ "%.2f"|format(net_assets) }}</span>
-      <div style="font-size:11px;color:var(--text-muted);margin-left:8px;">期初本金 ¥{{ "%.2f"|format(total_assets) }}</div>
+  <!-- 主列 -->
+  <div class="wl-main">
+
+    <!-- Watchlist Table -->
+    <div class="card" style="padding:0;" id="wl-card">
+      <div id="wl-batch-bar" style="display:none;padding:8px 14px;border-bottom:1px solid var(--border);align-items:center;gap:10px;flex-wrap:wrap;">
+        <span style="font-size:13px;">已选 <b id="wl-batch-count" style="color:var(--accent);">0</b> 项</span>
+        <button type="button" class="btn btn-accent btn-sm" onclick="batchScanSelectedFromTable()">📊 批量扫描已选</button>
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text-muted);cursor:pointer;"><input type="checkbox" id="wl-batch-force" style="margin:0;">⚡ 强制联网刷新</label>
+        <button type="button" class="btn btn-danger btn-sm" onclick="batchDeleteSelected()">🗑 批量删除</button>
+      </div>
+      <div class="table-wrap">
+        <table id="wl-table">
+          <thead>
+            <tr>
+              <th style="width:28px;"><input type="checkbox" onclick="toggleAllCheckboxes(this)" aria-label="全选"></th>
+              <th style="min-width:170px;">物品名称</th>
+              <th style="width:120px;">持仓</th>
+              <th style="width:105px;">最新价格</th>
+              <th style="width:130px;">评级 / 动作</th>
+              <th style="width:190px;">趋势 / 30日</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="wl-tbody">
+            {% for item in items %}
+            <tr id="wl-row-{{ item.id }}" class="wl-row" data-id="{{ item.id }}" data-name="{{ item.name|e }}" data-price="{{ item.latest_price or 0 }}" data-grade="{{ item.latest_grade or 'Z' }}" data-holding="{{ item.holding or 0 }}" data-created="{{ item.created_at or '' }}">
+              <td><input type="checkbox" class="wl-checkbox" value="{{ item.id }}" onchange="updateWlBatchBar()"></td>
+              <td><span style="margin-right:5px;">{% if item.holding %}✅{% else %}⬜{% endif %}</span><strong>{{ item.name }}</strong></td>
+              <td>
+                {% if item.holding %}
+                <span style="font-size:12px;font-weight:600;">{{ item.quantity or 0 }} 件</span>
+                <br><span style="font-size:11px;color:var(--text-muted);">均价 ¥{{ "%.2f"|format(item.avg_cost or 0) }}</span>
+                {% if item.sell_ref and item.sell_ref.broken %}
+                <br><span style="font-size:11px;color:var(--red);font-weight:700;">⚠️ 已破止损</span>
+                {% endif %}
+                {% else %}<span class="muted text-sm">--</span>{% endif %}
+              </td>
+              <td class="{% if item.pnl_pct is not none and item.pnl_pct > 5 %}green{% elif item.pnl_pct is not none and item.pnl_pct < -5 %}red{% endif %}">
+                <span id="wl-price-{{ item.id }}">{% if item.latest_price %}¥{{ "%.2f"|format(item.latest_price) }}{% else %}<span class="muted">--</span>{% endif %}</span>
+                {% if item.pnl_pct is not none %}<br><span style="font-size:11px;{% if item.pnl_pct >= 0 %}color:var(--green);{% else %}color:var(--red);{% endif %}">{{ "%+.1f"|format(item.pnl_pct) }}%</span>{% endif %}
+              </td>
+              <td>
+                <span id="wl-grade-{{ item.id }}">{% if item.latest_grade %}<span class="badge badge-{{ item.latest_grade|lower }}">{{ item.latest_grade }}</span>{% else %}<span class="badge badge-unknown">--</span>{% endif %}</span>
+                {% if item.analysis_summary %}
+                {% set s = item.analysis_summary %}
+                {% if s.get('fusion_action') == 'buy' %}
+                <br><span style="font-size:11px;font-weight:700;color:var(--green);">🟢 买点已触发</span>
+                {% else %}
+                {% set prox = s.get('proximity') %}
+                {% if prox and prox.score > 0 %}<br><span style="font-size:11px;font-weight:700;color:{% if prox.score >= 60 %}var(--green){% elif prox.score >= 35 %}var(--yellow){% else %}var(--text-muted){% endif %};">🎯 {{ prox.nearest }} {{ prox.score }}%</span>
+                {% elif s.get('fusion_action') %}<br><span style="font-size:11px;color:var(--text-muted);">{{ s.get('fusion_action') }}</span>{% endif %}
+                {% endif %}
+                {% endif %}
+              </td>
+              <td>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  {% if item.trend_health %}
+                  {% set th = item.trend_health %}
+                  <span style="font-size:12px;{% if th.direction == 'up' %}color:var(--green);{% elif th.direction == 'down' %}color:var(--red);{% else %}color:var(--text-muted);{% endif %};white-space:nowrap;">{% if th.direction == 'up' %}📈{% elif th.direction == 'down' %}📉{% else %}➖{% endif %} {{ th.score }}</span>
+                  {% else %}<span class="muted text-sm">--</span>{% endif %}
+                  {% if item.spark_svg %}{{ item.spark_svg|safe }}{% endif %}
+                </div>
+              </td>
+              <td style="white-space:nowrap;">
+                <button class="btn btn-outline btn-sm" onclick="openEditModal({{ item.id }},'{{ item.name|e }}',{{ item.holding or 0 }},{{ item.avg_cost or 0 }},{{ item.quantity or 0 }},{{ item.total_bought or 0 }})">编辑</button>
+                <button class="btn btn-outline btn-sm" hx-get="/api/watchlist/{{ item.id }}/analyze" hx-target="#modal-body" hx-swap="innerHTML" onclick='showLoadingAndOpen()'>分析</button>
+                <button class="btn btn-outline btn-sm" hx-get="/api/watchlist/{{ item.id }}/report" hx-target="#modal-body" hx-swap="innerHTML" onclick="openModal('analysis-modal')">📄 报告</button>
+                <button class="btn btn-danger btn-sm" hx-delete="/api/watchlist/{{ item.id }}" hx-target="#wl-row-{{ item.id }}" hx-swap="outerHTML" hx-confirm="确认删除？">删除</button>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted);">暂无持仓，点击上方"添加自选"开始</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div style="padding:8px 14px;border-top:1px solid var(--border);font-size:12px;line-height:1.5;color:var(--text-secondary);background:rgba(245,158,11,0.05);">⚠️ 回测口径提示：止损/止盈建议未纳入组合回测；优先按回测最优的 21 日时间退出，止损/止盈仅作减仓参考。</div>
     </div>
-    <div>
-      <span class="card-subtitle">持仓市值</span>
-      <span style="font-size:18px;font-weight:700;margin-left:8px;">¥{{ "%.2f"|format(total_market) }}</span>
-      <div style="font-size:11px;color:var(--text-muted);margin-left:8px;">持仓成本 ¥{{ "%.2f"|format(total_buy_cost) }}</div>
+
+    <!-- Pagination -->
+    {% if pagination and pagination.total_pages > 1 %}
+    <div class="pagination" id="wl-pagination">
+      <button onclick="goPage(1)" aria-label="第一页" {% if pagination.page == 1 %}disabled{% endif %}>&#9664;&#9664;</button>
+      <button onclick="goPage({{ pagination.page - 1 }})" aria-label="上一页" {% if pagination.page == 1 %}disabled{% endif %}>&#9664;</button>
+      {% for p in range(1, pagination.total_pages + 1) %}
+        {% if p >= pagination.page - 2 and p <= pagination.page + 2 %}
+        <button class="{% if p == pagination.page %}active{% endif %}" onclick="goPage({{ p }})">{{ p }}</button>
+        {% endif %}
+      {% endfor %}
+      <button onclick="goPage({{ pagination.page + 1 }})" aria-label="下一页" {% if pagination.page == pagination.total_pages %}disabled{% endif %}>&#9654;</button>
+      <button onclick="goPage({{ pagination.total_pages }})" aria-label="最后一页" {% if pagination.page == pagination.total_pages %}disabled{% endif %}>&#9654;&#9654;</button>
     </div>
-    <div>
-      <span class="card-subtitle">持仓比例</span>
-      <span style="font-size:18px;font-weight:700;margin-left:8px;">{{ "%.1f"|format(position_ratio) }}%</span>
-      <div style="font-size:11px;color:var(--text-muted);margin-left:8px;">持仓成本 ÷ 期初本金</div>
-    </div>
-    <div>
-      <span class="card-subtitle">总盈亏（已实现 + 浮动）</span>
-      <span style="font-size:18px;font-weight:700;margin-left:8px;{% if total_pnl > 0 %}color:var(--green);{% elif total_pnl < 0 %}color:var(--red);{% endif %}">{{ "%+.2f"|format(total_pnl) }} ({{ "%+.1f"|format(total_pnl_pct) }}%)</span>
-      <div style="font-size:11px;color:var(--text-muted);margin-left:8px;">已实现 ¥{{ "%+.2f"|format(realized_pnl) }} · 浮动 ¥{{ "%+.2f"|format(floating_pnl) }}</div>
-    </div>
-    <button class="btn btn-outline btn-sm" onclick="openAssetsModal({{ total_assets }})" style="margin-left:auto;">✏️ 设置期初本金</button>
-  </div>
-  {% if total_assets == 0 %}
-  <div style="margin-top:6px;font-size:12px;color:var(--red);">⚠️ 未设置期初本金，请点击设置</div>
-  {% endif %}
-</div>
-
-<!-- 组合仓位仪表 (P0-4, 2026-08-04) -->
-<div class="card" id="portfolio-dash" style="display:none;margin-bottom:16px;">
-  <div class="card-header">
-    <span class="card-title">📊 组合仓位仪表</span>
-    <span id="pd-breaker" style="font-size:12px;font-weight:700;margin-left:8px;"></span>
-    <span id="portfolio-scan-time" style="font-size:11px;color:var(--text-muted);"></span>
-  </div>
-  <div class="row-flex" style="gap:26px;padding:12px 16px 4px;flex-wrap:wrap;">
-    <div><span class="card-subtitle">持仓市值</span><span id="pd-holding-value" style="font-size:18px;font-weight:700;margin-left:8px;color:var(--accent);"></span></div>
-    <div><span class="card-subtitle">仓位比例</span><span id="pd-ratio" style="font-size:18px;font-weight:700;margin-left:8px;"></span></div>
-    <div><span class="card-subtitle">现金比例</span><span id="pd-cash" style="font-size:18px;font-weight:700;margin-left:8px;"></span></div>
-    <div><span class="card-subtitle">最大单品</span><span id="pd-max" style="font-size:18px;font-weight:700;margin-left:8px;"></span></div>
-    <div><span class="card-subtitle">Top3 集中度</span><span id="pd-top3" style="font-size:18px;font-weight:700;margin-left:8px;"></span></div>
-  </div>
-  <div id="pd-holdings" style="padding:0 16px 14px;font-size:13px;"></div>
-</div>
-
-<!-- Watchlist Table -->
-<div class="card" style="padding:0;" id="wl-card">
-  <div id="wl-batch-bar" style="display:none;padding:8px 14px;border-bottom:1px solid var(--border);align-items:center;gap:10px;flex-wrap:wrap;">
-    <span style="font-size:13px;">已选 <b id="wl-batch-count" style="color:var(--accent);">0</b> 项</span>
-    <button type="button" class="btn btn-accent btn-sm" onclick="batchScanSelectedFromTable()">📊 批量扫描已选</button>
-    <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text-muted);cursor:pointer;"><input type="checkbox" id="wl-batch-force" style="margin:0;">⚡ 强制联网刷新</label>
-    <button type="button" class="btn btn-danger btn-sm" onclick="batchDeleteSelected()">🗑 批量删除</button>
-  </div>
-  <div class="table-wrap">
-    <table id="wl-table">
-      <thead>
-        <tr>
-          <th style="width:28px;"><input type="checkbox" onclick="toggleAllCheckboxes(this)" aria-label="全选"></th>
-          <th style="min-width:160px;">物品名称</th>
-          <th style="width:50px;">持仓</th>
-          <th style="width:150px;">持仓明细</th>
-          <th style="width:100px;">最新价格</th>
-          <th style="width:42px;">评级</th>
-          <th style="width:55px;">趋势</th>
-          <th style="width:160px;">30日走势</th>
-          <th style="width:155px;">操作</th>
-        </tr>
-      </thead>
-      <tbody id="wl-tbody">
-        {% for item in items %}
-        <tr id="wl-row-{{ item.id }}" class="wl-row" data-id="{{ item.id }}" data-name="{{ item.name|e }}" data-price="{{ item.latest_price or 0 }}" data-grade="{{ item.latest_grade or 'Z' }}" data-holding="{{ item.holding or 0 }}" data-created="{{ item.created_at or '' }}">
-          <td><input type="checkbox" class="wl-checkbox" value="{{ item.id }}" onchange="updateWlBatchBar()"></td>
-          <td><strong>{{ item.name }}</strong></td>
-          <td><span>{% if item.holding %}✅{% else %}⬜{% endif %}</span></td>
-          <td>
-            {% if item.holding %}
-            <span style="font-size:12px;">{{ item.quantity or 0 }} 件</span><br>
-            <span style="font-size:11px;color:var(--text-muted);">均价 ¥{{ "%.2f"|format(item.avg_cost or 0) }}</span><br>
-            <span style="font-size:11px;color:var(--text-muted);">累计买 ¥{{ "%.2f"|format(item.total_bought or 0) }}</span>
-            {% if item.sell_ref %}
-            <br><span style="font-size:11px;{% if item.sell_ref.broken %}color:var(--red);font-weight:700;{% else %}color:var(--text-muted);{% endif %}">止损 ¥{{ "%.2f"|format(item.sell_ref.stop_loss) }}{% if item.sell_ref.broken %} ⚠️已破位{% endif %}</span>
-            <br><span style="font-size:11px;color:var(--text-muted);">90日 ¥{{ "%.2f"|format(item.sell_ref.low90) if item.sell_ref.low90 else "--" }}~{{ "%.2f"|format(item.sell_ref.high90) if item.sell_ref.high90 else "--" }}</span>
-            {% endif %}
-            {% else %}<span class="muted text-sm">--</span>{% endif %}
-          </td>
-          <td class="{% if item.pnl_pct is not none and item.pnl_pct > 5 %}green{% elif item.pnl_pct is not none and item.pnl_pct < -5 %}red{% endif %}">
-            <span id="wl-price-{{ item.id }}">{% if item.latest_price %}¥{{ "%.2f"|format(item.latest_price) }}{% else %}<span class="muted">--</span>{% endif %}</span>
-            {% if item.pnl_pct is not none %}<br><span style="font-size:11px;{% if item.pnl_pct >= 0 %}color:var(--green);{% else %}color:var(--red);{% endif %}">{{ "%+.1f"|format(item.pnl_pct) }}%</span>{% endif %}
-          </td>
-          <td><span id="wl-grade-{{ item.id }}">{% if item.latest_grade %}<span class="badge badge-{{ item.latest_grade|lower }}">{{ item.latest_grade }}</span>{% else %}<span class="badge badge-unknown">--</span>{% endif %}
-            {% if item.analysis_summary %}
-            <br><span style="font-size:11px;color:var(--text-muted);">
-              {% set s = item.analysis_summary %}
-              {{ s.get('cycle_phase','') or '' }}
-              {% if s.get('valuation_tier') %}| {{ s.get('valuation_tier','') }}{% endif %}
-              {% if s.get('fusion_action') %}| {{ s.get('fusion_action','') }}{% endif %}
-              {% set prox = s.get('proximity') %}
-              {% if s.get('fusion_action') == 'buy' %}<br><span style="font-weight:700;color:var(--green);">🟢 买点已触发</span>
-              {% elif prox %}<br><span style="font-weight:700;color:{% if prox.score >= 60 %}var(--green){% elif prox.score >= 35 %}var(--yellow){% else %}var(--text-muted){% endif %};">{% if prox.score > 0 %}🎯 {{ prox.nearest }} {{ prox.score }}%{% else %}暂无接近路径{% endif %}</span>{% endif %}
-              {% if item.latest_signal %}
-              <br><span style="font-size:11px;color:var(--text-secondary);">📡 {{ item.latest_signal.signal_date }} · 入场 ¥{{ "%.2f"|format(item.latest_signal.entry_price) }}{% if item.latest_signal.ret_vs_entry is not none %} <span style="{% if item.latest_signal.ret_vs_entry >= 0 %}color:var(--green);{% else %}color:var(--red);{% endif %}">至今 {{ "%+.1f"|format(item.latest_signal.ret_vs_entry) }}%</span>{% endif %}</span>
-              {% endif %}
-            </span>
-            {% endif %}
-          </span></td>
-          <td>
-            {% if item.trend_health %}
-            {% set th = item.trend_health %}
-            <span style="font-size:12px;{% if th.direction == 'up' %}color:var(--green);{% elif th.direction == 'down' %}color:var(--red);{% else %}color:var(--text-muted);{% endif %}">
-              {% if th.direction == 'up' %}📈{% elif th.direction == 'down' %}📉{% else %}➖{% endif %} {{ th.score }}
-            </span>
-            {% else %}<span class="muted text-sm">--</span>{% endif %}
-          </td>
-          <td>{% if item.spark_svg %}{{ item.spark_svg|safe }}{% else %}<span class="muted text-sm">--</span>{% endif %}</td>
-          <td>
-            <button class="btn btn-outline btn-sm" onclick="openEditModal({{ item.id }},'{{ item.name|e }}',{{ item.holding or 0 }},{{ item.avg_cost or 0 }},{{ item.quantity or 0 }},{{ item.total_bought or 0 }})">编辑</button>
-            <button class="btn btn-outline btn-sm" hx-get="/api/watchlist/{{ item.id }}/analyze" hx-target="#modal-body" hx-swap="innerHTML" onclick='showLoadingAndOpen()'>分析</button>
-            <button class="btn btn-outline btn-sm" hx-get="/api/watchlist/{{ item.id }}/report" hx-target="#modal-body" hx-swap="innerHTML" onclick="openModal('analysis-modal')">📄 报告</button>
-            <button class="btn btn-danger btn-sm" hx-delete="/api/watchlist/{{ item.id }}" hx-target="#wl-row-{{ item.id }}" hx-swap="outerHTML" hx-confirm="确认删除？">删除</button>
-          </td>
-        </tr>
-        {% else %}
-        <tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-muted);">暂无持仓，点击上方"添加自选"开始</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  <div style="padding:8px 14px;border-top:1px solid var(--border);font-size:12px;line-height:1.5;color:var(--text-secondary);background:rgba(245,158,11,0.05);">⚠️ 回测口径提示：表内止损位与单品报告中的止盈/止损建议均未纳入组合回测；P-C 组合模拟中严格按此执行会显著低于回测（total 195.85%→100.76%、Calmar 36.42→16.72）。优先按回测最优的 21 日时间退出，止损/止盈仅作减仓参考。</div>
-</div>
-
-<!-- 执行记录与复盘 (P0-2, 2026-08-04) -->
-<!-- 执行飞轮健康度 (E1, 2026-08-15) -->
-<div class="card" id="exec-flywheel-card" style="display:none;margin-top:16px;">
-  <div class="card-header" style="justify-content:space-between;">
-    <span class="card-title">🔄 执行飞轮健康度</span>
-    <span style="font-size:11px;color:var(--text-muted);">北极星 30 天 / 生产信号 / 纸面 vs 真实</span>
-  </div>
-  <div id="exec-flywheel-body" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;padding:10px 14px;"></div>
-</div>
-
-<div class="card" id="exec-section" style="display:none;margin-top:16px;">
-  <div class="card-header" style="justify-content:space-between;">
-    <span class="card-title">📒 执行记录与复盘</span>
-    <div style="display:flex;gap:10px;align-items:center;">
-      <span style="font-size:11px;color:var(--text-muted);">14/30 天到期自动按收盘价结算（净收益扣 2% 双边成本）</span>
-      <button type="button" class="btn btn-primary btn-sm" onclick="openExecManual()">＋ 手动录入</button>
-      <button type="button" class="btn btn-outline btn-sm" onclick="loadExecutions()"><span id="exec-spinner" class="htmx-indicator">⏳</span> 🔄 刷新</button>
-    </div>
-  </div>
-  <div id="exec-calib" style="padding:8px 14px 0;font-size:12px;color:var(--text-secondary);">
-    <span>📏 滑点/胜率校准：已录入 <b id="exec-count-n" style="color:var(--text-primary);">{{ exec_count or 0 }}</b> / 20 条执行记录</span>
-    <div style="height:6px;background:rgba(15,23,42,0.08);border-radius:4px;margin-top:6px;overflow:hidden;">
-      <div id="exec-count-bar" style="height:100%;width:{{ [((exec_count or 0)/20*100), 100] | min }}%;background:{% if (exec_count or 0) >= 20 %}var(--green){% else %}var(--accent){% endif %};border-radius:4px;"></div>
-    </div>
-    <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">累计 20 条后解锁 A1-4 滑点校准与真实 vs 纸面胜率对照（当前 {{ exec_count or 0 }}/20）</div>
-  </div>
-  <div id="exec-summary" style="padding:8px 14px 0;font-size:12px;color:var(--text-secondary);"></div>
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th style="width:90px;">日期</th>
-          <th>物品</th>
-          <th style="width:60px;">动作</th>
-          <th>建议信号</th>
-          <th style="width:90px;">成交价</th>
-          <th style="width:70px;" title="滑点 = 成交价 ÷ 建议价 − 1：正=成交比建议差（买贵/卖贱），负=优于建议，越接近 0 越贴近按建议成交">滑点</th>
-          <th style="width:50px;">数量</th>
-          <th style="width:84px;" title="卖出/减仓时 (成交价 − 操作前持仓成本) × 数量；买入/补仓显示 —">该笔盈亏</th>
-          <th style="width:110px;">14天复盘</th>
-          <th style="width:110px;">30天复盘</th>
-          <th style="width:132px;"></th>
-        </tr>
-      </thead>
-      <tbody id="exec-tbody"></tbody>
-    </table>
-  </div>
-  <div style="padding:6px 14px 8px;font-size:11px;color:var(--text-muted);">💡 滑点 = 成交价 ÷ 建议价 − 1：正数=成交比建议差（买贵 / 卖贱），负数=优于建议，越接近 0 越贴近按建议成交；「该笔盈亏」只在减仓/清仓时统计实际落袋盈亏</div>
-  <div style="padding:2px 14px 8px;font-size:11px;color:var(--text-secondary);">⚠️ 止损/止盈建议未纳入组合回测；优先按回测最优的 21 日时间退出，止损/止盈仅作减仓参考。</div>
-  <div id="exec-empty" style="padding:20px;text-align:center;color:var(--text-muted);display:none;">暂无执行记录：点上方「📝 手动录入」或批量扫描结果里「💼 按建议执行」开始记账，14/30 天后自动复盘</div>
-</div>
-
-<!-- 执行复盘对照 (F-2, 2026-08-08): 真实执行 vs 纸面信号 -->
-<div class="card" id="exec-review-card" style="display:none;margin-top:12px;">
-  <div class="card-header" style="justify-content:space-between;">
-    <span class="card-title">📊 执行复盘对照 · 真实 vs 纸面</span>
-    <span style="font-size:11px;color:var(--text-muted);">真实=executions 已结算（净收益扣 2%）；纸面=signal_tracking 生产信号（net 扣 2%）</span>
-  </div>
-  <div id="exec-review-body" style="padding:10px 14px;"></div>
-</div>
-
-
-<!-- Pagination -->
-{% if pagination and pagination.total_pages > 1 %}
-<div class="pagination" id="wl-pagination">
-  <button onclick="goPage(1)" aria-label="第一页" {% if pagination.page == 1 %}disabled{% endif %}>&#9664;&#9664;</button>
-  <button onclick="goPage({{ pagination.page - 1 }})" aria-label="上一页" {% if pagination.page == 1 %}disabled{% endif %}>&#9664;</button>
-  {% for p in range(1, pagination.total_pages + 1) %}
-    {% if p >= pagination.page - 2 and p <= pagination.page + 2 %}
-    <button class="{% if p == pagination.page %}active{% endif %}" onclick="goPage({{ p }})">{{ p }}</button>
     {% endif %}
-  {% endfor %}
-  <button onclick="goPage({{ pagination.page + 1 }})" aria-label="下一页" {% if pagination.page == pagination.total_pages %}disabled{% endif %}>&#9654;</button>
-  <button onclick="goPage({{ pagination.total_pages }})" aria-label="最后一页" {% if pagination.page == pagination.total_pages %}disabled{% endif %}>&#9654;&#9654;</button>
+
+    <!-- 批量扫描结果 -->
+    <div class="batch-scan-section" id="batch-scan-section" style="display:none;">
+      <div class="page-header" style="margin:20px 0 12px;">
+        <h2 style="display:flex;align-items:center;gap:10px;">📋 批量扫描结果
+          <select id="scan-history-select" class="form-select" onchange="loadScanHistory(this.value)" style="width:auto;padding:4px 8px;font-size:12px;"><option value="">📚 历史扫描</option></select>
+          <button class="btn btn-sm btn-outline" onclick="clearScanCache()" style="font-size:12px;">✕ 清除</button>
+        </h2>
+      </div>
+      <div id="batch-scan-result"></div>
+    </div>
+  </div>
+
+  <!-- 侧栏 -->
+  <div class="wl-side">
+    <!-- 资产与组合（合并原「持仓汇总条 + 组合仓位仪表」） -->
+    <div class="card" style="padding:16px 18px;">
+      <div class="card-header" style="padding-bottom:10px;margin-bottom:10px;">
+        <span class="card-title">💰 资产与组合</span>
+        <button class="btn btn-outline btn-sm" onclick="openAssetsModal({{ total_assets }})">✏️ 设置期初本金</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px 18px;">
+        <div>
+          <div class="card-subtitle">总资产（含已实现）</div>
+          <div style="font-size:17px;font-weight:700;color:var(--accent);">¥{{ "%.2f"|format(net_assets) }}</div>
+        </div>
+        <div>
+          <div class="card-subtitle">持仓市值</div>
+          <div style="font-size:17px;font-weight:700;">¥{{ "%.2f"|format(total_market) }}</div>
+        </div>
+        <div>
+          <div class="card-subtitle">总盈亏</div>
+          <div style="font-size:17px;font-weight:700;{% if total_pnl > 0 %}color:var(--green);{% elif total_pnl < 0 %}color:var(--red);{% endif %};">{{ "%+.2f"|format(total_pnl) }} <span style="font-size:12px;font-weight:600;">({{ "%+.1f"|format(total_pnl_pct) }}%)</span></div>
+        </div>
+        <div>
+          <div class="card-subtitle">持仓比例</div>
+          <div style="font-size:17px;font-weight:700;">{{ "%.1f"|format(position_ratio) }}%</div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:12px;line-height:1.6;">期初本金 ¥{{ "%.2f"|format(total_assets) }} · 成本 ¥{{ "%.2f"|format(total_buy_cost) }}<br>已实现 ¥{{ "%+.2f"|format(realized_pnl) }} · 浮动 ¥{{ "%+.2f"|format(floating_pnl) }}</div>
+      {% if total_assets == 0 %}
+      <div style="margin-top:8px;font-size:12px;color:var(--red);">⚠️ 未设置期初本金，请点击设置</div>
+      {% endif %}
+      <div id="portfolio-dash" style="display:none;margin-top:12px;border-top:1px dashed var(--border);padding-top:10px;">
+        <div class="row-flex" style="gap:16px;flex-wrap:wrap;">
+          <div><span class="card-subtitle">现金比例</span><span id="pd-cash" style="font-size:15px;font-weight:700;margin-left:5px;"></span></div>
+          <div><span class="card-subtitle">最大单品</span><span id="pd-max" style="font-size:15px;font-weight:700;margin-left:5px;"></span></div>
+          <div><span class="card-subtitle">Top3 集中度</span><span id="pd-top3" style="font-size:15px;font-weight:700;margin-left:5px;"></span></div>
+        </div>
+        <div id="pd-breaker" style="font-size:12px;font-weight:700;margin-top:8px;"></div>
+        <div id="pd-holdings" style="font-size:12px;margin-top:4px;"></div>
+        <div id="portfolio-scan-time" style="font-size:11px;color:var(--text-muted);margin-top:6px;"></div>
+      </div>
+    </div>
+
+    <!-- 今日关注 -->
+    {% if monitor and monitor.has_focus %}
+    <div class="card" style="padding:0;">
+      <div class="card-header" style="padding:10px 14px;margin:0;">
+        <span class="card-title">📌 今日关注（{{ monitor.today }}）</span>
+        <button class="btn btn-outline btn-sm" onclick="openScanModal()" style="margin-left:auto;">📊 刷新</button>
+      </div>
+      <div style="padding:8px 14px 12px;font-size:12px;display:flex;flex-direction:column;gap:8px;">
+        {% for ev in monitor.buy_events %}
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="font-weight:800;color:var(--green);">🟢 {{ ev.item_name }}</span>
+          <span style="color:var(--text-muted);">{{ ev.detail }}</span>
+          <button class="btn btn-outline btn-sm" onclick="showItemReport('{{ ev.item_name|e }}')">📄</button>
+        </div>
+        {% endfor %}
+        {% for it in monitor.buy_signals %}
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="font-weight:800;color:var(--green);">🟢 {{ it.name }}</span>
+          <span style="color:var(--text-muted);">{{ it.detail }}</span>
+          <button class="btn btn-outline btn-sm" onclick="showItemReport('{{ it.name|e }}')">📄</button>
+        </div>
+        {% endfor %}
+        {% for it in monitor.near_buys %}
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span>🎯 <b>{{ it.name }}</b></span>
+          <span>接近买点 <b style="color:{% if it.score >= 90 %}var(--green){% elif it.score >= 70 %}var(--yellow){% else %}var(--text-primary){% endif %};">{{ it.score }}%</b></span>
+          {% if it.is_sticker %}<span style="padding:1px 8px;border-radius:8px;background:rgba(139,92,246,0.12);color:var(--text-muted);font-size:11px;">🧪 观察桶</span>{% endif %}
+          {% if it.dedup_hit %}<span style="padding:1px 8px;border-radius:8px;background:rgba(245,158,11,0.12);color:var(--yellow);font-size:11px;">7 日内已买</span>{% endif %}
+          {% if it.gaps %}<span style="color:var(--text-muted);font-size:11px;">还差：{{ it.gaps[:2]|join(" · ") }}</span>{% endif %}
+          <button class="btn btn-outline btn-sm" onclick="showItemReport('{{ it.name|e }}')">📄</button>
+        </div>
+        {% endfor %}
+        {% for ev in monitor.warn_events %}
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="color:{% if ev.event_type == 'stop_loss' %}var(--red){% else %}var(--yellow){% endif %};font-weight:600;">{{ '⚠️' if ev.event_type == 'stop_loss' else '🔥' }} {{ ev.item_name }}</span>
+          <span style="color:var(--text-secondary);">{{ ev.detail }}</span>
+          <button class="btn btn-outline btn-sm" onclick="showItemReport('{{ ev.item_name|e }}')">📄</button>
+        </div>
+        {% endfor %}
+        {% for it in monitor.broken %}
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="color:var(--red);font-weight:600;">⚠️ <b>{{ it.name }}</b></span>
+          <span>已破止损位（现价 ¥{{ "%.2f"|format(it.latest_price) }} ≤ 成本-25% ¥{{ "%.2f"|format(it.avg_cost*0.75) }}）</span>
+          <button class="btn btn-outline btn-sm" onclick="showItemReport('{{ it.name|e }}')">📄</button>
+        </div>
+        {% endfor %}
+        <div style="font-size:11px;color:var(--text-muted);border-top:1px dashed var(--border);padding-top:6px;">⚠️ 接近买点 ≠ 买点，实际买卖以报告决策条为准（buy/watch/avoid）。</div>
+        <div style="font-size:11px;color:var(--text-secondary);border-top:1px dashed var(--border);padding-top:6px;">⚠️ 止损/止盈仅作减仓参考，优先按回测 21 日退出。</div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
 </div>
-{% endif %}
+
+<!-- ===== 执行复盘（3 卡合区） ===== -->
+<section class="wl-exec-zone">
+  <div class="page-header" style="margin-bottom:12px;">
+    <h2 style="font-size:17px;">📒 执行复盘</h2>
+  </div>
+
+  <!-- 执行飞轮健康度 (E1, 2026-08-15) -->
+  <div class="card" id="exec-flywheel-card" style="display:none;">
+    <div class="card-header" style="justify-content:space-between;">
+      <span class="card-title">🔄 执行飞轮健康度</span>
+      <span style="font-size:11px;color:var(--text-muted);">北极星 30 天 / 生产信号 / 纸面 vs 真实</span>
+    </div>
+    <div id="exec-flywheel-body" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;padding:10px 14px;"></div>
+  </div>
+
+  <!-- 执行记录与复盘 (P0-2, 2026-08-04) -->
+  <div class="card" id="exec-section" style="display:none;">
+    <div class="card-header" style="justify-content:space-between;">
+      <span class="card-title">📒 执行记录与复盘</span>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <span style="font-size:11px;color:var(--text-muted);">14/30 天到期自动结算（扣 2% 双边成本）</span>
+        <button type="button" class="btn btn-primary btn-sm" onclick="openExecManual()">＋ 手动录入</button>
+        <button type="button" class="btn btn-outline btn-sm" onclick="loadExecutions()"><span id="exec-spinner" class="htmx-indicator">⏳</span> 🔄 刷新</button>
+      </div>
+    </div>
+    <div id="exec-calib" style="padding:8px 14px 0;font-size:12px;color:var(--text-secondary);">
+      <span>📏 滑点/胜率校准：已录入 <b id="exec-count-n" style="color:var(--text-primary);">{{ exec_count or 0 }}</b> / 20 条执行记录</span>
+      <div style="height:6px;background:rgba(15,23,42,0.08);border-radius:4px;margin-top:6px;overflow:hidden;">
+        <div id="exec-count-bar" style="height:100%;width:{{ [((exec_count or 0)/20*100), 100] | min }}%;background:{% if (exec_count or 0) >= 20 %}var(--green){% else %}var(--accent){% endif %};border-radius:4px;"></div>
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">累计 20 条后解锁 A1-4 滑点校准与真实 vs 纸面胜率对照（当前 {{ exec_count or 0 }}/20）</div>
+    </div>
+    <div id="exec-summary" style="padding:8px 14px 0;font-size:12px;color:var(--text-secondary);"></div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:90px;">日期</th>
+            <th>物品</th>
+            <th style="width:60px;">动作</th>
+            <th>建议信号</th>
+            <th style="width:90px;">成交价</th>
+            <th style="width:70px;" title="滑点 = 成交价 ÷ 建议价 − 1：正=成交比建议差（买贵/卖贱），负=优于建议，越接近 0 越贴近按建议成交">滑点</th>
+            <th style="width:50px;">数量</th>
+            <th style="width:84px;" title="卖出/减仓时 (成交价 − 操作前持仓成本) × 数量；买入/补仓显示 —">该笔盈亏</th>
+            <th style="width:110px;">14天复盘</th>
+            <th style="width:110px;">30天复盘</th>
+            <th style="width:132px;"></th>
+          </tr>
+        </thead>
+        <tbody id="exec-tbody"></tbody>
+      </table>
+    </div>
+    <div style="padding:6px 14px 8px;font-size:11px;color:var(--text-muted);">💡 滑点 = 成交价 ÷ 建议价 − 1：正数=成交比建议差（买贵 / 卖贱），负数=优于建议；「该笔盈亏」只在减仓/清仓时统计实际落袋盈亏</div>
+    <div style="padding:2px 14px 8px;font-size:11px;color:var(--text-secondary);">⚠️ 止损/止盈建议未纳入组合回测；优先按回测最优的 21 日时间退出。</div>
+    <div id="exec-empty" style="padding:20px;text-align:center;color:var(--text-muted);display:none;">暂无执行记录：点上方「📝 手动录入」或批量扫描结果里「💼 按建议执行」开始记账，14/30 天后自动复盘</div>
+  </div>
+
+  <!-- 执行复盘对照 (F-2, 2026-08-08): 真实执行 vs 纸面信号 -->
+  <div class="card" id="exec-review-card" style="display:none;">
+    <div class="card-header" style="justify-content:space-between;">
+      <span class="card-title">📊 执行复盘对照 · 真实 vs 纸面</span>
+      <span style="font-size:11px;color:var(--text-muted);">真实=executions 已结算（净收益扣 2%）；纸面=signal_tracking 生产信号（net 扣 2%）</span>
+    </div>
+    <div id="exec-review-body" style="padding:10px 14px;"></div>
+  </div>
+</section>
 
 <!-- Scan Modal -->
 <div class="modal-overlay" id="scan-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="scan-modal-title">
@@ -420,17 +428,6 @@
       </div>
     </form>
   </div>
-</div>
-
-<!-- 批量扫描结果 -->
-<div class="batch-scan-section" id="batch-scan-section" style="display:none;">
-  <div class="page-header" style="margin-top:24px;">
-    <h2 style="display:flex;align-items:center;gap:10px;">📋 批量扫描结果
-      <select id="scan-history-select" class="form-select" onchange="loadScanHistory(this.value)" style="width:auto;padding:4px 8px;font-size:12px;"><option value="">📚 历史扫描</option></select>
-      <button class="btn btn-sm btn-outline" onclick="clearScanCache()" style="font-size:12px;">✕ 清除</button>
-    </h2>
-  </div>
-  <div id="batch-scan-result"></div>
 </div>
 {% endblock %}
 
@@ -1147,8 +1144,8 @@ function loadPortfolioDash() {
     if (!card || !d.ok) return;
     card.style.display = 'block';
     var s = d.scan || {};
-    document.getElementById('pd-holding-value').textContent = '¥' + Number(d.holding_value || 0).toFixed(2);
-    document.getElementById('pd-ratio').textContent = (d.position_ratio || 0) + '%';
+    var _hv = document.getElementById('pd-holding-value'); if (_hv) _hv.textContent = '¥' + Number(d.holding_value || 0).toFixed(2);
+    var _pr = document.getElementById('pd-ratio'); if (_pr) _pr.textContent = (d.position_ratio || 0) + '%';
     document.getElementById('pd-cash').textContent = (d.cash_ratio || 0) + '%';
     document.getElementById('pd-max').textContent = (d.max_single || 0) + '%';
     document.getElementById('pd-top3').textContent = (d.top3 || 0) + '%';
