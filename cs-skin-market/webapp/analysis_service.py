@@ -828,6 +828,23 @@ def _load_benchmark_view():
     return _data
 
 
+def _period_fire_note(bucket):
+    """当前时期开火族标注（2026-08-17，纯展示）：路由禁发 + 默认开族 + 候选默认关。"""
+    try:
+        from pipeline.item_analysis import PERIOD_ROUTE_BAN
+        _label = {"panic_resonance": "恐慌共振", "deep_value": "深值企稳", "panic_easing": "恐慌退潮",
+                  "supply_accum": "供给收缩吸筹", "rise_accum": "买涨腿", "base": "基础低位低估"}
+        _banned = [k for k, ps in PERIOD_ROUTE_BAN.items() if bucket in ps]
+        _fire = [v for k, v in _label.items() if k not in _banned]
+        _parts = ["当前时期开火族：" + " / ".join(_fire)]
+        if _banned:
+            _parts.append("路由禁发：" + "、".join(_label.get(k, k) for k in _banned))
+        _parts.append("候选族（C/D/rs/ct 等）默认关，不参与开火")
+        return " · ".join(_parts)
+    except Exception:
+        return ""
+
+
 def market_expectancy_card():
     """当前市场状态 × 信号族期望（外部常驻卡片，2026-08-12 从单品报告抽离）。
 
@@ -906,6 +923,7 @@ def market_expectancy_card():
         })
     return {
         "bucket": bucket,
+        "fire_note": _period_fire_note(bucket),
         "families": families,
         "bucket_total": _btotal.get("n14") or _btotal.get("n") or 0,
         "bucket_win14": _btotal.get("win14"),

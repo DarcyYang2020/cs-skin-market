@@ -176,40 +176,6 @@ def _dashboard_context():
         conn.close()
 
 
-def _signal_density():
-    """回放信号密度：最近30日信号数 vs 历史30日窗口分位（纯展示，读 item_backtest_full_2025.json）。"""
-    try:
-        _p = Path(__file__).resolve().parent.parent / "data" / "item_backtest_full_2025.json"
-        if not _p.exists():
-            return None
-        _d = json.loads(_p.read_text(encoding="utf-8"))
-        _sigs = _d.get("signals") or []
-        _dates = sorted(s.get("date", "") for s in _sigs if s.get("date"))
-        if len(_dates) < 90:
-            return None
-        from collections import Counter
-        _cnt = Counter(_dates)
-        _day = sorted(_cnt.items())
-        _win = []
-        for _i in range(len(_day) - 29):
-            _win.append(sum(c for _, c in _day[_i:_i + 30]))
-        if not _win:
-            return None
-        _last = _win[-1]
-        _pct = sum(1 for w in _win if w <= _last) / len(_win) * 100
-        _lvl = "低" if _pct <= 33 else ("中" if _pct <= 66 else ("高" if _pct <= 90 else "过热"))
-        return {
-            "total": len(_sigs),
-            "window": "%s ~ %s" % (_day[-30][0], _day[-1][0]),
-            "count": _last,
-            "pct": round(_pct, 0),
-            "level": _lvl,
-            "avg30": round(sum(_win) / len(_win), 1),
-        }
-    except Exception:
-        return None
-
-
 # ---- Dashboard page ----
 
 def _upcoming_events(days: int = 45):
@@ -265,7 +231,6 @@ async def page_dashboard(request: Request):
         "last_update": last_update,
         "chart_data": chart_data,
         "analysis": analysis_data,
-        "signal_density": _signal_density(),
         "engine_status": _engine_status,
         "upcoming_events": _upcoming_events(),
         "expectancy_card": market_expectancy_card(),
