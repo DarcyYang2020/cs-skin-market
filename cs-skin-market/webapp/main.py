@@ -184,7 +184,6 @@ def _market_status_card(analysis_data):
     期望分层表/双基线风险视图从页面下架（数据链路与测试保留）。"""
     try:
         from pipeline.market_signal import market_signal as _ms
-        from webapp.analysis_service import _period_fire_note
         conn = db.get_conn()
         try:
             sig = _ms(conn)
@@ -196,9 +195,7 @@ def _market_status_card(analysis_data):
             macro = {"breadth_7d": mc.get("breadth_7d"), "sentiment_score": mc.get("sentiment_score"),
                      "sentiment_label": mc.get("sentiment_label"), "online_score": mc.get("online_score"),
                      "card_score": mc.get("card_score")}
-        return {"signal": sig,
-                "fire_note": _period_fire_note(sig.get("period", "")) if sig.get("ok") else "",
-                "macro": macro}
+        return {"signal": sig, "macro": macro}
     except Exception:
         return None
 

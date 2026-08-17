@@ -829,8 +829,10 @@ def _load_benchmark_view():
 
 
 def _period_fire_note(bucket):
-    """当前时期可买类型（2026-08-18 最终版，纯展示）：
-    主行=现在能买什么+历史证据；折叠=为什么大盘说空仓还能买/为什么那两条被禁。"""
+    """当前时期可买类型（**暂不上线**，2026-08-18 用户裁定下架）：
+    早期版本把时期级静态历史均值（如 S3 base 14d 78%）当作「现在进场胜率」展示，
+    40 天阴跌期内每天都显示同一数字，误导用户接飞刀——时期级均值 ≠ 时点进场期望。
+    须先厘清「进入时期第 N 天的剩余反弹期望/衰减」语义后再上。保留本函数+测试供未来重上。"""
     try:
         from pipeline.item_analysis import PERIOD_ROUTE_BAN
         _plain = {"panic_resonance": "恐慌黄金坑抄底", "panic_easing": "恐慌后止跌反弹",
@@ -843,7 +845,6 @@ def _period_fire_note(bucket):
             "S3弱市阴跌": ("base",),
             "S4弱市反弹": ("base", "rise_accum"),
         }
-        # 关键时期×类型的证据后缀（其余不附，避免数字堆砌）
         _evid = {("S3弱市阴跌", "base"): "此时期历史 14d 78%",
                  ("S2牛市回调", "deep_value"): "此时期历史 30d 68%"}
         _active_text = "、".join(
