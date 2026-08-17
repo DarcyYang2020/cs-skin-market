@@ -1,0 +1,46 @@
+{
+ "total_misses": 15836,
+ "nearest_dist": {
+  "供给收缩吸筹": 328,
+  "低估区建仓": 15207,
+  "超跌反弹": 37,
+  "深值企稳": 263,
+  "恐慌退潮": 1
+ },
+ "category_hit_multi_label": {
+  "empty": 103,
+  "th_scoring": 15627,
+  "family_src": 162,
+  "guard": 188,
+  "cycle_coord": 585,
+  "fusion_exc": 396,
+  "route": 39,
+  "liquidity": 101
+ },
+ "category_primary": {
+  "empty": 103,
+  "th_scoring": 14847,
+  "guard": 188,
+  "cycle_coord": 558,
+  "route": 39,
+  "liquidity": 101
+ },
+ "base_path": {
+  "n": 15207,
+  "th_min": 2,
+  "th_max": 35,
+  "th_mean": 24.68,
+  "n_with_cycle_consolidation": 290,
+  "n_with_family_src": 48,
+  "n_with_guard": 67,
+  "n_th_scoring_only": 14551
+ },
+ "any_category": {
+  "guard_any": 188,
+  "route_any": 39,
+  "liquidity_any": 101,
+  "cycle_coord_any": 585,
+  "th_scoring_any": 15627,
+  "empty": 103
+ }
+}

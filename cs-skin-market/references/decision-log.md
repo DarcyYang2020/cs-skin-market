@@ -4476,3 +4476,20 @@ Fluxo 25→280 约 11 倍），尖顶后 3 天 -86~94%，与枪皮统计反转�
   - S4：1-7 +4.1 / 8-14 +10.9（极差 +6.8pp）。
 - **判定**：时点条件化有信息量（4/5 时期衰减信号）→ 立项「时点条件期望表」替代时期级单值；**修正用户直觉**：S3 的 78% 不是"40 天每天都一样"，而是"进入 S3 第 1-7 天进场的历史表现"——引擎之后不再发射，展示层没把这个时点条件讲出来才是误导源。
 - 产物 + 探针入库；冒烟不受影响（研究层）。下一步待批：时点条件期望表接入展示（n≥5 才显示 + 带"进入第 N 天"语境）。
+
+## AL. 距买点（proximity）误导性探针：根因裁决（2026-08-18）
+
+- **背景**：用户指认「距买点 100% 但实际不买」误导性；`proximity-research-proposal.md` 预注册三判据后重放 180 品 3 年（`CS_ENGINE_PROXIMITY_MISS=1`，产物 `_exp_cycle_proximity_miss.json`）。
+- **采集**：proximity.score==100 且 action!=buy 的 miss 共 **15836** 条（同期真实 buy 189 条，噪声比 84:1）。
+- **归因**（`references/proximity_miss_analyze.py` → `_exp_proximity_miss_analysis.json`）：
+  - nearest：低估区建仓(base) 15207(96.0%) / 供给收缩 328 / 深值 263 / 超跌 37 / 恐慌退潮 1；
+  - primary：**th_scoring 14847(93.8%)** / cycle_coord 558(3.5%) / **guard 188(1.2%)** / liquidity 101 / route 39 / empty 103。
+- **base 专项**：15207 条 base miss 的 th 全在 [2,35]（均值 24.7）；95.7%（14551 条）deduction 只有 TH 扣分类，无族源/无守卫/无周期降级——引擎从未 buy 也从未降级，从根上就是 avoid。
+- **裁决**：
+  - 判据 1（≥80% 守卫类 → 两段式重构）**证伪**：guard 仅 1.2%，远低于 80%；提案「触发已就绪 + 剩余闸门清单」前提不成立。
+  - 判据 3（<30 条 → 维持现状）不适用（15836 条）。
+  - **判据 2（触发条件边界/误导重建 → 修显示）成立**，根因更具体：
+    1. **base 路径 th 语义倒置（96% 病灶）**：proximity base「深跌确认」用 `_prog_low(th,35,55)` 把 th≤35 当「黄金坑=100%」，但引擎 `compute_fusion_decision` 低估区只在 th≥55(TH_STRONG) 才 buy，th<35 是 avoid/下跌中继——proximity 度量的是引擎不会发射的买点（th≤35 黄金坑是 TH 三区研究结论，从未接成触发）。又一处「拿历史均值当引擎买点」。
+    2. **supply 路径漏 T4 chg8 门**：proximity 没建模 chg8≤3，致 95 条 empty miss。
+    3. 真守卫拦截仅 1.2%（deep/oversold 族发射后被 supply_expansion/route/cycle 降级）。
+- **修复方向（待批）**：① base 路径 th 反置 `_prog_low(th,35,55)`→`_prog_high(th,55,35)` 对齐 TH_STRONG；② supply 路径补 chg8 门；③（可选）对真守卫 1.2% 显式化剩余闸门。改动须批准后落地，冒烟不受影响（研究层）。
