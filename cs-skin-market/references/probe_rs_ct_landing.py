@@ -29,7 +29,7 @@ from pipeline.market_context import state_bucket  # noqa: E402
 from pipeline.signal_tracking import family_key_for_label  # noqa: E402
 
 BASE = ROOT / "data" / "_exp_cycle_replay_2026.json"
-VAR = ROOT / "data" / "_exp_cycle_replay_rs_ct.json"
+VAR = ROOT / "data" / os.environ.get("RS_CT_VAR", "_exp_cycle_replay_rs_ct_cd.json")
 OUT = ROOT / "data" / "_exp_rs_ct_landing.json"
 CUT = "2026-03-02"
 FIXTURE = ("M4A4 | 合纵 (崭新出厂)", "AK-47 | 抽象派 1337 (崭新出厂)",

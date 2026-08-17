@@ -7,16 +7,16 @@
   "max_drawdown_pct": -14.09
  },
  "variant": {
-  "signals": 1803,
-  "total_return_pct": 191.69,
-  "max_drawdown_pct": -38.15
+  "signals": 1190,
+  "total_return_pct": 284.17,
+  "max_drawdown_pct": -28.53
  },
  "front": {
   "base": {
    "total_return_pct": 278.53
   },
   "variant": {
-   "total_return_pct": 189.69
+   "total_return_pct": 241.54
   }
  },
  "back": {
@@ -24,27 +24,27 @@
    "total_return_pct": 31.56
   },
   "variant": {
-   "total_return_pct": -0.13
+   "total_return_pct": 12.72
   }
  },
  "added": {
-  "n": 1618,
-  "rs_ct": 1618,
+  "n": 1005,
+  "rs_ct": 1005,
   "net14": {
-   "n": 1618,
-   "win": 45.7,
-   "avg": 3.55
+   "n": 1005,
+   "win": 46.8,
+   "avg": 3.73
   },
   "net60": {
-   "n": 1407,
-   "win": 53.8,
-   "avg": 27.86
+   "n": 876,
+   "win": 54.7,
+   "avg": 27.67
   }
  },
  "guard": {
   "fixture_base": 11,
-  "fixture_variant": 73,
-  "fixture_rs_ct_hits": 62
+  "fixture_variant": 49,
+  "fixture_rs_ct_hits": 38
  },
  "verdict": {
   "gate1_combo": false,
