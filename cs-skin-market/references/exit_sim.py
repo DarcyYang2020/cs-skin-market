@@ -50,6 +50,8 @@ HOLD_BY_FAM = {
 TRAILING_FAMS = {"rise_accum", "rise_contract"}
 TRAIL_PCT = 0.05
 S4_MAX_HOLD = 14
+LEG_FAMS = {"rs_accum", "ct_accum"}   # 2026-08-17 补漏战役：长持腿容量预算（预注册）
+LEG_CAP = 0.3                        # 长持腿合并仓位上限 0.3，防高频长持置换核心族
 
 
 def load_chg180():
@@ -86,6 +88,7 @@ def simulate(sigs, rule="hold21", cap_map=None):
     last = max(s["date"] for s in sigs) + timedelta(days=180)  # 长持族（hold180）需要完整前视窗口
     day, active, realized = first, [], 0.0
     total_invested = 0.0
+    leg_invested = 0.0
     curve, closed, exit_reasons = [], [], {}
     while day <= last:
         for a in active:
@@ -94,8 +97,12 @@ def simulate(sigs, rule="hold21", cap_map=None):
             _cap = CAP if cap_map is None else cap_map.get(s["period"], CAP)
             if total_invested + s["limit"] > _cap + 1e-9:
                 continue
+            if s["fam"] in LEG_FAMS and leg_invested + s["limit"] > LEG_CAP + 1e-9:
+                continue
             active.append({"s": s, "idx": 0, "peak": s["entry"]})
             total_invested += s["limit"]
+            if s["fam"] in LEG_FAMS:
+                leg_invested += s["limit"]
         unreal = 0.0
         pos_sum = 0.0
         for a in active:
@@ -143,6 +150,8 @@ def simulate(sigs, rule="hold21", cap_map=None):
             closed.append(pnl)
             exit_reasons[reason] = exit_reasons.get(reason, 0) + 1
             total_invested -= a["s"]["limit"]
+            if a["s"]["fam"] in LEG_FAMS:
+                leg_invested -= a["s"]["limit"]
             active.remove(a)
         eq = 1.0 + realized + unreal
         curve.append((day.isoformat(), pos_sum, eq))

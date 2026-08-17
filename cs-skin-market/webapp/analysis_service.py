@@ -614,7 +614,7 @@ async def analyze_fresh(item, good_id, exact_name, *, db_item_id=None, apply_anc
 
     conn_r = db.get_conn()
     try:
-        recent_buys = recent_buy_dates(conn_r, use_id)
+        recent_buys = recent_buy_dates(conn_r, use_id, days=30)
     finally:
         conn_r.close()
 

@@ -1332,6 +1332,8 @@ SIGNAL_FAMILIES = (
             and not (F["survive"] > 0 and F["survive"] < 3000)
             and F["supply_change_30d"] is not None and F["supply_change_30d"] <= 5
             and not _dedup_gate(F, 32)  # rs_accum
+            # 2026-08-17 补漏战役：族级 30 天重发冷却（D 族证伪根因=无时间窗约束；预注册）
+            and not _cooldown_hit(F["recent_buy_dates"], F["signal_date"], 32, 30)
         ),
         buckets=("中性企稳", "弱市观望"),
         guards=(),
@@ -1362,6 +1364,8 @@ SIGNAL_FAMILIES = (
             and not (F["survive"] > 0 and F["survive"] < 3000)
             and F["supply_change_30d"] is not None and F["supply_change_30d"] <= 5
             and not _dedup_gate(F, 31)  # ct_accum
+            # 2026-08-17 补漏战役：族级 30 天重发冷却（预注册）
+            and not _cooldown_hit(F["recent_buy_dates"], F["signal_date"], 31, 30)
         ),
         buckets=("中性企稳", "弱市观望"),
         guards=(),
@@ -1508,6 +1512,35 @@ def _period_route_ok(fam_key, period):
     if os.environ.get("CS_ENGINE_PERIOD_ROUTE", "1") != "1":
         return True
     return period not in PERIOD_ROUTE_BAN.get(fam_key, ())
+
+
+def _cooldown_hit(recent_buy_dates, signal_date, prio, days=30):
+    """族级重发冷却（2026-08-17 预注册战役：长持族 30 天冷却）：
+    同族（同去重优先级）在 days 天内已发射过 → 拦截（返回命中日期）。
+    无 prio 标签的历史条目保守跳过（生产旧行）；与 7 天通用去重独立。"""
+    if not recent_buy_dates or signal_date is None:
+        return None
+    from datetime import datetime as _dt, timedelta as _td
+    try:
+        sd = _dt.strptime(str(signal_date)[:10], "%Y-%m-%d")
+    except ValueError:
+        return None
+    for d0 in recent_buy_dates:
+        tag, p = str(d0), None
+        if "|" in str(d0):
+            tag, _, ps = str(d0).partition("|")
+            try:
+                p = int(ps)
+            except ValueError:
+                p = None
+        if p is None or p != prio:
+            continue
+        try:
+            if (sd - _dt.strptime(tag[:10], "%Y-%m-%d")).days < days:
+                return tag[:10]
+        except ValueError:
+            continue
+    return None
 
 
 def _period_route_note(fd, fam_key):

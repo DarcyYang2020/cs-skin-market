@@ -1014,6 +1014,31 @@ def t_uniqueness_note():
     assert lines4 == [], lines4
 check('独特性状态行 全形式命中检测（假设验证，纯展示）', t_uniqueness_note)
 
+def t_uniqueness_guard():
+    """独特性护栏常驻（2026-08-17 补漏落地）：官方产物必须保留 fixture 独特性品的信号覆盖
+    ——任何未来引擎/落地变更不得吞掉独立强势品的发声（原则 0 验收条款）。"""
+    import json as _J
+    from pathlib import Path
+    root = Path(__file__).resolve().parent.parent
+    d = _J.loads((root / "data" / "_exp_cycle_replay_2026.json").read_text(encoding="utf-8"))
+    sigs = d["signals"]
+    fixture = ("M4A4 | 合纵 (崭新出厂)", "AK-47 | 抽象派 1337 (崭新出厂)",
+               "FN57 | 霸意大名 (崭新出厂)", "格洛克 18 型 | 异星世界 (崭新出厂)")
+    for name in fixture:
+        n = sum(1 for s in sigs if s["name"] == name)
+        assert n >= 1, "%s 在官方产物 0 信号——独特性发声被吞" % name
+check('独特性护栏常驻：fixture 品信号覆盖不得被吞', t_uniqueness_guard)
+
+def t_cooldown():
+    """族级重发冷却（2026-08-17 补漏战役预注册）：同 prio 30 天内拦截，跨族/超期放行。"""
+    from pipeline.item_analysis import _cooldown_hit
+    assert _cooldown_hit(["2026-03-10|32"], "2026-03-25", 32, 30) == "2026-03-10"
+    assert _cooldown_hit(["2026-03-10|32"], "2026-04-10", 32, 30) is None
+    assert _cooldown_hit(["2026-03-10|31"], "2026-03-25", 32, 30) is None
+    assert _cooldown_hit(["2026-03-10"], "2026-03-25", 32, 30) is None  # 无 prio 保守跳过
+    assert _cooldown_hit([], "2026-03-25", 32, 30) is None
+check('族级重发冷却 _cooldown_hit（30d 同族）', t_cooldown)
+
 def t_market_signal():
     """大盘信号+风险仪表（2026-08-17 模块 A+D）：动作区映射/统计/风险档位/实库集成。"""
     from pipeline.market_signal import _stats, _risk_level, market_signal, _ACTION

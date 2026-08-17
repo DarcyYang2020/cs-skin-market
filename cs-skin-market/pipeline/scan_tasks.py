@@ -129,7 +129,7 @@ async def _scan_item(row, idx, ms, market_th_score, sentiment_score, total_asset
                     else:
                         _web_log.warning(f"batch scan skip {exact_name}: {_sane_msg}")
                         return dict(name=exact_name, holding=holding, error="价格校验未通过，保留旧数据")
-            recent_buys = recent_buy_dates(conn_c, item_id)
+            recent_buys = recent_buy_dates(conn_c, item_id, days=30)
         finally:
             conn_c.close()
         prices = [k.close for k in daily_bars if k.close > 0] if daily_bars else [item.price_rmb]

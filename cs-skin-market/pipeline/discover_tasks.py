@@ -183,7 +183,7 @@ async def _run_discover_task(task_id: str, items: list):
                 try:
                     _rb_row = _conn_rb.execute("SELECT id FROM items WHERE name=?", (exact_name,)).fetchone()
                     if _rb_row:
-                        _recent_buys = recent_buy_dates(_conn_rb, _rb_row["id"])
+                        _recent_buys = recent_buy_dates(_conn_rb, _rb_row["id"], days=30)
                 finally:
                     _conn_rb.close()
             except Exception:
