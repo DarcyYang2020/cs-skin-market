@@ -102,12 +102,9 @@ def main():
             c30 = (cur / px[i - 30] - 1) * 100 if i >= 30 and px[i - 30] > 0 else None
             if c7 is None or c30 is None:
                 continue
-            # pct90 / z / sc30 / corr60 / beta60
+            # pct90 / sc30 / corr60
             w = px[i - 89:i + 1]
             pct = sum(1 for p in w if p <= cur) / 90 * 100
-            mu = sum(w) / 90
-            sd = (sum((p - mu) ** 2 for p in w) / 90) ** 0.5
-            z = (cur - mu) / sd if sd > 0 else 0.0
             sc30 = None
             if sup[i] is not None and sup[i - 30] is not None:
                 s7 = sum(x for x in sup[i - 6:i + 1] if x is not None) / 7
@@ -116,13 +113,12 @@ def main():
             irets = [(px[j] / px[j - 1] - 1) for j in range(i - 59, i + 1) if px[j - 1] > 0]
             mrets = [mret_by_date.get(dts[j]) for j in range(i - 59, i + 1)]
             pairs = [(a, b) for a, b in zip(irets, mrets) if a is not None and b is not None]
-            corr60 = beta60 = None
+            corr60 = None
             if len(pairs) >= 30:
                 ia_ = [a for a, _ in pairs]
                 ib_ = [b for _, b in pairs]
                 if statistics.pstdev(ia_) > 0 and statistics.pstdev(ib_) > 0:
                     corr60 = statistics.correlation(ia_, ib_)
-                    beta60 = corr60 * statistics.pstdev(ia_) / statistics.pstdev(ib_)
             # 60 日低点（单品）
             lo_i = min(range(i - 59, i + 1), key=lambda j: px[j])
             item_low60_days_ago = i - lo_i

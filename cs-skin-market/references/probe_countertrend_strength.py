@@ -76,11 +76,9 @@ def main():
             if c30 <= 5:
                 continue
             fwd = {}
-            ok180 = all(h <= 180 for h in ())
             for h in HORIZONS:
                 fwd[h] = (px[i + h] / cur - 1) * 100 - 2.0
             rec = {"d": d, "fwd": fwd}
-            hit_a = True
             layers["Fa_逆市走强"].append(rec)
             vol20 = None
             rets = [(px[j] - px[j - 1]) / px[j - 1] for j in range(i - 19, i + 1) if px[j - 1] > 0]
