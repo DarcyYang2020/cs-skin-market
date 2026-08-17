@@ -78,6 +78,25 @@ def _risk_level(vol20, dist_hi60, dist_lo60):
     return "medium"
 
 
+# ---- 模块 B：黑天鹅事件响应（预研探针 probe_crash_window_forward.py 定稿）----
+# 指纹：大盘单日 ≤-8% 或 3 日累计 ≤-12%。历史窗口 fwd14/30 全部收涨（3/5 次事件，+2.3~+84.4）
+# → V 型反弹规律成立 → 规则=暂停新开 + 不砍恐慌仓（恐慌深跌档按止损矩阵转补仓评估），绝不自动卖出。
+_CRASH_1D = -8.0
+_CRASH_3D = -12.0
+_CRASH_RESPONSE = (
+    "黑天鹅急跌窗口：暂停新开仓；恐慌仓按止损矩阵管理（恐慌深跌档=不止损转补仓评估）。"
+    "历史急跌窗口（单日≤-8%/3日≤-12%，n=3~5）14/30d 全部收涨——V 型反弹规律，不追砍。"
+)
+
+
+def _crash(chg1d, chg3d):
+    if chg1d is None and chg3d is None:
+        return None
+    active = (chg1d is not None and chg1d <= _CRASH_1D) or (chg3d is not None and chg3d <= _CRASH_3D)
+    return {"active": bool(active), "chg1d": chg1d, "chg3d": chg3d,
+            "response": _CRASH_RESPONSE if active else ""}
+
+
 def market_signal(conn=None):
     """大盘信号 + 风险仪表（模块 A+D，TTL 缓存）。返回 dict；异常返回最小兜底（不抛）。"""
     now = time.time()
@@ -114,6 +133,7 @@ def market_signal(conn=None):
         "action_note": note,
         "period_forward": ev,
         "chg180": stats["chg180"], "chg30": stats["chg30"],
+        "crash": _crash(stats.get("chg1d"), stats.get("chg3d")),
         "risk_level": risk,
         "risk_factors": {
             "vol20": vol20,
@@ -130,14 +150,18 @@ def market_signal(conn=None):
 
 
 def _stats(hist):
-    """大盘指数统计（chg30/chg180/vol20/距60-180高低点；与 market_index_stats 同源口径）。"""
+    """大盘指数统计（chg1d/3d/30/180/vol20/距60-180高低点；与 market_index_stats 同源口径）。"""
     vals = [v for _, v in hist]
     n = len(vals)
     cur = vals[-1]
-    out = {"chg30": 0.0, "chg180": 0.0, "vol20": None,
+    out = {"chg1d": None, "chg3d": None, "chg30": 0.0, "chg180": 0.0, "vol20": None,
            "dist_hi60": None, "dist_lo60": None, "dist_hi180": None, "dist_lo180": None}
     if n < 2:
         return out
+    if vals[-2] > 0:
+        out["chg1d"] = round((cur / vals[-2] - 1) * 100, 1)
+    if n >= 4 and vals[-4] > 0:
+        out["chg3d"] = round((cur / vals[-4] - 1) * 100, 1)
     if n >= 31 and vals[-31] > 0:
         out["chg30"] = round((cur / vals[-31] - 1) * 100, 1)
     if n >= 181 and vals[-181] > 0:

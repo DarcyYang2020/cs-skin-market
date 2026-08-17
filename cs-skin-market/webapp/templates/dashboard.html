@@ -97,7 +97,10 @@ fetch('/api/market/signal')
   var riskColor = {'high':'var(--red)','medium':'var(--yellow)','low':'var(--green)'}[d.risk_level] || 'var(--text-muted)';
   var rf = d.risk_factors || {};
   var f = d.period_forward || {};
-  var html = '<div style="display:flex;gap:18px;flex-wrap:wrap;align-items:center;color:var(--text-secondary);">'
+  var html = (d.crash && d.crash.active)
+    ? '<div style="background:rgba(239,68,68,0.08);border-left:3px solid var(--red);padding:6px 10px;margin-bottom:8px;font-size:12px;color:var(--red);font-weight:600;">⚠️ ' + (d.crash.response || '') + '（单日 ' + (d.crash.chg1d != null ? d.crash.chg1d + '%' : '--') + ' · 3日 ' + (d.crash.chg3d != null ? d.crash.chg3d + '%' : '--') + '）</div>'
+    : '';
+  html += '<div style="display:flex;gap:18px;flex-wrap:wrap;align-items:center;color:var(--text-secondary);">'
     + '<span>时期 <b style="color:var(--text-primary);">' + d.period + '</b></span>'
     + '<span>大盘动作 <b style="color:' + actColor + ';">' + d.action_label + '</b> <span style="color:var(--text-muted);">' + (d.action_note || '') + '</span></span>'
     + '<span>风险 <b style="color:' + riskColor + ';">' + riskTxt + '</b></span></div>';

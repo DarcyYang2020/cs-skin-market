@@ -947,7 +947,15 @@ def t_market_signal():
     assert sig["risk_level"] in ('low', 'medium', 'high', 'unknown'), sig
     assert isinstance(sig.get("period_forward"), dict), sig
     assert sig["market_action"] == _ACTION[sig["period"]][0], sig
-check('大盘信号+风险仪表 模块 A+D（引擎无关）', t_market_signal)
+    assert isinstance(sig.get("crash"), dict) and "active" in sig["crash"], sig
+    # 5) 黑天鹅急跌指纹（模块 B，预注册：单日≤-8% 或 3日≤-12%）
+    from pipeline.market_signal import _crash
+    assert _crash(5.0, 5.0)["active"] is False
+    assert _crash(-8.5, None)["active"] is True
+    assert _crash(-2.0, -12.5)["active"] is True
+    assert _crash(-2.0, -2.0)["active"] is False
+    assert "暂停新开仓" in _crash(-10.0, -20.0)["response"]
+check('大盘信号+风险仪表 模块 A+D+B 指纹（引擎无关）', t_market_signal)
 
 def t_paper_trading():
     """模拟盘 v2（2026-08-16）：三表 schema + 建仓/三类出场闭环（生产镜像全自动口径）。"""
@@ -2574,6 +2582,14 @@ def t_monitor_events():
               "VALUES ('2026-08-07', NULL, NULL, 'market_state', 'info', '大盘状态：S1牛市上行', '2026-08-07||market_state')")
     evs4 = _mon._gen_market_events(m, "2026-08-08", "S3弱市阴跌")
     assert any("切换" in e["detail"] and e["level"] == "warn" for e in evs4), evs4
+    # 模块 B（2026-08-17）：黑天鹅急跌窗口 → market_crash 事件（市场数据缺失时静默跳过）
+    m.execute("CREATE TABLE market_index (id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT, value REAL)")
+    for _d, _v in (("2026-08-05", 1000.0), ("2026-08-06", 990.0), ("2026-08-07", 1005.0), ("2026-08-08", 900.0)):
+        m.execute("INSERT INTO market_index (date, value) VALUES (?,?)", (_d, _v))
+    evs_crash = _mon._gen_market_events(m, "2026-08-08", "S3弱市阴跌")
+    assert any(e["event_type"] == "market_crash" and e["level"] == "warn"
+               and "暂停新开仓" in e["detail"] for e in evs_crash), evs_crash
+    m.execute("DELETE FROM market_index")  # 清空，后续用例不受影响
 
     m.execute("CREATE TABLE executions (id INTEGER PRIMARY KEY AUTOINCREMENT, item_id INTEGER, name TEXT, "
               "action TEXT, advice_date TEXT, advice_signal TEXT, exec_price REAL, qty INTEGER, "

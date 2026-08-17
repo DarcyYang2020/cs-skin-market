@@ -25,7 +25,7 @@ PRICE_SPIKE_PCT = 8.0  # 单日 |涨跌| >= 8%
 PUSH_DETAIL_MAX = 10   # 钉钉正文 danger 明细上限（其余计数）
 _TYPE_LABEL = {"near_buy": "买点接近", "stop_loss": "破位止损", "decision_flip": "决策翻转",
                "supply_shift": "供给突变", "price_spike": "价格异动", "market_state": "大盘状态",
-               "exec_due": "持仓到期", "new_buy_signal": "新买信号"}
+               "market_crash": "黑天鹅急跌", "exec_due": "持仓到期", "new_buy_signal": "新买信号"}
 
 SLOT_LABEL = {"noon": "午间", "night": "晚间"}
 
@@ -141,7 +141,7 @@ def _gen_item_events(date, item, res, prev_action):
 
 
 def _gen_market_events(conn, date, bucket):
-    """大盘状态事件：当日状态记录（幂等）+ 跨日切换提醒。"""
+    """大盘状态事件：当日状态记录（幂等）+ 跨日切换提醒 + 黑天鹅急跌窗口提示（模块 B）。"""
     label = f"大盘状态：{bucket}"
     events = [{
         "item_id": None, "item_name": None, "event_type": "market_state",
@@ -157,6 +157,24 @@ def _gen_market_events(conn, date, bucket):
             "level": "warn", "detail": f"大盘状态切换：{prev['detail']} → {bucket}",
             "dedup_key": f"{date}||market_state_flip",
         })
+    # 黑天鹅急跌窗口（2026-08-17 模块 B，纯提示）：单日≤-8%/3日≤-12% → V 型反弹规律（暂停新开+不砍恐慌仓）
+    try:
+        from pipeline.market_signal import _crash
+        rows = conn.execute(
+            "SELECT value FROM market_index WHERE value>0 ORDER BY date DESC LIMIT 4").fetchall()
+        if len(rows) >= 2:
+            chg1 = (rows[0]["value"] / rows[1]["value"] - 1) * 100 if rows[1]["value"] > 0 else None
+            chg3 = (rows[0]["value"] / rows[3]["value"] - 1) * 100 \
+                if len(rows) >= 4 and rows[3]["value"] > 0 else None
+            _cr = _crash(chg1, chg3)
+            if _cr and _cr["active"]:
+                events.append({
+                    "item_id": None, "item_name": None, "event_type": "market_crash",
+                    "level": "warn", "detail": _cr["response"],
+                    "dedup_key": f"{date}||market_crash",
+                })
+    except Exception:
+        pass  # market_index 缺失（如内存测试库）静默跳过
     return events
 
 
