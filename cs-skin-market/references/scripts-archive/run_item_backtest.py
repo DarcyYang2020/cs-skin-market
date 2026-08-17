@@ -12,6 +12,7 @@ Notes:
 - volumes/supply/order_book are missing in history -> neutral defaults used;
   the reported data_quality per signal reflects that.
 """
+import os
 import sys, json, argparse
 from pathlib import Path
 from datetime import datetime
@@ -84,6 +85,7 @@ def backtest_item(item_id, name, start, end, warmup, market_ctx, cost=0.02):
                 "signals": [], "error": "not enough history"}
     n = len(prices)
     signals = []
+    proximity_misses = []  # 距买点研究（2026-08-18）：score==100 但未买 的守卫归因样本
     recent_buys = []
     for i in range(warmup, n):
         d = dates[i]
@@ -120,6 +122,19 @@ def backtest_item(item_id, name, start, end, warmup, market_ctx, cost=0.02):
         fd = res.fusion_decision if isinstance(res.fusion_decision, dict) else {}
         action = fd.get("action", "")
         if action not in ("buy", "oversold_buy"):
+            # 距买点研究钩子（CS_ENGINE_PROXIMITY_MISS=1）：proximity 满分但被拦 → 归因样本
+            if os.environ.get("CS_ENGINE_PROXIMITY_MISS") == "1":
+                _prox = fd.get("proximity") if isinstance(fd, dict) else None
+                if isinstance(_prox, dict) and _prox.get("score") == 100:
+                    proximity_misses.append({
+                        "date": d, "name": name,
+                        "nearest": _prox.get("nearest"),
+                        "deduction_sources": list(fd.get("deduction_sources") or []),
+                        "state_bucket": fd.get("state_bucket"),
+                        "percentile_90d": getattr(res.position, "percentile_90d", None),
+                        "z": getattr(res.position, "zscore_90d", None),
+                        "th": (res.trend_health or {}).get("score"),
+                    })
             continue
         # 优先级感知去重（2026-08-16，v2-T11 默认开）：把发射信号的族优先级打进 recent_buys。
         # 旧格式 "YYYY-MM-DD" 与 _dedup_hit 向后兼容；|P 标签参与 min_prio 过滤。
@@ -177,7 +192,8 @@ def backtest_item(item_id, name, start, end, warmup, market_ctx, cost=0.02):
             "fwd_series": fwd_series,
         })
     return {"item_id": item_id, "name": name, "days": len(dates),
-            "first_signal_date": dates[warmup], "signals": signals}
+            "first_signal_date": dates[warmup], "signals": signals,
+            "proximity_misses": proximity_misses}
 
 
 def _weighted_stats(sigs, key):

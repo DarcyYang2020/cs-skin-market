@@ -65,6 +65,7 @@ def main():
                   f"elapsed={str(datetime.now()-t0)[:8]}", flush=True)
 
     sigs_out = [s for r in results for s in r.get("signals", []) if s.get("fwd14") is not None]
+    misses_out = [m for r in results for m in r.get("proximity_misses", [])]
     rows, agg = rib.summarize(results)
     agg["signals"] = len(sigs_out)
     switches = ",".join("%s=1" % k for k in sorted(os.environ)
@@ -74,7 +75,8 @@ def main():
                     "engine": "v2-T10 (DECISION-6/7 + liquidity_filtered + csQAQ period=1095 NULL+0gap backfill + O1 仓位网格 supply_accum0.15/deep_value0.20 + cycle window)",
                     "env_switches": switches or None},
            "generated": datetime.now().strftime("%Y-%m-%d %H:%M"),
-           "aggregate": agg, "per_item": rows, "signals": sigs_out}
+           "aggregate": agg, "per_item": rows, "signals": sigs_out,
+           "proximity_misses": misses_out}
     with open(OUT, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, indent=1)
     print("signals:", len(sigs_out), "| saved", OUT, flush=True)
