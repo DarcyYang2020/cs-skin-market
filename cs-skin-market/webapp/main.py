@@ -22,7 +22,7 @@ from pipeline.dashboards import _j2_status
 from webapp.analysis_service import (
     AnalysisAbort, analyze_fresh, build_analysis_ctx,
     resolve_item, KLINE_FRESH_SINGLE, KLINE_FRESH_SINGLE_HOURS,
-    kline_db_fallback, market_snapshot, bust_market_snapshot_cache, market_expectancy_card,
+    kline_db_fallback, market_snapshot, bust_market_snapshot_cache,
     recent_buy_dates, _today_str,
     sticker_whale_fingerprint, render_sticker_whale_block,
 )
@@ -178,6 +178,30 @@ def _dashboard_context():
 
 # ---- Dashboard page ----
 
+def _market_status_card(analysis_data):
+    """市场状态卡（2026-08-18 合并版，纯展示）：大盘信号+开火族+宏观 三合一。
+    合并原「🧪 当前市场状态×信号族期望」「📡 大盘信号·风险仪表」「🌍 宏观环境」三卡；
+    期望分层表/双基线风险视图从页面下架（数据链路与测试保留）。"""
+    try:
+        from pipeline.market_signal import market_signal as _ms
+        from webapp.analysis_service import _period_fire_note
+        conn = db.get_conn()
+        try:
+            sig = _ms(conn)
+        finally:
+            conn.close()
+        macro = None
+        if isinstance(analysis_data, dict) and analysis_data.get("macro_context"):
+            mc = analysis_data["macro_context"]
+            macro = {"breadth_7d": mc.get("breadth_7d"), "sentiment_score": mc.get("sentiment_score"),
+                     "sentiment_label": mc.get("sentiment_label"), "online_score": mc.get("online_score"),
+                     "card_score": mc.get("card_score")}
+        return {"signal": sig,
+                "fire_note": _period_fire_note(sig.get("period", "")) if sig.get("ok") else "",
+                "macro": macro}
+    except Exception:
+        return None
+
 def _upcoming_events(days: int = 45):
     """F-1 未来事件（2026-08-10，纯提示层）：读 EVENT_CALENDAR 未来条目，异常兜底空列表。"""
     try:
@@ -233,7 +257,7 @@ async def page_dashboard(request: Request):
         "analysis": analysis_data,
         "engine_status": _engine_status,
         "upcoming_events": _upcoming_events(),
-        "expectancy_card": market_expectancy_card(),
+        "market_status": _market_status_card(analysis_data),
     })
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     return response

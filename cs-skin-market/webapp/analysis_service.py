@@ -1092,26 +1092,27 @@ def _uniqueness_lines(dates, prices, supply, market_hist):
         lines = []
         rs30 = (item30 - mkt30) if item30 is not None else None
         if rs30 is not None and rs30 > 10:
-            lines.append("独特性[假设验证]：相对强度 RS30 %+.1fpp（单品30d %+.1f%% vs 大盘 %+.1f%%）"
-                         "——P4 证据 60d +39.8/180d +117.6，独立强势长持结构" % (rs30, item30, mkt30))
+            lines.append("独特性[假设验证]：相对强度（RS30 %+.0fpp，跑赢大盘）→ 建议：观察独立强势是否延续，"
+                         "小仓 pilot 候选——历史同类 60 天平均 +40%%" % rs30)
         if corr60 is not None and corr60 < 0.2 and item30 is not None and abs(item30) > 8:
-            lines.append("独特性[假设验证]：低相关独立（60d 相关 %.2f，30d %+.1f%%）"
-                         "——P13 F3 证据 60d +18.4，最正常市的独特性形式" % (corr60, item30))
+            lines.append("独特性[假设验证]：低相关独立（60 天相关 %.2f）→ 建议：按它自身结构判断，"
+                         "别套大盘结论——历史同类 60 天平均 +18%%" % corr60)
         if mvol20 is not None and mvol20 <= 0.008 and item7 is not None and abs(item7) >= 8:
-            lines.append("独特性[假设验证]：大盘平静期异动（大盘20d波动 %.1f%% 而单品7d %+.1f%%）"
-                         "——P13 F5 证据 60d +30.0" % (mvol20 * 100, item7))
+            lines.append("独特性[假设验证]：大盘平静期异动（单品 7 天 %+.0f%%）→ 建议：先查它自己的事件/资金面，"
+                         "再决定是否跟随——历史同类 60 天平均 +30%%" % item7)
         if mkt30 < 0 and item30 is not None and item30 > 5:
-            lines.append("独特性[假设验证]：逆市走强（大盘30d %+.1f%% 走弱而单品 %+.1f%%）"
-                         "——P11-Fa/P13 F1 证据 60d +60.4/180d +92.1" % (mkt30, item30))
+            lines.append("独特性[假设验证]：逆市走强（大盘 30 天 %+.0f%% 它却 %+.0f%%）→ 建议：独立资金运作迹象，"
+                         "可小仓跟踪独立行情——历史同类 60 天平均 +60%%（半数样本来自事件窗，注意）"
+                         % (mkt30, item30))
         if mkt30 < -5 and item30 is not None and abs(item30) <= 3:
-            lines.append("独特性[假设验证]：逆市抗跌（大盘30d %+.1f%% 而单品 %+.1f%%）"
-                         "——P13 F2 证据 60d +38.7" % (mkt30, item30))
+            lines.append("独特性[假设验证]：逆市抗跌（大盘 30 天 %+.0f%% 它横盘 %+.0f%%）→ 建议：承接强，"
+                         "先观察会不会补跌，不追——历史同类 60 天平均 +39%%" % (mkt30, item30))
         if mkt_low_ago <= 14 and item_low_ago >= mkt_low_ago + 7:
-            lines.append("独特性[假设验证]：领先见底（单品60日低点早于大盘 %d 天）"
-                         "——P13 F4 证据 60d +16.0" % (item_low_ago - mkt_low_ago))
+            lines.append("独特性[假设验证]：领先见底（比大盘早 %d 天止跌）→ 建议：先行指标候选，"
+                         "观察它是否带动同类——历史同类 60 天平均 +16%%" % (item_low_ago - mkt_low_ago))
         if pct90 > 70 and sc30 is not None and sc30 <= -10 and item7 is not None and item7 >= -2:
-            lines.append("独特性[假设验证]：供给锁仓（分位 %.0f%% + 7日供给收缩 %.0f%%）"
-                         "——P13 F6 证据 60d +15.6" % (pct90, sc30))
+            lines.append("独特性[假设验证]：供给锁仓（高位 + 7 日供给收缩 %.0f%%）→ 建议：警惕庄家锁仓诱多，"
+                         "勿追涨——历史同类 60 天平均 +16%%" % sc30)
         return lines
     except Exception:
         return []

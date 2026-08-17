@@ -8,115 +8,45 @@
 {% include "partials/index_analysis.html" %}
 </div>
 
-<!-- 市场状态 × 信号族期望 (2026-08-12): 期望徽章从单品报告抽离为外部常驻卡片
-     （市场级信息，同族品/同一时期所有报告显示相同，重复展示冗余） -->
-{% if expectancy_card %}
+<!-- 市场状态（2026-08-18 合并版）：大盘信号 + 开火族 + 宏观 三合一，直接告诉该干嘛 -->
+{% if market_status and market_status.signal and market_status.signal.ok %}
+{% set _s = market_status.signal %}
+{% set _ac = {'buy_zone':'var(--green)','pullback_buy':'var(--green)','hold_zone':'var(--blue)','avoid':'var(--red)','trap':'var(--yellow)'}.get(_s.market_action, 'var(--text-primary)') %}
+{% set _rc = {'high':'高','medium':'中','low':'低'}.get(_s.risk_level, '--') %}
+{% set _rcol = {'high':'var(--red)','medium':'var(--yellow)','low':'var(--green)'}.get(_s.risk_level, 'var(--text-muted)') %}
 <div class="card" style="margin-top:12px;">
   <div class="card-header">
-    <span class="card-title">🧪 当前市场状态 × 信号族期望</span>
-    <span style="font-size:11px;color:var(--text-muted);margin-left:auto;">双基线回放 · net 已扣 2% 双边成本 · HIST-FULL / CLEAN-CUR vs 当前状态桶分层</span>
+    <span class="card-title">📡 市场状态 · 该怎么做</span>
+    <span style="font-size:11px;color:var(--text-muted);margin-left:auto;">五时期路由 chg180×chg30 · 大盘级结论，不产生单品信号</span>
   </div>
-  <div style="padding:10px 14px;font-size:12px;">
-    <div style="margin-bottom:8px;">
-      <span style="color:var(--text-secondary);">当前市场状态：</span>
-      <span class="regime-badge {{ {'P恐慌深跌':'regime-p','S1牛市上行':'regime-s1','S2牛市回调':'regime-s2','S3弱市阴跌':'regime-s3','S4弱市反弹':'regime-s4','贪婪禁入':'regime-greedy'}.get(expectancy_card.bucket, '') }}">{{ expectancy_card.bucket }}</span>
-      {% if expectancy_card.fire_note %}<span style="margin-left:10px;color:var(--text-secondary);font-weight:600;">{{ expectancy_card.fire_note }}</span>{% endif %}
-      {% if expectancy_card.bucket_total and expectancy_card.bucket_avg30 is not none %}<span style="margin-left:10px;color:var(--text-muted);">该状态下回放信号 {{ expectancy_card.bucket_total }} 条 · 14d 胜率 {{ expectancy_card.bucket_win14 }}% · 30d 期望 {{ "%+.1f"|format(expectancy_card.bucket_avg30) }}%</span>{% endif %}
-    </div>
-    <table style="width:100%;border-collapse:collapse;">
-      <thead>
-        <tr style="color:var(--text-muted);text-align:left;">
-          <th style="padding:3px 6px;">信号族</th>
-          <th style="padding:3px 6px;">当前状态桶样本</th>
-          <th style="padding:3px 6px;">当前桶 14d / 30d</th>
-          <th style="padding:3px 6px;">HIST-FULL 样本</th>
-          <th style="padding:3px 6px;">HIST-FULL 14d / 30d</th>
-          <th style="padding:3px 6px;">CLEAN-CUR 样本<br><span style="font-weight:normal;color:var(--text-muted);">55% 单事件 · 缺牛市段</span></th>
-          <th style="padding:3px 6px;">CLEAN-CUR 14d / 30d<br><span style="font-weight:normal;color:var(--text-muted);">非增强证据</span></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for f in expectancy_card.families %}
-        <tr style="border-top:1px solid var(--border);">
-          <td style="padding:5px 6px;font-weight:600;">{{ f.label }}</td>
-          <td style="padding:5px 6px;">
-            {% if f.insufficient %}<span style="color:var(--text-muted);">n={{ f.n }} 不足</span>
-            {% else %}<span style="color:var(--text-primary);">n={{ f.n }}</span>{% endif %}
-          </td>
-          <td style="padding:5px 6px;">
-            {% if f.insufficient %}<span style="color:var(--text-muted);">样本不足，不展示</span>
-            {% else %}<span style="color:{% if f.win14 >= 80 %}var(--green){% elif f.win14 >= 70 %}var(--yellow){% else %}var(--red){% endif %};">{{ f.win14 }}%</span> · <span>{{ "%+.1f"|format(f.avg30) }}%</span>{% endif %}
-          </td>
-          <td style="padding:5px 6px;color:var(--text-primary);">n={{ f.global_n }}</td>
-          <td style="padding:5px 6px;"><span style="color:{% if f.global_win14 >= 80 %}var(--green){% elif f.global_win14 >= 70 %}var(--yellow){% else %}var(--red){% endif %};">{{ f.global_win14 }}%</span> · <span>{{ "%+.1f"|format(f.global_avg30) }}%</span>{% if f.global_win14_3pct %}<br><span style="font-size:10px;color:var(--text-muted);">3%成本影子 {{ f.global_win14_3pct }}% / {{ "%+.1f"|format(f.global_avg14_3pct) }}%</span>{% endif %}</td>
-          <td style="padding:5px 6px;color:var(--text-primary);">n={{ f.clean_n }}<br><span style="font-size:10px;color:var(--text-muted);">55% 单事件 · 缺 2026-02~04</span></td>
-          <td style="padding:5px 6px;"><span style="color:{% if f.clean_win14 >= 80 %}var(--green){% elif f.clean_win14 >= 70 %}var(--yellow){% else %}var(--red){% endif %};">{{ f.clean_win14 }}%</span> · <span>{{ "%+.1f"|format(f.clean_avg30) }}%</span><br><span style="font-size:10px;color:var(--text-muted);">非增强证据</span></td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    <div style="margin-top:6px;font-size:11px;color:var(--text-muted);">当前桶样本 &lt;5 仅标注（2 条可能 100% 或 0%，无统计意义）。HIST-FULL=历史全窗口（含缺失深度污染）；CLEAN-CUR=当前引擎干净回调段（单事件偏样本）。同一时期所有单品报告显示相同，故不再逐报告展示。</div>
-    <div style="margin-top:2px;font-size:11px;color:var(--text-muted);">3% 成本影子为展示层保守口径（净收益再扣 1%），用于提示真实交易成本高于回放 2% 假设；不改生产 2% 净收益口径。</div>
-    {% if expectancy_card.risk_view %}
-    <div style="margin-top:8px;padding:8px 10px;background:rgba(59,130,246,0.06);border-left:3px solid var(--blue);font-size:11px;line-height:1.7;color:var(--text-secondary);">
-      <b style="color:var(--text-primary);">组合风险调整后收益 · HIST-FULL（active 窗口 {{ expectancy_card.risk_view.range[0] }} ~ {{ expectancy_card.risk_view.range[1] }}）</b><br>
-      策略：总收益 {{ "%+.1f"|format(expectancy_card.risk_view.strategy.total_return_pct) }}% · maxDD {{ expectancy_card.risk_view.strategy.max_drawdown_pct }}% · Calmar {{ expectancy_card.risk_view.strategy.calmar }}<br>
-      对照池内等权：总收益 {{ "%+.1f"|format(expectancy_card.risk_view.pool_buy_hold.total_return_pct) }}% · maxDD {{ expectancy_card.risk_view.pool_buy_hold.max_drawdown_pct }}% · Calmar {{ expectancy_card.risk_view.pool_buy_hold.calmar }}<br>
-      对照大盘：总收益 {{ "%+.1f"|format(expectancy_card.risk_view.market_index.total_return_pct) }}% · maxDD {{ expectancy_card.risk_view.market_index.max_drawdown_pct }}% · Calmar {{ expectancy_card.risk_view.market_index.calmar }}
-    </div>
+  <div style="padding:10px 14px;font-size:13px;">
+    {% if _s.crash and _s.crash.active %}
+    <div style="background:rgba(239,68,68,0.08);border-left:3px solid var(--red);padding:6px 10px;margin-bottom:8px;font-size:12px;color:var(--red);font-weight:600;">⚠️ {{ _s.crash.response }}（单日 {{ _s.crash.chg1d if _s.crash.chg1d != none else '--' }}% · 3日 {{ _s.crash.chg3d if _s.crash.chg3d != none else '--' }}%）</div>
     {% endif %}
-    {% if expectancy_card.risk_view_clean %}
-    <div style="margin-top:6px;padding:8px 10px;background:rgba(245,158,11,0.06);border-left:3px solid var(--yellow);font-size:11px;line-height:1.7;color:var(--text-secondary);">
-      <b style="color:var(--text-primary);">组合风险调整后收益 · CLEAN-CUR（active 窗口 {{ expectancy_card.risk_view_clean.range[0] }} ~ {{ expectancy_card.risk_view_clean.range[1] }}）</b> <span style="color:var(--red);">55% 单事件 · 缺 2026-02~04 牛市段 · 非引擎增强证据</span><br>
-      策略：总收益 {{ "%+.1f"|format(expectancy_card.risk_view_clean.strategy.total_return_pct) }}% · maxDD {{ expectancy_card.risk_view_clean.strategy.max_drawdown_pct }}% · Calmar {{ expectancy_card.risk_view_clean.strategy.calmar }}<br>
-      对照池内等权：总收益 {{ "%+.1f"|format(expectancy_card.risk_view_clean.pool_buy_hold.total_return_pct) }}% · maxDD {{ expectancy_card.risk_view_clean.pool_buy_hold.max_drawdown_pct }}% · Calmar {{ expectancy_card.risk_view_clean.pool_buy_hold.calmar }}<br>
-      对照大盘：总收益 {{ "%+.1f"|format(expectancy_card.risk_view_clean.market_index.total_return_pct) }}% · maxDD {{ expectancy_card.risk_view_clean.market_index.max_drawdown_pct }}% · Calmar {{ expectancy_card.risk_view_clean.market_index.calmar }}
+    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;">
+      <span>市场状态
+        <span class="regime-badge {{ {'P恐慌深跌':'regime-p','S1牛市上行':'regime-s1','S2牛市回调':'regime-s2','S3弱市阴跌':'regime-s3','S4弱市反弹':'regime-s4','贪婪禁入':'regime-greedy'}.get(_s.period, '') }}">{{ _s.period }}</span>
+        {% if _s.period_days %}<span style="color:var(--text-muted);font-size:11px;">（持续 {{ _s.period_days }} 天）</span>{% endif %}
+      </span>
+      <span style="font-size:18px;font-weight:800;color:{{ _ac }};">👉 {{ _s.action_label }}</span>
+      <span>风险 <b style="color:{{ _rcol }};">{{ _rc }}</b></span>
     </div>
+    <div style="margin-top:6px;color:var(--text-secondary);">{{ _s.action_note }}</div>
+    {% if market_status.fire_note %}
+    <div style="margin-top:6px;color:var(--text-secondary);font-weight:600;">🔥 {{ market_status.fire_note }}</div>
     {% endif %}
+    <div style="margin-top:6px;font-size:11px;color:var(--text-muted);">
+      大盘自身前视：14d {{ _s.period_forward.fwd14 }} · 30d {{ _s.period_forward.fwd30 }}（3 年回放证据，非预测）
+      {% if _s.evidence_caveat %}<span style="color:var(--yellow);">⚠ {{ _s.evidence_caveat }}</span>{% endif %}
+    </div>
+    <div style="margin-top:6px;font-size:11px;color:var(--text-muted);">
+      {% if _s.risk_factors.vol20 != none %}20日波动 {{ (_s.risk_factors.vol20 * 100) | round(2) }}% · {% endif %}{% if _s.risk_factors.breadth5 != none %}5日广度 {{ _s.risk_factors.breadth5 }}% · {% endif %}{% if _s.risk_factors.dist_hi60 != none %}距60日高点 {{ _s.risk_factors.dist_hi60 }}% · {% endif %}{% if _s.risk_factors.dist_lo180 != none %}距180日低点 +{{ _s.risk_factors.dist_lo180 }}%{% endif %}
+      {% if market_status.macro %}· 宏观：广度 {{ market_status.macro.breadth_7d }} · 情绪 {{ market_status.macro.sentiment_score }}（{{ market_status.macro.sentiment_label }}）· 在线 {{ market_status.macro.online_score }} · 卡价 {{ market_status.macro.card_score }}{% endif %}
+    </div>
   </div>
 </div>
 {% endif %}
 </div>
-
-<!-- 大盘信号 + 风险仪表（2026-08-17 模块 A+D，纯引擎无关） -->
-<div class="card" style="margin-top:12px;">
-  <div class="card-header">
-    <span class="card-title">📡 大盘信号 · 风险仪表</span>
-    <span style="font-size:11px;color:var(--text-muted);margin-left:auto;">时期路由 chg180×chg30 · 前视证据=大盘自身 3 年回放 · 仅大盘级结论，不产生单品信号</span>
-  </div>
-  <div id="market-signal-body" style="padding:10px 14px;font-size:12px;color:var(--text-muted);">加载中…</div>
-</div>
-<script>
-fetch('/api/market/signal')
-.then(function(r){return r.json();})
-.then(function(d){
-  var b = document.getElementById('market-signal-body');
-  if (!b) return;
-  if (!d || !d.ok) { b.textContent = '大盘信号数据不可用' + (d && d.error ? '（' + d.error + '）' : ''); return; }
-  var actColor = {'buy_zone':'var(--green)','pullback_buy':'var(--green)','hold_zone':'var(--blue)','avoid':'var(--red)','trap':'var(--yellow)'}[d.market_action] || 'var(--text-primary)';
-  var riskTxt = {'high':'高','medium':'中','low':'低'}[d.risk_level] || '--';
-  var riskColor = {'high':'var(--red)','medium':'var(--yellow)','low':'var(--green)'}[d.risk_level] || 'var(--text-muted)';
-  var rf = d.risk_factors || {};
-  var f = d.period_forward || {};
-  var html = (d.crash && d.crash.active)
-    ? '<div style="background:rgba(239,68,68,0.08);border-left:3px solid var(--red);padding:6px 10px;margin-bottom:8px;font-size:12px;color:var(--red);font-weight:600;">⚠️ ' + (d.crash.response || '') + '（单日 ' + (d.crash.chg1d != null ? d.crash.chg1d + '%' : '--') + ' · 3日 ' + (d.crash.chg3d != null ? d.crash.chg3d + '%' : '--') + '）</div>'
-    : '';
-  html += '<div style="display:flex;gap:18px;flex-wrap:wrap;align-items:center;color:var(--text-secondary);">'
-    + '<span>时期 <b style="color:var(--text-primary);">' + d.period + '</b>' + (d.period_days ? ' <span style="color:var(--text-muted);">（持续 ' + d.period_days + ' 天）</span>' : '') + '</span>'
-    + '<span>大盘动作 <b style="color:' + actColor + ';">' + d.action_label + '</b> <span style="color:var(--text-muted);">' + (d.action_note || '') + '</span></span>'
-    + '<span>风险 <b style="color:' + riskColor + ';">' + riskTxt + '</b></span></div>';
-  if (f && f.fwd14) html += '<div style="margin-top:6px;font-size:11px;color:var(--text-muted);">该时期大盘自身前视：14d ' + f.fwd14 + ' · 30d ' + f.fwd30 + '（3 年回放证据，非预测）</div>';
-  if (d.evidence_caveat) html += '<div style="margin-top:4px;font-size:11px;color:var(--yellow);">⚠ ' + d.evidence_caveat + '</div>';
-  var facts = [];
-  if (rf.vol20 != null) facts.push('20日波动 ' + (rf.vol20*100).toFixed(2) + '%');
-  if (rf.breadth5 != null) facts.push('5日广度 ' + rf.breadth5 + '%');
-  if (rf.dist_hi60 != null) facts.push('距60日高点 ' + (rf.dist_hi60>0?'+':'') + rf.dist_hi60 + '%');
-  if (rf.dist_lo180 != null) facts.push('距180日低点 +' + rf.dist_lo180 + '%');
-  if (facts.length) html += '<div style="margin-top:4px;font-size:11px;color:var(--text-muted);">' + facts.join(' · ') + '（chg30 ' + d.chg30 + '% · chg180 ' + d.chg180 + '%）</div>';
-  b.innerHTML = html;
-})
-.catch(function(){ var b = document.getElementById('market-signal-body'); if (b) b.textContent = '大盘信号加载失败'; });
-</script>
 
 <!-- 模拟盘 v2（2026-08-17）：生产镜像·全自动执行，纯展示 -->
 <div class="card" style="margin-top:12px;">

@@ -133,33 +133,6 @@
 </div>
 {% endif %}
 
-<!-- ====== 宏观环境（精简） ====== -->
-{% if analysis.macro_context %}
-<div class="card" style="margin-top:12px;">
-  <div class="card-header" style="padding:10px 14px;border-bottom:1px solid var(--border);">
-    <span class="card-title">🌍 宏观环境</span>
-  </div>
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:10px 14px;">
-    <div style="text-align:center;">
-      <div style="font-size:16px;font-weight:600;">{{ "%.0f"|format(analysis.macro_context.breadth_7d) }}</div>
-      <div style="font-size:10px;color:var(--text-muted);">广度</div>
-    </div>
-    <div style="text-align:center;">
-      <div style="font-size:16px;font-weight:600;">{{ "%.0f"|format(analysis.macro_context.sentiment_score) }}</div>
-      <div style="font-size:10px;color:var(--text-muted);">情绪(恐惧↑)</div>
-    </div>
-    <div style="text-align:center;">
-      <div style="font-size:16px;font-weight:600;">{{ "%.0f"|format(analysis.macro_context.online_score) }}</div>
-      <div style="font-size:10px;color:var(--text-muted);">在线趋势</div>
-    </div>
-    <div style="text-align:center;">
-      <div style="font-size:16px;font-weight:600;">{{ "%.0f"|format(analysis.macro_context.card_score) }}</div>
-      <div style="font-size:10px;color:var(--text-muted);">充值卡</div>
-    </div>
-  </div>
-</div>
-{% endif %}
-
 {% elif not analysis or not analysis.has_data %}
 <div class="card"><div class="empty-state"><div class="icon">🔍</div><h3>暂无大盘分析数据</h3><p>点击上方「刷新数据」获取最新分析</p></div></div>
 {% endif %}
