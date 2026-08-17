@@ -228,7 +228,44 @@ def status(conn):
             "baseline_equal_weight_pct": round(base_total, 2) if base_total is not None else None,
             "excess_vs_ew_pct": round(strat_total - base_total, 2) if base_total is not None else None,
             "open_positions": len(pos), "closed_trades": len(trades),
-            "families": fam_stats}
+            "families": fam_stats,
+            "criteria": _criteria(fam_stats, len(trades),
+                                  round(strat_total - base_total, 2)
+                                  if base_total is not None else None)}
+
+
+def _criteria(fam_stats, n_closed, excess_vs_ew):
+    """落地前预注册判据（paper-trading-design.md 第四节，2026-08-17 补漏落地）：
+    20 笔结算后按族评估——胜率 >= 族特征卡 win14 −15pp 且期望 >= −5pp → 保留，否则停腿告警；
+    策略腿 vs 等权：超额为负 → 重审提示（连续 3 个月统计暂以"当前超额<0"代理，月度序列待积累）。"""
+    out = {"threshold_n": 20, "n_closed": n_closed,
+           "state": "accumulating" if n_closed < 20 else "evaluating"}
+    if n_closed < 20:
+        out["note"] = "结算 %d/20 笔，达到 20 笔后按族判据自动评估（胜率≥族卡−15pp 且 期望≥−5pp）" % n_closed
+        return out
+    try:
+        import json as _json
+        from pathlib import Path as _P
+        _cards = _json.load(open(_P(__file__).resolve().parent.parent / "data" /
+                                 "family_feature_cards.json", encoding="utf-8"))["families"]
+        fam_verdicts = {}
+        for k, f in fam_stats.items():
+            card = _cards.get(k) or {}
+            h14 = card.get("horizons", {}).get("14") or {}
+            ref_win = h14.get("win")
+            win_ok = (ref_win is None or f["win_pct"] >= ref_win - 15)
+            exp_ok = f["avg_net_pct"] >= -5.0
+            fam_verdicts[k] = {"keep": bool(win_ok and exp_ok),
+                               "win_pct": f["win_pct"], "ref_win14": ref_win,
+                               "avg_net_pct": f["avg_net_pct"],
+                               "note": "" if win_ok and exp_ok else "停腿告警：胜率或期望低于预注册判据"}
+    except Exception:
+        fam_verdicts = {}
+    out["families"] = fam_verdicts
+    out["vs_ew"] = {"excess_pct": excess_vs_ew,
+                    "note": "超额为负——策略腿重审（连续 3 个月统计待积累，当前以瞬时超额代理）"
+                    if excess_vs_ew is not None and excess_vs_ew < 0 else "超额为正"}
+    return out
 
 
 def daily_run():

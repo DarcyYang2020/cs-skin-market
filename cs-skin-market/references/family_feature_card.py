@@ -18,6 +18,7 @@ sys.path.insert(0, str(ROOT))
 
 from pipeline.signal_tracking import family_key_for_label  # noqa: E402
 from pipeline.market_context import state_bucket  # noqa: E402
+from pipeline.market_macro import historical_event_impact  # noqa: E402
 
 REPLAY = ROOT / "data" / "_exp_cycle_replay_2026.json"
 OUT = ROOT / "data" / "family_feature_cards.json"
@@ -89,7 +90,16 @@ def build_cards(replay_path=None, out_path=None):
             h14 = [(s["fwd"][13] / s["entry"] - 1.0) * 100 - 2.0 for s in sub if len(s["fwd"]) >= 14]
             h30 = [(s["fwd"][29] / s["entry"] - 1.0) * 100 - 2.0 for s in sub if len(s["fwd"]) >= 30]
             split[p] = {"net14": _win_avg(h14), "net30": _win_avg(h30)}
-        cards[key] = {"n": len(sigs), "horizons": horizons, "t_peaks": peaks, "period": split}
+        # 事件窗分层（2026-08-17 查漏补缺：X-8 统计口径要求——正常市规律不被事件样本带偏）
+        ev_split = {}
+        for tag, pred in (("event", lambda s: bool(historical_event_impact(s["date"], horizon_days=30))),
+                          ("normal", lambda s: not historical_event_impact(s["date"], horizon_days=30))):
+            sub = [s for s in sigs if pred(s)]
+            h14 = [(s["fwd"][13] / s["entry"] - 1.0) * 100 - 2.0 for s in sub if len(s["fwd"]) >= 14]
+            h30 = [(s["fwd"][29] / s["entry"] - 1.0) * 100 - 2.0 for s in sub if len(s["fwd"]) >= 30]
+            ev_split[tag] = {"net14": _win_avg(h14), "net30": _win_avg(h30)}
+        cards[key] = {"n": len(sigs), "horizons": horizons, "t_peaks": peaks,
+                      "period": split, "event": ev_split}
     out = {"source": str(replay_path), "generated": __import__("datetime").datetime.now().isoformat(timespec="minutes"),
            "families": cards}
     with io.open(out_path, "w", encoding="utf-8") as f:

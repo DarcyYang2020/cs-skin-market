@@ -1072,6 +1072,9 @@ def t_paper_trading():
         _pt.DEFAULT_HOLD = old
     st = _pt.status(m)
     assert st["closed_trades"] == 1 and st["families"]["rise_accum"]["n"] == 1, st
+    # 落地前预注册判据（2026-08-17 补漏）：20 笔前 accumulating，字段齐备
+    assert st["criteria"]["state"] == "accumulating" and st["criteria"]["threshold_n"] == 20, st["criteria"]
+    assert st["criteria"]["n_closed"] == 1 and "note" in st["criteria"], st["criteria"]
     m.close()
 check('模拟盘 v2: schema+建仓+供给扩张全止损闭环', t_paper_trading)
 
@@ -1169,6 +1172,7 @@ def t_family_feature_card():
             assert fams[k]["n"] > 0, k
             assert fams[k]["horizons"]["14"]["n"] > 0, k
             assert "t_peaks" in fams[k] and "period" in fams[k], k
+            assert "event" in fams[k], k  # X-8 事件窗分层（2026-08-17 补漏）
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 check('第一批 族特征卡聚合（官方产物）', t_family_feature_card)

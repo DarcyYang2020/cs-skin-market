@@ -1016,6 +1016,41 @@ def _family_card_note(action_label):
 _CARD_CACHE = {}
 
 
+def _rs_note(name):
+    """独特性状态行（2026-08-17 查漏补缺，纯展示）：RS30=单品30d−大盘30d。
+    RS30>10 → 独立强势（P4 长持结构证据）；大盘走弱且单品走强 → 逆市发声（P11-Fa 证据）。
+    任何异常返回 None（展示层绝不阻断分析）。"""
+    try:
+        from pipeline import db as _db
+        conn = _db.get_conn()
+        try:
+            r = conn.execute("SELECT id FROM items WHERE name=? AND good_id>0", (name,)).fetchone()
+            if not r:
+                return None
+            rows = conn.execute(
+                "SELECT price_rmb FROM price_history WHERE item_id=? AND price_rmb IS NOT NULL "
+                "ORDER BY date", (r["id"],)).fetchall()
+        finally:
+            conn.close()
+        if len(rows) < 31 or rows[-31]["price_rmb"] <= 0 or rows[-1]["price_rmb"] <= 0:
+            return None
+        item30 = (rows[-1]["price_rmb"] / rows[-31]["price_rmb"] - 1) * 100
+        _ms = market_snapshot()
+        m30 = _ms.get("chg30") or 0
+        rs30 = item30 - m30
+        if rs30 > 10:
+            return ("独特性：相对强度 RS30 %+.1fpp（单品30d %+.1f%% vs 大盘 %+.1f%%）——"
+                    "独立强势结构，P4 证据 60d +39.8/180d +117.6（长持参考，不改变当前决策）"
+                    % (rs30, item30, m30))
+        if m30 < 0 and item30 > 5:
+            return ("独特性：逆市走强（大盘30d %+.1f%% 走弱而单品 %+.1f%%）——"
+                    "独立行情发声（P11-Fa 证据 180d +92.1；rs/ct 长持族候选默认关，此处仅展示结构）"
+                    % (m30, item30))
+        return None
+    except Exception:
+        return None
+
+
 def _f_pullback_note(name):
     """F 判别风险提示层（2026-08-16 落地批次，纯展示）：阴跌/派发后 3 日急拉（chg3d≥8%）。
 
@@ -1158,6 +1193,11 @@ def _fd_display(fd, analysis=None):
             )
     except Exception:
         pass
+    # 独特性状态行（2026-08-17 查漏补缺，纯展示）：RS30/逆市状态让单品发声（rs/ct 族默认关时仍可见结构）
+    if getattr(analysis, "name", None):
+        _rsn = _rs_note(analysis.name)
+        if _rsn:
+            _caveats.append(_rsn)
     fd["trace"] = {
         "zone": fd.get("zone_label", ""),
         "bucket": fd.get("state_bucket", ""),
