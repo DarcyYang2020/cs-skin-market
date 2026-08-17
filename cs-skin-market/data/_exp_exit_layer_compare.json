@@ -1,0 +1,89 @@
+{
+ "probe": "退出层 exit-aware 组合模拟（预注册：组合级+前后半段；含单成分消融）",
+ "rules": {
+  "hold_by_fam": {
+   "panic_resonance": 14,
+   "panic_easing": 14,
+   "rise_accum": 21,
+   "rise_contract": 21,
+   "volatile_accum": 21,
+   "deep_value": 21,
+   "supply_accum": 21,
+   "base": 21,
+   "oversold": 21
+  },
+  "trailing_fams": [
+   "rise_accum",
+   "rise_contract"
+  ],
+  "trail_pct": 0.05,
+  "s4_max_hold": 14,
+  "cap": 0.8,
+  "cut": "2026-03-02"
+ },
+ "baseline_hold21": {
+  "total_return_pct": 397.02,
+  "max_drawdown_pct": -14.09,
+  "n_closed": 81,
+  "exit_reasons": {
+   "到期21": 81
+  }
+ },
+ "variant_family_period": {
+  "total_return_pct": 323.98,
+  "max_drawdown_pct": -11.8,
+  "n_closed": 81,
+  "exit_reasons": {
+   "到期14": 17,
+   "到期21": 53,
+   "跟踪-5%": 11
+  }
+ },
+ "ablation": {
+  "panic14_only": {
+   "total_return_pct": 343.14,
+   "max_drawdown_pct": -12.8,
+   "exit_reasons": {
+    "到期21": 73,
+    "到期14": 8
+   }
+  },
+  "trail5_only": {
+   "total_return_pct": 371.69,
+   "max_drawdown_pct": -12.8,
+   "exit_reasons": {
+    "到期21": 70,
+    "跟踪-5%": 11
+   }
+  },
+  "s4_14_only": {
+   "total_return_pct": 387.86,
+   "max_drawdown_pct": -11.8,
+   "exit_reasons": {
+    "到期14": 17,
+    "到期21": 64
+   }
+  }
+ },
+ "front": {
+  "base": {
+   "total_return_pct": 278.53
+  },
+  "variant": {
+   "total_return_pct": 268.21
+  }
+ },
+ "back": {
+  "base": {
+   "total_return_pct": 31.56
+  },
+  "variant": {
+   "total_return_pct": 15.41
+  }
+ },
+ "verdict": {
+  "criteria1_combo": false,
+  "criteria2_frontback": false,
+  "candidate": false
+ }
+}

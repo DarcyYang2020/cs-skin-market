@@ -1,0 +1,68 @@
+{
+ "probe": "组合层时期乘子（hold21 口径，预注册 V1/V2/V3 + 置换检验）",
+ "cut": "2026-03-02",
+ "baseline": {
+  "total_return_pct": 397.02,
+  "max_drawdown_pct": -14.09
+ },
+ "variants": {
+  "V1_risk_budget": {
+   "total_return_pct": 353.47,
+   "max_drawdown_pct": -14.09,
+   "front": {
+    "total_return_pct": 278.95
+   },
+   "back": {
+    "total_return_pct": 19.94
+   },
+   "n_closed": 77
+  },
+  "V2_conservative_weak": {
+   "total_return_pct": 377.8,
+   "max_drawdown_pct": -14.09,
+   "front": {
+    "total_return_pct": 278.95
+   },
+   "back": {
+    "total_return_pct": 26.37
+   },
+   "n_closed": 77
+  },
+  "V3_boost_p_only": {
+   "total_return_pct": 395.42,
+   "max_drawdown_pct": -14.09,
+   "front": {
+    "total_return_pct": 278.53
+   },
+   "back": {
+    "total_return_pct": 31.14
+   },
+   "n_closed": 81
+  }
+ },
+ "verdicts": {
+  "V1_risk_budget": {
+   "criteria1_combo": false,
+   "criteria2_frontback": false,
+   "candidate": false
+  },
+  "V2_conservative_weak": {
+   "criteria1_combo": false,
+   "criteria2_frontback": false,
+   "candidate": false
+  },
+  "V3_boost_p_only": {
+   "criteria1_combo": false,
+   "criteria2_frontback": true,
+   "candidate": false
+  }
+ },
+ "permutation_v1": {
+  "d_total_med": -41.3,
+  "d_total_p90": -13.64,
+  "d_dd_med": 0.0,
+  "d_dd_p90": 1.71,
+  "p_total": 0.605,
+  "p_dd": 1.0
+ }
+}
