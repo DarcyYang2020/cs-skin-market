@@ -1,0 +1,118 @@
+{
+ "probe": "大盘时期路由发射口径对比（预注册判据：组合级 + 前后半段一致 + 置换检验）",
+ "cut": "2026-03-02",
+ "base": {
+  "signals": 233,
+  "total_return_pct": 367.67,
+  "max_drawdown_pct": -19.99,
+  "days": 915,
+  "annualized_pct": 85.03,
+  "first": "2024-02-15",
+  "last": "2026-08-18"
+ },
+ "variant": {
+  "signals": 189,
+  "total_return_pct": 397.02,
+  "max_drawdown_pct": -14.09,
+  "days": 878,
+  "annualized_pct": 94.76,
+  "first": "2024-02-15",
+  "last": "2026-07-12"
+ },
+ "front": {
+  "base": {
+   "total_return_pct": 268.76,
+   "max_drawdown_pct": -19.99
+  },
+  "variant": {
+   "total_return_pct": 278.53,
+   "max_drawdown_pct": -14.09
+  }
+ },
+ "back": {
+  "base": {
+   "total_return_pct": 27.12,
+   "max_drawdown_pct": -6.42
+  },
+  "variant": {
+   "total_return_pct": 31.56,
+   "max_drawdown_pct": -6.2
+  }
+ },
+ "removed": {
+  "deep_value×S3弱市阴跌": {
+   "n": 6,
+   "win14": {
+    "n": 6,
+    "win": 0.0,
+    "avg": -5.67
+   },
+   "win30": {
+    "n": 2,
+    "win": 0.0,
+    "avg": -7.93
+   }
+  },
+  "rise_accum×S1牛市上行": {
+   "n": 29,
+   "win14": {
+    "n": 29,
+    "win": 31.0,
+    "avg": 0.65
+   },
+   "win30": {
+    "n": 29,
+    "win": 34.5,
+    "avg": 5.95
+   }
+  },
+  "supply_accum×S3弱市阴跌": {
+   "n": 6,
+   "win14": {
+    "n": 6,
+    "win": 16.7,
+    "avg": -8.88
+   },
+   "win30": {
+    "n": 4,
+    "win": 75.0,
+    "avg": 10.97
+   }
+  },
+  "supply_accum×S4弱市反弹": {
+   "n": 4,
+   "win14": {
+    "n": 4,
+    "win": 0.0,
+    "avg": -9.08
+   },
+   "win30": {
+    "n": 4,
+    "win": 0.0,
+    "avg": -13.21
+   }
+  }
+ },
+ "permutation": {
+  "n_removed": 44,
+  "trials": 200,
+  "route": {
+   "d_total": 29.35,
+   "d_maxdd": 5.9
+  },
+  "random": {
+   "d_total_med": -41.4,
+   "d_total_p90": 0.33,
+   "d_dd_med": 0.71,
+   "d_dd_p90": 4.75,
+   "p_total": 0.0,
+   "p_dd": 0.035
+  }
+ },
+ "verdict": {
+  "criteria1_combo": true,
+  "criteria2_frontback": true,
+  "criteria3_permutation": true,
+  "candidate": true
+ }
+}

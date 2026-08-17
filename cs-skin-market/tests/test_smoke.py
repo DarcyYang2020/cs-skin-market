@@ -418,7 +418,8 @@ def t_p08_deep_value_tranche():
     ia.compute_fusion_decision = fake_fd
     kw = dict(name='Test', market_pct_90d=15.0,
               market_cycle='consolidation', market_zscore=-0.8, market_th_score=45,
-              market_30d_change=-3.0, market_drop21=-3.0, recent_buy_dates=[], signal_date='2026-07-03')
+              market_30d_change=-3.0, market_drop21=-3.0, market_180d_change=5.0,
+              recent_buy_dates=[], signal_date='2026-07-03')
     # 先跌后恢复: 单品TH真实计算>=35, 触发 P0-8 深值企稳
     prices = [60.0]*80 + [58.0, 56.0, 55.0, 56.0, 57.0, 58.0, 58.5, 59.0, 59.5, 60.0]
     try:
@@ -507,7 +508,8 @@ def t_p1_supply_accumulation():
     prices = [60.0] * 83 + [59.5, 60.2, 60.8, 60.0, 60.5, 60.3, 60.7]  # 7日|涨跌|<=3%
     kw = dict(name='Test', supply_hist=supply, market_pct_90d=50.0,
               market_cycle='volatile', market_zscore=0.0, market_th_score=50,
-              market_30d_change=-5.0, market_drop21=-3.0, recent_buy_dates=[], signal_date='2026-03-01')
+              market_30d_change=-5.0, market_drop21=-3.0, market_180d_change=5.0,
+              recent_buy_dates=[], signal_date='2026-03-01')
     # 1) 供给收缩+价格平稳+门控放行 -> P1-0 buy(轻仓0.15)
     res = ia.run_item_analysis(prices=prices, **kw)
     fd = res.fusion_decision
@@ -864,6 +866,56 @@ def t_second_wave_family():
          ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision) = orig
 check('C 族二波回调 CS_ENGINE_C_WAVE 开关（默认关）', t_second_wave_family)
 
+def t_period_route():
+    """大盘时期路由（v2-T13 默认开，CS_ENGINE_PERIOD_ROUTE=0 关闭对照）：
+    supply_accum 在 S3 弱市阴跌被禁发（触发但降级留痕），开关关=照常买。"""
+    import os
+    from types import SimpleNamespace
+    import pipeline.item_analysis as ia
+    pos = SimpleNamespace(percentile_90d=20.0, zscore_90d=-1.0, high_90d=100.0,
+                          low_90d=50.0, mean_90d=75.0, median_90d=76.0,
+                          current_price=100.0, data_points=9, valuation_tier='undervalued')
+    orig = (ia._analyze_position, ia.compute_sentiment_score, ia.compute_sentiment_factor,
+            ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision)
+    ia._analyze_position = lambda prices: pos
+    ia.compute_sentiment_score = lambda: 60
+    ia.compute_sentiment_factor = lambda: 0.0
+    ia.event_risk_coefficient = lambda: 1.0
+    ia.compute_micro_th = lambda prices: 30
+    def fake_fd(*a, **k):
+        return SimpleNamespace(action='watch', action_label='🟡 观望', action_detail='',
+                               deduction_sources=[], zone='undervalued', zone_label='低估',
+                               liquidity_filtered=False, percentile_90d=20.0,
+                               raw_th_score=60, corrected_th_score=60, position_limit=0.0)
+    ia.compute_fusion_decision = fake_fd
+    prices = [100.0] * 9                      # 价格平稳：chg7=0、chg8=0
+    supply = [100] * 23 + [80] * 7            # s30≈95.3、s7=80 ≤ 0.85×s30 → 吸筹指纹
+    kw = dict(name='Test', supply_hist=supply, market_pct_90d=20.0,
+              market_cycle='markdown', market_zscore=0.0, market_th_score=50,
+              market_30d_change=-2.0, market_drop21=0.0, market_180d_change=-5.0,
+              recent_buy_dates=[], signal_date='2026-07-15')
+    old = os.environ.get("CS_ENGINE_PERIOD_ROUTE")
+    try:
+        os.environ.pop("CS_ENGINE_PERIOD_ROUTE", None)
+        res = ia.run_item_analysis(prices=prices, **kw)
+        fd = res.fusion_decision
+        assert fd['action'] == 'watch', fd['action']  # 默认开：S3 禁发 supply_accum
+        assert 'period_route:supply_accum' in fd['deduction_sources'], fd['deduction_sources']
+        assert fd['state_bucket'] == 'S3弱市阴跌', fd['state_bucket']
+        os.environ["CS_ENGINE_PERIOD_ROUTE"] = "0"
+        res = ia.run_item_analysis(prices=prices, **kw)
+        assert res.fusion_decision['action'] == 'buy', res.fusion_decision['action']  # 对照关：照常买
+        assert 'supply_contraction_accumulation' in res.fusion_decision['deduction_sources'], \
+            res.fusion_decision['deduction_sources']
+    finally:
+        if old is None:
+            os.environ.pop("CS_ENGINE_PERIOD_ROUTE", None)
+        else:
+            os.environ["CS_ENGINE_PERIOD_ROUTE"] = old
+        (ia._analyze_position, ia.compute_sentiment_score, ia.compute_sentiment_factor,
+         ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision) = orig
+check('大盘时期路由 CS_ENGINE_PERIOD_ROUTE（v2-T13 默认开）', t_period_route)
+
 def t_paper_trading():
     """模拟盘 v2（2026-08-16）：三表 schema + 建仓/三类出场闭环（生产镜像全自动口径）。"""
     import sqlite3 as _sq
@@ -966,20 +1018,26 @@ def t_signal_tracking_features():
 check('第一批 特征快照: family 映射 + 特征列落库 + mkt_chg180 实盘填充', t_signal_tracking_features)
 
 def t_family_feature_card():
-    """族特征卡聚合：官方产物按族产出分期限胜率/期望 + 做T峰值参考 + 牛熊拆分。"""
+    """族特征卡聚合：官方产物按族产出分期限胜率/期望 + 做T峰值参考 + 五时期分层。"""
     import importlib.util
+    import shutil
+    import tempfile
     from pathlib import Path
     root = Path(__file__).resolve().parent.parent
     spec = importlib.util.spec_from_file_location("ffc", str(root / "references" / "family_feature_card.py"))
     ffc = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(ffc)
-    out = ffc.build_cards(out_path=str(root / "data" / "_tmp_test_cards.json"))
-    fams = out["families"]
-    assert "panic_resonance" in fams and "rise_accum" in fams, list(fams)
-    for k in ("panic_resonance", "rise_accum"):
-        assert fams[k]["n"] > 0, k
-        assert fams[k]["horizons"]["14"]["n"] > 0, k
-        assert "t_peaks" in fams[k] and "regime" in fams[k], k
+    tmp = tempfile.mkdtemp(prefix="smoke_cards_")
+    try:
+        out = ffc.build_cards(out_path=str(Path(tmp) / "cards.json"))
+        fams = out["families"]
+        assert "panic_resonance" in fams and "rise_accum" in fams, list(fams)
+        for k in ("panic_resonance", "rise_accum"):
+            assert fams[k]["n"] > 0, k
+            assert fams[k]["horizons"]["14"]["n"] > 0, k
+            assert "t_peaks" in fams[k] and "period" in fams[k], k
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
 check('第一批 族特征卡聚合（官方产物）', t_family_feature_card)
 
 print('[Batch Scan: 信号提取]')
@@ -3106,8 +3164,8 @@ def t_floor_upgrade_leak():
             prices=prices, supply_hist=supply,
             index_change_7d=0, market_history=None, market_pct_90d=50,
             market_zscore=0.0, market_cycle="consolidation", market_th_score=50,
-            market_30d_change=0, market_drop21=0, survive_count=0,
-            supply_depth_missing=False,
+            market_30d_change=0, market_drop21=0, market_180d_change=5.0,
+            survive_count=0, supply_depth_missing=False,
         ).fusion_decision
     # control: sufficient depth -> supply_accum upgrades watch->buy
     fd_ok = analyze([400.0] * (N - 7) + [300.0] * 7)

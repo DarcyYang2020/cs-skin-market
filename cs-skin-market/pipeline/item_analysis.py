@@ -1422,6 +1422,39 @@ _POST_FAMILIES = tuple(sorted(
 ))
 
 
+# ---- 大盘时期路由（2026-08-16 预注册 → v2-T13 默认开；CS_ENGINE_PERIOD_ROUTE=0 关闭）----
+# 证据 = references/probe_period_family_hq.py → data/_exp_period_family_hq.json
+# （HQ 官方回放 233 信号 × 五时期 × 族，net 已扣 2%）：
+#   rise_accum  S1 n=29 win14 31%/+0.65（差，追高腿在慢牛上行段不成立）；
+#   deep_value  S3 n=6 0%/-5.67（弱市阴跌里深值接刀全亏）；
+#   supply_accum S3 n=6 16.7%/-8.88@14d、S4 n=4 0%/-9.08（阴跌/反抽里吸筹语义错配）；
+#   对照：S2 回调买全族正（deep_value 30d +76.6 全场最强）；base 基础族在 S3 仍 77.8%/+27.4（不设禁）。
+# 发射口径重放三关（probe_period_route_compare.py → _exp_period_route_compare.json）：
+#   组合级 total +367.67→+397.02（+29.35pp）maxDD −19.99→−14.09（改善 5.90pp）；
+#   前后半段（切点 2026-03-02）front +9.77pp / back +4.44pp 双正；
+#   置换检验 200 次随机移除同规模：dTotal 中位 −41.40（p=0.000）/ dMaxDD p90 +4.75（p=0.035）→ 选择性闸门成立。
+# 落地默认开（v2-T13）；C 通道月度胜率/期望监测照常覆盖（P1 后验保险丝）。
+PERIOD_ROUTE_BAN = {
+    "rise_accum": ("S1牛市上行",),
+    "deep_value": ("S3弱市阴跌",),
+    "supply_accum": ("S3弱市阴跌", "S4弱市反弹"),
+}
+
+
+def _period_route_ok(fam_key, period):
+    """时期路由放行：默认开（v2-T13）；CS_ENGINE_PERIOD_ROUTE=0 关闭对照。"""
+    if os.environ.get("CS_ENGINE_PERIOD_ROUTE", "1") != "1":
+        return True
+    return period not in PERIOD_ROUTE_BAN.get(fam_key, ())
+
+
+def _period_route_note(fd, fam_key):
+    """路由拦截留痕（展示层）：族触发但被时期路由禁发。"""
+    _src = "period_route:%s" % fam_key
+    if _src not in fd.deduction_sources:
+        fd.deduction_sources.append(_src)
+
+
 # ---- 闸门实现：返回 (label, detail, source) 或 None（不命中）----
 def _g_market_weak(fd, F):
     if fd.action != "buy":
@@ -1913,9 +1946,13 @@ def decide_fusion_signal(
     if fd.action in ("hold", "reduce") and not fd.liquidity_filtered:
         for _fam_key in ("rise_accum", "rise_contract", "volatile_accum"):
             _fam = SIGNAL_FAMILY_BY_KEY.get(_fam_key)
-            if _fam is not None and _fam.trigger(F):
-                _apply_buy(fd, _fam, F)
-                break
+            if _fam is None or not _fam.trigger(F):
+                continue
+            if not _period_route_ok(_fam_key, bucket):
+                _period_route_note(fd, _fam_key)
+                continue
+            _apply_buy(fd, _fam, F)
+            break
 
     # ---- 升级族2：后置族（深值企稳 > 恐慌退潮 > 供给收缩，固定优先级）----
     # K-2（2026-08-06，预研 k2_guard_prestudy.json）：deep_value 叠加 supply_expansion 闸门，
@@ -1924,6 +1961,9 @@ def decide_fusion_signal(
     if fd.action in ("watch", "avoid") and not fd.liquidity_filtered:
         for fam in _POST_FAMILIES:
             if fam.trigger(F):
+                if not _period_route_ok(fam.key, bucket):
+                    _period_route_note(fd, fam.key)
+                    continue
                 _apply_buy(fd, fam, F)
                 if fam.guards:
                     _apply_guards(fd, F, fam.guards)

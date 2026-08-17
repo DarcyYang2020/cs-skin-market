@@ -307,7 +307,7 @@ monitor_events / positions / executions / signal_tracking / analysis_results / h
 ## 风控/信号职责分工（三层闸门，2026-08-06 定稿）
 
 - **组合闸门（portfolio_risk.py）**：组合回撤熔断（10%，收复峰值解除）+ 单票敞口提示（30%，只提示不拒绝）——管「组合层面是否开新仓」。
-- **信号族闸门（大盘时期路由，2026-08-16 五时期定稿）**：按大盘五时期（P恐慌深跌/S1牛市上行/S2牛市回调/S3弱市阴跌/S4弱市反弹，chg180×chg30 路由 + 贪婪禁入覆盖层，定稿见 `references/market-bucket-alignment.md`）决定哪些信号族开火——当前由各族门控隐含实现，界面标注见 batch_scan.market_regime；大盘信号族显式路由层为下一批战役。
+- **信号族闸门（大盘时期路由，2026-08-16 v2-T13 默认开）**：按大盘五时期（P恐慌深跌/S1牛市上行/S2牛市回调/S3弱市阴跌/S4弱市反弹，chg180×chg30 路由 + 贪婪禁入覆盖层，定稿见 `references/market-bucket-alignment.md`）决定哪些信号族开火——PERIOD_ROUTE_BAN = rise_accum 禁 S1 / deep_value 禁 S3 / supply_accum 禁 S3+S4（`CS_ENGINE_PERIOD_ROUTE=0` 一键回退对照）；发射口径重放三关全过（decision-log Z）；界面标注见 batch_scan.market_regime。
 - **单品买点（item_analysis 融合决策）**：管「具体品是否到买点」。
 
 ## 运维（2026-08-06）

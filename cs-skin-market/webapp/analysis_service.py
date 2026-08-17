@@ -995,16 +995,16 @@ def _family_card_note(action_label):
         _fmt = lambda h: "%s%%/期望%s%%" % (h.get("win"), h.get("avg"))  # noqa: E731
         _base = (f"族历史特征（3 年回放 n={_card.get('n')}）：14d 胜率/期望 {_fmt(_h14)}、"
                  f"30d {_fmt(_h30)}、60d {_fmt(_h60)}")
-        # M3（2026-08-16）：当前大盘层（指180d 牛/非牛）族分层历史
+        # M3（2026-08-16）：当前大盘五时期族分层历史（替代原 bull/nonbull 牛熊拆分）
         try:
+            from pipeline.market_context import state_bucket as _sb
             _ms = market_snapshot()
-            _m180 = _ms.get("chg180") or 0
-            _reg = _card.get("regime", {})
-            _layer = _reg.get("bull" if _m180 > 0 else "nonbull") or {}
+            _p = _sb(_ms.get("chg180"), _ms.get("chg30"))
+            _layer = (_card.get("period") or {}).get(_p) or {}
             _l14 = _layer.get("net14") or {}
             _l30 = _layer.get("net30") or {}
             if _l14.get("n", 0) >= 5:
-                _base += (f"；当前大盘层（指180d {'牛' if _m180 > 0 else '非牛'}）族历史："
+                _base += (f"；当前时期（{_p}）族历史："
                           f"14d {_fmt(_l14)}、30d {_fmt(_l30)}")
         except Exception:
             pass

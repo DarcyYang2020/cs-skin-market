@@ -371,6 +371,8 @@ PARAM_REGIME = {
         "rise_accum v5 组合构建矩阵（2026-08-16，九变体零重放探针 probe_rise_sleeve.py，全部不自动落地）：无变体同时满足 total≥基线/mdd≤−20/前后一致；最优权衡 E（TH≥55+limit0.05）= +339.42%/−19.98%（+18.7pp/+5.4pp 回撤）与 I（+跟踪止损8%）= +331.95%/−18.07%（+11.2pp/+3.5pp 回撤）为 north_star 用户风险预算决策项，落地需引擎 TH 门/limit/跟踪止损实现 + 重放复验；见 decision-log 2026-08-16 条目 K",
         "v2-T12（2026-08-16，买涨腿方案I落地，用户决策推进）：rise_accum 默认开（CS_ENGINE_RISE_ACCUM=0 关闭）——TH≥55 趋势段门（CS_ENGINE_RISE_TH_MIN 默认55）+ limit 0.05（CS_ENGINE_RISE_LIMIT）+ chg7≤15 + hold/reduce 升级路径；退出=持有21日或自高点回撤5%跟踪止盈（止损宽度网格 5/8/12/15% 中 5% 最优：组合 front/back 双正）。依据=组合级跟踪止损口径重放 +336.29%/−15.73%/Calmar5.08 vs v2-T11 基线 +320.72%/−14.59%/5.30（total +15.57pp/maxDD +1.14pp/front +2.53/back +5.54）；警示=结构正期望 val 段集中（fit 格 +0.73 vs val +24.31），发射侧 vs 买书 FAILED（多元化腿口径），C 通道胜率/期望监测覆盖；自动化跟踪止损退出层=下一阶段。见 decision-log 2026-08-16 条目 L",
         "rise_contract v6 候选族注册（2026-08-16，默认关 CS_ENGINE_RISE_CONTRACT）：合纵型深收缩慢涨（sc30≤-5+s7≤0.85s30+3<chg7≤15+TH≥55+pct>40，priority 27/limit 0.05，长持 180 日口径）。池级 14→180d 期望单调上升（fit +1.19→+49.33/val +18.98→+140.41）证实为长持结构；但结构级 +140pp 守卫后发射口径缩水为 +25.8pp/back 负，且持有期/阈值/cap 均同样本选定 → 【反过拟合冻结】候选默认关，落地须 B 通道样本（约 2027-04）或 live pilot，禁止同样本继续调参。见 decision-log 2026-08-16 条目 N",
+        "period_route 大盘时期路由（2026-08-16 预注册 → v2-T13 默认开，CS_ENGINE_PERIOD_ROUTE=0 关闭对照）：PERIOD_ROUTE_BAN = rise_accum 禁 S1 / deep_value 禁 S3 / supply_accum 禁 S3+S4（证据=data/_exp_period_family_hq.json，HQ 233 信号×五时期×族：S1 rise 31%/+0.65 差、S3 deep_value 0%/-5.67、S3/S4 supply_accum 0~16.7%/负；S2 全族正、base S3 77.8%/+27.4 不设禁）。发射口径重放三关全过（data/_exp_period_route_compare.json）：组合 total +29.35pp/maxDD 改善 5.90pp、前后半段（2026-03-02 切）双正、置换检验 p_total=0.000/p_dd=0.035；C 通道监测覆盖。见 decision-log 条目",
+        "v2-T13（2026-08-16，大盘时期路由默认开）：CS_ENGINE_PERIOD_ROUTE 默认 1（=0 关闭对照）；官方 HQ 回放产物 233→189 信号（移除 44 条时期错配坏信号 + 去重链解锁 1 条）。probe 口径（load_signals+b1v2 cap0.8 full curve）base +367.67%/−19.99% → routed +397.02%/−14.09%（+29.35pp/回撤改善 5.90pp）；前后半段 front +9.77pp/back +4.44pp 双正；置换检验随机移除同规模 dTotal 中位 −41.40pp（p=0.000）、dMaxDD p90 +4.75（p=0.035）→ 选择性闸门非「少买=少亏」。",
 
     ],
     "monitors": [
@@ -417,4 +419,4 @@ J2_THRESHOLDS = {
 # ---- 引擎参数版本（Phase 0 版本化）----
 # signal_tracking 记录每条生产信号时的引擎版本；重拟合发布新参数时 bump，
 # 使新旧引擎产生的实盘信号可区分、可分别统计。
-ENGINE_VERSION = "v2-T12"  # v2-T11 + 买涨腿方案I默认开（TH≥55门/limit0.05/hold-reduce升级/跟踪止盈5%指导；+15.57pp/回撤+1.14pp，2026-08-16）
+ENGINE_VERSION = "v2-T13"  # v2-T12 + 大盘时期路由默认开（CS_ENGINE_PERIOD_ROUTE=1；+29.35pp/回撤改善5.90pp/置换p≤0.035，2026-08-16）

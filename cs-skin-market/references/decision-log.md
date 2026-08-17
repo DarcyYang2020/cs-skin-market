@@ -241,6 +241,7 @@
 - [v2-T9 0-value gap 回补 + CLEAN-CUR 297→230（2026-08-15，数据修正，引擎代码未改）](#v2-t9-0-value-gap-回补-clean-cur-2972302026-08-15数据修正引擎代码未改)
 - [X. 用户七条裁定入册 + 两份方案定稿（2026-08-16）](#x-用户七条裁定入册--两份方案定稿2026-08-16落地全面暂停)
 - [Y. 大盘五时期口径落地：旧六态退役 + 生产库 3 年历史回填（2026-08-16）](#y-大盘五时期口径落地旧六态退役--生产库-3-年历史回填2026-08-16)
+- [Z. 大盘信号族时期路由落地（v2-T13）+ 族特征卡五时期分层（2026-08-16）](#z-大盘信号族时期路由落地v2-t13--族特征卡五时期分层2026-08-16)
 
 ---
 
@@ -4331,3 +4332,24 @@ Fluxo 25→280 约 11 倍），尖顶后 3 天 -86~94%，与枪皮统计反转�
 - **测试**：t_regime 重写（五时期边界 + 贪婪覆盖层 + None 兜底 S3 保守）；t_market_expectancy_card/t_monitor_* 断言桶集合换五时期；t_saved_report_expectancy 换 S1牛市上行。
 - **文档**：engine-unified §3.3 六桶表替换为五时期表（旧表留历史注记）；first-principles-market-fit / PROJECT_STRUCTURE / market-bucket-alignment 落地状态同步。
 - **下一步（本条目之后继续）**：③ 大盘信号族显式路由层（P抄底/S2回调买/S3-S4空仓/S4反抽标注）——B-1 已给预注册证据（S2 30d 最强、S4 30d 对半、S3 全负），回放验证后落地；④ 族特征卡五时期分层。
+
+## Z. 大盘信号族时期路由落地（v2-T13）+ 族特征卡五时期分层（2026-08-16）
+
+### Z1. HQ 五时期×族证据（probe_period_family_hq.py → data/_exp_period_family_hq.json，官方 233 信号）
+- **P 抄底区**（n=79）全族正（panic_resonance 100%/+48.1、panic_easing 84.2%/+22.3）——路由不动；
+- **S1 牛市上行**（n=58）：rise_accum n=29 **win14 31%/+0.65（差）**——追高腿在慢牛上行段不成立；supply_accum 80%/+4.1、base 64.3%/+3.8 保留；
+- **S2 牛市回调**（n=36）：deep_value 68.4%/+26.2@14d、**+76.6@30d 全场最强**；supply_accum +66~74（n=5）——回调买实锤；
+- **S3 弱市阴跌**（n=31）：deep_value 0%/−5.67、supply_accum 16.7%/−8.88@14d（负）；**base 77.8%/+27.4 仍正**（不设禁）——「空仓」只在大盘级成立，单品级数据裁定为「禁深值+禁供给收缩、留基础族」；
+- **S4 弱市反弹**（n=29）：supply_accum **0%/−9.08**（反抽陷阱族级实锤）；rise_accum 44.4%/+17.3（正期望，保留）；base 50%/+3.1 平（保留）。
+
+### Z2. 预注册路由表 + 发射口径重放三关（probe_period_route_compare.py → data/_exp_period_route_compare.json）
+- PERIOD_ROUTE_BAN = rise_accum 禁 S1 / deep_value 禁 S3 / supply_accum 禁 S3+S4（CS_ENGINE_PERIOD_ROUTE 开关，默认开；拦截留痕 deduction_sources "period_route:<fam>"）；
+- 重放口径（load_signals + b1v2 cap0.8/hold21/2%，full curve）：base 233 信号 +367.67%/−19.99% → routed 189 信号 **+397.02%/−14.09%（total +29.35pp、回撤改善 5.90pp）**；官方产物 233→189 信号（移除 44 条 + 去重链解锁 1 条）；
+- **前后半段（切点=基线中位数 2026-03-02）**：front +268.76→+278.53（+9.77pp）、back +27.12→+31.56（+4.44pp）双正；
+- **置换检验（200 次随机移除同规模 44 条）**：随机 dTotal 中位 **−41.40pp**（p90 +0.33）vs 路由 +29.35 → **p_total=0.000**；随机 dMaxDD 中位 +0.71/p90 +4.75 vs 路由 +5.90 → **p_dd=0.035**——选择性闸门成立（不是「少买=少亏」的机械效果）；
+- **落地默认开（v2-T13，ENGINE_VERSION bump）**：CS_ENGINE_PERIOD_ROUTE=0 一键回退对照；C 通道月度胜率/期望监测覆盖（后验保险丝）。年度 maxDD 拆解（_exp_benchmark_3y）：2024 −14.09 / 2025 −11.17 / 2026 −7.72（vs 等权 −54/−52、大盘 −58/−40）。
+- 经验教训（用户指正）：重放前必须核对 env 参数与脚本实际拼接方式（CS_ENGINE_REPLAY_OUT 已被 ROOT/data 前缀包裹，误传 data/ 前缀导致整轮 31 分钟重放作废重跑）；测试场景与默认口径变更的连带影响须先grep 全量调用点再改默认值（本次 t_p1 等 4 个旧测试场景落入禁发时期，mock 还原语句在断言后致级联失败，已修：场景补 market_180d_change 至 S2 + 还原改 finally）。
+
+### Z3. 族特征卡五时期分层（family_feature_card.py + _family_card_note）
+- 卡结构 "regime"（bull/nonbull）→ **"period"**（五时期 × net14/net30，chg180×chg30 按信号日联算）；单品报告研究提示区按**当前时期**取该族分层（n≥5 展示，不足降级不显示）；
+- 官方产物刷新后族卡重生成：deep_value n=27→21（S3 移除）、supply_accum 33→24（S3/S4 移除，14d 57.6→75.0）、rise_accum 41→12（S1 移除，14d 34.1→41.7）；_exp_benchmark_3y / j2_channel_status 同步刷新；冒烟 122/0/0。
