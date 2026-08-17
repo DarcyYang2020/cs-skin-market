@@ -45,6 +45,7 @@ HOLD_BY_FAM = {
     "panic_resonance": 14, "panic_easing": 14,
     "rise_accum": 21, "rise_contract": 21, "volatile_accum": 21,
     "deep_value": 21, "supply_accum": 21, "base": 21, "oversold": 21,
+    "rs_accum": 180, "ct_accum": 180,  # 落地(2) 长持族（2026-08-17）
 }
 TRAILING_FAMS = {"rise_accum", "rise_contract"}
 TRAIL_PCT = 0.05
@@ -67,6 +68,8 @@ def load_chg180():
 
 def hold_for(fam, period):
     h = HOLD_BY_FAM.get(fam, 21)
+    if fam in ("rs_accum", "ct_accum"):
+        return h  # 长持族不套 S4-14d（时间早退已证伪的口径）
     if period == "S4弱市反弹":
         h = min(h, S4_MAX_HOLD)
     return h
@@ -80,7 +83,7 @@ def simulate(sigs, rule="hold21", cap_map=None):
     for s in sigs:
         by_day.setdefault(s["date"], []).append(s)
     first = min(s["date"] for s in sigs)
-    last = max(s["date"] for s in sigs) + timedelta(days=21)
+    last = max(s["date"] for s in sigs) + timedelta(days=180)  # 长持族（hold180）需要完整前视窗口
     day, active, realized = first, [], 0.0
     total_invested = 0.0
     curve, closed, exit_reasons = [], [], {}

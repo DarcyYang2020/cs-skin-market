@@ -1028,7 +1028,8 @@ def _dedup_hit(recent_buy_dates, signal_date, min_prio=None):
 
 
 DEDUP_PRIO_BY_LABEL = {"恐慌共振": 60, "深值": 50, "恐慌退潮": 40,
-                       "供给收缩": 30, "吸筹型上涨": 28, "惜售中段": 25}
+                       "供给收缩": 30, "吸筹型上涨": 28, "惜售中段": 25,
+                       "相对强度": 32, "逆市走强": 31}
 
 
 def dedup_prio_for_label(label):
@@ -1312,6 +1313,67 @@ SIGNAL_FAMILIES = (
         counterparty="供给枯竭下的踏空盘/追涨盘（在售量持续收缩=持有人惜售+新供给不足）",
         scenario="TH≥55 趋势段的深供给收缩慢涨品（合纵 2025 型）；分位>40 强势域；长持 180 日口径",
         failure_signal="供给收缩反转（sc30 回升>-5）；开箱/新供给冲击；上涨转派发（s7/s30 回升）",
+    ),
+    SignalFamily(
+        key="rs_accum",
+        label="🟢 相对强度·独立强势·长持建仓",
+        # 落地(2)（2026-08-17，P4 探针升格，预注册默认关 CS_ENGINE_RS_ACCUM=1 开）：
+        # RS30=单品30d−大盘30d>10：fwd60 +39.8/win58.1%、fwd180 +117.6/win70.6%（n=16273），
+        # 排除 rise_contract 指纹的互补子集 60d 仍 +41.3 → 独立增量。长持结构（hold 180）。
+        # 落地判据=发射口径三关（组合级+前后半段+置换）+ 独特性护栏。
+        priority=32,
+        limit=0.05,
+        trigger=lambda F: (
+            os.environ.get("CS_ENGINE_RS_ACCUM", "0") == "1"
+            and len(F["prices"]) >= 31
+            and F["chg30"] is not None and F["mchg30"] is not None
+            and F["chg30"] - F["mchg30"] > 10
+            and F["pct"] is not None and F["pct"] > 40
+            and not (F["survive"] > 0 and F["survive"] < 3000)
+            and F["supply_change_30d"] is not None and F["supply_change_30d"] <= 5
+            and not _dedup_gate(F, 32)  # rs_accum
+        ),
+        buckets=("中性企稳", "弱市观望"),
+        guards=(),
+        detail=lambda F: (
+            f"相对强度(单品30d{F['chg30']:+.1f}%−大盘{F['mchg30']:+.1f}%>10pp)+分位{F['pct']:.0f}%+供给未扩张)·"
+            f"独立强势长持·轻仓0.05·参考持有180日（P4：60d +39.8/180d +117.6）"
+        ),
+        sources=("rs_accum_strength",),
+        hypothesis="RS30>10（单品30d跑赢大盘10pp+）的强势品延续强势（P4：60d +39.8/180d +117.6，互补子集独立成立）——长持结构，与 rise_contract 互补",
+        counterparty="卖出强势品换弱势品的轮动盘",
+        scenario="任意时期的独立强势品（大盘涨跌无关的自身动量）",
+        failure_signal="RS 转负（单品跑输大盘）；供给扩张>5%；动量崩坏（单日-8%）",
+    ),
+    SignalFamily(
+        key="ct_accum",
+        label="🟢 逆市走强·独立行情·长持建仓",
+        # 落地(2)（2026-08-17，P11-Fa/P13-F1 升格，预注册默认关 CS_ENGINE_CT_ACCUM=1 开）：
+        # 大盘 chg30<0 且单品 chg30>+5：14d +6.78/30d +23.82/60d +60.42（win69%）/180d +92.09（n=5205）。
+        # 警示：P13 F1 事件占比 50.8%——事件依赖待发射口径拆解；落地判据同 rs_accum。
+        priority=31,
+        limit=0.05,
+        trigger=lambda F: (
+            os.environ.get("CS_ENGINE_CT_ACCUM", "0") == "1"
+            and len(F["prices"]) >= 31
+            and F["mchg30"] is not None and F["mchg30"] < 0
+            and F["chg30"] is not None and F["chg30"] > 5
+            and F["pct"] is not None and F["pct"] > 40
+            and not (F["survive"] > 0 and F["survive"] < 3000)
+            and F["supply_change_30d"] is not None and F["supply_change_30d"] <= 5
+            and not _dedup_gate(F, 31)  # ct_accum
+        ),
+        buckets=("中性企稳", "弱市观望"),
+        guards=(),
+        detail=lambda F: (
+            f"逆市走强(大盘30d{F['mchg30']:+.1f}%<0 而单品30d{F['chg30']:+.1f}%)+分位{F['pct']:.0f}%+供给未扩张)·"
+            f"独立行情长持·轻仓0.05·参考持有180日（P11-Fa：60d +60.4/180d +92.1）"
+        ),
+        sources=("ct_accum_strength",),
+        hypothesis="大盘走弱期单品逆市走强（mchg30<0 且 chg30>+5）= 资金独立运作指纹，长持延续（P11-Fa 180d +92.1）",
+        counterparty="趁大盘弱市抛压的跟风盘",
+        scenario="大盘 S3/S4 走弱期的逆市强势品（独特性发声通道）",
+        failure_signal="补跌（大盘企稳后强势品反而回落）；供给扩张>5%；事件窗内单簇依赖",
     ),
     SignalFamily(
         key="volatile_accum",
@@ -1878,6 +1940,8 @@ def decide_fusion_signal(
         "s30": sum(supply_hist[-30:]) / 30 if len(supply_hist) >= 30 else None,
         "chg7": (current / prices[-8] - 1) * 100 if len(prices) >= 8 else None,
         "chg5": (current / prices[-6] - 1) * 100 if len(prices) >= 6 else None,
+        # 落地(2)（2026-08-17）：单品 30 日动量（相对强度 rs30 = chg30 − mchg30 用）
+        "chg30": (current / prices[-31] - 1) * 100 if len(prices) >= 31 else None,
         # T4（2026-08-10）：8 日动量（current vs 8 个交易日前），供吸筹族泵后横盘门使用
         "chg8": (current / prices[-9] - 1) * 100 if len(prices) >= 9 else None,
         "dd30": (current / max(prices[-30:]) - 1) * 100 if len(prices) >= 30 else 0.0,
@@ -1944,7 +2008,7 @@ def decide_fusion_signal(
     # 后置族循环不评估），这正是引擎错过抽象派1337/合纵类单调爬升品的根因。
     # 允许买涨族（rise_accum 默认开 / rise_contract v6 候选默认关）从 hold/reduce 升级 buy（族内自含环境门）。
     if fd.action in ("hold", "reduce") and not fd.liquidity_filtered:
-        for _fam_key in ("rise_accum", "rise_contract", "volatile_accum"):
+        for _fam_key in ("rise_accum", "rise_contract", "volatile_accum", "rs_accum", "ct_accum"):
             _fam = SIGNAL_FAMILY_BY_KEY.get(_fam_key)
             if _fam is None or not _fam.trigger(F):
                 continue

@@ -1,0 +1,56 @@
+{
+ "probe": "落地(2) RS+CT 三关+护栏",
+ "cut": "2026-03-02",
+ "base": {
+  "signals": 189,
+  "total_return_pct": 397.02,
+  "max_drawdown_pct": -14.09
+ },
+ "variant": {
+  "signals": 1803,
+  "total_return_pct": 191.69,
+  "max_drawdown_pct": -38.15
+ },
+ "front": {
+  "base": {
+   "total_return_pct": 278.53
+  },
+  "variant": {
+   "total_return_pct": 189.69
+  }
+ },
+ "back": {
+  "base": {
+   "total_return_pct": 31.56
+  },
+  "variant": {
+   "total_return_pct": -0.13
+  }
+ },
+ "added": {
+  "n": 1618,
+  "rs_ct": 1618,
+  "net14": {
+   "n": 1618,
+   "win": 45.7,
+   "avg": 3.55
+  },
+  "net60": {
+   "n": 1407,
+   "win": 53.8,
+   "avg": 27.86
+  }
+ },
+ "guard": {
+  "fixture_base": 11,
+  "fixture_variant": 73,
+  "fixture_rs_ct_hits": 62
+ },
+ "verdict": {
+  "gate1_combo": false,
+  "gate2_frontback": false,
+  "gate3_emission": true,
+  "guard_uniqueness": true,
+  "land": false
+ }
+}

@@ -916,6 +916,62 @@ def t_period_route():
          ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision) = orig
 check('大盘时期路由 CS_ENGINE_PERIOD_ROUTE（v2-T13 默认开）', t_period_route)
 
+def t_rs_ct_families():
+    """落地(2)（2026-08-17）：rs_accum/ct_accum 长持族候选——默认关不升级；开时从 hold 升级 buy 0.05。"""
+    import os
+    from types import SimpleNamespace
+    import pipeline.item_analysis as ia
+    pos = SimpleNamespace(percentile_90d=80.0, zscore_90d=1.0, high_90d=100.0,
+                          low_90d=50.0, mean_90d=75.0, median_90d=76.0,
+                          current_price=115.0, data_points=90, valuation_tier='overvalued')
+    orig = (ia._analyze_position, ia.compute_sentiment_score, ia.compute_sentiment_factor,
+            ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision)
+    ia._analyze_position = lambda prices: pos
+    ia.compute_sentiment_score = lambda: 50
+    ia.compute_sentiment_factor = lambda: 0.0
+    ia.event_risk_coefficient = lambda: 1.0
+    ia.compute_micro_th = lambda prices: 30
+    def fake_fd(*a, **k):
+        return SimpleNamespace(action='hold', action_label='🟢 持有', action_detail='',
+                               deduction_sources=[], zone='overvalued', zone_label='高估',
+                               liquidity_filtered=False, percentile_90d=80.0,
+                               raw_th_score=60, corrected_th_score=60, position_limit=0.0)
+    ia.compute_fusion_decision = fake_fd
+    prices = [100.0] * 60 + [115.0] * 30     # 单品 30d +15%（prices[-31]=100 → chg30=+15）
+    supply = [100] * 60                      # 供稳：supply_change_30d=0 ≤ 5
+    kw = dict(name='Test', supply_hist=supply, market_pct_90d=60.0,
+              market_cycle='markup', market_zscore=0.0, market_th_score=60,
+              market_30d_change=-5.0, market_drop21=0.0, market_180d_change=-5.0,
+              recent_buy_dates=[], signal_date='2026-03-01')
+    old = (os.environ.get("CS_ENGINE_RS_ACCUM"), os.environ.get("CS_ENGINE_CT_ACCUM"))
+    try:
+        os.environ.pop("CS_ENGINE_RS_ACCUM", None)
+        os.environ.pop("CS_ENGINE_CT_ACCUM", None)
+        res = ia.run_item_analysis(prices=prices, **kw)
+        assert res.fusion_decision['action'] == 'hold', res.fusion_decision['action']  # 默认关
+        os.environ["CS_ENGINE_RS_ACCUM"] = "1"
+        res = ia.run_item_analysis(prices=prices, **kw)
+        fd = res.fusion_decision
+        assert fd['action'] == 'buy' and 'rs_accum_strength' in fd['deduction_sources'], \
+            fd['deduction_sources']
+        assert fd['position_limit'] == 0.05, fd['position_limit']
+        os.environ.pop("CS_ENGINE_RS_ACCUM", None)
+        os.environ["CS_ENGINE_CT_ACCUM"] = "1"
+        res = ia.run_item_analysis(prices=prices, **kw)
+        fd = res.fusion_decision
+        assert fd['action'] == 'buy' and 'ct_accum_strength' in fd['deduction_sources'], \
+            fd['deduction_sources']
+        assert fd['position_limit'] == 0.05, fd['position_limit']
+    finally:
+        for k, v in zip(("CS_ENGINE_RS_ACCUM", "CS_ENGINE_CT_ACCUM"), old):
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+        (ia._analyze_position, ia.compute_sentiment_score, ia.compute_sentiment_factor,
+         ia.event_risk_coefficient, ia.compute_micro_th, ia.compute_fusion_decision) = orig
+check('落地(2) rs_accum/ct_accum 长持族候选（默认关）', t_rs_ct_families)
+
 def t_market_signal():
     """大盘信号+风险仪表（2026-08-17 模块 A+D）：动作区映射/统计/风险档位/实库集成。"""
     from pipeline.market_signal import _stats, _risk_level, market_signal, _ACTION

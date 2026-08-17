@@ -24,6 +24,7 @@ FAMILY_LABEL_MAP = [
     ("供给收缩", "supply_accum"), ("吸筹型上涨", "rise_accum"),
     ("深收缩慢涨", "rise_contract"), ("惜售中段", "xishou_mid"),
     ("超跌反弹", "oversold_bounce"),
+    ("相对强度", "rs_accum"), ("逆市走强", "ct_accum"),  # 落地(2)（2026-08-17）
 ]
 
 # 特征快照列（第一批 2026-08-16：族特征卡/漂移监测的存料）

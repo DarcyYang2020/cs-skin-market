@@ -27,6 +27,8 @@ def signal_guidance(action_label: str = "", expectancy: dict = None, action: str
         sig_type, type_label = "panic", "恐慌共振"
     elif "超跌" in label:
         sig_type, type_label = "oversold", "超跌反弹"
+    elif "长持" in label:
+        sig_type, type_label = "longhold", "长持结构"
     elif "吸筹" in label:
         sig_type, type_label = "accumulate", "周期吸筹"
     else:
@@ -38,6 +40,9 @@ def signal_guidance(action_label: str = "", expectancy: dict = None, action: str
                 "恐慌共振类单品参考14日（30d期望回落），止损建议-25%（恐慌深洗勿收太紧）")
     elif sig_type == "oversold":
         hold = "组合口径统一持有21日；超跌反弹类单品参考14日，止损建议-20%"
+    elif sig_type == "longhold":
+        hold = ("长持结构类：独立强势长持参考 60~180 日（相对强度/逆市走强证据），"
+                "组合口径统一 hold21 模拟；止损建议-20%")
     elif sig_type == "accumulate":
         hold = "周期吸筹类：建议持有21日退出（同低位低估类回测），止损建议-20%"
     else:
