@@ -376,11 +376,11 @@ tbody tr:hover td { background: var(--bg-hover); }
   border: 1px solid transparent;
 }
 .regime-greedy { background: var(--red-bg); border-color: var(--red-border); color: var(--red); }
-.regime-vbottom { background: var(--purple-bg); border-color: var(--purple-border); color: var(--purple); }
-.regime-risky { background: var(--red-bg); border-color: var(--red-border); color: var(--red); }
-.regime-panic { background: var(--orange-bg); border-color: var(--orange-border); color: var(--orange); }
-.regime-ok { background: var(--green-bg); border-color: var(--green-border); color: var(--green); }
-.regime-weak { background: var(--yellow-bg); border-color: var(--yellow-border); color: var(--yellow); }
+.regime-p { background: var(--purple-bg); border-color: var(--purple-border); color: var(--purple); }
+.regime-s1 { background: var(--green-bg); border-color: var(--green-border); color: var(--green); }
+.regime-s2 { background: #e6f7ff; border-color: #91d5ff; color: #1890ff; }
+.regime-s3 { background: var(--red-bg); border-color: var(--red-border); color: var(--red); }
+.regime-s4 { background: var(--orange-bg); border-color: var(--orange-border); color: var(--orange); }
 
 /* ============================ Tabs ============================ */
 .tabs {

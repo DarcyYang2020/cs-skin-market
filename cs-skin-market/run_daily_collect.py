@@ -513,7 +513,16 @@ def main():
     except Exception as e:
         log(f"监控事件生成异常（不中断采集）: {e}")
 
-    # 数据保留清理（365/90/7 天 + VACUUM，口径 references/data-layer.md）
+    # 大盘五时期持久化（2026-08-16）：当日 M1 状态追加进 market_state_daily.json（纯本地，不中断采集）
+    try:
+        from pipeline.market_period import append_daily_state
+        _st = append_daily_state()
+        if _st:
+            log(f"大盘时期: {_st['period']} (chg180={_st['chg180']} chg30={_st['chg30']}) -> market_state_daily.json")
+    except Exception as e:
+        log(f"大盘时期持久化异常（不中断采集）: {e}")
+
+    # 数据保留清理（365/1095/90/7 天 + VACUUM，口径 references/data-layer.md）
     try:
         from pipeline.db import run_retention_cleanup
         _rc = run_retention_cleanup(vacuum=True)

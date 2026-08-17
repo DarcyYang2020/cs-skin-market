@@ -1370,8 +1370,10 @@ def item_history_start(conn, item_id):
 # ---- Cleanup ----
 
 
-# 数据保留策略（2026-08-09 落地，口径见 references/data-layer.md）：
-#   price_history / snapshots / market_index / monitor_events / market_snapshot 保留 365 天；
+# 数据保留策略（2026-08-09 落地，2026-08-16 大盘五时期更新，口径见 references/data-layer.md）：
+#   price_history / snapshots / monitor_events / market_snapshot 保留 365 天；
+#   market_index 保留 1095 天（3 年）——五时期长周期轴 chg180 需 180 天回看 + 周期完整性
+#     （2026-08-16 一次性回填至 2023-11-17 起，见 references/backfill_market_index_3y.py）；
 #   scan_progress_*.json / discover_progress_*.json 等进度文件 7 天；scan_*.md 旧报告 90 天；
 #   runtime jsonl 日志（price_history_write_log/caliber_override_log/signal_tracking_reconcile/csqaq_chart_probe）365 天；
 #   monitor_rank_snapshot 为研究型数据积累（大户集中度），不清理。
@@ -1380,7 +1382,7 @@ def item_history_start(conn, item_id):
 _RETENTION_TABLE_DAYS = {
     "price_history": 365,
     "snapshots": 365,   # date 为 YYYY-MM-DD HH:MM:SS，按日期部分比较
-    "market_index": 365,
+    "market_index": 1095,
     "monitor_events": 365,
     "market_snapshot": 365,   # 2026-08-13：全市场周度快照保留 365 天，控制研究型面板增长预算
 }

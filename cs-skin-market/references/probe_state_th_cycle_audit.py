@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-"""审计④补完：状态桶六态 / TH 三区 / 周期四相 × 事件窗口交叉（2026-08-16，只读）。
+"""审计④补完：状态桶五时期 / TH 三区 / 周期四相 × 事件窗口交叉（2026-08-16，只读）。
 
 与 probe_sent_bucket_audit.py 同口径买点池：pct90≤40 & z≤0（宽口径买点池），扣 2% 双边成本。
-市场口径走引擎自身 build_market_context（含真实 TH/sent/chg30，离线确定性）。
+市场口径走引擎自身 build_market_context（含真实 TH/sent/chg30/chg180，离线确定性）。
+2026-08-16：状态桶由旧六态切大盘五时期（chg180×chg30，market-bucket-alignment.md v2）。
 回答缺陷4：「状态桶/TH/周期在正常市是否失真」——每格报 fwd14/fwd30。
 """
 import json
@@ -50,7 +51,7 @@ def main():
     items = [r["id"] for r in c.execute("SELECT id FROM items WHERE good_id>0").fetchall()]
     c.close()
 
-    bucket_cells = {}  # 六态 × 事件/正常
+    bucket_cells = {}  # 五时期 × 事件/正常
     th_cells = {}      # TH 三区 × 事件/正常
     cycle_cells = {}   # 周期四相 × 事件/正常
 
@@ -79,7 +80,7 @@ def main():
             tag = "事件" if ev else "正常"
             rec = {"fwd14": fwd14, "fwd30": fwd30}
 
-            bucket_cells.setdefault(f"{state_bucket(m['sentiment'], m['th'], m['chg30'])}×{tag}", []).append(rec)
+            bucket_cells.setdefault(f"{state_bucket(m['chg180'], m['chg30'])}×{tag}", []).append(rec)
             th = m["th"]
             zone = "TH<35" if th < 35 else ("TH35-54" if th < 55 else "TH≥55")
             th_cells.setdefault(f"{zone}×{tag}", []).append(rec)

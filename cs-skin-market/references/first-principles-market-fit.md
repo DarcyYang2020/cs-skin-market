@@ -125,7 +125,7 @@
 
 **系统当前假设**
 - 情绪 = 贪婪指数逆向映射（`pipeline/market_macro.py:127-163`：raw≥150 → sent 5 极端贪婪危险；raw<60 → sent 95 极度恐惧机会）。
-- 六态状态桶（`pipeline/market_context.py:162-192`）；恐慌阈值 sent≥75；守卫1 market_weak（大盘 TH<45 且 mchg30<0 禁买）已冻结。
+- 大盘五时期状态桶（`pipeline/market_context.py` state_bucket，2026-08-16 定稿，chg180×chg30 路由，旧六态退役，见 market-bucket-alignment.md v2）；贪婪禁入（sent≤30）为覆盖层；守卫1 market_weak（大盘 TH<45 且 mchg30<0 禁买）已冻结。
 - 事件日历 `EVENT_CALENDAR`：3 条历史黑天鹅 + 未来条目由用户配置（F-1 提示层已落地）。
 
 **真实机制**
@@ -281,7 +281,7 @@
 | `pipeline/supply.py:29-124` | 供给趋势 + 吸筹/派发 + 事件风险折扣 |
 | `pipeline/valuation.py:29/90` | 估值分位 / 3x4 宫格 |
 | `pipeline/market_macro.py:127-163` | 贪婪指数→逆向情绪映射 |
-| `pipeline/market_context.py:162-192` | 六态状态桶 |
+| `pipeline/market_context.py` state_bucket | 大盘五时期状态桶（2026-08-16 定稿，旧六态退役） |
 | `pipeline/collector_csqaq.py:78-132` | 日线聚合（close + in_sale 末点） |
 | `pipeline/collector_csqaq.py:149` | 多 chart 悠悠双锚挑选 |
 | `pipeline/collector_csqaq.py:485-586` | info/good 权威锚 + DOM 兜底 |

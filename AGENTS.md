@@ -118,7 +118,7 @@ J-2 三通道监测数据照常收集：A 独立恐慌事件≥3 / B v2 样本�
 
 ## 数据保留策略
 
-- price_history、snapshots、market_index、monitor_events：保留 365 天；scan_*.md 旧报告 90 天；进度文件（scan_progress_*/discover_progress_*）7 天；scan_history JSON 保留最近 30 份；monitor_rank_snapshot 为研究型数据积累不清理；池台账 `pool_maintenance_log.jsonl` 不清理。
+- price_history、snapshots、monitor_events：保留 365 天；market_index：保留 1095 天（3 年，五时期长周期轴 chg180 需要，2026-08-16 已一次性回填至 2023-11-17）；scan_*.md 旧报告 90 天；进度文件（scan_progress_*/discover_progress_*）7 天；scan_history JSON 保留最近 30 份；monitor_rank_snapshot 为研究型数据积累不清理；池台账 `pool_maintenance_log.jsonl` 不清理。
 - 清理由批量扫描收尾与每日任务（run_daily_collect.py）自动执行（`pipeline/db.py:run_retention_cleanup`，含 VACUUM）；完整口径见 `cs-skin-market/references/data-layer.md`。
 
 ## 常见坑

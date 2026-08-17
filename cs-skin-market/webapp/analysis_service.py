@@ -763,7 +763,7 @@ _EXP_REGIME_CACHE = {"mtime": 0.0, "data": None}
 def _load_expectancy_by_regime():
     """只读加载 B-1 状态分层聚合产物（data/_exp_expectancy_by_regime.json），mtime 缓存。
 
-    产物由 references/expectancy_by_regime.py 生成（六态×族 n/win14/avg14/win30/avg30，net 已扣 2%）；
+    产物由 references/expectancy_by_regime.py 生成（五时期×族 n/win14/avg14/win30/avg30，net 已扣 2%）；
     文件缺失/解析失败返回 None，展示层静默降级为仅全局徽章。纯展示口径，不参与引擎决策。
     """
     _p = Path(__file__).resolve().parent.parent / "data" / "_exp_expectancy_by_regime.json"
@@ -834,14 +834,15 @@ def market_expectancy_card():
     市场级信息，与具体品无关：同族品、同一时期所有报告显示相同，故从单品报告
     决策条移出，改为仪表盘常驻卡片统一展示。
 
-    纯展示：状态桶 = market_context.state_bucket（与单品报告同口径三输入）；
-    当前桶分层 = B-1 产物 _exp_expectancy_by_regime.json（六态×族 n/win14/avg30，net 已扣 2%）；
+    纯展示：状态桶 = market_context.state_bucket（大盘五时期，chg180×chg30，2026-08-16 定稿，
+    与单品报告同口径；贪婪禁入为 batch_scan.market_regime 覆盖层，不进入本卡分层）；
+    当前桶分层 = B-1 产物 _exp_expectancy_by_regime.json（五时期×族 n/win14/avg30，net 已扣 2%）；
     全局 = config.ITEM_EXPECTANCY_STATS（HIST-FULL 基线）。产物缺失静默降级。
     """
     ms = market_snapshot()
     try:
         from pipeline.market_context import state_bucket as _sb
-        bucket = _sb(ms.get("sentiment"), ms.get("th"), ms.get("chg30"))
+        bucket = _sb(ms.get("chg180"), ms.get("chg30"))
     except Exception:
         bucket = ""
     _rb = (_load_expectancy_by_regime() or {}).get("regimes") or {}
@@ -890,7 +891,9 @@ def market_expectancy_card():
             "key": _key, "label": _label,
             "n": _n,
             "win14": _f.get("win14"), "avg30": _f.get("avg30"),
-            "insufficient": _n < 5,
+            # 2026-08-16：五时期下某些桶×族 30d 样本为 0（如 S3×deep_value n30=0），
+            # 统计缺失视同 insufficient（不展示，防模板对 None 格式化）
+            "insufficient": _n < 5 or _f.get("win14") is None or _f.get("avg30") is None,
             "global_n": _g.get("n"), "global_win14": _g.get("win14"),
             "global_avg30": _g.get("avg30"),
             "global_win14_3pct": _s.get("win14_3pct"),

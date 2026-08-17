@@ -1050,9 +1050,9 @@ def _dedup_gate(F, prio):
     return _dedup_hit(F["recent_buy_dates"], F["signal_date"])
 
 
-def _state_bucket(sentiment_score, market_th_score, market_30d_change):
-    """六态状态桶（引擎口径，单一来源 market_context.state_bucket；展示层已对齐）。"""
-    return state_bucket(sentiment_score, market_th_score, market_30d_change)
+def _state_bucket(market_180d_change, market_30d_change):
+    """大盘五时期状态桶（2026-08-16 定稿，单一来源 market_context.state_bucket；旧六态已退役）。"""
+    return state_bucket(market_180d_change, market_30d_change)
 
 
 def _vol7_of(prices):
@@ -1863,7 +1863,7 @@ def decide_fusion_signal(
         "bid_now": _bid_near(bid_history, signal_date),
         "bid_peak": _bid_near(bid_history, _peak_date_of(signal_date, _dd20_age_of(prices))),
     }
-    bucket = _state_bucket(sentiment_score, market_th_score, market_30d_change)
+    bucket = _state_bucket(market_180d_change, market_30d_change)
 
     # ---- 基础族：守卫1（市场弱/存世量/半山腰/7天去重/飞刀确认）----
     _apply_guards(fd, F, _GUARD1)
@@ -2106,9 +2106,9 @@ def run_item_analysis(
     )
 
     # ==================== 统一大脑阶段3：统一决策核心 ====================
-    # 信号族注册制 + 六态状态桶 + 固定优先级 + 族级闸门
+    # 信号族注册制 + 大盘五时期状态桶（2026-08-16 起，旧六态退役）+ 固定优先级 + 族级闸门
     # 见 references/engine-unified.md §3：阶段3 聚焦架构统一，不做期望分档；
-    # 语义与阶段2 前串行链保真，新族（S2回踩/牛动量）只需注册到 SIGNAL_FAMILIES。
+    # 语义与阶段2 前串行链保真，新族只需注册到 SIGNAL_FAMILIES。
     micro_th = compute_micro_th(prices)
     bid_support = compute_bid_support(order_book)
     supply = analyze_supply(prices, supply_hist, vol_total, item_meta)

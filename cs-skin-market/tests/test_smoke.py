@@ -2021,30 +2021,29 @@ check('health_monitor 检查→upsert→status 判定', t_health_monitor)
 print('[I-1 市场状态标注]')
 def t_regime():
     from pipeline.batch_scan import market_regime
-    # 贪婪禁入
-    l, c, _ = market_regime(25, -5, 50)
+    # 贪婪禁入：覆盖层（任何时期生效）
+    l, c, _ = market_regime(10, -18, 25)
     assert l == '贪婪禁入' and c == 'regime-greedy', (l, c)
-    # V型底区：恐慌 + 深跌
-    l, c, _ = market_regime(85, -18, 35)
-    assert l == 'V型底区' and c == 'regime-vbottom', (l, c)
-    # 阴跌中继区：恐慌 + 中跌
-    l, c, _ = market_regime(85, -7.6, 35)
-    assert l == '阴跌中继区' and c == 'regime-risky', (l, c)
-    # 恐慌浅跌
-    l, c, _ = market_regime(85, -2, 35)
-    assert l == '恐慌浅跌' and c == 'regime-panic', (l, c)
-    # 中性企稳：非恐慌 + TH>=45
-    l, c, _ = market_regime(60, -5, 50)
-    assert l == '中性企稳' and c == 'regime-ok', (l, c)
-    # 弱市观望：非恐慌 + TH<45
-    l, c, _ = market_regime(60, -5, 40)
-    assert l == '弱市观望' and c == 'regime-weak', (l, c)
-    # 边界：chg30 恰好 -15 属 V型底；-5 属阴跌中继（> -15 且 <= -5）
-    assert market_regime(85, -15, 35)[0] == 'V型底区'
-    assert market_regime(85, -5, 35)[0] == '阴跌中继区'
-    # None 兜底
-    assert market_regime(None, None, None)[0] == '中性企稳'
-check('market_regime 六态判定', t_regime)
+    # P 恐慌深跌：chg30 ≤ -15（含边界）
+    l, c, _ = market_regime(5, -18, 60)
+    assert l == 'P 恐慌深跌' and c == 'regime-p', (l, c)
+    assert market_regime(5, -15, 60)[0] == 'P 恐慌深跌'
+    # S1 牛市上行：chg180>0 且 chg30>0
+    l, c, _ = market_regime(5, 2, 60)
+    assert l == 'S1 牛市上行' and c == 'regime-s1', (l, c)
+    # S2 牛市回调：chg180>0 且 chg30≤0（含边界 0）
+    l, c, _ = market_regime(5, -2, 60)
+    assert l == 'S2 牛市回调' and c == 'regime-s2', (l, c)
+    assert market_regime(5, 0, 60)[0] == 'S2 牛市回调'
+    # S3 弱市阴跌：chg180≤0 且 chg30≤0
+    l, c, _ = market_regime(-5, -2, 60)
+    assert l == 'S3 弱市阴跌' and c == 'regime-s3', (l, c)
+    # S4 弱市反弹：chg180≤0 且 chg30>0
+    l, c, _ = market_regime(-5, 2, 60)
+    assert l == 'S4 弱市反弹' and c == 'regime-s4', (l, c)
+    # None 兜底：缺省 0×0 → S3（保守空仓区）
+    assert market_regime(None, None, None)[0] == 'S3 弱市阴跌'
+check('market_regime 五时期判定', t_regime)
 
 print('[B1 风险预算层]')
 def t_b1_risk():
@@ -2170,12 +2169,13 @@ def t_market_expectancy_card():
     _prod = _P(__file__).resolve().parent.parent / 'data' / '_exp_expectancy_by_regime.json'
     assert _prod.exists(), 'B-1 产物缺失'
     card = market_expectancy_card()
-    assert card['bucket'] in ('V型底区', '阴跌中继区', '恐慌浅跌', '中性企稳', '弱市观望', '贪婪禁入'), card
+    assert card['bucket'] in ('P恐慌深跌', 'S1牛市上行', 'S2牛市回调', 'S3弱市阴跌', 'S4弱市反弹'), card
     _fam = {f['key']: f for f in card['families']}
     assert set(_fam) == {'panic', 'deep_value', 'accumulate'}, _fam.keys()
     for _k, _f in _fam.items():
         assert _f['global_n'] and _f['global_win14'] is not None and _f['global_avg30'] is not None, _f
-        assert _f['insufficient'] == (_f['n'] < 5), _f
+        # 2026-08-16 五时期：统计缺失（win14/avg30 None，如 S3×deep_value n30=0）视同 insufficient
+        assert _f['insufficient'] == (_f['n'] < 5 or _f['win14'] is None or _f['avg30'] is None), _f
     # 当前桶数据字段齐备（数字或 None）
     assert 'bucket_total' in card and 'bucket_win14' in card, card
     # 2026-08-14：风险调整后收益视图进入期望卡，主指标不是只看胜率
@@ -2476,12 +2476,12 @@ def t_monitor_events():
     m.execute("""CREATE TABLE monitor_events (id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT,
         item_id INTEGER, item_name TEXT, event_type TEXT, level TEXT, detail TEXT,
         dedup_key TEXT UNIQUE, created_at TEXT)""")
-    evs3 = _mon._gen_market_events(m, "2026-08-08", "阴跌中继区")
+    evs3 = _mon._gen_market_events(m, "2026-08-08", "S3弱市阴跌")
     assert any(e["event_type"] == "market_state" and e["level"] == "info" for e in evs3)
     assert not any("切换" in e["detail"] for e in evs3), "无历史不应触发切换"
     m.execute("INSERT INTO monitor_events (date, item_id, item_name, event_type, level, detail, dedup_key) "
-              "VALUES ('2026-08-07', NULL, NULL, 'market_state', 'info', '大盘状态：中性企稳', '2026-08-07||market_state')")
-    evs4 = _mon._gen_market_events(m, "2026-08-08", "阴跌中继区")
+              "VALUES ('2026-08-07', NULL, NULL, 'market_state', 'info', '大盘状态：S1牛市上行', '2026-08-07||market_state')")
+    evs4 = _mon._gen_market_events(m, "2026-08-08", "S3弱市阴跌")
     assert any("切换" in e["detail"] and e["level"] == "warn" for e in evs4), evs4
 
     m.execute("CREATE TABLE executions (id INTEGER PRIMARY KEY AUTOINCREMENT, item_id INTEGER, name TEXT, "
@@ -2517,7 +2517,7 @@ def t_monitor_run_guard():
     m.row_factory = sqlite3.Row
     _db._init_schema(m)
     ctx = _mon._market_ctx_from_db(m)
-    assert ctx["bucket"] in ("中性企稳", "弱市观望", "贪婪禁入", "恐慌浅跌", "阴跌中继区", "V型底区"), ctx
+    assert ctx["bucket"] in ("P恐慌深跌", "S1牛市上行", "S2牛市回调", "S3弱市阴跌", "S4弱市反弹"), ctx
     assert ctx["th"] == 50.0 and ctx["chg30"] == 0.0
 check('M1 监控空库守卫 + 默认大盘上下文', t_monitor_run_guard)
 
@@ -2527,7 +2527,7 @@ def t_monitor_push():
     """M2 推送：正文组装（danger 明细 + warn/info 计数）+ 无 webhook 跳过（不写幂等 key）。"""
     import os
     from pipeline import monitor as _mon
-    summary = {"date": "2099-01-01", "bucket": "阴跌中继区", "analyzed": 25, "skipped": 0}
+    summary = {"date": "2099-01-01", "bucket": "S3弱市阴跌", "analyzed": 25, "skipped": 0}
     events = [
         {"item_id": 9, "item_name": "AWP | 非持仓", "event_type": "price_spike", "level": "danger",
          "detail": "单日 -9%"},
@@ -2542,7 +2542,7 @@ def t_monitor_push():
         {"item_id": 5, "item_name": "AWP | 浮生如梦", "event_type": "near_buy", "level": "warn",
          "detail": "买点接近度 100%"},
         {"item_id": None, "item_name": None, "event_type": "market_state", "level": "info",
-         "detail": "大盘状态：阴跌中继区"},
+         "detail": "大盘状态：S3弱市阴跌"},
     ]
     title, text = _mon._build_push_text(summary, events, "night")
     assert "🚨2危险" in title and "破位止损" in text, (title, text)
@@ -2572,7 +2572,7 @@ check('M2 监控推送组装 + 无 webhook 跳过', t_monitor_push)
 def t_monitor_slots():
     """M3 双时段：标题区分午间/晚间；推送幂等 key 按 slot 独立；事件 dedup 前缀区分并存。"""
     from pipeline import monitor as _mon
-    summary = {"date": "2099-01-03", "bucket": "阴跌中继区", "analyzed": 25, "skipped": 0}
+    summary = {"date": "2099-01-03", "bucket": "S3弱市阴跌", "analyzed": 25, "skipped": 0}
     events = [{"item_id": 1, "item_name": "AWP | 火卫一", "event_type": "stop_loss", "level": "danger",
                "detail": "现价 ≤ 成本-25%"}]
     t_n, _ = _mon._build_push_text(summary, events, "noon")
@@ -2593,9 +2593,9 @@ def t_monitor_slots():
             assert conn.execute("SELECT value FROM settings WHERE key=?", (k,)).fetchone() is None, k
         evs = [
             {"item_id": None, "item_name": None, "event_type": "market_state", "level": "info",
-             "detail": "大盘状态：阴跌中继区", "dedup_key": f"noon::{summary['date']}||market_state"},
+             "detail": "大盘状态：S3弱市阴跌", "dedup_key": f"noon::{summary['date']}||market_state"},
             {"item_id": None, "item_name": None, "event_type": "market_state", "level": "info",
-             "detail": "大盘状态：阴跌中继区", "dedup_key": f"night::{summary['date']}||market_state"},
+             "detail": "大盘状态：S3弱市阴跌", "dedup_key": f"night::{summary['date']}||market_state"},
         ]
         _db.save_monitor_events(conn, summary["date"], evs)
         conn.commit()
@@ -2613,7 +2613,7 @@ def t_monitor_push_idempotent():
     """M2 修复：推送成功后幂等 key 持久化(commit)，同日重跑返回 already_pushed 不重复推。"""
     from unittest import mock
     from pipeline import monitor as _mon, db as _db
-    summary = {"date": "2099-01-04", "bucket": "阴跌中继区", "analyzed": 25, "skipped": 0}
+    summary = {"date": "2099-01-04", "bucket": "S3弱市阴跌", "analyzed": 25, "skipped": 0}
     events = [{"item_id": 1, "item_name": "AWP | 火卫一", "event_type": "stop_loss", "level": "danger",
                "detail": "现价 ≤ 成本-25%"}]
     key = "monitor_push_2099-01-04_noon"
@@ -3563,7 +3563,7 @@ def t_saved_report_expectancy():
         fusion_decision={"action": "buy",
                          "action_label": "🟢 供给收缩·启动前吸筹·分批建仓",
                          "zone_label": "低位低估",
-                         "state_bucket": "中性企稳",
+                         "state_bucket": "S1牛市上行",
                          "deduction_sources": ["supply_contraction_accumulation"]},
     )
     conn = _db.get_conn()
@@ -3586,7 +3586,7 @@ def t_saved_report_expectancy():
         # 2026-08-12 期望徽章已抽离为外部卡：快照/重建报告均不再逐品展示（市场级信息）
         assert "回测 14d" not in html and "样本 n=" not in html, "期望徽章应从单品报告移除"
         # 状态桶徽章 + 决策链 trace 保留（单品特有）
-        assert "市场状态" in html and "中性企稳" in html, "状态桶徽章缺失"
+        assert "市场状态" in html and "S1牛市上行" in html, "状态桶徽章缺失"
         assert "命中·供给收缩吸筹族" in html, "trace 决策链缺失"
         # 外部常驻卡片数据可用（dashboard）
         from webapp.analysis_service import market_expectancy_card

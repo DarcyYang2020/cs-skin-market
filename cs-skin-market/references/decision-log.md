@@ -239,6 +239,8 @@
 - [EXIT-9/10/11 ATR 自适应止损网格：不立项，维持 hold21（2026-08-15，只读研究）](#exit-91011-atr-自适应止损网格不立项维持-hold212026-08-15只读研究)
 - [EXIT-9/10/11 v2-T9 复跑：CLEAN-CUR 出现一个通过门槛的候选（2026-08-15，待复核）](#exit-91011-v2-t9-复跑clean-cur-出现一个通过门槛的候选2026-08-15待复核)
 - [v2-T9 0-value gap 回补 + CLEAN-CUR 297→230（2026-08-15，数据修正，引擎代码未改）](#v2-t9-0-value-gap-回补-clean-cur-2972302026-08-15数据修正引擎代码未改)
+- [X. 用户七条裁定入册 + 两份方案定稿（2026-08-16）](#x-用户七条裁定入册--两份方案定稿2026-08-16落地全面暂停)
+- [Y. 大盘五时期口径落地：旧六态退役 + 生产库 3 年历史回填（2026-08-16）](#y-大盘五时期口径落地旧六态退役--生产库-3-年历史回填2026-08-16)
 
 ---
 
@@ -4316,3 +4318,16 @@ Fluxo 25→280 约 11 倍），尖顶后 3 天 -86~94%，与枪皮统计反转�
 10. **模拟盘 v1 落地（2026-08-16，自主推进）**：`pipeline/paper_trading.py` 三表（paper_account/positions/trades）+ 每日任务接入——**全自动自主执行**：buy 信号自动建仓（信号日收盘、signal 仓位、2% 双边费）、三类出场自动（到期 21d/情绪档静态止盈止损/供给扩张全止损）；族级统计+20 笔预注册判据输出 status。冒烟 121 passed。
 11. **模拟盘 v2 升级（2026-08-16，用户裁定：用户不参与、模拟真实环境）**：改为**生产镜像**——不重算引擎，完全跟随 signal_tracking 当日 buy 信号自动建仓；出场按真实规则=供给扩张全止损（最高优先级）> 止盈/止损（情绪档；中性 2.5×ATR/贪婪 1.5×ATR 开仓时定死）> 到期；净值逐日真实收盘标记；**基准腿=同起点 HQ 等权买入持有**（paper_baseline 表），status 输出 vs 等权超额。冒烟 121 passed。
 12. **大盘时期数据挖掘定稿（2026-08-16）**：时期从 3 年数据挖出、命名只是标签（用户裁定）。五期（`probe_market_periods.py` → `data/_exp_market_periods.json`，大盘自身前视区分度）：P 恐慌深跌（chg30≤-15，14d 91%/+13.8、30d 98%/+19.4）/ S1 牛市上行（chg180>0&chg30>0，慢牛低波）/ S2 牛市回调（短平中正 +4.3@60d，二波前夜）/ S3 弱市阴跌（全负，规避）/ S4 弱市反弹（广度回升但前视全负=反抽陷阱，大盘级 F 实锤）；边界四切点稳定性 gap 2.93~6.44（2024-10 最稳）。定稿路由=chg180 长周期轴 + chg30 短周期轴 + 恐慌深跌格；sent 恐慌轴移除（弱变量+口径不一致），贪婪禁入保留为覆盖层。对齐文档 v2 定稿（market-bucket-alignment.md）；落地=state_bucket 新实现（env 切换）+大盘信号族（下一批）。
+
+## Y. 大盘五时期口径落地：旧六态退役 + 生产库 3 年历史回填（2026-08-16）
+
+- **用户裁定**：切点验证通过（五时期时间稳定性 gap 全部 ≤6.5pp，2024-10 切点最稳 2.93），**旧六态不保留兼容**（「旧6态不太贴合市场」），整体替换、不搞 env 双轨。
+- **典型时段清单**（`probe_market_period_ranges.py` → `data/_exp_market_period_ranges.json`）：P=2025-10-23~11-21（五合一）+2026-05-24~06-02（炼金）两段 45 天，与已知事件锚点一一对上；S1 最长段 2024-12-25~2025-04-09（106 天）；S2 最长 2024-05-21~08-06（78 天）；S3 最近一段 2026-07-05~08-05（32 天，8 月初刚走出）；S4 2026-06-08~07-04（平台二波窗口实锤反抽）。
+- **代码口径替换**（单一事实源不变）：`market_context.state_bucket` 新签名 `(chg180, chg30)` → P/S1/S2/S3/S4；旧 `PANIC_SENT_THRESHOLD` 与六态判定删除。调用点全量切换：item_analysis._state_bucket + decide_fusion_signal（bucket 用 market_180d_change×market_30d_change）、batch_scan.market_regime `(chg180, chg30, sent=None)`（贪婪禁入降级为展示覆盖层）、monitor._market_ctx_from_db（用 market_index_stats.chg180）、webapp.main 两处、analysis_service.market_expectancy_card。
+- **数据回填**：生产 market.db 的 market_index 366 行（365 天）→ **1005 行 2023-11-17~2026-08-17**（`references/backfill_market_index_3y.py`，从回放库补 639 行，重叠 358 天数值一致、仅 2026-08-09 差 0.4% 为回放库快照时点差异）；保留期 market_index 365→**1095 天**（db.py + AGENTS×2 + data-layer.md 同步）。`market_state_daily.json` 由 2026-08-05 延伸 +12 天至 2026-08-17（与 M1 同口径）。
+- **每日任务**：新增 `pipeline/market_period.py`（daily_state / append_daily_state）挂 run_daily_collect 收尾——当日 M1 状态（含 period 标签）幂等追加进 market_state_daily.json，失败不中断采集。
+- **B-1 期望分层换五时期**（expectancy_by_regime.py：chg180 按信号日从回放库大盘指数联算，与族卡同模式）→ `_exp_expectancy_by_regime.json` 重新生成：**P n=101 win14 87.1%/+27.1｜S1 n=17｜S2 n=70 win30 80%/+46.2（回调买 30d 全场最强）｜S3 n=55 win14 58.2%/+9.2｜S4 n=74 win14 70.3%/+11.7 但 win30 50%/+9.6（14d→30d 对半=反抽陷阱 30d 视角实锤）**。
+- **展示层**：dashboard/单品报告徽章、大盘卡片 regime 五色（P 紫/S1 绿/S2 蓝/S3 红/S4 橙）+ 贪婪禁入红保留；术语速查、index_card 文案同步。
+- **测试**：t_regime 重写（五时期边界 + 贪婪覆盖层 + None 兜底 S3 保守）；t_market_expectancy_card/t_monitor_* 断言桶集合换五时期；t_saved_report_expectancy 换 S1牛市上行。
+- **文档**：engine-unified §3.3 六桶表替换为五时期表（旧表留历史注记）；first-principles-market-fit / PROJECT_STRUCTURE / market-bucket-alignment 落地状态同步。
+- **下一步（本条目之后继续）**：③ 大盘信号族显式路由层（P抄底/S2回调买/S3-S4空仓/S4反抽标注）——B-1 已给预注册证据（S2 30d 最强、S4 30d 对半、S3 全负），回放验证后落地；④ 族特征卡五时期分层。

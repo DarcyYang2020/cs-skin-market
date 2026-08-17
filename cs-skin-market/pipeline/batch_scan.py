@@ -46,34 +46,36 @@ def signal_guidance(action_label: str = "", expectancy: dict = None, action: str
     return {"signal_type": sig_type, "type_label": type_label, "hold_guidance": hold}
 
 
-def market_regime(sent, chg30, th=None):
-    """市场状态标注（I-1，2026-08-06，纯展示层，零信号改动）。
+def market_regime(chg180, chg30, sent=None):
+    """市场状态标注（I-1，2026-08-16 起五时期口径，纯展示层，零信号改动）。
 
-    口径 = 统一状态桶（market_context.state_bucket，引擎口径 sent>=75 判恐慌，阶段4 对齐
-    engine-unified §3.3；补仓引擎的 80 分恐慌阈值是回测参数，不在此函数内）。
+    口径 = 大盘五时期（market_context.state_bucket，chg180×chg30 路由，数据挖掘定稿
+    market-bucket-alignment.md v2，替代旧六态）+ 贪婪禁入正交覆盖层（sent≤30，任何时期生效）。
     返回 (label, css_class, strategy)。用于大盘仪表盘与批量扫描的市场环境条，
     让使用者一眼看懂当前哪条腿开火。
     """
     from .market_context import state_bucket
-    label = state_bucket(sent, th, chg30)
-    if label == "贪婪禁入":
+    if sent is not None and float(sent) <= 30:
         return ("贪婪禁入", "regime-greedy",
                 "市场贪婪（sent≤30）：全腿禁入，逆势抄底期望为负，等情绪转中性/恐惧")
-    if label == "V型底区":
-        return ("V型底区", "regime-vbottom",
-                "恐慌+深跌（大盘30日≤-15%）：V型底指纹，抄底腿可提前分批；吸筹腿待企稳后评估")
-    if label == "阴跌中继区":
-        return ("阴跌中继区", "regime-risky",
-                "恐慌+中跌（大盘30日 -15~-5%）：阴跌中继风险（回测7月14d均-8.3%），"
-                "抄底腿防御——等深跌指纹或企稳确认；吸筹腿观望（需单品在售量收缩+价格平稳方可触发）")
-    if label == "恐慌浅跌":
-        return ("恐慌浅跌", "regime-panic",
-                "恐慌但大盘30日跌幅<5%：抄底腿正常开火，吸筹腿观望（需单品供给收缩+价格平稳）")
-    if label == "中性企稳":
-        return ("中性企稳", "regime-ok",
-                "非恐慌+大盘TH≥45：抄底+吸筹双腿可开火（趋势腿需价格平稳+供给收缩）")
-    return ("弱市观望", "regime-weak",
-            "非恐慌但大盘TH<45：抄底腿等待企稳，吸筹腿受门控（禁贪婪弱TH共振）")
+    label = state_bucket(chg180, chg30)
+    if label == "P恐慌深跌":
+        return ("P 恐慌深跌", "regime-p",
+                "大盘30日≤-15%：V型底指纹（回放大盘自身14d 91%/+13.8），"
+                "抄底腿可提前分批；吸筹腿待企稳后评估")
+    if label == "S1牛市上行":
+        return ("S1 牛市上行", "regime-s1",
+                "长周期牛+短周期涨：买涨腿（rise_accum/二波）与回调低吸腿正常开火；追高防供给扩张")
+    if label == "S2牛市回调":
+        return ("S2 牛市回调", "regime-s2",
+                "长周期牛+短周期回调：回调买点区——吸筹/深值腿开火（大盘自身30d 57%/+1.0），"
+                "买涨腿等 chg30 转正")
+    if label == "S3弱市阴跌":
+        return ("S3 弱市阴跌", "regime-s3",
+                "长周期弱+短周期跌：空仓区（大盘自身全期限负期望），全腿禁开新仓，持仓按止损矩阵管理")
+    return ("S4 弱市反弹", "regime-s4",
+            "长周期弱+短周期反弹：反抽陷阱（大盘自身30d 28%/-3.0），"
+            "新仓仅严格供给收缩+深跌确认，其余标注反抽嫌疑")
 
 
 def _split_topup_qty(qty):

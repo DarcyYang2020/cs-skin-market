@@ -172,37 +172,31 @@ def context_summary(ctx):
 # ============================================================
 # 统一状态桶（统一大脑阶段3/4：单一口径来源，禁止各处自行定义）
 # ============================================================
-# 引擎口径：恐慌阈值 sent>=75（P0-7 恐慌共振引擎阈值，engine-unified.md §3.3）。
-# 展示层此前用 80 分口径（I-1 遗留），阶段4 已对齐——item_analysis 与 batch_scan
-# 都必须引用本函数，避免口径再次漂移。补仓引擎的 80 分恐慌阈值是回测参数，不在本函数内。
+# 2026-08-16 定稿：旧六态（贪婪禁入/V型底区/阴跌中继区/恐慌浅跌/中性企稳/弱市观望）
+# 整体退役，替换为大盘五时期（用户裁定：切点验证通过，旧口径不保留）。
+# 路由数据挖掘自 probe_market_periods.py（3 年 813 天状态窗，边界时间稳定性全部 ≤6.5pp），
+# 定稿见 references/market-bucket-alignment.md v2。
 
-PANIC_SENT_THRESHOLD = 75
 
+def state_bucket(market_180d_change, market_30d_change):
+    """大盘五时期状态桶（引擎口径）→ label。
 
-def state_bucket(sentiment_score, market_th_score, market_30d_change):
-    """六态市场状态桶（引擎口径）→ label。
-
-    - 贪婪禁入: sent<=30
-    - V型底区(恐慌深跌): sent>=75 & chg30<=-15
-    - 阴跌中继区(恐慌中跌): sent>=75 & -15<chg30<=-5
-    - 恐慌浅跌: sent>=75 & chg30>-5
-    - 中性企稳: sent<75 & TH>=45
-    - 弱市观望: sent<75 & TH<45
+    路由（market-bucket-alignment.md v2 定稿）：
+      P 恐慌深跌: chg30 <= -15
+      S1 牛市上行: chg180 > 0 且 chg30 > 0
+      S2 牛市回调: chg180 > 0 且 chg30 <= 0
+      S3 弱市阴跌: chg180 <= 0 且 chg30 <= 0
+      S4 弱市反弹: chg180 <= 0 且 chg30 > 0
+    贪婪禁入（sent<=30）为正交覆盖层（非时期，任何时期生效），不在此函数内：
+    展示层见 batch_scan.market_regime，引擎层见单品情绪闸门（item_analysis）。
     """
-    s = float(sentiment_score) if sentiment_score is not None else 50.0
-    t = float(market_th_score) if market_th_score is not None else 50.0
-    c = float(market_30d_change) if market_30d_change is not None else 0.0
-    if s <= 30:
-        return "贪婪禁入"
-    if s >= PANIC_SENT_THRESHOLD:
-        if c <= -15:
-            return "V型底区"
-        if c <= -5:
-            return "阴跌中继区"
-        return "恐慌浅跌"
-    if t >= 45:
-        return "中性企稳"
-    return "弱市观望"
+    c180 = float(market_180d_change) if market_180d_change is not None else 0.0
+    c30 = float(market_30d_change) if market_30d_change is not None else 0.0
+    if c30 <= -15:
+        return "P恐慌深跌"
+    if c180 > 0:
+        return "S1牛市上行" if c30 > 0 else "S2牛市回调"
+    return "S3弱市阴跌" if c30 <= 0 else "S4弱市反弹"
 
 
 # ============================================================

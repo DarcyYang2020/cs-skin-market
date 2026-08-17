@@ -36,7 +36,7 @@
     <span style="font-size:14px;color:var(--text-muted);margin-left:8px;">{{ fusion_decision.zone_label }}</span>
     {% if fusion_decision.state_bucket %}
     <span style="font-size:12px;color:var(--text-muted);margin-left:8px;">市场状态</span>
-    <span class="regime-badge {{ {'V型底区':'regime-vbottom','阴跌中继区':'regime-risky','恐慌浅跌':'regime-panic','中性企稳':'regime-ok','弱市观望':'regime-weak','贪婪禁入':'regime-greedy'}.get(fusion_decision.state_bucket, '') }}">{{ fusion_decision.state_bucket }}</span>
+    <span class="regime-badge {{ {'P恐慌深跌':'regime-p','S1牛市上行':'regime-s1','S2牛市回调':'regime-s2','S3弱市阴跌':'regime-s3','S4弱市反弹':'regime-s4','贪婪禁入':'regime-greedy'}.get(fusion_decision.state_bucket, '') }}">{{ fusion_decision.state_bucket }}</span>
     {% endif %}
     {# 2026-08-12: 期望徽章（全局族 + regime 分层）已抽离为仪表盘常驻卡片 market_expectancy_card #}
   </div>
@@ -220,7 +220,7 @@
     <b>90日分位</b>：当前价在近 90 日价格中的百分位，越低越接近历史低位（≤30 低估区 / ≥70 高估区）。<br>
     <b>Z-score</b>：相对 90 日均价的偏离标准差数，≤-2 为深度超跌。<br>
     <b>在售量/供给</b>：在售件数及 7/30 日变化；收缩=供给减少（低位=吸筹，高位=锁仓诱多嫌疑），扩张+价跌=派发/抛压。<br>
-    <b>状态桶</b>：大盘六态（V型底区/阴跌中继/恐慌浅跌/中性企稳/弱市观望/贪婪禁入），决定买卖环境。<br>
+    <b>状态桶</b>：大盘五时期（P恐慌深跌 / S1牛市上行 / S2牛市回调 / S3弱市阴跌 / S4弱市反弹，2026-08-16 定稿，由大盘 180 日×30 日涨跌路由），决定买卖环境；贪婪禁入（sent≤30）为覆盖层。<br>
     <b>信号族</b>：恐慌共振（极端恐慌+深跌反转，高置信）/ 深值企稳（低估+大盘企稳）/ 恐慌退潮（恐慌后止跌）/ 供给收缩吸筹（启动前吸筹）/ 超跌反弹（深跌跌速衰减）。<br>
     <b>守卫/闸门</b>：buy 前的风险拦截（大盘走弱/存世量/半山腰/飞刀/求购弱/供给扩张等），命中即降级观望。<br>
     <b>买点接近度</b>：距各 buy 信号族的达标度 0-100%（任一硬条件不达标即归零），"还差"为最近缺口。<br>

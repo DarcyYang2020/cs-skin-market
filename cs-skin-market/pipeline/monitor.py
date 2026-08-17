@@ -49,7 +49,7 @@ def _market_ctx_from_db(conn):
     if _g and _g["greedy_index"]:
         from pipeline.market_macro import greedy_to_sentiment
         sent = float(greedy_to_sentiment(float(_g["greedy_index"])))
-    bucket = state_bucket(sent, th, chg30)
+    bucket = state_bucket(stats.get("chg180"), chg30)
     return {"pct": pct, "z": z, "cycle": cycle, "th": th,
             "chg7": chg7, "chg30": chg30, "drop21": drop21,
             "sentiment": sent, "bucket": bucket}

@@ -225,11 +225,11 @@ async def page_dashboard(request: Request):
     mi, last_update, chart_data = _dashboard_context()
     # Index analysis
     analysis_data = index_analysis.analyze_index_full(chart_data) if chart_data else None
-    # I-1 市场状态标注(2026-08-06): 接线 index_card 的 regime 占位, 纯展示层
+    # I-1 市场状态标注(2026-08-06 接入；2026-08-16 起五时期口径): 接线 index_card 的 regime 占位, 纯展示层
     from pipeline.batch_scan import market_regime
     _ms_r = market_snapshot()
     _regime_label, _regime_cls, _regime_strategy = market_regime(
-        _ms_r.get("sentiment"), _ms_r.get("chg30"), _ms_r.get("th"))
+        _ms_r.get("chg180"), _ms_r.get("chg30"), _ms_r.get("sentiment"))
     # ---- 引擎状态徽章（J-2 监测，纯展示；读 j2_channel_status.json）----
     _engine_status = None
     _j2 = _j2_status()
@@ -638,7 +638,7 @@ async def api_market_refresh(request: Request):
         from pipeline.batch_scan import market_regime
         _ms_r = market_snapshot()
         _regime_label, _regime_cls, _regime_strategy = market_regime(
-            _ms_r.get("sentiment"), _ms_r.get("chg30"), _ms_r.get("th"))
+            _ms_r.get("chg180"), _ms_r.get("chg30"), _ms_r.get("sentiment"))
         return templates.TemplateResponse(request, "partials/dashboard_refresh.html", {
             "index": mi,
             "last_update": last_update,

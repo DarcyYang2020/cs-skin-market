@@ -21,7 +21,7 @@
 - **趋势健康度 TH（0-100）**：持续性22% / 陡度22% / 均线22% / 供给×价格16% / 缺口18%（2026-08-07 去量：量价项 → 供给×价格协调，见 trend_health._dim_supply_price）
 - **融合决策**（market_th）：pct×TH×周期×方向×情绪 → buy/watch/avoid + global_position_limit
 - 牛熊动态 TH 阈值（v5.2）、熊市过滤器（microTH/恐慌抛售/反弹衰减/安全网）
-- **市场状态六态**（market_regime，I-1 展示层）：贪婪禁入/V型底区/阴跌中继区/恐慌浅跌/中性企稳/弱市观望
+- **大盘五时期**（market_regime 展示层 + state_bucket 引擎口径，2026-08-16 定稿，旧六态退役）：P恐慌深跌/S1牛市上行/S2牛市回调/S3弱市阴跌/S4弱市反弹，路由与数据依据见 market-bucket-alignment.md v2
 
 ### 3. 单品引擎（item_analysis.py，核心串行链）
 十大模块（估值/周期/流动性/概率/价值/庄盘/趋势健康/融合决策/价格区间/距买点），
@@ -79,7 +79,7 @@ buy 信号由**一串 P0/P1 顺序 if 块**产出：
 ### 3.2 架构
 统一决策核心（unified_brain）
 - 输入：市场上下文(TH/sent/cycle/chg30/drop21) + 单品特征(pct/z/th/供给/量能/存世量)
-- 状态桶层：6 桶（引擎口径，见 3.3）
+- 状态桶层：大盘五时期（2026-08-16 起，旧 6 桶退役，见 3.3）
 - 信号族库（注册制）：
   - panic共振(0.3) / panic退潮(0.1) / deep_value(0.1) / supply_accum(0.1)
   - accumulate低吸(0.1) / base低位低估(0.2) / (未来)S2回踩 / 牛动量
@@ -88,20 +88,19 @@ buy 信号由**一串 P0/P1 顺序 if 块**产出：
   → 单一 action + position_limit + 期望标签
 - 闸门层（解耦）：存世量/7天去重/飞刀确认/组合熔断/单票敞口
 
-### 3.3 状态桶（6 桶，引擎口径——修正展示层 80 分偏差）
-| 桶 | 判定（引擎口径） | 对应行情 |
+### 3.3 状态桶（2026-08-16 起大盘五时期；旧 6 桶已退役，历史见下）
+| 时期 | 判定（引擎口径） | 对应行情（数据挖掘，见 market-bucket-alignment.md v2） |
 |---|---|---|
-| 恐慌深跌 V型底 | sent≥75 & chg30≤-15 | 2026-05 |
-| 恐慌中跌 阴跌中继 | sent≥75 & -15<chg30≤-5 | 2026-07 |
-| 恐慌浅跌 | sent≥75 & chg30>-5 | — |
-| 中性企稳 | sent<75 & TH≥45 | 修复/震荡/小牛（2026-02、2025-11~01） |
-| 弱市观望 | sent<75 & TH<45 | 阴跌非恐慌段 |
-| 贪婪禁入 | sent≤30 | 强牛末端（2025-04~05 顶部） |
+| P 恐慌深跌 | chg30 ≤ −15 | 2025-10-23~11-21（五合一）、2026-05-24~06-02（炼金） |
+| S1 牛市上行 | chg180>0 且 chg30>0 | 慢牛主升（2024-12~2025-04 等） |
+| S2 牛市回调 | chg180>0 且 chg30≤0 | 回调蓄势（二波前夜） |
+| S3 弱市阴跌 | chg180≤0 且 chg30≤0 | 规避区（全期限负） |
+| S4 弱市反弹 | chg180≤0 且 chg30>0 | 反抽陷阱（30d 胜率仅 28%） |
+| 贪婪禁入 | sent≤30（正交覆盖层，非时期） | 强牛末端 |
 
-**口径发现**：展示层 market_regime 用 sent≥80 判恐慌，而引擎 P0-7 恐慌共振是 sent≥75 →
-统一大脑状态桶必须以引擎口径（75）为准，展示层标注同步修正（I-1 遗留）。
-**已修正（阶段4，2026-08-06）**：状态桶判定收敛到 market_context.state_bucket() 单一口径源，
-item_analysis._state_bucket 与展示层 batch_scan.market_regime 均引用之；补仓引擎的 80 分恐慌阈值是回测参数，保持不动。
+**历史（阶段3/4，2026-08-06，已退役）**：旧六态 = 贪婪禁入 / V型底区(sent≥75&chg30≤-15) / 阴跌中继区(sent≥75&-15<chg30≤-5) / 恐慌浅跌(sent≥75&chg30>-5) / 中性企稳(sent<75&TH≥45) / 弱市观望(sent<75&TH<45)。
+2026-08-16 用户裁定退役（时期从 3 年数据挖掘、命名只是标签；sent 恐慌轴为弱变量+口径不一致而移除，
+恐慌改为价格事实 chg30 判定；贪婪禁入保留为覆盖层）。判定单一口径源仍为 market_context.state_bucket()。
 ### 3.4 条件期望表（阶段1研究产出，data/unified_brain_expectancy.json）
 全窗口 2025-01-01~2026-08-05，池A=96老品，581 buy 信号（data/item_backtest_full_2025.json）：
 
@@ -194,7 +193,7 @@ train 估计「族×状态桶」net14 期望表（6 格 n>=3），test 段应用
 - **信号族注册制**：`SIGNAL_FAMILIES`（SignalFamily 数据类）注册 4 个独立信号族——
   panic_resonance(恐慌共振) / deep_value(深值企稳) / panic_easing(恐慌退潮) / supply_accum(供给收缩吸筹)；
   每族 = {key, label, 固定仓位, 触发条件, 状态桶标注, 适用闸门集, 详情/来源}。
-- **六态状态桶**：`_state_bucket()`（引擎口径 sent>=75 判恐慌），随决策输出 state_bucket 字段供展示。
+- **大盘五时期状态桶**（2026-08-16 起）：`_state_bucket()`（单一来源 market_context.state_bucket，chg180×chg30 路由），随决策输出 state_bucket 字段供展示。
 - **固定优先级**（不做期望排序——阶段2 已证伪）：panic_resonance(60) > deep_value(50) > panic_easing(40) > supply_accum(30)，
   与现链路代码顺序一致；base 族为基础融合决策回退。
 - **闸门层解耦**：12 个闸门注册进 `_GUARDS`（market_weak/survive/halfway/dedup7/falling_knife/micro_th/bid/bid_boost/

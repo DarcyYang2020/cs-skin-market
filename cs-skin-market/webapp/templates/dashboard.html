@@ -19,8 +19,8 @@
   <div style="padding:10px 14px;font-size:12px;">
     <div style="margin-bottom:8px;">
       <span style="color:var(--text-secondary);">当前市场状态：</span>
-      <span class="regime-badge {{ {'V型底区':'regime-vbottom','阴跌中继区':'regime-risky','恐慌浅跌':'regime-panic','中性企稳':'regime-ok','弱市观望':'regime-weak','贪婪禁入':'regime-greedy'}.get(expectancy_card.bucket, '') }}">{{ expectancy_card.bucket }}</span>
-      {% if expectancy_card.bucket_total %}<span style="margin-left:10px;color:var(--text-muted);">该状态下回放信号 {{ expectancy_card.bucket_total }} 条 · 14d 胜率 {{ expectancy_card.bucket_win14 }}% · 30d 期望 {{ "%+.1f"|format(expectancy_card.bucket_avg30) }}%</span>{% endif %}
+      <span class="regime-badge {{ {'P恐慌深跌':'regime-p','S1牛市上行':'regime-s1','S2牛市回调':'regime-s2','S3弱市阴跌':'regime-s3','S4弱市反弹':'regime-s4','贪婪禁入':'regime-greedy'}.get(expectancy_card.bucket, '') }}">{{ expectancy_card.bucket }}</span>
+      {% if expectancy_card.bucket_total and expectancy_card.bucket_avg30 is not none %}<span style="margin-left:10px;color:var(--text-muted);">该状态下回放信号 {{ expectancy_card.bucket_total }} 条 · 14d 胜率 {{ expectancy_card.bucket_win14 }}% · 30d 期望 {{ "%+.1f"|format(expectancy_card.bucket_avg30) }}%</span>{% endif %}
     </div>
     <table style="width:100%;border-collapse:collapse;">
       <thead>
