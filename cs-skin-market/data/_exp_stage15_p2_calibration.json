@@ -1,27 +1,33 @@
 {
- "probe": "阶段15 P2 概率校准",
+ "probe": "阶段15(修复) P2 概率校准 公平对照",
  "split": "2025-08-10",
+ "note": "P1-C 用 train 拟合 chg30 桶（OOS 可验证部分）；深跌 S3 桶 train 无样本不参与",
  "brier_baseline": 0.2718,
- "brier_p1c": 0.2272,
- "calibration_curve_p1c": {
-  "20-30%": {
-   "n": 8314,
-   "pred_win": 15,
-   "actual_win": 23.1
-  },
+ "brier_chg30_oos": 0.2767,
+ "calibration_curve": {
   "40-50%": {
-   "n": 9412,
-   "pred_win": 25,
-   "actual_win": 39.2
+   "n": 7236,
+   "pred_win": 45,
+   "actual_win": 43.7
   },
   "50-60%": {
-   "n": 14924,
-   "pred_win": 30,
-   "actual_win": 54.6
+   "n": 11102,
+   "pred_win": 55,
+   "actual_win": 57.1
+  },
+  "60-70%": {
+   "n": 10490,
+   "pred_win": 65,
+   "actual_win": 23.3
   },
   "70-80%": {
+   "n": 3822,
+   "pred_win": 75,
+   "actual_win": 47.4
+  },
+  "90-100%": {
    "n": 4004,
-   "pred_win": 40,
+   "pred_win": 95,
    "actual_win": 70.0
   }
  }

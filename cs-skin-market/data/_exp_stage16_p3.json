@@ -1,0 +1,20 @@
+{
+ "probe": "阶段16 P3 深跌S3单品特性",
+ "n": 8314,
+ "n_perm": 500,
+ "seed": 42,
+ "signals": {
+  "超跌深度": {
+   "topbot_real": 2.96,
+   "topbot_perm_median": 0.0,
+   "topbot_perm_p90": 0.62,
+   "p": 0.0
+  },
+  "供给收缩": {
+   "topbot_real": 3.19,
+   "topbot_perm_median": 0.01,
+   "topbot_perm_p90": 0.6,
+   "p": 0.0
+  }
+ }
+}

@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
-"""阶段15 P2 概率校准（2026-08-18，预注册）。
+"""阶段15（修复版）P2 概率校准：公平对照（2026-08-18，回应③审计#3「Brier 对照不公平 + 字段错位」）。
 
-P2 目标：让「翻正率」真对应实际翻正率（预测 62% 时实际真 62%）。
-对比「基线（时期×时点翻正率，train拟合）」vs「P1-C（chg30幅度桶翻正率，全样本外推）」的
-  Brier score（越小越准）+ 校准曲线（预测翻正率 vs 实际翻正率，贴对角线=校准）。
-预注册判据：P1-C 的 Brier 显著低于基线，且校准曲线更贴对角线。
-输出 data/_exp_stage15_p2_calibration.json。
+修复：① pred_win 字段错位（原 b*5+5 错，应为 b*10+5）；② Brier 公平对照——
+基线 = train 拟合时期翻正率（OOS）；P1-C = train 拟合「时期×chg30 桶」翻正率（OOS，可验证部分）。
+深跌 S3 桶 train 无样本，不参与（标注无样本外能力）。
+输出 data/_exp_stage15_p2_calibration.json（覆盖）。
 """
 import json
 from collections import defaultdict
@@ -49,30 +48,27 @@ def chg30_bucket(c30):
         return 0
     if c30 <= -5:
         return 1
-    if c30 <= 0:
-        return 2
-    return 3
+    return 2
 
 
 def main():
     rows, run_map = load_and_fix()
     S = [(r[0], run_map[r[0]][0], r[2], r[20]) for r in rows if r[20] is not None]
-
-    # 基线：时期×时点翻正率（train 拟合）
     train = [s for s in S if s[0] < SPLIT]
+    test = [s for s in S if s[0] >= SPLIT]
+
+    # 基线：train 拟合时期翻正率
     pcell = defaultdict(list)
     for _, p, c30, f in train:
         pcell[p].append(f)
     pwin = {p: sum(1 for x in v if x > 0) / len(v) for p, v in pcell.items()}
 
-    # P1-C：chg30 幅度桶翻正率（全样本）
+    # P1-C：train 拟合「时期×chg30 桶」翻正率（OOS，可验证部分）
     ccell = defaultdict(list)
-    for _, p, c30, f in S:
+    for _, p, c30, f in train:
         ccell[(p, chg30_bucket(c30))].append(f)
     cwin = {k: sum(1 for x in v if x > 0) / len(v) for k, v in ccell.items()}
 
-    # 在 test 上算 Brier + 校准曲线
-    test = [s for s in S if s[0] >= SPLIT]
     def brier(predwin_fn):
         errs = []
         for _, p, c30, f in test:
@@ -83,30 +79,31 @@ def main():
             errs.append((pw - lab) ** 2)
         return sum(errs) / len(errs) if errs else None
 
-    b_baseline = brier(lambda p, c30: pwin.get(p))
-    b_p1c = brier(lambda p, c30: cwin.get((p, chg30_bucket(c30))))
+    b_base = brier(lambda p, c30: pwin.get(p))
+    b_chg30 = brier(lambda p, c30: cwin.get((p, chg30_bucket(c30)), pwin.get(p)))
 
-    # 校准曲线：P1-C 预测翻正率分桶，看实际翻正率
+    # 校准曲线（修复 pred_win 字段）：用 train 拟合 cwin 预测
     buckets = defaultdict(list)
     for _, p, c30, f in test:
-        pw = cwin.get((p, chg30_bucket(c30)))
+        pw = cwin.get((p, chg30_bucket(c30)), pwin.get(p))
         if pw is None:
             continue
-        b = int(pw * 10)  # 0-9 桶（0-10%, 10-20%, ...）
+        b = int(pw * 10)
         buckets[b].append(1.0 if f > 0 else 0.0)
     curve = {}
     for b in sorted(buckets):
         v = buckets[b]
-        curve[f"{b*10}-{(b+1)*10}%"] = {"n": len(v), "pred_win": (b*5+5), "actual_win": round(sum(v)/len(v)*100, 1)}
+        curve[f"{b*10}-{(b+1)*10}%"] = {"n": len(v), "pred_win": b * 10 + 5,
+                                        "actual_win": round(sum(v) / len(v) * 100, 1)}
 
-    out = {"probe": "阶段15 P2 概率校准", "split": SPLIT,
-           "brier_baseline": round(b_baseline, 4) if b_baseline else None,
-           "brier_p1c": round(b_p1c, 4) if b_p1c else None,
-           "calibration_curve_p1c": curve}
+    out = {"probe": "阶段15(修复) P2 概率校准 公平对照", "split": SPLIT,
+           "note": "P1-C 用 train 拟合 chg30 桶（OOS 可验证部分）；深跌 S3 桶 train 无样本不参与",
+           "brier_baseline": round(b_base, 4) if b_base else None,
+           "brier_chg30_oos": round(b_chg30, 4) if b_chg30 else None,
+           "calibration_curve": curve}
     json.dump(out, open(OUT, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
     print("saved", OUT)
-    print(f"\nBrier（越小越准）：基线={out['brier_baseline']}  P1-C={out['brier_p1c']}")
-    print("\nP1-C 校准曲线（预测翻正率 vs 实际翻正率）：")
+    print(f"Brier 公平对照：基线={out['brier_baseline']}  chg30(OOS)={out['brier_chg30_oos']}")
     for k, v in curve.items():
         print(f"  预测 {k:8s} n={v['n']:5d} 实际翻正={v['actual_win']}%")
 

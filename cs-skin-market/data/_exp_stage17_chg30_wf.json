@@ -1,0 +1,56 @@
+{
+ "probe": "阶段17 chg30 walk-forward",
+ "split": "2025-08-10",
+ "deep_s3_in_train": false,
+ "groups": {
+  "P恐慌-<=-15": {
+   "train_n": 91,
+   "test_n": 4004,
+   "pred_med": 11.01,
+   "actual_med": 10.21,
+   "dir_agree": 70.0
+  },
+  "S1牛市->-5": {
+   "train_n": 20092,
+   "test_n": 9646,
+   "pred_med": 0.89,
+   "actual_med": 3.69,
+   "dir_agree": 57.7
+  },
+  "S2回调--15~-5": {
+   "train_n": 2444,
+   "test_n": 3822,
+   "pred_med": 2.96,
+   "actual_med": -0.81,
+   "dir_agree": 47.4
+  },
+  "S2回调->-5": {
+   "train_n": 8216,
+   "test_n": 1456,
+   "pred_med": 0.62,
+   "actual_med": 0.7,
+   "dir_agree": 53.1
+  },
+  "S3阴跌->-5": {
+   "train_n": 3702,
+   "test_n": 2176,
+   "pred_med": 0.91,
+   "actual_med": -6.33,
+   "dir_agree": 24.2
+  },
+  "S4反弹->-5": {
+   "train_n": 6408,
+   "test_n": 7236,
+   "pred_med": 0.0,
+   "actual_med": -1.77,
+   "dir_agree": 56.3
+  }
+ },
+ "verifiable": {
+  "n_test": 28340,
+  "mae_chg30": 20.36,
+  "mae_base": 20.32,
+  "dir_agree_chg30_pct": 54.9,
+  "dir_agree_base_pct": 54.9
+ }
+}
