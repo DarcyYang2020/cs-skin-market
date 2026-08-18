@@ -752,3 +752,15 @@
 - **四处一键执行入口核对（均为已有能力，未重造）**：单品报告（analysis.html「按建议记录执行」buy 时）✓、批量扫描（`batch_scan._exec_btn` 可操作建议）✓、discover（经单品报告同入口）✓、自选（`openExecManual` 手动录入）✓；记录后自动同步持仓 / 14-30 日自动结算 / 滑点（advice_price vs exec_price）均已有。
 - **验收口径**：executions ≥20 为 2 周过程目标（本改动提供零摩擦入口 + 未记录提醒驱动记录），达标由 PM 后续观测；当前基线 8 条已记录于本条目。
 - **验证**：`tests/test_smoke.py` **131 passed / 0 failed / 0 skipped**；`tests/check_encoding.py` PASS（hard 0）；`ENGINE_VERSION` 仍 `v2-T13`。
+
+---
+
+## BN. DISPLAY-7 信号复盘数据源切换到当前基线（2026-08-18，纯展示）
+
+- **立项卡**：DISPLAY-7（PM 交②执行）。纯数据源切换，不碰引擎/决策/信号族/基线。
+- **改动点**（`webapp/main.py` + `webapp/templates/replay.html`）：
+  1. `api_signals_replay` 读取文件路径 `data/item_backtest_full_2025.json`（317 信号 v2-T4/T5）→ `data/_exp_cycle_replay_period_route.json`（**189 信号 v2-T13 官方 HQ**，`CS_ENGINE_PERIOD_ROUTE=1` 发射口径重放产物）。字段结构兼容（date/name/entry_price/fwd_series/fwd14/fwd30 等），渲染逻辑零改动。
+  2. `meta` 新增 `engine="v2-T13"` / `caliber="官方 HQ 口径"` / `frozen_note`（旧 317 基线冻结为 HIST-FULL 存证）；replay.html meta 文案同步（引擎 v2-T13 · 189 信号 · 官方 HQ 口径 + 旧 317 冻结说明）。
+  3. 旧 `item_backtest_full_2025.json`（HIST-FULL 317）保留为冻结存证，不作 /replay 主数据源。
+- **验证**：新数据源 `signals=189` 且含 `fwd_series/entry_price/date/name` 字段（渲染兼容）；`ENGINE_VERSION` 仍 `v2-T13`。
+- **冒烟口径（诚实记录）**：`tests/test_smoke.py` 本次为 **130 passed / 1 failed / 0 skipped**。1 个失败 = `t_live_snapshot_sync`（大盘 TH 33 vs 35 漂移），根因 = `market_index_stats` 用 `values[-90:]`（90 值）而 `build_market_context` 用 `values[i-90:i+1]`（91 值）的**窗口 off-by-one**，今日大盘指数更新后 TH 恰好分开——**与 DISPLAY-7 无关（未触碰 market TH 计算，红线禁碰引擎）**；`t_j2_channel_status` 因 `j2_channel_status.json` 过期（value_days 11→12）已重生成 `j2_channel_monitor.py` 修复。`check_encoding.py` PASS（hard 0）。TH 窗口 off-by-one 建议单独立项修复。

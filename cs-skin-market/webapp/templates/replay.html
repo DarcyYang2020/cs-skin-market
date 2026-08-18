@@ -55,7 +55,7 @@ function loadReplay() {
     var sigs = d.signals || [];
     if (d.meta) {
       var metaEl = document.getElementById('replay-meta');
-      if (metaEl) metaEl.textContent = '引擎 v2 · ' + d.meta.count + ' 个 buy 信号 · 回放窗口 ' + (d.meta.range ? d.meta.range[0] + ' ~ ' + d.meta.range[1] : '--') + ' · 生成 ' + (d.meta.generated || '--') + '（item_backtest_full_2025.json）· 14d/21d/30d 表现，最新价由数据库实时补充';
+      if (metaEl) metaEl.textContent = '引擎 ' + (d.meta.engine || 'v2-T13') + ' · ' + d.meta.count + ' 个 buy 信号 · ' + (d.meta.caliber || '官方 HQ 口径') + ' · 回放窗口 ' + (d.meta.range ? d.meta.range[0] + ' ~ ' + d.meta.range[1] : '--') + ' · 生成 ' + (d.meta.generated || '--') + ' · 14d/21d/30d 表现，最新价由数据库实时补充（' + (d.meta.frozen_note || '旧 317 基线已冻结为 HIST-FULL 存证') + '）';
     }
     var byType = {};
     sigs.forEach(function(s) {
