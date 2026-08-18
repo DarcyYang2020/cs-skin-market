@@ -1,0 +1,95 @@
+{
+ "probe": "阶段0 period 单因素 AUC 基线",
+ "shrink_k": 20,
+ "target": "P(fwd14>0) 主 / P(fwd7>0) 辅",
+ "cuts": [
+  "2025-04-01",
+  "2025-10-01",
+  "2026-03-01"
+ ],
+ "n_clean_rows": 78974,
+ "schemes": [
+  {
+   "scheme": "period",
+   "cuts": [
+    {
+     "cut": "2025-04-01",
+     "n_train": 29032,
+     "n_test": 48575,
+     "auc14": 0.406,
+     "auc7": 0.4344,
+     "brier": 0.2643,
+     "sub_p05_mean14": 5.67,
+     "sub_p05_n": 41339,
+     "all_mean14": 5.85,
+     "global_win": 0.553
+    },
+    {
+     "cut": "2025-10-01",
+     "n_train": 45685,
+     "n_test": 31922,
+     "auc14": 0.5028,
+     "auc7": 0.5221,
+     "brier": 0.2813,
+     "sub_p05_mean14": 0.96,
+     "sub_p05_n": 24686,
+     "all_mean14": 2.3,
+     "global_win": 0.59
+    },
+    {
+     "cut": "2026-03-01",
+     "n_train": 59426,
+     "n_test": 18181,
+     "auc14": 0.4834,
+     "auc7": 0.5189,
+     "brier": 0.3038,
+     "sub_p05_mean14": -0.07,
+     "sub_p05_n": 18181,
+     "all_mean14": -0.07,
+     "global_win": 0.573
+    }
+   ]
+  },
+  {
+   "scheme": "period+period_days",
+   "cuts": [
+    {
+     "cut": "2025-04-01",
+     "n_train": 29032,
+     "n_test": 48575,
+     "auc14": 0.4079,
+     "auc7": 0.4353,
+     "brier": 0.2857,
+     "sub_p05_mean14": 4.9,
+     "sub_p05_n": 35764,
+     "all_mean14": 5.85,
+     "global_win": 0.553
+    },
+    {
+     "cut": "2025-10-01",
+     "n_train": 45685,
+     "n_test": 31922,
+     "auc14": 0.523,
+     "auc7": 0.5402,
+     "brier": 0.2841,
+     "sub_p05_mean14": 1.62,
+     "sub_p05_n": 28393,
+     "all_mean14": 2.3,
+     "global_win": 0.59
+    },
+    {
+     "cut": "2026-03-01",
+     "n_train": 59426,
+     "n_test": 18181,
+     "auc14": 0.53,
+     "auc7": 0.513,
+     "brier": 0.312,
+     "sub_p05_mean14": -1.46,
+     "sub_p05_n": 15835,
+     "all_mean14": -0.07,
+     "global_win": 0.573
+    }
+   ]
+  }
+ ]
+}
