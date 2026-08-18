@@ -1179,7 +1179,7 @@ SIGNAL_FAMILIES = (
         detail=lambda F: (
             f"深值低估(pct={F['pct']:.0f}%,Z={F['z']:.1f})"
             f"+大盘企稳(TH={F['market_th']},21日跌幅{F['drop21']:.1f}%)·"
-            f"回测14d+14.9%/30d+52.4%(56信号14d75%胜率,轻仓0.20)·分批:首仓10%→跌10%加20%→跌15%加30%（单票敞口≤30%缩放）"
+            f"轻仓0.20·分批:首仓10%→跌10%加20%→跌15%加30%（单票敞口≤30%缩放）"
         ),
         sources=("deep_value_stable_market",),
         hypothesis="大盘企稳/修复环境(mchg30≤-3)下低分位(pct≤20%)+低估(Z≤-0.5)品均值回归；回放 56 信号 14d 75%/avg +14.9",
@@ -1204,7 +1204,7 @@ SIGNAL_FAMILIES = (
         detail=lambda F: (
             f"恐慌退潮(sent={F['sent']:.0f})+大盘30日跌幅{F['mchg30']:.1f}%(未企稳)"
             f"+深跌止跌(pct={F['pct']:.0f}%,Z={F['z']:.1f})·"
-            f"回测14d+19.8%/30d+15.0%(轻仓0.10)·分批:首仓10%→跌10%加20%→跌15%加30%（单票敞口≤30%缩放）"
+            f"轻仓0.10·分批:首仓10%→跌10%加20%→跌15%加30%（单票敞口≤30%缩放）"
         ),
         sources=("panic_easing_deep_bottom",),
         hypothesis="恐慌退潮(sent 55-80)+大盘深跌未企稳(mchg30≤-15)+深跌止跌(stopped) → 修复反弹；回放 14d +19.8",
@@ -1236,7 +1236,7 @@ SIGNAL_FAMILIES = (
         guards=(),
         detail=lambda F: (
             f"在售量收缩(7日均{F['s7']:.0f}≤30日均{F['s30']:.0f}×0.85)+价格平稳(7日{F['chg7']:+.1f}%)·"
-            f"启动前吸筹·回测14d+11.2%/30d+27.2%(轻仓0.15)·强牛段(sent<40+大盘TH≥60)30d+46.3%·"
+            f"启动前吸筹·轻仓0.15·"
             f"分批:首仓10%→跌10%加20%→跌15%加30%（单票敞口≤30%缩放）"
         ),
         sources=("supply_contraction_accumulation",),
@@ -1580,7 +1580,7 @@ def _g_halfway(fd, F):
     if fd.action != "buy" or F["pct"] is None or not (25 <= F["pct"] <= 40) or F["sent"] >= 85:
         return None
     return ("🟡 半山腰·观望",
-            f"pct={F['pct']:.0f}%处于半山腰且无恐慌共振，回测14d胜率仅28%",
+            f"pct={F['pct']:.0f}%处于半山腰且无恐慌共振",
             "halfway_downgrade")
 
 
@@ -1672,7 +1672,7 @@ def _g_supply_expansion(fd, F):
                 and F["s7"] is not None and F["s7"] <= F["s30"] * 0.85):
             return None
         return ("🟡 供给扩张·观望",
-                f"在售量30日扩张{round(chg, 1)}%，抛压堆积，历史buy信号30d胜率0%(回测5/5负期望)",
+                f"在售量30日扩张{round(chg, 1)}%，抛压堆积，结构性派发风险",
                 "supply_expansion_filter")
     return None
 
@@ -1731,12 +1731,12 @@ def _deep_dip_transform(fd, F):
     if F["dd30"] <= -22 and F["chg14"] <= -6:
         fd.action_label = "🟢 深度回调低吸·分批建仓"
         fd.action_detail = ("周期吸筹但大盘未深跌，单品深度回调"
-                            f"(dd30={F['dd30']:.0f}%,chg14={F['chg14']:.0f}%)二次探底，回测14d期望正值")
+                            f"(dd30={F['dd30']:.0f}%,chg14={F['chg14']:.0f}%)二次探底")
         fd.deduction_sources.append("deep_dip_exemption")
     else:
         fd.action = "watch"
         fd.action_label = "🟡 周期吸筹需大盘共振·观望"
-        fd.action_detail = "周期吸筹但大盘20日跌幅" + str(round(F["drop21"], 1)) + "%~18%，等大盘深跌共振再建仓（回测：非深跌场景4/4信号30d负期望）"
+        fd.action_detail = "周期吸筹但大盘20日跌幅" + str(round(F["drop21"], 1)) + "%~18%，等大盘深跌共振再建仓"
         fd.deduction_sources.append("cycle_accumulation_needs_market_drop")
         fd.position_limit = 0.0
     return True

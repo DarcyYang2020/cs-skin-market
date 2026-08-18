@@ -200,7 +200,7 @@ def compute_valuation_grid(pct_90d: float, trend_health=None, whale_prob: float 
         if vg.grid_action not in ("sell",):
             vg.grid_action = "sell"
             vg.position_sizing = "全部清仓, 不留任何仓位"
-            vg.stop_loss_advice = "90%+极度泡沫区间, 历史回测显示1个月内暴跌概率>70%"
+            vg.stop_loss_advice = "90%+极度泡沫区间，统计极端区（历史分布：此类分位1个月负收益占比显著偏高，非本次概率）"
 
     return vg
 
