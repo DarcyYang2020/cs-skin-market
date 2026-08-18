@@ -1,6 +1,7 @@
 # 系统全局立项书（2026-08-15，基于 csQAQ 深历史发现）
 
 > 版本：v1.0 | 日期：2026-08-15
+> 归档状态：历史立项基线，建议归入 `references/archive/`；活方案以 `iteration-roadmap.md` v67+ 为准。
 > 性质：外审立项基线（范围 + 红线 + 门槛），技术实现与排期由研发折入 `iteration-roadmap.md`（v67+）后引用本文，不复制粘贴。
 > **⚠️ 2026-08-15 降级**：本文已从「立项书」降级为「历史立项基线」——BUY-1 已执行（buy_price 直连回填 225849 行、有条件通过分字段走），方向/红线仍有效；「活方案」见 `iteration-roadmap.md` v68（BUY-1 技术方案 + 裁定与执行结果）。本文仅引用、不维护。
 > 背景：今日实测确认 csQAQ `/api/v1/info/chart` 的 `period` 支持 7/15/30/90/180/365/1095，且 `key` 可取 buy_price / buy_num（求购价/量）、lease_*（租赁）、turnover_number（成交量）等多类型；断档债（NULL 4802 + 0 值伪零 14487，合计 19289 行 in_sale_count）已于本日回补清零，引擎 v2-T9。

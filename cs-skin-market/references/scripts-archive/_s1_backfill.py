@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """S-1: 160 品贴纸深历史全量回填（断点续跑）。
 每品成功即 append 一行到 data/_exp_sticker_deep_full.jsonl；
 进度写 data/_sticker_deep_full_progress.json；可随时中断，重跑自动续。

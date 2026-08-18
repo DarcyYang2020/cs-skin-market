@@ -23,7 +23,9 @@
 
 ## 实证：引擎的边际价值在风控，不在收益增强
 
-`data/benchmark_compare.json`（370 信号，2025-01-01 ~ 2026-08-05，扣 2% 双边成本）：
+> 历史口径（2026-08-08，370 信号 / hold14 / 2025-01-01 窗口，仅存证）。当前基准以 `references/terminology.md` 的 HIST-FULL=317 / CLEAN-CUR=230 与最新 `data/benchmark_compare.json` 为准。
+
+`data/benchmark_compare.json`（历史口径：370 信号，2025-01-01 ~ 2026-08-05，扣 2% 双边成本）：
 
 | 口径 | 总收益 | 最大回撤 | 年化 |
 |---|---|---|---|

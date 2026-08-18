@@ -162,9 +162,9 @@ python references/data_quality_review.py --skip-net   # 仅频率检查（CI/测
 数据层变更会改变回放产物，必须按序重跑（「回放同源，改产物必须重跑同步」纪律）：
 1. **构建混合回放库**：`data/replay_hybrid.db` = 修复后现库 + 历史备份（`market.db.bak-p0-*`）补 2025-01-01 起 price_history 与 market_index（2026-08-09：插入 21292 + 631 行，共 65106 行）。
 2. **重跑回放**：`$env:CS_MODEL_DB=<混合库绝对路径>; python references/run_item_backtest_full.py`（约 10 分钟，96 品，runner 已归档至 `references/scripts-archive/`，加载路径脚本内已兼容）。
-3. **校验**：信号数应接近 370；受影响信号 entry ≈ DB 同日价；偏差 >15% 条数（2026-08-09：24 → 0）。
+3. **校验**：信号数以当前 `config.BASELINE_LEDGER` 为准（HIST-FULL=317 / CLEAN-CUR=230）；受影响信号 entry ≈ DB 同日价；偏差 >15% 条数（2026-08-09：24 → 0）。
 4. **同步**：`python references/sync_expectancy_config.py`（config.ITEM_EXPECTANCY_STATS + signal_event_counts + J-3）→ `python references/sync_replay_snapshot.py`（回放快照）。
-5. **验证**：冒烟测试全绿（2026-08-09：84 passed / 6 skipped）。
+5. **验证**：冒烟测试全绿（2026-08-17 记录：129 passed / 0 failed；以实际运行输出为准）。
 
 ### 审计证据留存
 | 文件 | 内容 |

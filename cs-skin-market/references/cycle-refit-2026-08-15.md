@@ -89,7 +89,7 @@
 
 ## 8. 遗留待办（已裁定，登记不执行）
 
-- `references/_buy1_draft_reviewer.md`（未跟踪草稿，结论「不通过」已过时）：**丢弃**，其中 2 条有价值的自检（buy_num 重叠日不对称、中位数上中位数）抄进 decision-log 后再丢。
+- ~~`references/_buy1_draft_reviewer.md`~~：该未跟踪草稿已不存在；其中 2 条有价值的自检（buy_num 重叠日不对称、中位数上中位数）应抄进 decision-log 对应 BUY-1 条目后再关闭。
 - 「每日增量 buy_price」的 `run_daily_collect.py` 改造：**暂不放行**，作为本方案定稿后的子项一并评审，不单独提前动生产链路。
 
 ---

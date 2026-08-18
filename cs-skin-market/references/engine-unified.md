@@ -237,7 +237,9 @@ train 估计「族×状态桶」net14 期望表（6 格 n>=3），test 段应用
 
 ### 6.1 基准对照（references/benchmark_compare.py → data/benchmark_compare.json）
 
-| 腿（full 窗口 2025-01-01 ~ 2026-08-05） | total | maxDD | 年化 |
+> 历史口径（2026-08-10，hold14 / 370 信号，仅存证）。当前基准以 `references/terminology.md` + `AGENTS.md` 的 HIST-FULL=317 / CLEAN-CUR=230 及最新 `data/benchmark_compare.json` 为准。
+
+| 腿（历史 full 窗口 2025-01-01 ~ 2026-08-05） | total | maxDD | 年化 |
 |---|---|---|---|
 | 策略 cap0.8（370 信号，529 天） | +193.30% | -9.39% | +110.1% |
 | 策略无风控对照（仅信息参考） | +1118.94% | -44.68% | +461.5% |

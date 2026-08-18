@@ -68,6 +68,11 @@ cs-skin-market/
 | `portfolio_risk.py` | B1 风险预算层（组合回撤熔断 + 单票敞口提示） |
 | `signal_tracking.py` | 生产实盘信号跟踪（J-2 C 通道：记录 buy 信号 → 14/30 交易日回填） |
 | `monitor.py` | M1/M2 监控模式（每日自选品异动事件生成 + 日报 + 钉钉推送，纯提醒层，只读引擎输出） |
+| `item_categories.py` | 品类识别（M-6，discover 无磨损品类进发现榜） |
+| `market_period.py` | 大盘五时期生产持久化（market_state_daily.json，纯计算/持久化） |
+| `market_signal.py` | 大盘自身信号 + 风险仪表（A/D 模块，引擎无关） |
+| `paper_trading.py` | 模拟盘 v2（生产镜像，buy 自动建仓/到期/止盈止损/供给扩张全止损） |
+| `pool_log.py` | 池维护台账（F-3.2，追加写 pool_maintenance_log.jsonl） |
 
 ### 回测/研究公共
 
@@ -95,13 +100,13 @@ cs-skin-market/
 | `render_html.py` | HTML 渲染纯函数（报告/发现榜/闪光图） |
 | `static/css/style.css` | 全局样式 |
 | `static/js/app.js` | 前端交互（HTMX/模态/表单） |
-| `templates/` | `base/dashboard/search/watchlist/discover/replay + partials/*` |
+| `templates/` | `base/dashboard/search/watchlist/discover/replay/checkup + partials/analysis,analysis_results,dashboard_refresh,discover_html,exec_modal,index_analysis,index_card,scan_html` |
 
 ## `tests/` 测试
 
 | 文件 | 功能 |
 |---|---|
-| `test_smoke.py` | 冒烟测试（108 用例；0 failed 为硬指标，CS_MODEL_SKIP_NET=1 时离线跳过网络用例，skip 数随环境浮动） |
+| `test_smoke.py` | 冒烟测试（2026-08-17 记录 129 用例；0 failed 为硬指标，CS_MODEL_SKIP_NET=1 时离线跳过网络用例，skip 数随环境浮动） |
 | `check_encoding.py` | 仓库文本编码健康检查（UTF-8 无 BOM / 无乱码） |
 | `snapshots/replay_v2.json` | 回放口径快照（aggregate+月度，防无意漂移） |
 

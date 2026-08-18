@@ -11,7 +11,7 @@
 多因子引擎中各因子共享同一决策边界，后续优化层可能覆盖前面已生效的规则。所有算法改动必须按以下四步执行：
 
 1. **单层独立回测**：每层改动前先跑基线，改动后单独回测，记录单层增量（胜率/均收益/信号数）。
-2. **叠加回归**：层与层合入前，重跑当前完整引擎的统一窗口回测（大盘 `python run_backtest.py`；单品 `python run_item_backtest.py --all --warmup 30`），确认叠加后整体 ≥ 最优单层，不满足则不准合入。
+2. **叠加回归**：层与层合入前，重跑当前完整引擎的统一窗口回测（单品 `python references/run_item_backtest_full.py`；重拟合/统一回放入口 `python references/refit_pipeline.py`；旧根目录 `run_backtest.py` / `run_item_backtest.py` 已归档，不再作为活跃入口），确认叠加后整体 ≥ 最优单层，不满足则不准合入。
 3. **消融定位**：叠加后整体变差时，临时关闭上一层规则再跑一次，区分「上一层被冗余化（删规则）」还是「本层引入副作用（调本层）」。
 4. **以完整引擎为准**：最终判定以当前完整引擎在统一窗口的期望/风险调整后收益为准（胜率为下限），单层贡献数字仅作参考；结论与数字记入 `references/decision-log.md`（决策记录）。
 
@@ -209,7 +209,7 @@ webapp/templates/
 
 - `run_item_backtest.py` 每次回测自动存档快照至 `data/backtest_snapshots/item_backtest_YYYYMMDD.json`（大盘对应 `backtest_YYYYMMDD.json`）
 - `python pipeline/factor_monitor.py item_backtest_` 自动监控信号胜率，14d 胜率 <70% 或 30d <55% 时输出 DECAY / WATCH 警告
-- 当前基线: item_backtest_20260802.json 37 信号, 净14d 86%/30d 74%（含供给扩张过滤后, 扣 2% 双边成本）
+- 历史基线（2026-08-02，仅存证）: item_backtest_20260802.json 37 信号, 净14d 86%/30d 74%（含供给扩张过滤后, 扣 2% 双边成本）；当前双基线以 `references/terminology.md` + `config.BASELINE_LEDGER` 为准（HIST-FULL=317 / CLEAN-CUR=230）
 
 ### 供给扩张过滤器 (2026-08-02, 数据验证)
 

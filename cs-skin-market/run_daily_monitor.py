@@ -4,7 +4,7 @@
 流程：重绑 csQAQ IP → 刷新大盘指数 → 自选/持仓品 K 线刷新（轻量，仅自选品，
 不跑全市场快照/大户集中度）→ 监控分析 + 钉钉推送（slot=noon）。
 
-晚间推送仍由 run_daily_collect.py 收尾自动执行（slot=night）。
+晚间推送由独立入口 run_night_push.py 执行（slot=night）。
 用法: python run_daily_monitor.py [--noon] [--skip-kline]
 """
 import sys, io, os, asyncio
