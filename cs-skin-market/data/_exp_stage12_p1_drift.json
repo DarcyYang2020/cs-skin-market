@@ -1,0 +1,26 @@
+{
+ "probe": "阶段12 P1 修时期漂移",
+ "baseline_s3_out_mae": 13.24,
+ "schemes": {
+  "P1A_roll_3m": {
+   "s3_out_mae": 10.6,
+   "n_days": 10399
+  },
+  "P1A_roll_6m": {
+   "s3_out_mae": 10.66,
+   "n_days": 10399
+  },
+  "P1A_roll_12m": {
+   "s3_out_mae": 10.67,
+   "n_days": 10399
+  },
+  "P1B_decay_3m": {
+   "s3_out_mae": 10.61,
+   "n_days": 10490
+  },
+  "P1B_decay_6m": {
+   "s3_out_mae": 10.88,
+   "n_days": 10490
+  }
+ }
+}

@@ -1,0 +1,96 @@
+{
+ "probe": "阶段11 探针0",
+ "split": "2025-08-10",
+ "groups": {
+  "P恐慌-sample_in": {
+   "n": 91,
+   "mae": 13.99,
+   "pred_med": 11.41,
+   "actual_med": 11.01,
+   "wrong_dir_pct": 9.9,
+   "pred_win": 96.7,
+   "actual_win": 90.1
+  },
+  "P恐慌-sample_out": {
+   "n": 4004,
+   "mae": 21.88,
+   "pred_med": 11.41,
+   "actual_med": 10.21,
+   "wrong_dir_pct": 30.0,
+   "pred_win": 96.7,
+   "actual_win": 70.0
+  },
+  "S1牛市-sample_in": {
+   "n": 20092,
+   "mae": 9.34,
+   "pred_med": 1.1,
+   "actual_med": 0.89,
+   "wrong_dir_pct": 43.7,
+   "pred_win": 58.1,
+   "actual_win": 56.3
+  },
+  "S1牛市-sample_out": {
+   "n": 9646,
+   "mae": 24.26,
+   "pred_med": 0.29,
+   "actual_med": 3.69,
+   "wrong_dir_pct": 42.3,
+   "pred_win": 51.9,
+   "actual_win": 57.7
+  },
+  "S2回调-sample_in": {
+   "n": 10660,
+   "mae": 7.73,
+   "pred_med": 1.13,
+   "actual_med": 1.09,
+   "wrong_dir_pct": 41.4,
+   "pred_win": 59.1,
+   "actual_win": 58.6
+  },
+  "S2回调-sample_out": {
+   "n": 5278,
+   "mae": 16.71,
+   "pred_med": 1.13,
+   "actual_med": -0.21,
+   "wrong_dir_pct": 51.0,
+   "pred_win": 59.1,
+   "actual_win": 49.0
+  },
+  "S3阴跌-sample_in": {
+   "n": 3702,
+   "mae": 3.51,
+   "pred_med": 0.9,
+   "actual_med": 0.91,
+   "wrong_dir_pct": 38.2,
+   "pred_win": 62.4,
+   "actual_win": 61.8
+  },
+  "S3阴跌-sample_out": {
+   "n": 10490,
+   "mae": 13.24,
+   "pred_med": 0.88,
+   "actual_med": -7.54,
+   "wrong_dir_pct": 76.7,
+   "pred_win": 62.4,
+   "actual_win": 23.3
+  },
+  "S4反弹-sample_in": {
+   "n": 6408,
+   "mae": 3.69,
+   "pred_med": 0.11,
+   "actual_med": 0.0,
+   "wrong_dir_pct": 35.2,
+   "pred_win": 51.4,
+   "actual_win": 49.6
+  },
+  "S4反弹-sample_out": {
+   "n": 7236,
+   "mae": 18.65,
+   "pred_med": 0.11,
+   "actual_med": -1.77,
+   "wrong_dir_pct": 54.8,
+   "pred_win": 51.4,
+   "actual_win": 43.7
+  }
+ }
+}
