@@ -441,13 +441,42 @@ async def page_watchlist(request: Request):
                 })
         _buy_now.sort(key=lambda x: x["score"], reverse=True)
 
+        # ---- EXEC-1 未记录 buy 提醒（2026-08-18）：近 7 天有 buy 信号但无执行记录的品 ----
+        from pipeline.batch_scan import _recently_executed_names as _ren
+        _recent_exec = _ren(7)
+        _wl_names = {_it["name"] for _it in all_items}
+        _d7 = (datetime.now(TZ_BJ) - timedelta(days=7)).strftime("%Y-%m-%d")
+        _buy_sig = {}  # name -> {signal_date, latest_price}
+        for _r in conn.execute(
+            "SELECT item_name, signal_date FROM signal_tracking WHERE action='buy' AND signal_date >= ? "
+            "ORDER BY signal_date DESC", (_d7,)).fetchall():
+            _nm = _r["item_name"]
+            if _nm in _wl_names:
+                _buy_sig.setdefault(_nm, {"signal_date": _r["signal_date"], "latest_price": None})
+        for _it in all_items:
+            _wsum = _it.get("wl_summary") or {}
+            _act = _wsum.get("fusion_action") or _wsum.get("action")
+            if _act in ("buy", "oversold_buy"):
+                _nm = _it["name"]
+                _sd = (_it.get("snapshot_created_at") or _today_str)[:10]
+                if _nm not in _buy_sig:
+                    _buy_sig[_nm] = {"signal_date": _sd, "latest_price": _it.get("latest_price")}
+                else:
+                    _buy_sig[_nm]["latest_price"] = _it.get("latest_price")
+        _unrecorded_buys = [
+            {"name": _nm, "signal_date": _i["signal_date"], "latest_price": _i["latest_price"]}
+            for _nm, _i in _buy_sig.items() if _nm not in _recent_exec
+        ]
+        _unrecorded_buys.sort(key=lambda x: x["signal_date"] or "", reverse=True)
+
         monitor = {
             "near_buys": _near[:5],
             "broken": _broken[:5],
             "buy_events": _buy_ev[:5],
             "buy_signals": _buy_now[:5],
             "warn_events": _warn_ev[:5],
-            "has_focus": bool(_buy_ev or _buy_now or _near or _broken or _warn_ev),
+            "unrecorded_buys": _unrecorded_buys,
+            "has_focus": bool(_buy_ev or _buy_now or _near or _broken or _warn_ev or _unrecorded_buys),
             "today": _today_str,
         }
 

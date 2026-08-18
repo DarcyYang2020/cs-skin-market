@@ -739,3 +739,16 @@
 - **保留**：独特性状态行（`_uniqueness_note` + 模板 mapping 分支，DISPLAY-1 结构）与其余研究口径提示（族特征/F 判别/供给三态/恐慌口径）不受影响。
 - **研究存证去向**：`pipeline/shortterm_expectancy.py` + `data/_exp_shortterm_table.json` + `config.SHORTTERM_EXPECTANCY` **保留为研究存证**（`t_shortterm_expectancy` 仍测其逻辑）；`compute_shortterm_expectancy` 逻辑**零改动**（git diff 为空）。webapp 无 `shortterm_expectancy`/`regime_note`/`大盘语境` 活跃引用（仅存 DISPLAY-3/6 删除注释）。
 - **验证**：`tests/test_smoke.py` **131 passed / 0 failed / 0 skipped**；`tests/check_encoding.py` PASS（hard 0）；`ENGINE_VERSION` 仍 `v2-T13`。
+
+---
+
+## BM. EXEC-1 P0 执行飞轮：未记录 buy 提醒（2026-08-18，纯展示/数据闭环）
+
+- **立项卡**：EXEC-1 P0 执行飞轮（PM 交②执行）。纯产品/展示/数据闭环，不碰引擎/决策/信号族/基线。
+- **基线**：`executions` 当前 **8 条**（目标 ≥20）；`signal_tracking` 生产 buy 信号 **2 条**（2026-08-09 AK-47 轨道 Mk01、2026-08-14 MP9 绿色格纹）。
+- **改动点**（`webapp/main.py` + `webapp/templates/watchlist.html`）：
+  1. `page_watchlist` 新增「未记录 buy 提醒」计算——buy 信号来源 = `signal_tracking`（近 7 天、仅自选品）+ 自选当前 `fusion_action in (buy, oversold_buy)`；用 `batch_scan._recently_executed_names(7)`（近 7 天 executions 品名集合）比对，未命中即「未记录执行」。注入 `monitor.unrecorded_buys`（含 name/signal_date/latest_price），并纳入 `has_focus`。
+  2. 今日关注卡新增「📝 未记录执行」行：蓝底高亮 + 「💼 记录执行」（`openExecModal`，data-name/action=buy/price=latest_price 预填）+「📄 报告」（`showItemReport`）。
+- **四处一键执行入口核对（均为已有能力，未重造）**：单品报告（analysis.html「按建议记录执行」buy 时）✓、批量扫描（`batch_scan._exec_btn` 可操作建议）✓、discover（经单品报告同入口）✓、自选（`openExecManual` 手动录入）✓；记录后自动同步持仓 / 14-30 日自动结算 / 滑点（advice_price vs exec_price）均已有。
+- **验收口径**：executions ≥20 为 2 周过程目标（本改动提供零摩擦入口 + 未记录提醒驱动记录），达标由 PM 后续观测；当前基线 8 条已记录于本条目。
+- **验证**：`tests/test_smoke.py` **131 passed / 0 failed / 0 skipped**；`tests/check_encoding.py` PASS（hard 0）；`ENGINE_VERSION` 仍 `v2-T13`。

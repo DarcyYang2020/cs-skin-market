@@ -209,6 +209,14 @@
           <button class="btn btn-outline btn-sm" onclick="showItemReport('{{ it.name|e }}')">📄</button>
         </div>
         {% endfor %}
+        {% for it in monitor.unrecorded_buys %}
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:rgba(37,99,235,0.06);border-radius:6px;padding:4px 8px;">
+          <span style="font-weight:800;color:#2563eb;">📝 <b>{{ it.name }}</b></span>
+          <span style="color:var(--text-secondary);">买入信号 {{ it.signal_date }} · 未记录执行</span>
+          <button class="btn btn-primary btn-sm" onclick="openExecModal(this)" data-name="{{ it.name|e }}" data-action="buy" data-price="{{ it.latest_price or '' }}" data-signal="买入信号" style="margin-left:auto;">💼 记录执行</button>
+          <button class="btn btn-outline btn-sm" onclick="showItemReport('{{ it.name|e }}')">📄</button>
+        </div>
+        {% endfor %}
         {% for it in monitor.near_buys %}
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           <span>🎯 <b>{{ it.name }}</b></span>
