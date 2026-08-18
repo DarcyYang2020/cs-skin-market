@@ -143,6 +143,7 @@ cs-skin-market/
 - `trend_leg_*.py / th_*_study.py / topup_replay.py / tranche_fit*.py / c1_p10_replay.py / advice_layer_fit.py / portfolio_cap_fit.py` — 历史研究脚本
 - `scripts-archive/` — 已下线脚本归档（成交量时代等，仅存证）
 - `archive/` — 已完成专项文档存证（2026-08-18 CLEANUP-1 归档 17 篇：optimization-* 2026-08-14 两份 + 外审立项基线/一次性审计/过时交接等，清单见 `cleanup-plan-2026-08-18.md`）
+- `archive/doc-compact-2026-08-18/` — 长文档归档压缩卷（2026-08-18 DOC-COMPACT-1）：`decision-log-archive-2026-08-18.md`（历史决策 2026-08-03~08-18 全文）+ `iteration-roadmap-archive-2026-08-18.md`（版本历史 v1~v70 + 各技术方案）；清单见 `doc-compact-plan-2026-08-18.md`
 
 ## 数据文件（data/）
 
