@@ -1,0 +1,28 @@
+{
+ "probe": "阶段15 P2 概率校准",
+ "split": "2025-08-10",
+ "brier_baseline": 0.2718,
+ "brier_p1c": 0.2272,
+ "calibration_curve_p1c": {
+  "20-30%": {
+   "n": 8314,
+   "pred_win": 15,
+   "actual_win": 23.1
+  },
+  "40-50%": {
+   "n": 9412,
+   "pred_win": 25,
+   "actual_win": 39.2
+  },
+  "50-60%": {
+   "n": 14924,
+   "pred_win": 30,
+   "actual_win": 54.6
+  },
+  "70-80%": {
+   "n": 4004,
+   "pred_win": 40,
+   "actual_win": 70.0
+  }
+ }
+}
