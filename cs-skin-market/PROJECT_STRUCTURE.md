@@ -142,7 +142,7 @@ cs-skin-market/
 - `run_item_backtest_full.py` — 全窗口单品回放（产出 HIST-FULL 冻结归档 `item_backtest_full_2025.json`）
 - `trend_leg_*.py / th_*_study.py / topup_replay.py / tranche_fit*.py / c1_p10_replay.py / advice_layer_fit.py / portfolio_cap_fit.py` — 历史研究脚本
 - `scripts-archive/` — 已下线脚本归档（成交量时代等，仅存证）
-- `archive/` — 已完成专项文档存证（optimization-roadmap-2026-08-14 / optimization-opportunities-2026-08-14）
+- `archive/` — 已完成专项文档存证（2026-08-18 CLEANUP-1 归档 17 篇：optimization-* 2026-08-14 两份 + 外审立项基线/一次性审计/过时交接等，清单见 `cleanup-plan-2026-08-18.md`）
 
 ## 数据文件（data/）
 

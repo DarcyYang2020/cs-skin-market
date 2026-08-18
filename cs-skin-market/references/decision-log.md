@@ -4538,3 +4538,17 @@ Fluxo 25→280 约 11 倍），尖顶后 3 天 -86~94%，与枪皮统计反转�
   - 最新战役「拿历史均值当引擎买点」闭环完成（AM）：当下期望机制 = `E[fwd14 | 时期, 时点]`（k=20 收缩）已接入单品报告；proximity base 路径 th 反置（`_prog_low→_prog_high`）已修。
   - 引擎 `ENGINE_VERSION = v2-T13`（五时期路由默认开）；官方 189 信号 3y 组合 +397.02% / maxDD −14.09%；当前实盘 S3 弱市阴跌（空仓区）。
 - **待 PM 窗口（①）处理**：`iteration-roadmap.md` 落后（停在 v70 2026-08-15），需 PM 更新 X→AM 进展并出下一张立项卡；本窗口（②）在无活跃立项卡时不漫无目的探。
+
+---
+
+## AO. CLEANUP-1 工程卫生清理执行（2026-08-18）
+
+- **立项卡**：`iteration-roadmap.md`「CLEANUP-1 工程卫生清理专项」（PM 2026-08-18 立项，交研发执行）。预注册清单 `references/cleanup-plan-2026-08-18.md`（处置与清单逐项一致，清单外零改动）。
+- **归档 17 篇**（`git mv` 至 `references/archive/`，git history 可逆，未物理删除）：
+  - 过时交接/自标废弃（5）：`handoff-2026-08-18.md`（用户确认与 AM 矛盾，归档非删除）、`optimization-initiation-2026-08-15.md`、`family-boundary-arbitration-v1.md`（被 v2 取代）、`batch2-family-boundaries-design.md`、`alignment-and-fix-plan.md`（AM 签收单已闭环）。
+  - 外审一次性审计/立项基线（12）：`conclusion-audit-2026-08-15.md`、`core-sat-1-2026-08-15.md`、`trap-key-plan-2026-08-15.md`、`cycle-refit-2026-08-15.md`、`v3-engine-enhance-2026-08-15.md`、`engine-refoundation-audit-2026-08-15.md`、`decision4-guard-coverage.md`、`execution-flywheel-audit.md`、`product-pm-initiation.md`、`product-pm-review.md`、`system-evaluation-2026-08-17.md`、`exception-pass-ledger.md`。
+- **引用修正**：`family-boundary-arbitration-v2.md` 对 v1 引用改 `archive/...`；`backfill_buy1_buy_price.py` / `backfill_cycle_window.py` / `scripts-archive/probes/probe_buy1_gate.py` 的 docstring 基准文档路径改 `archive/...`。
+- **登记不删（交运维）**：data/ 下 `.bak` 备份（market.db.bak-* 7 份、market.bak-* 3 份、replay_v2t6_win.bak-* 2 份、item_backtest_full_2025.json.bak-* 1 份）——`.db/.bak` 属运维域，研发只登记（cleanup-plan 二节）。
+- **保留不处置**：`guard-chain-map.md`（生成产物可再生成）、`system-evaluation-2026-08-10.md` / `p2_backtest_plan.md` / `position-building-strategy.md` / `bid-data-accumulation.md` / `data-reserve-api-audit.md` / `deployment.md`（活跃白名单引用或用户侧方案）、`_exp_v2t7/v2t8_win_replay_deprecated_*.json`（已按 `_deprecated_` 口径在库内存证）、全部 `.py` 研究脚本（脚本迁移留待单独一轮做 import graph + 断言映射验证）。
+- **验证**：`tests/test_smoke.py` **130 passed / 0 failed / 0 skipped**；`tests/check_encoding.py` **PASS（hard 0）**（10 个 `?` 警告均为历史已知脏名，非本次引入）。归档后无活跃悬空引用（活跃引用仅剩 decision-log/iteration-roadmap 历史存证 + archive/ 内部）。
+- **文件结构同步**：`PROJECT_STRUCTURE.md` archive/ 条目更新（CLEANUP-1 归档 17 篇 + 清单指针）。

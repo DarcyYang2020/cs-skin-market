@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """BUY-1 数据质量闸门：10 品口径验证探针（只读，只进研究层，不写 bid_history）。
 
-范围/红线基准 = references/optimization-initiation-2026-08-15.md（外审立项基线）。
+范围/红线基准 = references/archive/optimization-initiation-2026-08-15.md（外审立项基线，已归档）。
 本探针对比「直连 period=1095」与「现有 bid_history（直连 90d）」：
   - buy_price / buy_num 日级一致率（逐品，含小基数 buy_num 单独标注）
   - bid_30d_chg 直连口径的中位数 + 与售价 30d 涨跌 sign 一致率（定量「是否还背离」）
@@ -236,7 +236,7 @@ def main():
     out = {
         "probe": "BUY-1 10品口径验证探针",
         "generated": datetime.now(TZ_BJ).strftime("%Y-%m-%d %H:%M:%S"),
-        "baseline_doc": "references/optimization-initiation-2026-08-15.md",
+        "baseline_doc": "references/archive/optimization-initiation-2026-08-15.md",
         "ruler": "直连 period=1095 vs bid_history（直连 90d）；一致=日级偏差<5%；gate=全局>=95% 且任一品>=80%；bid_30d_chg 定量=中位数 + 与售价 sign 一致率",
         "global": {
             "buy_price_rate": global_rate, "any_item_below_80": any_below_80,

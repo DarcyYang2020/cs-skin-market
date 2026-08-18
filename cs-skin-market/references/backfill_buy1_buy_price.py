@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """BUY-1 buy_price 直连回填（有条件通过裁定：buy_price 用 period=1095 日线，buy_num 不动）。
 
-范围/红线基准 = references/optimization-initiation-2026-08-15.md + 外审裁定：
+范围/红线基准 = references/archive/optimization-initiation-2026-08-15.md（已归档）+ 外审裁定：
   - buy_price 用直连 1095 日线回填 bid_history（buy_price_last/min/max/mean + point_count=1）
   - buy_num 维持现有 period=90 十分钟点口径，一律不写
   - 只进研究层（bid_history），不碰 items / price_history / 引擎

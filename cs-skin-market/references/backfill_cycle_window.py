@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """历史扩窗口回填：price + in_sale 回填到新回放库 replay_cycle_win.db（v69，2026-08-15）。
 
-范围/红线基准 = references/cycle-refit-2026-08-15.md。
+范围/红线基准 = references/archive/cycle-refit-2026-08-15.md（已归档）。
 只回填「回放池 A 96 品」（first_date<=2025-08-10 且排除水栽竹/珊瑚树），非全库。
 数据源：csQAQ /info/chart key=sell_price period=1095 → main_data（价格→price_rmb）+ num_data（在售量→in_sale_count）。
 落库：新回放库 data/replay_cycle_win.db（由 replay_hybrid.db 拷贝而来，保留 items + market_index）。
