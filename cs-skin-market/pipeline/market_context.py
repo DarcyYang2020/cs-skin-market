@@ -209,6 +209,7 @@ def market_index_stats(market_history):
     """大盘指数统计（纯计算）：90日分位/Z/周期/TH/7-30-21日涨跌幅。
 
     market_history: [(date_str, value), ...]（oldest -> newest）。
+    BUG-1（2026-08-18）：TH/分位窗口对齐 build_market_context 的 91 值含当日口径（原 90 值 off-by-one）。
     """
     values = _market_values(market_history)
     pct, z = 50.0, 0.0
@@ -216,7 +217,7 @@ def market_index_stats(market_history):
     chg7 = chg30 = drop21 = chg180 = 0.0
     if len(values) >= 30:
         from .index_analysis import analyze_index
-        _ires = analyze_index(market_history[-90:])
+        _ires = analyze_index(market_history[-91:])
         _ipos = _ires.get("position", {}) if isinstance(_ires, dict) else {}
         pct = _ipos.get("percentile_90d", 50)
         z = _ipos.get("zscore_90d", 0)
@@ -231,7 +232,7 @@ def market_index_stats(market_history):
         from .market_th import derive_market_cycle, compute_market_trend_health
         cycle = derive_market_cycle(values, len(values) - 1)
         try:
-            _mth = compute_market_trend_health(values[-90:])
+            _mth = compute_market_trend_health(values[-91:])
             th = _mth.corrected_score if hasattr(_mth, "corrected_score") else _mth.score
         except Exception:
             logger.warning("compute_market_trend_health fallback failed", exc_info=True)

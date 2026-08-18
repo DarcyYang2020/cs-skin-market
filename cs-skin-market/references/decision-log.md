@@ -764,3 +764,13 @@
   3. 旧 `item_backtest_full_2025.json`（HIST-FULL 317）保留为冻结存证，不作 /replay 主数据源。
 - **验证**：新数据源 `signals=189` 且含 `fwd_series/entry_price/date/name` 字段（渲染兼容）；`ENGINE_VERSION` 仍 `v2-T13`。
 - **冒烟口径（诚实记录）**：`tests/test_smoke.py` 本次为 **130 passed / 1 failed / 0 skipped**。1 个失败 = `t_live_snapshot_sync`（大盘 TH 33 vs 35 漂移），根因 = `market_index_stats` 用 `values[-90:]`（90 值）而 `build_market_context` 用 `values[i-90:i+1]`（91 值）的**窗口 off-by-one**，今日大盘指数更新后 TH 恰好分开——**与 DISPLAY-7 无关（未触碰 market TH 计算，红线禁碰引擎）**；`t_j2_channel_status` 因 `j2_channel_status.json` 过期（value_days 11→12）已重生成 `j2_channel_monitor.py` 修复。`check_encoding.py` PASS（hard 0）。TH 窗口 off-by-one 建议单独立项修复。
+
+---
+
+## BO. BUG-1 TH 窗口 off-by-one 修复（2026-08-18，纯口径对齐）
+
+- **立项卡**：BUG-1（PM 交②执行）。恢复 `t_live_snapshot_sync` + 冒烟 131/0/0。
+- **根因**：`pipeline/market_context.py::market_index_stats` 对大盘 TH/分位用 `values[-90:]`（90 值），而 `pipeline/backtest_common.py::build_market_context`（回测/统一口径事实源）用 `values[i-90:i+1]`（**91 值含当日**）——窗口 off-by-one，导致 live 大盘 TH 与回测口径差 2 分（33 vs 35）。
+- **修复**：`market_index_stats` 对齐到 91 值含当日窗口——`analyze_index(market_history[-90:])`→`[-91:]`、`compute_market_trend_health(values[-90:])`→`[-91:]`。**不改 TH 评分公式/阈值/情绪/周期**，仅改窗口切片长度。
+- **影响评估（判据 3）**：纯口径对齐——live TH 由 33 修正为 35（与回测事实源一致）；TH 公式/阈值零改动，无信号/基线变化（当前 TH 33→35 均在 <40 区间，不跨越任何守卫/族闸门阈值），**不 bump ENGINE_VERSION**（保持 v2-T13）。
+- **验证**：`tests/test_smoke.py` **131 passed / 0 failed / 0 skipped**（`t_live_snapshot_sync` 恢复通过）；`tests/check_encoding.py` PASS（hard 0）；`ENGINE_VERSION` 仍 `v2-T13`。
