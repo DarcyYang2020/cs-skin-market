@@ -4518,4 +4518,8 @@ Fluxo 25→280 约 11 倍），尖顶后 3 天 -86~94%，与枪皮统计反转�
   - **特征层级增量校验（决定性，`validate_feature_levels.py`）**：`period` +2.63% / **`period+period_days` +3.52%（最优）** / +pct +3.08% / +th +2.60% / +z +2.12% / +mchg30 **−1.81%** / +sent −0.01% → **加任何单品特征或额外市场特征都在样本外变差**。深层原因：五时期 taxonomy 已编码"历史周期+现在市场情况"，再加原始 mchg30/sent 冗余、加单品 pct/th 是噪声。**最终口径钉死：②当下期望 = E[fwd14 | 时期, 时点]（k=20 收缩，n<5 回退"样本不足"），单品特征不进 ②。**
 - **E 类修复已落地（2026-08-18，commit `79dd9c4`）**：`item_analysis.py` ① base 路径「深跌确认 `_prog_low(th,35,55)`」→「趋势确认 `_prog_high(th,55,35)`」，对齐 compute_fusion_decision TH_STRONG（th≥55 ready / th<35 下跌中继归零，35-55 线性过渡）；② supply 路径补 T4 chg8 门（chg8>3 泵后横盘追高归零）；③ 新增 `t_proximity_trigger_align` 一致性测试防漂移。冒烟 129→130 passed 0 failed。修复后验证：th=60/55→score100、th=45→79、th=35/30/25→0。
 - **A 类语义隔离已落地（2026-08-18，commit `1dee37f`）**：`item_analysis.py` 三个 buy 族 detail（deep_value/panic_easing/supply_accum）剥离"回测14d+X%/N信号X%胜率"只留"轻仓X.XX·分批"；守卫 detail（半山腰/供给扩张/周期吸筹×2）剥离"回测X%胜率"；`valuation.py` 硬断言"暴跌概率>70%"改为"历史分布…非本次概率"。冒烟 130 passed 0 failed。
-- **状态**：审计+设计+面板+估计+特征层级校验+E 类修复+A 类（buy 决策条）隔离全部完成。剩余（长尾，价值递减）：batch_scan 补仓/止损 14 处内嵌回测、B 类 period_forward、C 类全局期望标签、修 1（②接入展示，webapp，前端会话）。
+- **长尾全部落地（2026-08-18，用户授权跨会话，commit `1a499f7`）**：
+  - **修 1（②接入展示，webapp）**：`analysis_service.py` 新增 `_point_in_time_expectancy(period, period_days)`——读 `_exp_period_continuous_curve.json`，期内按天读平滑值（内插）、超历史最长天取尾部收敛值（外推·低置信，带 25/75 分位带）；注入 `_fd_display` 大盘语境行后追加"当下期望：进入 X 第 N 天…14d ≈ ±X%（历史分布，非本次胜率）"。S3 第 44 天实读 = −6.7%/胜率21%（带 −13.6%~−1.1%）。
+  - **A 类 batch_scan 补仓/止损**：`_topup_price_plan` 的 `_base`（补仓点回测胜率）+ 5 处止损 reason + 7 处补仓 suggest/reason 的"回测/胜率"内嵌数字全部剥离；历史证据保留在代码注释 + 止损 `evidence` 字段。
+  - **B 类 period_forward / C 类期望徽章**：判定已语义隔离（period_forward 带"非预测"标签、期望徽章已下架仅测试保留、族卡/供给三态/F判别在"研究口径提示·仅标注"区），无需改动。
+- **状态**：审计+设计+面板+估计+特征层级校验+E 类修复+A 类隔离+修 1（②接入展示）全部完成。冒烟 130 passed 0 failed。**「拿历史均值当引擎买点」战役：定位→机制→消除 闭环完成。**
