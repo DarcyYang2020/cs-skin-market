@@ -740,7 +740,8 @@ eferences/refit_pipeline.py → data/refit_pipeline_report.json（A2 三件套�
      e. 临时文件（`.tmp` / 文本类 `.bak` / 旧日志），只登记或移入 `data/_cleanup_quarantine/`，不直接物理删除。
   4. 每个删除候选必须**同时**满足：活跃引用数 = 0（decision-log/iteration-roadmap/PROJECT_STRUCTURE 仅以「已归档/已废弃/历史存证」方式提及的，须在清单中标注为历史存证引用，不计活跃引用）；不在白名单；处置方式与分类匹配。
   5. 执行前确认 `git status` 干净；tracked 文件删除后可经 git history 恢复；untracked 文件先移动 `data/_cleanup_quarantine/` 保留 7 天，再物理删除。
-  6. 处置后必须跑 `python tests/test_smoke.py`（0 failed）与 `python tests/check_encoding.py`（PASS），并附结果于 decision-log 条目。
+  6. 处置后必须跑 `python tests/test_smoke.py`（**130 passed / 0 failed，不得低于立项时基线**）与 `python tests/check_encoding.py`（PASS），并附结果于 decision-log 条目。
+  7. 涉及 `data/` 的任何处置，执行前先在 decision-log 留言占坑（文件清单 + 执行时段），确认不与运维采集/备份/计划任务冲突；冲突则暂停并交 PM 协调。
 - **白名单（绝对不删）**：
   - 根目录：`run_*.py`、`backup_db.py`、`collect_data_reserve_p0.py`、`collect_data_reserve_p1.py`、`notify_alert.py`、`install_tasks.ps1`、`install_hooks.ps1`、`deploy_server.ps1`、`start_webapp.bat`、`requirements.txt`、`AGENTS.md`、`SKILL.md`、`PROJECT_STRUCTURE.md`、`agents/openai.yaml`、`design-system/`。
   - `pipeline/`、`webapp/`、`tests/` 全部活跃文件。
@@ -749,8 +750,19 @@ eferences/refit_pipeline.py → data/refit_pipeline_report.json（A2 三件套�
   - 所有 `.db` / `.bak` / `.log` 运行时文件：**不物理删除，只登记清单交运维窗口处理**。
 - **验收标准**：
   1. dry-run 清单与实际处置逐项一致（无清单外删除；清单内不处置项须注明原因）。
-  2. 处置后全仓无悬空引用（rg 指向不存在文件 = 0）；冒烟 0 failed；编码健康 PASS。
+  2. 处置后全仓无悬空引用（rg 指向不存在文件 = 0）；冒烟 **130 passed / 0 failed（不得低于立项时基线）**；编码健康 PASS。
   3. `PROJECT_STRUCTURE.md` / `AGENTS.md` 完成同步：已删除文件不再作为活跃条目出现（历史存证引用除外）。
   4. 交付物：`references/cleanup-plan-2026-08-18.md` + decision-log 条目（清单与处置结果）+ commit。
   5. PM 对照本卡逐项验收；不达标回炉；若发生不可恢复误删，专项判定失败并执行回滚。
-- **红线**：不碰活跃引擎 / 测试 / 基线数字；不删 `.db` / `.bak` / `.log`；本轮不做目录结构大重构（不新增大规模迁移）；清理必须可逆（git history + quarantine）。
+- **红线**：不碰活跃引擎 / 测试 / 基线数字；不删 `.db` / `.bak` / `.log`；本轮不做目录结构大重构（**仅允许单文件移入 `references/scripts-archive/` 或 `references/archive/`；禁止整目录搬迁 / 目录重命名 / 变更 import 结构**）；清理必须可逆（git history + quarantine）。
+
+### PM 验收结论（2026-08-18）
+- **结果：通过，CLEANUP-1 关闭。**
+- 对照项逐项核验：
+  1. dry-run 清单与实际处置一致：`references/cleanup-plan-2026-08-18.md` 列 17 篇归档 + 3 类 `.bak` 登记 + 明确不处置清单；实际归档 17 篇（`references/archive/` 全部在册，`git mv` 可逆），清单外零改动。✅
+  2. 全仓无活跃悬空引用：`family-boundary-arbitration-v2.md` 对 v1 引用已改 `archive/...`；历史存证引用（decision-log/iteration-roadmap）按预注册豁免。✅
+  3. 冒烟 130 passed / 0 failed / 0 skipped；`check_encoding.py` PASS（hard 0，10 个 `?` 为历史已知脏名）。✅
+  4. 文件结构同步：`PROJECT_STRUCTURE.md` line 145 archive 条目已更新并指向 cleanup-plan；AGENTS.md 无归档文件活跃引用，无需改动。✅
+  5. 交付物：cleanup-plan ✅ + decision-log AO 条目 ✅ + commit ✅（AO commit hash 已补记 `0e7831e` + `2f7cbcb`）。
+- **遗留 `.bak` 事故快照（15 份）**：运维域 12（`market.db.bak-*` 9 + `market.bak-*` 3，生产库，待运维按数据层 SOP 清理）；研究域 3（`replay_v2t6_win.bak-*` 2 + `item_backtest_full_2025.json.bak-*` 1，②自清）。保留规则待运维确认。
+
