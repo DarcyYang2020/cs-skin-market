@@ -1,0 +1,49 @@
+{
+ "probe": "阶段3 超跌深度选品分数",
+ "score_def": "-(z_pct+z_z+z_chg3)/3 等权",
+ "n_valid": 4095,
+ "全量_不选品": {
+  "n": 4095,
+  "fwd14_mean": 18.09,
+  "win_pct": 70.4,
+  "big_win_pct": 50.4
+ },
+ "超跌Top20": {
+  "n": 819,
+  "fwd14_mean": 33.45,
+  "win_pct": 83.2,
+  "big_win_pct": 69.1
+ },
+ "超跌Top10": {
+  "n": 409,
+  "fwd14_mean": 49.56,
+  "win_pct": 94.9,
+  "big_win_pct": 86.6
+ },
+ "panic阈值_pct15_z15": {
+  "n": 793,
+  "fwd14_mean": 29.6,
+  "win_pct": 84.2,
+  "big_win_pct": 67.2
+ },
+ "pct15": {
+  "n": 1276,
+  "fwd14_mean": 25.94,
+  "win_pct": 80.8,
+  "big_win_pct": 62.1
+ },
+ "事件_组合分数增量": {
+  "五合一": {
+   "n": 2730,
+   "fwd14_mean": 13.33,
+   "win_pct": 65.3,
+   "big_win_pct": 43.7
+  },
+  "炼金": {
+   "n": 910,
+   "fwd14_mean": 38.51,
+   "win_pct": 91.6,
+   "big_win_pct": 76.4
+  }
+ }
+}
