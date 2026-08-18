@@ -1,0 +1,66 @@
+{
+ "probe": "阶段13 P1-C chg30幅度细桶",
+ "split": "2025-08-10",
+ "groups": {
+  "P恐慌-sample_in": {
+   "n": 91,
+   "mae": 14.48,
+   "pred_med": 11.01,
+   "actual_med": 11.01
+  },
+  "P恐慌-sample_out": {
+   "n": 4004,
+   "mae": 22.31,
+   "pred_med": 11.01,
+   "actual_med": 10.21
+  },
+  "S1牛市-sample_in": {
+   "n": 20092,
+   "mae": 9.36,
+   "pred_med": 0.89,
+   "actual_med": 0.89
+  },
+  "S1牛市-sample_out": {
+   "n": 9646,
+   "mae": 24.34,
+   "pred_med": 0.89,
+   "actual_med": 3.69
+  },
+  "S2回调-sample_in": {
+   "n": 10660,
+   "mae": 7.68,
+   "pred_med": 0.62,
+   "actual_med": 1.09
+  },
+  "S2回调-sample_out": {
+   "n": 5278,
+   "mae": 16.97,
+   "pred_med": 2.96,
+   "actual_med": -0.21
+  },
+  "S3阴跌-sample_in": {
+   "n": 3702,
+   "mae": 3.54,
+   "pred_med": 0.91,
+   "actual_med": 0.91
+  },
+  "S3阴跌-sample_out": {
+   "n": 10490,
+   "mae": 13.28,
+   "pred_med": 0.91,
+   "actual_med": -7.54
+  },
+  "S4反弹-sample_in": {
+   "n": 6408,
+   "mae": 3.96,
+   "pred_med": 0.0,
+   "actual_med": 0.0
+  },
+  "S4反弹-sample_out": {
+   "n": 7236,
+   "mae": 18.51,
+   "pred_med": 0.0,
+   "actual_med": -1.77
+  }
+ }
+}
