@@ -1,0 +1,15 @@
+{
+ "probe": "阶段18 P2-B A模型逻辑回归",
+ "split": "2025-08-10",
+ "target": "fwd14>+10.0%",
+ "model": {
+  "lr": 0.1,
+  "epochs": 200,
+  "l2": 0.001,
+  "n_feat": 19
+ },
+ "auc_base_period": 0.6831,
+ "auc_a_model": 0.5558,
+ "n_train": 40953,
+ "n_test": 36654
+}
