@@ -1228,6 +1228,51 @@ def _f_pullback_note(name):
         return None
 
 
+_CURVE_CACHE = {"ts": 0.0, "data": None}
+
+
+def _point_in_time_expectancy(period, period_days):
+    """当下进场期望（②机制，2026-08-18）：E[fwd14 | 时期, 时点]，来自 _exp_period_continuous_curve.json。
+
+    连续程度量化：期内按天读平滑值（内插）；超历史最长天取尾部收敛值（外推·低置信）。
+    纯展示，不改变决策；永远带"历史分布，非本次胜率"语义。返回 dict 或 None。
+    """
+    try:
+        now = time.time()
+        if _CURVE_CACHE["data"] is None or now - _CURVE_CACHE["ts"] > 300:
+            _p = Path(__file__).resolve().parent.parent / "data" / "_exp_period_continuous_curve.json"
+            with io.open(_p, "r", encoding="utf-8") as _f:
+                _CURVE_CACHE["data"] = json.load(_f)
+            _CURVE_CACHE["ts"] = now
+        table = _CURVE_CACHE["data"]
+        p = table.get("periods", {}).get(period)
+        if not p or period_days is None:
+            return None
+        max_day = p.get("max_day")
+        if period_days <= max_day:
+            by_day = {c["day"]: c for c in (p.get("curve") or [])}
+            c = by_day.get(period_days)
+            if not c or c.get("fwd14_smooth") is None:
+                return None
+            return {
+                "text": "进入 {} 第 {} 天 · 当下期望 14d ≈ {:+.1f}%（胜率 {:.0f}%，历史分布，非本次胜率）".format(
+                    period, period_days, c["fwd14_smooth"], c.get("win14") or 0),
+                "extrapolated": False,
+            }
+        ta = p.get("tail_asymptote") or {}
+        if ta.get("fwd14") is None:
+            return None
+        band = ta.get("band25_75")
+        band_txt = "，带 {}%~{}%".format(band[0], band[1]) if band else ""
+        return {
+            "text": "进入 {} 第 {} 天（超历史最长 {} 天）· 当下期望 14d ≈ {:+.1f}%（胜率 {:.0f}%，历史分布·外推低置信{}）".format(
+                period, period_days, max_day, ta["fwd14"], ta.get("win14") or 0, band_txt),
+            "extrapolated": True,
+        }
+    except Exception:
+        return None
+
+
 def _fd_display(fd, analysis=None):
     """融合决策展示层注入（决策链 trace）。纯展示，不改引擎输出。
 
@@ -1301,6 +1346,10 @@ def _fd_display(fd, analysis=None):
                     _msig["period"], _msig.get("action_note", ""),
                     _fwd.get("fwd14", "n/a"), _fwd.get("fwd30", "n/a"))
             )
+            # ②当下进场期望（2026-08-18）：E[fwd14 | 时期, 时点]，连续程度量化，替换时期级静态均值
+            _exp = _point_in_time_expectancy(_msig["period"], _msig.get("period_days"))
+            if _exp:
+                _caveats.append("当下期望：" + _exp["text"])
     except Exception:
         pass
     # 独特性状态行（2026-08-17 查漏补缺，纯展示）：全部预注册形式命中标注（假设验证，不改变决策）

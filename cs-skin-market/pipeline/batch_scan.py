@@ -117,11 +117,9 @@ def _topup_price_plan(avg_cost, qty, current_price, analysis):
     _e_lo = _entry.get("low", 0) or 0
     _e_hi = _entry.get("high", 0) or 0
     _qs = _split_topup_qty(max(1, int(qty)))
-    _stats = TOPUP_EXPECTANCY_STATS["topup_ok"]
-    _base = f"（回测：补仓点14d胜率{_stats['win14']:.0f}%、均值+{_stats['avg14']:.1f}%"
-    if _stats.get("events"):
-        _base += f"、{_stats['events']}次独立事件"
-    _base += "）"
+    # 2026-08-18 语义隔离：剥离补仓建议里的"回测补仓点胜率"内嵌数字（拿历史均值当当下胜率）；
+    # 补仓点历史证据见 TOPUP_EXPECTANCY_STATS（config，研究区），不进补仓建议文案。
+    _base = ""
     if _e_lo > 0 and _e_hi > 0 and _e_hi < _cur:
         _mid = round((_e_lo + _e_hi) / 2, 2)
         _steps = list(zip((_e_hi, _mid, _e_lo), _qs))
@@ -177,14 +175,12 @@ def _stop_loss_plan(avg_cost, qty, current_price, analysis, market_30d_change=No
     if s30 > 5:
         state, action = "供给扩张", "全止损"
         _sold_note = f"（已执行止损 {sold_recent}/{total_ref} 件）" if sold_recent else ""
-        reason = (f"在售量30日扩张{s30:+.0f}%（>5%），结构性派发、无反弹预期；"
-                  f"回测60d深套率41%→全止损后降至1%{_sold_note}")
+        reason = (f"在售量30日扩张{s30:+.0f}%（>5%），结构性派发、无反弹预期{_sold_note}")
         sell_action, ratio_pct, sell_qty = "sell", 100, qty
         evidence = "60d 深套 41%→1%，派发结构无反弹预期"
     elif m is not None and m <= -15:
         state, action = "恐慌深跌", "不止损，转补仓评估"
-        reason = (f"大盘30日{m:.1f}%（≤-15%）恐慌深跌，V型底指纹；"
-                  f"回测60d +1.4% / 90d +7.6%，止损反而踏空反弹")
+        reason = f"大盘30日{m:.1f}%（≤-15%）恐慌深跌，V型底指纹，止损反而踏空反弹"
         sell_action, ratio_pct, sell_qty = None, 0, 0
         evidence = "60d +1.4% / 90d +7.6%，V型底 win87% 佐证"
     elif m is not None and -15 < m <= -5:
@@ -195,8 +191,7 @@ def _stop_loss_plan(avg_cost, qty, current_price, analysis, market_30d_change=No
             sell_action, ratio_pct = "reduce", round(sell_qty / qty * 100)
             _sold_txt = (f"；已执行止损 {sold_recent}/{total_ref} 件（{sold_pct:.0f}%），"
                          f"本次补足减半差量 {sell_qty} 件") if sold_recent else ""
-            reason = (f"大盘30日{m:.1f}%（-15%~-5%）阴跌中继，易继续阴跌；"
-                      f"回测60d深套率17.6%→减半后3.4%，全损过激（-21.1%）取折中{_sold_txt}")
+            reason = (f"大盘30日{m:.1f}%（-15%~-5%）阴跌中继，易继续阴跌，取减半折中{_sold_txt}")
             evidence = (f"60d 深套 17.6%→3.4%；距减半线还差 {max(0, _target - sold_recent)} 件"
                         if sold_recent else "60d 深套 17.6%→3.4%；均-16.3%（全损-21.1/扛单-11.6 折中）")
         elif th_score < 30:
@@ -213,15 +208,13 @@ def _stop_loss_plan(avg_cost, qty, current_price, analysis, market_30d_change=No
             evidence = f"已减半 {sold_pct:.0f}%，剩余观察；TH={th_score}"
     elif m is not None and m > 5:
         state, action = "大盘上涨段", "不止损"
-        reason = (f"大盘30日{m:+.1f}%（>+5%）上涨段，持仓随大盘修复概率高；"
-                  f"回测90d扛单+29% vs 止损-21.6%")
+        reason = f"大盘30日{m:+.1f}%（>+5%）上涨段，持仓随大盘修复概率高"
         sell_action, ratio_pct, sell_qty = None, 0, 0
         evidence = "90d 扛+29% vs 损-21.6%，深套18%"
     else:
         state, action = "中性", "不止损"
         _m_txt = f"{m:+.1f}%" if m is not None else "数据缺失"
-        reason = (f"大盘30日{_m_txt}（中性），深套概率低；"
-                  f"回测90d +51%，以控制仓位为主")
+        reason = f"大盘30日{_m_txt}（中性），深套概率低，以控制仓位为主"
         sell_action, ratio_pct, sell_qty = None, 0, 0
         evidence = "90d +51%（深套19%，控制仓位为主）"
     return {
@@ -405,14 +398,14 @@ def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th
             advice["action"] = "禁止补仓"
             advice["reason"] = (f"浮亏{pnl_pct:.0f}%且在售量30日扩张{_sup30:+.0f}%（>5%），"
                                 f"供给扩张=结构性派发，补仓无反弹预期")
-            advice["suggest"] = (f"在售量30日扩张{_sup30:+.0f}%（>5%）：回测60d深套率41%→全止损后降至1%，"
-                                 f"禁止补仓，按止损建议全止损；待供给转收缩再评估补仓")
+            advice["suggest"] = (f"在售量30日扩张{_sup30:+.0f}%（>5%）：禁止补仓，按止损建议全止损；"
+                                 f"待供给转收缩再评估补仓")
         # 市场极度贪婪：禁止补仓（回测 sent<=30: 30d胜率0%, 均-14%）
         elif sent <= 30:
             advice["action"] = "禁止补仓"
             advice["reason"] = f"浮亏{pnl_pct:.0f}%但市场贪婪(sent={sent:.0f})，逆势抄底期望为负"
             advice["suggest"] = (f"情绪贪婪(sent={sent:.0f}，≤30禁补)，距可补区间还差{max(0, 30 - sent):.0f}分，"
-                                 f"等情绪转中性/恐惧再考虑（回测：贪婪期补仓14d均值{TOPUP_EXPECTANCY_STATS['greedy']['avg14']:+.1f}%）")
+                                 f"等情绪转中性/恐惧再考虑")
         # 深跌恐慌提前补（2026-08-05 V型底指纹）: 恐慌(sent>=80) + 大盘30日跌幅>=15% + 单品深跌
         # 回测(2026-08-05 全量回放): 5月V型底 win87%/均+43.7%（现行确认链路因单品TH未达40错过该段行情）
         # 必须保留 sent>=80：2025-11 深底去掉sent限制后验证失败(均-0.16%)
@@ -420,8 +413,7 @@ def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th
               and pct <= 20 and z <= -1):
             advice["action"] = "可分批补仓"
             advice["reason"] = (f"浮亏{pnl_pct:.0f}%但恐慌共振(sent={sent:.0f})、大盘30日跌幅{market_30d_change:.1f}%，"
-                                f"呈V型底指纹(pct={pct:.0f}%, z={z:.2f})，不等确认提前分批补"
-                                f"（回测：深跌恐慌5月V型底14d胜率87%/均+43.7%）")
+                                f"呈V型底指纹(pct={pct:.0f}%, z={z:.2f})，不等确认提前分批补")
             _adds, _zone, _cost_after, _suggest = _topup_price_plan(avg_cost, qty, current_price, analysis)
             if _adds:
                 advice["add_positions"] = _adds
@@ -434,10 +426,9 @@ def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th
               and pct <= 20 and z <= -1):
             advice["action"] = "暂缓补仓"
             advice["reason"] = (f"浮亏{pnl_pct:.0f}%、恐慌(sent={sent:.0f})但大盘30日跌幅仅{market_30d_change:.1f}%，"
-                                f"处阴跌中继区（5~15%），V型底概率低、易再阴跌"
-                                f"（回测：中跌恐慌14d胜率16%/均-8.3%）")
+                                f"处阴跌中继区（5~15%），V型底概率低、易再阴跌")
             advice["suggest"] = (f"当前处中跌恐慌：sent={sent:.0f}、大盘30日跌幅{market_30d_change:.1f}%；"
-                                 f"历史同场景易阴跌（14d均-8.3%），建议等大盘30日跌幅≥15%的深跌指纹，"
+                                 f"建议等大盘30日跌幅≥15%的深跌指纹，"
                                  f"或等大盘企稳(TH≥45)+融合buy确认再补")
         # E-1（2026-08-10）止损/补仓互斥：止损矩阵判定减半/残余升级止损时，补仓让位于止损。
         # 与「中跌恐慌暂缓」互补——后者仅限 sent>=80 恐慌场景，本互斥覆盖阴跌中继全情绪区间
@@ -452,7 +443,7 @@ def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th
             advice["action"] = "暂缓补仓"
             advice["reason"] = f"浮亏{pnl_pct:.0f}%但pct={pct:.0f}%处于半山腰，非深度底部"
             advice["suggest"] = (f"pct={pct:.0f}%（90日位置，越低越便宜），距补仓线≤25%还差{pct - 25:.0f}pp；"
-                                 f"z={z:.2f}(需≤-0.5)、单品TH={th_score}(需≥40)（回测：半山腰14d均值≈0，暂缓）")
+                                 f"z={z:.2f}(需≤-0.5)、单品TH={th_score}(需≥40)")
         # 深度低估 + 单品趋势及格 + 大盘配合 + 融合决策放行(buy)：可分批补仓
         # 回测(2026-08-04 全量回放): 条件∩buy 14d胜率54.2%/均值+5.4%; watch 子集-0.3% → 需融合确认
         elif (pct <= 25 and th_score >= 40 and z <= -0.5
@@ -471,15 +462,13 @@ def _portfolio_advice(holding, avg_cost, qty, current_price, analysis, market_th
             advice["action"] = "暂缓补仓"
             advice["reason"] = f"浮亏{pnl_pct:.0f}%且深度低估(pct={pct:.0f}%)，但融合决策未放行({_fusion_act or '无'})"
             advice["suggest"] = (f"单品条件已满足(pct={pct:.0f}%、z={z:.2f}、单品TH={th_score})，"
-                                 f"融合决策={_fusion_act or '无'}，待买点确认再补"
-                                 f"（回测：未确认14d均值{TOPUP_EXPECTANCY_STATS['topup_wait']['avg14']:+.1f}%）")
+                                 f"融合决策={_fusion_act or '无'}，待买点确认再补")
         # 深度低估但大盘未配合：暂缓等共振
         elif pct <= 25 and th_score >= 40 and market_th is not None and market_th < 45:
             advice["action"] = "暂缓补仓"
             advice["reason"] = f"浮亏{pnl_pct:.0f}%且深度低估(pct={pct:.0f}%)，但大盘TH={market_th}仍偏弱"
             advice["suggest"] = (f"单品条件已满足(pct={pct:.0f}%、z={z:.2f}、单品TH={th_score})，"
-                                 f"大盘TH={market_th}距45还差{45 - market_th:.0f}分"
-                                 f"（回测：大盘未配合14d均值{TOPUP_EXPECTANCY_STATS['mkt_weak']['avg14']:+.1f}%）")
+                                 f"大盘TH={market_th}距45还差{45 - market_th:.0f}分")
         # 趋势走弱：止损是风险预算，先控损
         elif th_score < 30:
             advice["action"] = "趋势走弱，考虑止损"
