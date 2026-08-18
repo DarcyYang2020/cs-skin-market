@@ -2497,6 +2497,28 @@ def t_buy_queue():
         pass
 check('A-3 买点队列: proximity dedup_hit/recent_buy_dates 暴露 + 采集时间字段', t_buy_queue)
 
+def t_proximity_trigger_align():
+    # E 类修复一致性（2026-08-18）：proximity base 路径 th 必须与引擎 TH_STRONG 同源——
+    # th≥55（趋势确认）→ 低估区建仓 ready；th<35（下跌中继）→ 不得显示「低估区建仓 100%」。
+    from pipeline import item_analysis as _ia
+
+    def _f(th, chg8=0):
+        return {
+            "pct": 20, "z": -0.5, "th": th, "micro_th": 50,
+            "sent": 60, "market_th": 50, "mchg30": -10, "drop21": -20,
+            "prices": [100.0] * 90, "current": 100.0, "supply_hist": [50] * 40,
+            "s7": 50, "s30": 50, "chg7": 0, "chg3d": 0, "chg8": chg8,
+            "recent_buy_dates": [], "signal_date": "2026-08-12", "market_cycle": "bear",
+        }
+    hi = _ia.compute_buy_proximity(_f(60))
+    lo = _ia.compute_buy_proximity(_f(30))
+    assert hi.get("score", 0) >= 99, hi  # th≥55 低估区 ready
+    assert lo.get("score", 0) < 99, lo   # th<35 下跌中继，不得 100% ready
+    # supply 路径补 T4 chg8 门：chg8>3% 泵后横盘追高 → supply 路径被硬条件归零，不得满分
+    pump = _ia.compute_buy_proximity(_f(30, chg8=6))
+    assert pump.get("score", 0) < 100, pump
+check('E类 proximity 与 trigger 同源: base th≥55 ready / th<35 与 chg8>3 非 ready', t_proximity_trigger_align)
+
 def t_benchmark():
     import json as _J
     from pathlib import Path

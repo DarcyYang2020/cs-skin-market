@@ -1843,19 +1843,21 @@ def compute_buy_proximity(F):
     supply_hist = F.get("supply_hist") or []
     s7, s30 = F.get("s7"), F.get("s30")
     chg7, chg3d = F.get("chg7"), F.get("chg3d")
+    chg8 = F.get("chg8")
     _dedup_hit_flag = _dedup_hit(F.get("recent_buy_dates"), F.get("signal_date"))
     dedup = 1.0 if not _dedup_hit_flag else 0.0
 
-    # 基础族：低估区 buy（pct<=30 + 深跌确认(th 低=黄金坑) + Z 闸门）
-    # 2026-08-09 回测修正（v2 引擎 369 信号，data/item_backtest_full_2025.json）：
-    # pct<=30 & z<=0 内 th<35 win 94%/avg+36% 最优、th 45-54 win 44% 最差、th 55-64 期望平庸——
-    # 低估区趋势分是反向信号（跌透>半山腰）。原「趋势TH≥70」展示阈值在 369 信号中 0 达成
-    # （max=69），为虚构达标线已废弃；现与 buy_distance TH_REF=55 三区口径对齐
-    # （<35 黄金坑 / 35-54 摩擦带 / ≥55 趋势确认，纯展示层，不参与决策）。
+    # 基础族：低估区 buy（pct<=30 + 趋势确认(th>=55=TH_STRONG) + Z 闸门）——对齐 compute_fusion_decision。
+    # 2026-08-18 修正（E 类「拿历史均值当引擎买点」）：原「深跌确认 _prog_low(th,35,55)」把 th≤35 当
+    # 「黄金坑=100% ready」，源自 369 信号「th<35 win 94%/+36%」的研究结论；但该结论是 P 期事件选择偏差
+    # （全宇宙「pct≤30 & th<35」fwd14 按时期拆：P +26.1% / S1 +5.2% / S2 +1.8% / S3 −4.78% / S4 +8.3%），
+    # 而引擎 compute_fusion_decision 低估区只在 th≥55(TH_STRONG) 才 buy、th<35 是 avoid/下跌中继。
+    # → proximity 度量的是引擎不会发射的买点，已把方向画反（重放 15836 条「距买点100%但不买」96% 归因于此）。
+    # 修正：th≥55 → ready（_prog_high），与 TH_STRONG 触发同源。纯展示层，不参与决策。
     z_gate = {"bear": 0, "consolidation": 0, "accumulation": 0.5, "markup": 1.0, "distribution": -0.5}.get(F.get("market_cycle"), 0)
     base = _fam("base", "低估区建仓", [
         ("低估分位", _prog_low(pct, 30, 45), _note(pct, "位置分位", "{:.0f}%", "≤30%", "，越低越便宜")),
-        ("深跌确认", _prog_low(th, 35, 55), _note(th, "趋势分", "{:.0f}", "<35 黄金坑", "（35-54 摩擦带需止跌/企稳确认）")),
+        ("趋势确认", _prog_high(th, 55, 35), _note(th, "趋势分", "{:.0f}", "≥55 趋势确认", "（35-54 摩擦带，<35 下跌中继）")),
         ("Z闸门", _prog_low(z, z_gate, z_gate + 1.0), _note(z, "估值Z", "{:.2f}", "≤{:.1f}".format(z_gate))),
     ])
 
@@ -1905,6 +1907,9 @@ def compute_buy_proximity(F):
             ("供给收缩", _prog_low(ratio, 0.85, 1.0),
              None if ratio is None else "供给收缩：7日/30日在售量 {:.2f}（需 ≤0.85，收缩15%+才达标）".format(ratio)),
             ("价格平稳", _prog_abs(chg7, 3, 6), _note(chg7, "7日价变", "{:+.1f}%", "|≤3%|", "，需价格平稳")),
+            # T4（2026-08-10）8 日动量门：chg8>3% = 泵后横盘追高段禁买（proximity 补漏，对齐 supply_accum trigger）
+            ("8日动量", 1.0 if (chg8 is None or chg8 <= 3) else _prog_low(chg8, 3, 8),
+             None if chg8 is None else _note(chg8, "8日动量", "{:+.1f}%", "≤3%", "，泵后横盘追高禁买")),
             ("大盘共振", 1.0 if not (sent is not None and sent < 40 and mth is not None and mth < 45) else 0.0, None),
             ("7日去重", dedup, None),
         ])
