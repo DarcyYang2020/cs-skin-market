@@ -1,0 +1,143 @@
+{
+ "method": {
+  "shrink_k": 20,
+  "dims": [
+   "period",
+   "pct",
+   "period_days",
+   "th",
+   "z",
+   "cycle",
+   "mchg30",
+   "sent"
+  ],
+  "train_end": "2026-03-01",
+  "target": "fwd14",
+  "raw_rows": 87074,
+  "clean_rows": 78974
+ },
+ "example_S3_low_zone_chain": [
+  {
+   "dim": "period",
+   "value": 3,
+   "cell_n": 14192,
+   "cell_items": 180,
+   "cell_mean": -3.95,
+   "cell_win": 33.3,
+   "shrunk_mean": -3.94
+  },
+  {
+   "dim": "pct",
+   "value": 1,
+   "cell_n": 2124,
+   "cell_items": 157,
+   "cell_mean": -3.81,
+   "cell_win": 33.2,
+   "shrunk_mean": -3.81
+  },
+  {
+   "dim": "period_days",
+   "value": 3,
+   "cell_n": 0,
+   "cell_items": 34,
+   "cell_mean": -3.81,
+   "cell_win": null,
+   "shrunk_mean": -3.81
+  },
+  {
+   "dim": "th",
+   "value": 0,
+   "cell_n": 0,
+   "cell_items": 23,
+   "cell_mean": null,
+   "cell_win": null,
+   "shrunk_mean": null
+  }
+ ],
+ "contrast_S3_th_high": [
+  {
+   "dim": "period",
+   "value": 3,
+   "cell_n": 14192,
+   "cell_items": 180,
+   "cell_mean": -3.95,
+   "cell_win": 33.3,
+   "shrunk_mean": -3.94
+  },
+  {
+   "dim": "pct",
+   "value": 1,
+   "cell_n": 2124,
+   "cell_items": 157,
+   "cell_mean": -3.81,
+   "cell_win": 33.2,
+   "shrunk_mean": -3.81
+  },
+  {
+   "dim": "period_days",
+   "value": 3,
+   "cell_n": 0,
+   "cell_items": 34,
+   "cell_mean": -3.81,
+   "cell_win": null,
+   "shrunk_mean": -3.81
+  },
+  {
+   "dim": "th",
+   "value": 2,
+   "cell_n": 0,
+   "cell_items": 0,
+   "cell_mean": null,
+   "cell_win": null,
+   "shrunk_mean": null
+  }
+ ],
+ "contrast_S3_early_days": [
+  {
+   "dim": "period",
+   "value": 3,
+   "cell_n": 14192,
+   "cell_items": 180,
+   "cell_mean": -3.95,
+   "cell_win": 33.3,
+   "shrunk_mean": -3.94
+  },
+  {
+   "dim": "pct",
+   "value": 1,
+   "cell_n": 2124,
+   "cell_items": 157,
+   "cell_mean": -3.81,
+   "cell_win": 33.2,
+   "shrunk_mean": -3.81
+  },
+  {
+   "dim": "period_days",
+   "value": 0,
+   "cell_n": 1157,
+   "cell_items": 134,
+   "cell_mean": -2.39,
+   "cell_win": 39.3,
+   "shrunk_mean": -2.42
+  },
+  {
+   "dim": "th",
+   "value": 0,
+   "cell_n": 469,
+   "cell_items": 89,
+   "cell_mean": -3.54,
+   "cell_win": 37.7,
+   "shrunk_mean": -3.49
+  }
+ ],
+ "walk_forward": {
+  "n_train": 59426,
+  "n_test": 18181,
+  "spearman_pred_vs_actual": 0.0892,
+  "rmse_pred": 31.38,
+  "rmse_global_mean": 32.22,
+  "rmse_improve_pct": 2.6,
+  "sign_agree_cells": 42,
+  "sign_total_cells": 90
+ }
+}
