@@ -1,0 +1,81 @@
+{
+ "global_rmse_test": 32.22,
+ "shrink_k": 20,
+ "train_end": "2026-03-01",
+ "n_train": 59426,
+ "n_test": 18181,
+ "levels": [
+  {
+   "scheme": "period",
+   "n_dims": 1,
+   "rmse": 31.38,
+   "rmse_improve_vs_global_pct": 2.63,
+   "spearman": 0.2775,
+   "sign_agree": "2/4"
+  },
+  {
+   "scheme": "period+period_days",
+   "n_dims": 2,
+   "rmse": 31.09,
+   "rmse_improve_vs_global_pct": 3.52,
+   "spearman": 0.2066,
+   "sign_agree": "5/9"
+  },
+  {
+   "scheme": "period+period_days+pct",
+   "n_dims": 3,
+   "rmse": 31.23,
+   "rmse_improve_vs_global_pct": 3.08,
+   "spearman": 0.1216,
+   "sign_agree": "19/36"
+  },
+  {
+   "scheme": "period+period_days+pct+th",
+   "n_dims": 4,
+   "rmse": 31.38,
+   "rmse_improve_vs_global_pct": 2.6,
+   "spearman": 0.0892,
+   "sign_agree": "42/90"
+  },
+  {
+   "scheme": "period+period_days+pct+th+z",
+   "n_dims": 5,
+   "rmse": 31.54,
+   "rmse_improve_vs_global_pct": 2.12,
+   "spearman": 0.0771,
+   "sign_agree": "71/155"
+  },
+  {
+   "scheme": "period+pct+th",
+   "n_dims": 3,
+   "rmse": 31.33,
+   "rmse_improve_vs_global_pct": 2.77,
+   "spearman": 0.1018,
+   "sign_agree": "21/42"
+  },
+  {
+   "scheme": "period+cycle",
+   "n_dims": 2,
+   "rmse": 31.38,
+   "rmse_improve_vs_global_pct": 2.63,
+   "spearman": 0.2775,
+   "sign_agree": "2/4"
+  },
+  {
+   "scheme": "period+mchg30",
+   "n_dims": 2,
+   "rmse": 32.81,
+   "rmse_improve_vs_global_pct": -1.81,
+   "spearman": -0.067,
+   "sign_agree": "4/6"
+  },
+  {
+   "scheme": "period+sent",
+   "n_dims": 2,
+   "rmse": 32.23,
+   "rmse_improve_vs_global_pct": -0.01,
+   "spearman": 0.1077,
+   "sign_agree": "4/7"
+  }
+ ]
+}
