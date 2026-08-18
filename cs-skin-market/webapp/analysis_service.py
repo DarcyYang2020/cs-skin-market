@@ -1294,6 +1294,40 @@ def _point_in_time_expectancy(period, period_days):
         return None
 
 
+def _shortterm_expectancy_note(analysis, period, period_days):
+    """DISPLAY-2 单品短期期望（2026-08-18，纯展示）：提取单品特征 + 查表，返回展示 dict 或 None。
+
+    不进决策、不 bump ENGINE_VERSION；特征口径与宇宙面板 v2 同源：
+    chg7=(p[-1]/p[-8]-1)*100、chg3=(p[-1]/p[-4]-1)*100、z=position.zscore_90d、
+    th=trend_health.score、supply30=supply_analysis.supply_change_30d。
+    """
+    try:
+        from pipeline import db as _db
+        conn = _db.get_conn()
+        try:
+            r = conn.execute("SELECT id FROM items WHERE name=? AND good_id>0", (analysis.name,)).fetchone()
+            if not r:
+                return None
+            rows = conn.execute(
+                "SELECT price_rmb FROM price_history WHERE item_id=? AND price_rmb IS NOT NULL "
+                "ORDER BY date", (r["id"],)).fetchall()
+        finally:
+            conn.close()
+        prices = [float(x["price_rmb"]) for x in rows]
+        if len(prices) < 9:
+            return None
+        chg7 = (prices[-1] / prices[-8] - 1) * 100
+        chg3 = (prices[-1] / prices[-4] - 1) * 100
+        pos = getattr(analysis, "position", None)
+        z = getattr(pos, "zscore_90d", None)
+        th = (getattr(analysis, "trend_health", None) or {}).get("score")
+        supply30 = (getattr(analysis, "supply_analysis", None) or {}).get("supply_change_30d")
+        from pipeline.shortterm_expectancy import compute_shortterm_expectancy as _cse
+        return _cse(period, period_days, chg7, chg3, z, th, supply30)
+    except Exception:
+        return None
+
+
 def _fd_display(fd, analysis=None):
     """融合决策展示层注入（决策链 trace）。纯展示，不改引擎输出。
 
@@ -1302,6 +1336,7 @@ def _fd_display(fd, analysis=None):
     build_analysis_ctx 与 save_analysis_result 共用，保证快照/重建口径一致。
     """
     fd = dict(fd or {})
+    fd.setdefault("shortterm_expectancy", None)
     _src_labels = [_SOURCE_LABELS.get(str(s), str(s)) for s in (fd.get("deduction_sources") or [])]
     _caveats = []
     _action_label = str(fd.get("action_label") or "")
@@ -1371,6 +1406,11 @@ def _fd_display(fd, analysis=None):
             _exp = _point_in_time_expectancy(_msig["period"], _msig.get("period_days"))
             if _exp:
                 _caveats.append("当下期望：" + _exp["text"])
+            # DISPLAY-2 单品短期期望（2026-08-18，纯展示）：时期×时点先验 + 分时期单品特性（P/S1/S2）
+            if getattr(analysis, "name", None):
+                _se = _shortterm_expectancy_note(analysis, _msig["period"], _msig.get("period_days"))
+                if _se and (_se.get("fwd14") or {}).get("med") is not None:
+                    fd["shortterm_expectancy"] = _se
     except Exception:
         pass
     # 独特性状态行（2026-08-17 查漏补缺，纯展示；2026-08-18 DISPLAY-1 结构化）：主形式置顶 + 其余折叠 + F6 警告独立

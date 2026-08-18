@@ -80,7 +80,9 @@ def main():
     for r in rows:
         p = run_map[r[0]][0]
         periods[p].append(r)
-    out = {"probe": "阶段7 置换检验", "n_perm": 500, "periods": {}}
+    out = {"probe": "阶段7 置换检验", "n_perm": 500, "seed": 42, "seed_scheme": "42+p(时期码)",
+           "p_method": "p = P(D_perm >= D_real) = hits/n_perm（打乱特性标签，保持时期+fwd14；非地板值时取 hits/n_perm）",
+           "periods": {}}
     for p in range(5):
         sub = [r for r in periods[p] if r[7] is not None and r[8] is not None
                and r[10] is not None and r[11] is not None and r[14] is not None and r[20] is not None]

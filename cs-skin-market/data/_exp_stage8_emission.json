@@ -2,6 +2,7 @@
  "probe": "阶段8 发射侧回放",
  "split": "2025-08-10",
  "shrink_k": 20,
+ "pred_base_definition": "pred_base = 时期先验(median[fwd|period]收缩向全局, walk-forward train SPLIT前)，时期级常数（每时期同一值；故 spearman_base 为常数与 fwd 的相关，退化无排序信息）",
  "periods": {
   "P恐慌": {
    "val_n": 4004,

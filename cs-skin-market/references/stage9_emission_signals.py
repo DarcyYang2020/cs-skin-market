@@ -134,6 +134,8 @@ def main():
         })
 
     out = {"probe": "阶段9 发射侧逐信号明细", "split": SPLIT, "shrink_k": K,
+           "pred_base_definition": "pred_base = 时期先验(median[fwd|period]收缩向全局, walk-forward train SPLIT前)，"
+                                   "时期级常数（每时期同一值）；pred_on = 特性桶中位数（P/S1/S2 收缩向时期先验）",
            "n_signals": len(signals), "signals": signals}
     json.dump(out, open(OUT, "w", encoding="utf-8"), ensure_ascii=False)
     print("saved", OUT, "n_signals=", len(signals))

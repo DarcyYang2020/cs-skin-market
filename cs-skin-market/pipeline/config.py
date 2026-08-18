@@ -418,6 +418,27 @@ J2_THRESHOLDS = {
     "family_c14_2m": 70.0,    # 族级连续 2 月 14d 胜率阈值(%)
 }
 
+# ---- DISPLAY-2 单品短期期望（纯展示，2026-08-18，③审计#2 通过有条件落地）----
+# 纯展示信号，不进决策、不 bump ENGINE_VERSION。查表 = walk-forward train（SPLIT 前）拟合、版本化。
+# 机制：时期×时点先验（层次收缩 k=20）+ 分时期单品特性（仅 P/S1/S2；S3/S4 只用先验）。
+SHORTTERM_EXPECTANCY = {
+    "table_path": "data/_exp_shortterm_table.json",
+    "shrink_k": 20,
+    "split": "2025-08-10",            # walk-forward 切点（train=SPLIT 前）
+    "n_buckets": 3,                   # 特性分数三分位桶
+    # 分时期单品特性（特征权重，预注册；数值桶阈值/ z 参数在查表产物内 train 拟合）：
+    #   P 恐慌深跌  超跌深度 = -(z_chg7 + z_chg3 + z_z) / 3
+    #   S1牛市上行 / S2牛市回调  供给收缩 = -z_supply30
+    #   S3弱市阴跌  趋势强度样本外失效（spearman 负），不启用
+    #   S4弱市反弹  无信号，不启用
+    "trait_enabled_periods": ("P恐慌深跌", "S1牛市上行", "S2牛市回调"),
+    "trait_feature": {
+        "P恐慌深跌": "超跌深度（-(z_chg7+z_chg3+z_z)/3）",
+        "S1牛市上行": "供给收缩（-z_supply30）",
+        "S2牛市回调": "供给收缩（-z_supply30）",
+    },
+}
+
 # ---- 引擎参数版本（Phase 0 版本化）----
 # signal_tracking 记录每条生产信号时的引擎版本；重拟合发布新参数时 bump，
 # 使新旧引擎产生的实盘信号可区分、可分别统计。

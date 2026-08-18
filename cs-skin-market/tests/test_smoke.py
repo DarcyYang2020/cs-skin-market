@@ -1014,6 +1014,37 @@ def t_uniqueness_note():
     assert lines4 == [], lines4
 check('独特性状态行 全形式命中检测（假设验证，纯展示）', t_uniqueness_note)
 
+def t_shortterm_expectancy():
+    """DISPLAY-2 单品短期期望（2026-08-18，纯展示）：机制单测 + 不进决策断言。"""
+    from pipeline.shortterm_expectancy import compute_shortterm_expectancy, shortterm_expectancy_text
+    from pipeline.config import ENGINE_VERSION, SHORTTERM_EXPECTANCY
+    # 机制：S3 只用时期先验（时点超界 → 末5日中位数 tail）
+    r1 = compute_shortterm_expectancy("S3弱市阴跌", 44, 0, 0, 0, 0, 0)
+    assert r1 and r1["source"] == "prior_tail", r1
+    assert r1["fwd14"]["med"] is not None and r1["fwd14"]["n"] > 0, r1
+    # 机制：S3 期内时点 → prior（非 tail）
+    r2 = compute_shortterm_expectancy("S3弱市阴跌", 3, 0, 0, 0, 0, 0)
+    assert r2 and r2["source"] in ("prior", "prior_tail"), r2
+    # 机制：P 超跌深度特性（深超跌 → 偏强桶）
+    r3 = compute_shortterm_expectancy("P恐慌深跌", 5, -15, -12, -2.5, 30, 0)
+    assert r3 and r3["source"] == "trait", r3
+    assert "超跌深度" in r3["trait_note"] and "偏强" in r3["trait_note"], r3
+    # 机制：S1 供给收缩特性（供缩 → 偏强桶）
+    r4 = compute_shortterm_expectancy("S1牛市上行", 30, 5, 3, 0, 50, -20)
+    assert r4 and r4["source"] == "trait", r4
+    assert "供给收缩" in r4["trait_note"], r4
+    # 不进决策：返回无任何决策字段；ENGINE_VERSION 不 bump；台账声明 SPLIT/k=20（纯展示硬约束）
+    for r in (r1, r2, r3, r4):
+        assert not (set(r) & {"action", "action_label", "position_limit", "limit", "buy", "watch", "avoid"}), r
+    assert ENGINE_VERSION == "v2-T13"
+    assert SHORTTERM_EXPECTANCY["split"] == "2025-08-10" and SHORTTERM_EXPECTANCY["shrink_k"] == 20
+    # 渲染：文本带「历史同态·非本次预测」语义
+    txt = shortterm_expectancy_text("S3弱市阴跌", 44, 0, 0, 0, 0, 0)
+    assert txt and "短期期望" in txt and "非本次预测" in txt, txt
+
+check('DISPLAY-2 单品短期期望（机制 + 不进决策断言，纯展示）', t_shortterm_expectancy)
+
+
 def t_uniqueness_guard():
     """独特性护栏常驻（2026-08-17 补漏落地）：官方产物必须保留 fixture 独特性品的信号覆盖
     ——任何未来引擎/落地变更不得吞掉独立强势品的发声（原则 0 验收条款）。"""

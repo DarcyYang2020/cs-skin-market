@@ -1,6 +1,9 @@
 {
  "probe": "阶段7 置换检验",
  "n_perm": 500,
+ "seed": 42,
+ "seed_scheme": "42+p(时期码)",
+ "p_method": "p = P(D_perm >= D_real) = hits/n_perm（打乱特性标签，保持时期+fwd14；非地板值时取 hits/n_perm）",
  "periods": {
   "P恐慌": {
    "n": 4095,

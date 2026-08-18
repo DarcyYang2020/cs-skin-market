@@ -161,7 +161,10 @@ def main():
         return tb["med"].get(b, base)
 
     # val 段：族开 vs 基线 排序能力 + 逐信号明细
-    out = {"probe": "阶段8 发射侧回放", "split": SPLIT, "shrink_k": K, "periods": {}}
+    out = {"probe": "阶段8 发射侧回放", "split": SPLIT, "shrink_k": K,
+           "pred_base_definition": "pred_base = 时期先验(median[fwd|period]收缩向全局, walk-forward train SPLIT前)，"
+                                   "时期级常数（每时期同一值；故 spearman_base 为常数与 fwd 的相关，退化无排序信息）",
+           "periods": {}}
     for p in range(5):
         vsub = [s for s in test if s[1] == p]
         if len(vsub) < 60:

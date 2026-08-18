@@ -4754,3 +4754,23 @@ Fluxo 25→280 约 11 倍），尖顶后 3 天 -86~94%，与枪皮统计反转�
   5. P 期由 B 通道（~2027-04）重验或 live pilot（C 通道熔断）承担。
 - **落地移交（按治理流水线）**：研究 + 审计已完成，落地**须 PM 立项（立项卡 + 验收标准）→ 研发执行**；②研究+研发窗口不直接落地。
 - **交付 PM 的立项信息**：候选 = 「单品短期期望信号」（纯展示）；机制 = 时期×时点先验 + 分时期单品特性（P超跌/S1S2供缩，S3/S4 只用先验）；落地规格 = `references/item-shortterm-expectancy-landing-spec.md`（复审版）；落地条件 = 上 5 项；原始产物 = `_exp_stage7/8/9` + `_exp_universe_panel_v2`。
+
+---
+
+## AZ. DISPLAY-2 单品短期期望 · 落地执行（2026-08-18，纯展示，③审计#2 有条件通过后）
+
+- **立项卡**：DISPLAY-2（PM 交②执行，按 `references/item-shortterm-expectancy-landing-spec.md` 复审版 + ③审计#2 的 5 项落地条件逐条兑现）。
+- **交付物**：
+  - `references/build_shortterm_table.py` → `data/_exp_shortterm_table.json`（时期×时点×特性桶 → fwd7/fwd14 中位数 + 翻正率 + n；walk-forward train SPLIT=2025-08-10 前拟合，train_n=40953、data_cutoff=2025-08-09；`schema_version`/`table_version`/`base_definition` 字段版本化）。
+  - `pipeline/shortterm_expectancy.py`：`compute_shortterm_expectancy(period, period_days, chg7, chg3, z, th, supply30)` 纯函数 + `shortterm_expectancy_text`。
+  - `config.py` 新增 `SHORTTERM_EXPECTANCY` 台账（k=20 / SPLIT / 三分位桶 / 特征权重 / trait_enabled_periods）。
+  - `webapp/analysis_service.py`：`_shortterm_expectancy_note`（从 price_history 派生 chg7/chg3 + position/trend_health/supply_analysis 取 z/th/supply30，口径与宇宙面板 v2 同源）注入 `fusion_decision.shortterm_expectancy`；`analysis.html` 追加「短期期望」卡片。
+  - `tests/test_smoke.py` 新增 `t_shortterm_expectancy`（机制单测 + 不进决策断言 + 渲染）。
+- **5 项落地条件逐条兑现**：
+  1. 纯展示：`ENGINE_VERSION` 保持 `v2-T13` 不 bump；`t_shortterm_expectancy` 断言返回无决策字段（action/limit/buy/watch/avoid）。
+  2. S3/S4 只用时期×时点先验：`_TRAIT_ENABLED={0,1,2}`（仅 P/S1/S2），S3 趋势特性样本外失效、S4 无信号均不启用（查表 trait=null）。
+  3. 查表 walk-forward train（SPLIT 前）拟合 + 版本化（schema_version + 数据截止日 + base_definition）。
+  4. 可复现性修补：stage7 补 `seed=42`/`seed_scheme=42+p`/`p_method`；stage8/stage9 补 `pred_base_definition`（时期级常数说明，统一 base 口径）。
+  5. P 期外推交 B 通道/live pilot：查表记录 split + data_cutoff，规格 §六 反过拟合声明保留。
+- **口径说明（诚实）**：查表先验为 walk-forward train 口径——S3 train 段先验 +0.91%（val 段 −7.54% 为样本外，不用于拟合），与 AM「当下期望」全样本 −7.7% 是不同口径（审计明令「以查表产物为准」）。
+- **验证**：`tests/test_smoke.py` **131 passed / 0 failed / 0 skipped**；`tests/check_encoding.py` PASS（hard 0）。手工复核：S3 d44→prior_tail、P 深超跌→trait 偏强（+15.69%/win96.7%）、S1 供缩→trait 偏强；Jinja2 渲染正常。
