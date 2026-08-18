@@ -6,6 +6,7 @@
 > 变更纪律：每次更新先写版本变更说明，再改映射表/批次/状态。
 
 ## 版本历史
+- **v71（2026-08-18，PM 同步，零引擎变更）**：路线图补录 2026-08-16~18——① 大盘五时期路由 v2-T13 落地（PERIOD_ROUTE_BAN 默认开，官方产物 233→189 信号，+397.02%/−14.09%）；② 主路径三步全部完成（(1) 大盘引擎完善 / (2) 大盘帮单品 13 探针收官 / (3) 单品回看大盘审计通过 + 三处数据诚实性修正）；③「拿历史均值当引擎买点」战役闭环（A/B/C/D/E 类审计 + 当下条件期望机制 ②=E[fwd14|时期,时点] + 展示接入），冒烟 130 passed。详见本文文末「v71 主路径收官 + AM 战役闭环」与 decision-log Y~AM。
 - **v70（2026-08-15，进行中）**：新引擎 v3「收益增强器」技术方案（外审方案基线 `references/v3-engine-enhance-2026-08-15.md`）——L0 PRICE-GRAIN-1（已就绪）→ L1 开闸实验（先第一号贪婪禁买）→ TREND-1 A2 → L2 族级 → 组合层。详见本文「v3 收益增强器技术方案」。
 - **v69（2026-08-15，进行中）**：历史扩窗口重拟合技术方案（外审立项基线 `references/cycle-refit-2026-08-15.md`）——回填 2024~2025（优先 2023-06）价格+在售量到新回放库 → 质量闸门 → walk-forward 重拟合；零引擎风险、不碰四项审计。详见本文「历史扩窗口重拟合技术方案」。
 - **v68（2026-08-15，进行中）**：BUY-1 求购直连技术方案（外审立项基线 `references/optimization-initiation-2026-08-15.md`）——研发补表结构/字段映射 + 数据质量闸门阈值回滚 + 排期三块；BUY-1 10 品口径验证探针本轮可跑。详见本文「BUY-1 求购直连技术方案」。
@@ -694,3 +695,62 @@ eferences/refit_pipeline.py → data/refit_pipeline_report.json（A2 三件套�
 - **TREND-GRID-1 / TREND-TIGHT-1 已收口**：TREND-GRID-1 证伪（验证段 −0.19% vs 旧 +26.58%、陷阱 36%/−4.66%、去簇 7）；TREND-TIGHT-1 样本不足（W1 真趋势腿 4 条 75%/+14.44% 真实但去簇仅 3 簇）。根因：**陷阱与真趋势在价格维度不可区分**。
 - **两条新线索**：① `TREND-TIGHT-1 待样本重开`——触发=未来牛市段自然积累 ≥15 独立事件（真趋势腿未被证伪）；② `SUPPLY-CONF-1 提前`——求购数据（buy_price 3 年）已直连，供给三态分解可提前启动，不靠干等。下一把钥匙 = 非价格信息（求购/供给背离、事件日历）。
 - ENGINE_VERSION 维持 v2-T9，零引擎改动。
+
+
+## v71 主路径收官 +「拿历史均值当引擎买点」战役闭环（2026-08-18，PM 同步）
+
+> 本版为路线图补录（decision-log 已更新至 AM，roadmap 此前停在 v70）。只做计划与验收状态同步，零引擎变更。
+
+### 主路径三步（全部完成，勿重做）
+1. **(1) 大盘引擎完善**：五时期 taxonomy + 时期路由 v2-T13 落地（PERIOD_ROUTE_BAN 默认开；官方产物 233→189 信号，组合 +397.02%/−14.09%，前后半段双正，置换 p_total=0.000 / p_dd=0.035）。详见 decision-log Y/Z。
+2. **(2) 大盘帮助单品**：13 探针全部按预注册判据跑完——通过 = 相对强度(P4) + 独特性六形式升格(P13)；证伪/维持 = 11 项（S1 结构性负增量接受、时期注入/豁免/共振/折让全部证伪）。落地候选 RS/CT 长持族发射口径三关不过，维持默认关；30 天冷却+长持容量预算补漏仍不过，维持默认关。详见 decision-log AD~AH。
+3. **(3) 单品回看大盘**：审计通过（大盘引擎无逻辑错误）；三处数据诚实性修正落地（P 事件窗标注 / P 共振证据 / S3-S4 独特性指针）。正式重验窗口 = B 通道 2027-04。长持 sleeve 预算测试（25/30 两档）全部证伪关闭。详见 decision-log AI/AJ。
+
+### AM 战役验收（PM 对照预注册判据关闭）
+- **立项目标**：找到所有「拿历史均值当引擎买点」的地方，建立「当下条件期望 ②」替代历史均值误用。
+- **预注册判据（原文见 decision-log AM）**：②机制 = E[fwd14 | 时期, 时点]（k=20 收缩，n<5 回退「样本不足」），单品特征不进 ②；A/B/C/E 类语义隔离或修复全部落地。
+- **验收结果**：**达标关闭**。E 类修复（proximity base 路径 th 倒置 + supply 补 chg8 门）落地；A 类语义隔离落地；修 1（②接入 webapp 展示）落地；冒烟 130 passed / 0 failed。战役闭环完成。
+
+### 当前基线（唯一口径，PM 验收时点）
+- 引擎版本 **v2-T13**；官方 HQ 口径：**189 信号，3 年组合 cap0.8/hold21/2%，+397.02%/−14.09%**。
+- HIST-FULL = `data/item_backtest_full_2025.json`（317 信号，冻结归档）；CLEAN-CUR = `data/_exp_v2t9_win_replay.json`（230 信号，仅展示参考）。
+- 冒烟 **130 passed / 0 failed**；编码健康 PASS。
+- J-2 三通道：A 独立恐慌事件 2/3；B 样本外窗口约 2027-04-25；C 月度胜率/期望监测运行中。
+- 模拟盘 −9.99%（1 平仓，判据 1/20 积累中）；实盘 S3 弱市阴跌持续 44 天（2026-08-17）。
+
+### 未收口候选台账（不重复立项，等用户排期或触发条件）
+- 研究层可立即立项（用户已暂缓）：SUPPLY-CONF-1 提前（buy_price 3 年已直连）、收藏品 vs 箱子货分类研究。
+- 待触发：PANIC-ALIGN-1、BID-1、LIQ-1、M-1、M-3/M-4、deep_value 仓位放大 A2、TREND-TIGHT-1 待样本重开。
+- 已证伪关闭（只登记）：长持 sleeve、C/D/RS/CT 组合整合、时期杠杆/注入/豁免/共振。
+
+---
+
+## CLEANUP-1 工程卫生清理专项（2026-08-18 立项，交研发执行）
+
+### 立项卡
+- **目标**：清理冗余/过时文档与零引用文件，使仓库实际文件与 `PROJECT_STRUCTURE.md`（唯一事实源）一致，降低维护噪音。**不改变活跃引擎、测试、基线数字与任何信号逻辑。**
+- **预注册判据（删除/迁移动作前必须全部满足，禁止先删后补）**：
+  1. 先落盘 dry-run 清理清单 `references/cleanup-plan-2026-08-18.md`（或 `data/_exp_cleanup_plan_*.json`）。清单即预注册，实际处置必须与清单逐项一致；清单外文件一律不得动。
+  2. 每个候选必须含 5 字段：`路径 / 分类 / 处置方式 / 引用检查证据（全仓 rg：活跃代码+测试+活跃文档引用数）/ git 跟踪状态`。
+  3. 候选必须属于以下预注册分类之一：
+     a. 已明确标注 superseded / deprecated / archived 的文档或脚本；
+     b. 全仓零引用的历史研究脚本（一次性探针、拟合脚本），且已有替代入口或产物已归档；
+     c. 重复归档文件（多份相同内容分散在不同目录，保留一份、其余删除或归档）；
+     d. `data/` 中带 `_deprecated_` 后缀、或 decision-log 已宣布废弃、且不在本卡白名单的中间研究产物；
+     e. 临时文件（`.tmp` / 文本类 `.bak` / 旧日志），只登记或移入 `data/_cleanup_quarantine/`，不直接物理删除。
+  4. 每个删除候选必须**同时**满足：活跃引用数 = 0（decision-log/iteration-roadmap/PROJECT_STRUCTURE 仅以「已归档/已废弃/历史存证」方式提及的，须在清单中标注为历史存证引用，不计活跃引用）；不在白名单；处置方式与分类匹配。
+  5. 执行前确认 `git status` 干净；tracked 文件删除后可经 git history 恢复；untracked 文件先移动 `data/_cleanup_quarantine/` 保留 7 天，再物理删除。
+  6. 处置后必须跑 `python tests/test_smoke.py`（0 failed）与 `python tests/check_encoding.py`（PASS），并附结果于 decision-log 条目。
+- **白名单（绝对不删）**：
+  - 根目录：`run_*.py`、`backup_db.py`、`collect_data_reserve_p0.py`、`collect_data_reserve_p1.py`、`notify_alert.py`、`install_tasks.ps1`、`install_hooks.ps1`、`deploy_server.ps1`、`start_webapp.bat`、`requirements.txt`、`AGENTS.md`、`SKILL.md`、`PROJECT_STRUCTURE.md`、`agents/openai.yaml`、`design-system/`。
+  - `pipeline/`、`webapp/`、`tests/` 全部活跃文件。
+  - `references/` 活跃文档与脚本：`decision-log.md`、`iteration-roadmap.md`、`multi-agent-governance.md`、`terminology.md`、`data-layer.md`、`project-principles.md`、`engine-unified.md`、`market-bucket-alignment.md`、`historical-average-misuse-audit.md`、`current-state-expectancy-design.md`、`backtest-methodology.md`、`cs-knowledge.md`、`data-source-health.md`、`pool-maintenance.md`、`stop-loss-strategy.md`、`trading-strategies.md`、`th_calibration.md`、`trend_leg_research.md`、`first-principles-*.md`、`market-help-item-plan.md`、`market-engine-completion-plan.md`、`market-module-first-design.md`、`paper-trading-design.md`、`proximity-research-proposal.md`、`step3-market-review-study.md`、`two-day-synthesis.md`、`signal-family-registry.md`、`window-prompts.md`，以及 `PROJECT_STRUCTURE.md` / `AGENTS.md` 活跃条目中列出的所有脚本。
+  - `data/` 基线白名单：`market.db`、`item_backtest_full_2025.json`（HIST-FULL）、`_exp_v2t9_win_replay.json`（CLEAN-CUR）、`j2_channel_status.json`、`benchmark_compare.json`、`portfolio_attribution.json`、`signal_event_counts.json`、`market_state_daily.json`、`equal_weight_baseline.json`、`pool_maintenance_log.jsonl`，以及所有由活跃脚本当前产出、未标 deprecated、未被 decision-log 宣布废弃的 `_exp*.json`。
+  - 所有 `.db` / `.bak` / `.log` 运行时文件：**不物理删除，只登记清单交运维窗口处理**。
+- **验收标准**：
+  1. dry-run 清单与实际处置逐项一致（无清单外删除；清单内不处置项须注明原因）。
+  2. 处置后全仓无悬空引用（rg 指向不存在文件 = 0）；冒烟 0 failed；编码健康 PASS。
+  3. `PROJECT_STRUCTURE.md` / `AGENTS.md` 完成同步：已删除文件不再作为活跃条目出现（历史存证引用除外）。
+  4. 交付物：`references/cleanup-plan-2026-08-18.md` + decision-log 条目（清单与处置结果）+ commit。
+  5. PM 对照本卡逐项验收；不达标回炉；若发生不可恢复误删，专项判定失败并执行回滚。
+- **红线**：不碰活跃引擎 / 测试 / 基线数字；不删 `.db` / `.bak` / `.log`；本轮不做目录结构大重构（不新增大规模迁移）；清理必须可逆（git history + quarantine）。
