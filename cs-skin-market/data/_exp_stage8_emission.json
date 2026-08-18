@@ -1,0 +1,47 @@
+{
+ "probe": "阶段8 发射侧回放",
+ "split": "2025-08-10",
+ "shrink_k": 20,
+ "periods": {
+  "P恐慌": {
+   "val_n": 4004,
+   "spearman_base": 0.0239,
+   "spearman_on": 0.1984,
+   "topbot_base": -4.13,
+   "topbot_on": 23.31,
+   "trait_median_all": 10.21
+  },
+  "S1牛市": {
+   "val_n": 9646,
+   "spearman_base": -0.0286,
+   "spearman_on": 0.1577,
+   "topbot_base": 0.49,
+   "topbot_on": 16.31,
+   "trait_median_all": 3.69
+  },
+  "S2回调": {
+   "val_n": 5278,
+   "spearman_base": -0.0803,
+   "spearman_on": 0.0684,
+   "topbot_base": 3.71,
+   "topbot_on": 6.16,
+   "trait_median_all": -0.21
+  },
+  "S3阴跌": {
+   "val_n": 10490,
+   "spearman_base": 0.005,
+   "spearman_on": -0.0595,
+   "topbot_base": -0.85,
+   "topbot_on": 2.09,
+   "trait_median_all": -7.54
+  },
+  "S4反弹": {
+   "val_n": 7236,
+   "spearman_base": -0.0971,
+   "spearman_on": -0.0664,
+   "topbot_base": 8.78,
+   "topbot_on": -0.2,
+   "trait_median_all": -1.77
+  }
+ }
+}
