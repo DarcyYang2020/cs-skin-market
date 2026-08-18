@@ -4553,3 +4553,17 @@ Fluxo 25→280 约 11 倍），尖顶后 3 天 -86~94%，与枪皮统计反转�
 - **验证**：`tests/test_smoke.py` **130 passed / 0 failed / 0 skipped**；`tests/check_encoding.py` **PASS（hard 0）**（10 个 `?` 警告均为历史已知脏名，非本次引入）。归档后无活跃悬空引用（活跃引用仅剩 decision-log/iteration-roadmap 历史存证 + archive/ 内部）。
 - **文件结构同步**：`PROJECT_STRUCTURE.md` archive/ 条目更新（CLEANUP-1 归档 17 篇 + 清单指针）。
 - **commit**：`0e7831e`（roadmap v71 + CLEANUP-1 立项卡 + 17 篇归档）+ `2f7cbcb`（CLEANUP-1 执行：引用修正 + PROJECT_STRUCTURE 同步 + 本条目）。
+
+---
+
+## AP. DISPLAY-1 单品报告独特性展示优先级重构（2026-08-18）
+
+- **立项卡**：`iteration-roadmap.md`「DISPLAY-1 单品报告『独特性[假设验证]』展示优先级重构」（PM 2026-08-18 立项，交②执行）。纯展示层，不动引擎/测试/基线。
+- **改动点**（`webapp/analysis_service.py` + `webapp/templates/partials/analysis.html`）：
+  - 原 `_uniqueness_lines` 命中几条平铺几条；重构为 `_uniqueness_hits`（返回 `{'warning','main','others'}` 结构化 dict），`_uniqueness_lines` 保留为扁平包装（`[warning?, main?, *others]`，供测试/兼容），`_uniqueness_note` 改返回 dict 或 None。
+  - **主形式优先级（预注册，非数据拟合）**：RS30 相对强度 > F1 逆市走强 > F5 平静期异动 > F2 逆市抗跌 > F3 低相关独立 > F4 领先见底；主形式 = 第一个命中，标记「·主形式」。
+  - **F6 供给锁仓**（唯一警告）独立置顶，标记「·警告」，不参与主形式排序、不计入并存数。
+  - 其余命中折叠为「另 N 项并存」（N = 非 F6 命中数 − 1；N=0 无折叠行），`<details>` 可展开查看完整证据。
+  - 组装层 `research_caveats` 由平铺字符串列表改为「字符串 + 独特性 dict」混合；模板用 `{% if _caveat is mapping %}` 区分渲染（旧存档报告为平铺字符串，走 else 分支兼容）。
+- **展示效果**：0 命中无区块；单条非 F6 直接展示；多条非 F6 → 主形式置顶 + 「另 N 项并存」折叠；含 F6 → 警告独立置顶 + 主形式/折叠不变。命中检测阈值/信号逻辑/数据读取/基线数字零改动。
+- **验证**：`tests/test_smoke.py` **130 passed / 0 failed / 0 skipped**（未增改测试用例，`_uniqueness_lines` 扁平包装保持测试兼容）；`tests/check_encoding.py` PASS。手工复核：多命中场景 main=RS30、others=逆市走强+低相关独立+领先见底（N=3）；F6 场景 warning=供给锁仓·警告、main=None；Jinja2 渲染 `<details>`/summary/主形式/平铺字符串均正确。

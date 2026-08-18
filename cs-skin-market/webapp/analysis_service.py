@@ -1051,14 +1051,19 @@ def _family_card_note(action_label):
 _CARD_CACHE = {}
 
 
-def _uniqueness_lines(dates, prices, supply, market_hist):
-    """独特性状态行（2026-08-17，纯计算，纯展示）：全部预注册独特性形式命中检测。
+def _uniqueness_hits(dates, prices, supply, market_hist):
+    """独特性形式命中检测（2026-08-17 起，纯计算纯展示；2026-08-18 DISPLAY-1 改结构化返回）。
 
     输入：dates/prices/supply = 单品 K 线（升序，≥90 点）；market_hist = [(date, value), ...] 大盘。
     形式（证据引用）：RS30>10（P4 60d +39.8/180d +117.6）、F1 逆市走强（P13 60d +47.9）、
     F2 逆市抗跌（60d +38.7）、F3 低相关独立（60d +18.4，最正常市）、F4 领先见底（60d +16.0）、
     F5 平静期异动（60d +30.0）、F6 供给锁仓（60d +15.6）。
     全部标「假设验证」——结构证据来自回放探针，族未落地（rs/ct 默认关），不改变当前决策。
+
+    返回 {'warning': str|None, 'main': str|None, 'others': [str, ...]}：
+    - warning = F6 供给锁仓（唯一警告，独立置顶，不参与主形式排序、不计入并存数）。
+    - main = 非 F6 命中按预注册优先级（RS30 > F1逆市走强 > F5平静期异动 > F2逆市抗跌 > F3低相关独立 > F4领先见底）取第一个。
+    - others = 其余非 F6 命中（按优先级排序，折叠展示为「另 N 项并存」）。
     """
     try:
         n = len(prices)
@@ -1106,59 +1111,75 @@ def _uniqueness_lines(dates, prices, supply, market_hist):
             if __import__("statistics").pstdev(ia_) > 0 and __import__("statistics").pstdev(ib_) > 0:
                 corr60 = __import__("statistics").correlation(ia_, ib_)
 
-        lines = []
+        warning = None
+        hits = []
         rs30 = (item30 - mkt30) if item30 is not None else None
         if rs30 is not None and rs30 > 10:
-            lines.append("独特性[假设验证]：相对强度（RS30 %+.0fpp，跑赢大盘）→ 建议：观察独立强势是否延续，"
-                         "小仓 pilot 候选——历史同类 60 天平均 +40%%" % rs30)
-        if corr60 is not None and corr60 < 0.2 and item30 is not None and abs(item30) > 8:
-            lines.append("独特性[假设验证]：低相关独立（60 天相关 %.2f）→ 建议：按它自身结构判断，"
-                         "别套大盘结论——历史同类 60 天平均 +18%%" % corr60)
-        if mvol20 is not None and mvol20 <= 0.008 and item7 is not None and abs(item7) >= 8:
-            lines.append("独特性[假设验证]：大盘平静期异动（单品 7 天 %+.0f%%）→ 建议：先查它自己的事件/资金面，"
-                         "再决定是否跟随——历史同类 60 天平均 +30%%" % item7)
+            hits.append((0, "独特性[假设验证]：相对强度（RS30 %+.0fpp，跑赢大盘）→ 建议：观察独立强势是否延续，"
+                         "小仓 pilot 候选——历史同类 60 天平均 +40%%" % rs30))
         if mkt30 < 0 and item30 is not None and item30 > 5:
-            lines.append("独特性[假设验证]：逆市走强（大盘 30 天 %+.0f%% 它却 %+.0f%%）→ 建议：独立资金运作迹象，"
+            hits.append((1, "独特性[假设验证]：逆市走强（大盘 30 天 %+.0f%% 它却 %+.0f%%）→ 建议：独立资金运作迹象，"
                          "可小仓跟踪独立行情——历史同类 60 天平均 +60%%（半数样本来自事件窗，注意）"
-                         % (mkt30, item30))
+                         % (mkt30, item30)))
+        if mvol20 is not None and mvol20 <= 0.008 and item7 is not None and abs(item7) >= 8:
+            hits.append((2, "独特性[假设验证]：大盘平静期异动（单品 7 天 %+.0f%%）→ 建议：先查它自己的事件/资金面，"
+                         "再决定是否跟随——历史同类 60 天平均 +30%%" % item7))
         if mkt30 < -5 and item30 is not None and abs(item30) <= 3:
-            lines.append("独特性[假设验证]：逆市抗跌（大盘 30 天 %+.0f%% 它横盘 %+.0f%%）→ 建议：承接强，"
-                         "先观察会不会补跌，不追——历史同类 60 天平均 +39%%" % (mkt30, item30))
+            hits.append((3, "独特性[假设验证]：逆市抗跌（大盘 30 天 %+.0f%% 它横盘 %+.0f%%）→ 建议：承接强，"
+                         "先观察会不会补跌，不追——历史同类 60 天平均 +39%%" % (mkt30, item30)))
+        if corr60 is not None and corr60 < 0.2 and item30 is not None and abs(item30) > 8:
+            hits.append((4, "独特性[假设验证]：低相关独立（60 天相关 %.2f）→ 建议：按它自身结构判断，"
+                         "别套大盘结论——历史同类 60 天平均 +18%%" % corr60))
         if mkt_low_ago <= 14 and item_low_ago >= mkt_low_ago + 7:
-            lines.append("独特性[假设验证]：领先见底（比大盘早 %d 天止跌）→ 建议：先行指标候选，"
-                         "观察它是否带动同类——历史同类 60 天平均 +16%%" % (item_low_ago - mkt_low_ago))
+            hits.append((5, "独特性[假设验证]：领先见底（比大盘早 %d 天止跌）→ 建议：先行指标候选，"
+                         "观察它是否带动同类——历史同类 60 天平均 +16%%" % (item_low_ago - mkt_low_ago)))
         if pct90 > 70 and sc30 is not None and sc30 <= -10 and item7 is not None and item7 >= -2:
-            lines.append("独特性[假设验证]：供给锁仓（高位 + 7 日供给收缩 %.0f%%）→ 建议：警惕庄家锁仓诱多，"
-                         "勿追涨——历史同类 60 天平均 +16%%" % sc30)
-        return lines
+            warning = ("独特性[假设验证·警告]：供给锁仓（高位 + 7 日供给收缩 %.0f%%）→ 建议：警惕庄家锁仓诱多，"
+                       "勿追涨——历史同类 60 天平均 +16%%" % sc30)
+        hits.sort(key=lambda h: h[0])
+        main = hits[0][1].replace("独特性[假设验证]：", "独特性[假设验证·主形式]：", 1) if hits else None
+        others = [h[1] for h in hits[1:]]
+        return {"warning": warning, "main": main, "others": others}
     except Exception:
-        return []
+        return {"warning": None, "main": None, "others": []}
+
+
+def _uniqueness_lines(dates, prices, supply, market_hist):
+    """扁平包装（测试/兼容）：[warning?, main?, *others]；单命中=单元素列表，无命中=[]。"""
+    h = _uniqueness_hits(dates, prices, supply, market_hist)
+    out = []
+    if h["warning"]:
+        out.append(h["warning"])
+    if h["main"]:
+        out.append(h["main"])
+    out.extend(h["others"])
+    return out
 
 
 def _uniqueness_note(name):
-    """独特性状态行 DB 包装（任何异常返回 []，展示层绝不阻断分析）。"""
+    """独特性状态行 DB 包装（任何异常返回 None，展示层绝不阻断分析）。返回结构化 dict 或 None。"""
     try:
         from pipeline import db as _db
         conn = _db.get_conn()
         try:
             r = conn.execute("SELECT id FROM items WHERE name=? AND good_id>0", (name,)).fetchone()
             if not r:
-                return []
+                return None
             rows = conn.execute(
                 "SELECT date, price_rmb, in_sale_count FROM price_history "
                 "WHERE item_id=? AND price_rmb IS NOT NULL ORDER BY date", (r["id"],)).fetchall()
         finally:
             conn.close()
         if len(rows) < 90:
-            return []
+            return None
         ms = market_snapshot()
         hist = ms.get("history") or []
         if len(hist) < 62:
-            return []
-        return _uniqueness_lines([x["date"] for x in rows], [float(x["price_rmb"]) for x in rows],
-                                 [x["in_sale_count"] for x in rows], hist)
+            return None
+        return _uniqueness_hits([x["date"] for x in rows], [float(x["price_rmb"]) for x in rows],
+                                [x["in_sale_count"] for x in rows], hist)
     except Exception:
-        return []
+        return None
 
 
 def _f_pullback_note(name):
@@ -1352,9 +1373,11 @@ def _fd_display(fd, analysis=None):
                 _caveats.append("当下期望：" + _exp["text"])
     except Exception:
         pass
-    # 独特性状态行（2026-08-17 查漏补缺，纯展示）：全部预注册形式命中标注（假设验证，不改变决策）
+    # 独特性状态行（2026-08-17 查漏补缺，纯展示；2026-08-18 DISPLAY-1 结构化）：主形式置顶 + 其余折叠 + F6 警告独立
     if getattr(analysis, "name", None):
-        _caveats.extend(_uniqueness_note(analysis.name))
+        _u = _uniqueness_note(analysis.name)
+        if _u and (_u.get("warning") or _u.get("main") or _u.get("others")):
+            _caveats.append(_u)
     fd["trace"] = {
         "zone": fd.get("zone_label", ""),
         "bucket": fd.get("state_bucket", ""),

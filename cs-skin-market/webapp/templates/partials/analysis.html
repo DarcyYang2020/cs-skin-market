@@ -49,7 +49,24 @@
   <div style="margin:4px 14px 8px;padding:8px 10px;background:rgba(245,158,11,0.08);border-left:3px solid var(--yellow);font-size:12px;line-height:1.5;color:var(--text-secondary);">
     <div style="font-weight:700;color:var(--yellow);margin-bottom:3px;">研究口径提示（仅标注，不改变决策）</div>
     {% for _caveat in fusion_decision.research_caveats %}
-    <div>• {{ _caveat }}</div>
+      {% if _caveat is mapping %}
+        {% if _caveat.warning %}
+        <div style="color:#b45309;font-weight:600;">⚠️ {{ _caveat.warning }}</div>
+        {% endif %}
+        {% if _caveat.main %}
+        <div>• {{ _caveat.main }}</div>
+        {% endif %}
+        {% if _caveat.others %}
+        <details style="margin-top:2px;">
+          <summary style="cursor:pointer;color:var(--text-secondary);">另 {{ _caveat.others|length }} 项并存（点击展开）</summary>
+          {% for _o in _caveat.others %}
+          <div style="margin-left:12px;">• {{ _o }}</div>
+          {% endfor %}
+        </details>
+        {% endif %}
+      {% else %}
+      <div>• {{ _caveat }}</div>
+      {% endif %}
     {% endfor %}
   </div>
   {% endif %}
