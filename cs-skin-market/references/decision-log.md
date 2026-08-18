@@ -583,3 +583,16 @@
 - **其余 11 候选文件评估（按实际可压缩量报告）**：多为活跃手册/紧凑文档（150~430 行），本轮**不做激进压缩**（红线：不整体归档活跃手册 data-layer/terminology/project-principles；AGENTS.md 为活跃指令文件、其「历史结论区」仍被引擎参数解释引用）。评估结论：`cs-knowledge`/`data-source-health`/`engine-unified`/`trading-strategies`/`trend_leg_research`/`first-principles-market-fit`/`first-principles-modules-fit`/`current-state-expectancy-design` 留待后续逐文件评估压缩（本轮零压缩）。
 - **指针同步**：`PROJECT_STRUCTURE.md` 新增 `archive/doc-compact-2026-08-18/` 条目（两份归档卷 + 清单指针）。
 - **验证**：`tests/test_smoke.py` **131 passed / 0 failed / 0 skipped**（文档压缩未改变测试数）；`tests/check_encoding.py` PASS（hard 0）。归档卷完整保留被移出内容，主文件归档索引可定位原编号/章节。
+
+---
+
+## BB. DISPLAY-3 单品报告语境收敛（2026-08-18，纯展示）
+
+- **立项卡**：DISPLAY-3（PM 交②执行）。纯展示收敛，不 bump ENGINE_VERSION。
+- **改动点**（`webapp/analysis_service.py`）：
+  1. 大盘语境行收敛为「当前 {时期}——{动作区}」，**删除**「该时期大盘自身前视 14d/30d」（`period_forward`，大盘仪表盘 dashboard.html 已保留同口径，不重复）。
+  2. **删除**「当下期望」调用与文案，并整函数删除 `_point_in_time_expectancy`（读 `_exp_period_continuous_curve.json` 均值曲线；无其他活跃引用，`_exp_period_continuous_curve.json` 不再被单品报告读取，但仍由 `build_period_continuous_curve.py` 产出存证）。
+  3. DISPLAY-2「短期期望」卡保持不动，成为单品报告 **7d/14d 期望唯一入口**（消除两个「14d 期望」打架）。
+  4. 独特性状态行保持 DISPLAY-1 结构不动。
+- **F6 并入评估结论（评估项，不强制落地）**：**不并入 S1/S2 供给收缩特性**。理由：① F6 供给锁仓 = `pct90>70（高位）` + `sc30≤-10（供缩）` + `chg7≥-2` → 「警惕庄家锁仓诱多」是**警示**；S1/S2 供给收缩特性 = `-z_supply30`（供缩越强越偏强）是**正向吸筹信号**——同用「供缩」特征但语义相反；② F6 有位置条件（高位），S1/S2 trait 无位置条件，合并会产生「供缩既正又警」矛盾。故 F6 保留为独特性状态行独立警告，不并入。
+- **验证**：`tests/test_smoke.py` **131 passed / 0 failed / 0 skipped**；`tests/check_encoding.py` PASS（hard 0）；`ENGINE_VERSION` 仍 `v2-T13`。单品报告路径 `webapp/` 已无「当下期望」「period_forward」字样（dashboard.html 大盘仪表盘保留 period_forward 为预期）。

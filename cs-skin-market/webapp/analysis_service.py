@@ -1249,49 +1249,9 @@ def _f_pullback_note(name):
         return None
 
 
-_CURVE_CACHE = {"ts": 0.0, "data": None}
-
-
-def _point_in_time_expectancy(period, period_days):
-    """当下进场期望（②机制，2026-08-18）：E[fwd14 | 时期, 时点]，来自 _exp_period_continuous_curve.json。
-
-    连续程度量化：期内按天读平滑值（内插）；超历史最长天取尾部收敛值（外推·低置信）。
-    纯展示，不改变决策；永远带"历史分布，非本次胜率"语义。返回 dict 或 None。
-    """
-    try:
-        now = time.time()
-        if _CURVE_CACHE["data"] is None or now - _CURVE_CACHE["ts"] > 300:
-            _p = Path(__file__).resolve().parent.parent / "data" / "_exp_period_continuous_curve.json"
-            with io.open(_p, "r", encoding="utf-8") as _f:
-                _CURVE_CACHE["data"] = json.load(_f)
-            _CURVE_CACHE["ts"] = now
-        table = _CURVE_CACHE["data"]
-        p = table.get("periods", {}).get(period)
-        if not p or period_days is None:
-            return None
-        max_day = p.get("max_day")
-        if period_days <= max_day:
-            by_day = {c["day"]: c for c in (p.get("curve") or [])}
-            c = by_day.get(period_days)
-            if not c or c.get("fwd14_smooth") is None:
-                return None
-            return {
-                "text": "进入 {} 第 {} 天 · 当下期望 14d ≈ {:+.1f}%（胜率 {:.0f}%，历史分布，非本次胜率）".format(
-                    period, period_days, c["fwd14_smooth"], c.get("win14") or 0),
-                "extrapolated": False,
-            }
-        ta = p.get("tail_asymptote") or {}
-        if ta.get("fwd14") is None:
-            return None
-        band = ta.get("band25_75")
-        band_txt = "，带 {}%~{}%".format(band[0], band[1]) if band else ""
-        return {
-            "text": "进入 {} 第 {} 天（超历史最长 {} 天）· 当下期望 14d ≈ {:+.1f}%（胜率 {:.0f}%，历史分布·外推低置信{}）".format(
-                period, period_days, max_day, ta["fwd14"], ta.get("win14") or 0, band_txt),
-            "extrapolated": True,
-        }
-    except Exception:
-        return None
+# 2026-08-18 DISPLAY-3：`_point_in_time_expectancy`（读 `_exp_period_continuous_curve.json` 的「当下期望」均值曲线）
+# 已删除——与 DISPLAY-2 单品短期期望查表中位数重叠（两个「14d 期望」打架）；7d/14d 期望唯一入口 = DISPLAY-2 短期期望卡。
+# `_exp_period_continuous_curve.json` 仍由 `references/build_period_continuous_curve.py` 产出，仅不再被单品报告读取。
 
 
 def _shortterm_expectancy_note(analysis, period, period_days):
@@ -1391,22 +1351,16 @@ def _fd_display(fd, analysis=None):
         _fn = _f_pullback_note(analysis.name)
         if _fn:
             _caveats.append(_fn)
-    # 大盘语境行（2026-08-17 模块 A，纯引擎无关）：当前时期+大盘动作+该时期大盘自身前视证据
+    # 大盘语境行（2026-08-17 模块 A；2026-08-18 DISPLAY-3 收敛）：只保留「时期+动作区」
     try:
         from pipeline.market_signal import market_signal as _ms
         _msig = _ms()
         if _msig.get("ok") and _msig.get("period") != "unknown":
-            _fwd = _msig.get("period_forward") or {}
             _caveats.append(
-                "大盘语境：当前 {}——{}（该时期大盘自身前视 14d {}、30d {}，3 年回放证据，非预测）".format(
-                    _msig["period"], _msig.get("action_note", ""),
-                    _fwd.get("fwd14", "n/a"), _fwd.get("fwd30", "n/a"))
+                "大盘语境：当前 {}——{}".format(_msig["period"], _msig.get("action_note", ""))
             )
-            # ②当下进场期望（2026-08-18）：E[fwd14 | 时期, 时点]，连续程度量化，替换时期级静态均值
-            _exp = _point_in_time_expectancy(_msig["period"], _msig.get("period_days"))
-            if _exp:
-                _caveats.append("当下期望：" + _exp["text"])
-            # DISPLAY-2 单品短期期望（2026-08-18，纯展示）：时期×时点先验 + 分时期单品特性（P/S1/S2）
+            # DISPLAY-2 单品短期期望（2026-08-18，纯展示）：时期×时点先验 + 分时期单品特性（P/S1/S2），
+            # 为单品报告 7d/14d 期望唯一入口
             if getattr(analysis, "name", None):
                 _se = _shortterm_expectancy_note(analysis, _msig["period"], _msig.get("period_days"))
                 if _se and (_se.get("fwd14") or {}).get("med") is not None:
