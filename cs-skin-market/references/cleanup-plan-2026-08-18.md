@@ -28,13 +28,14 @@
 | 16 | `references/product-pm-initiation.md` | b（产品立项转化版，A/B 线已落地） | 归档 | 1 引用：`decision-log`（历史账本） | tracked |
 | 17 | `references/product-pm-review.md` | b（PM 评估，一次性历史） | 归档 | 1 引用：`product-pm-initiation.md`（同批归档） | tracked |
 
-## 二、登记候选（不物理删除，交运维窗口处理）
+## 二、登记候选（不物理删除；运维域 12 份 + 研究域 3 份，共 15 份）
 
 | # | 文件 | 分类 | 处置 | 说明 |
 |---|---|---|---|---|
-| E1 | `data/market.db.bak-*`（7 份，2026-08-08~08-13） | e（运行时备份） | 登记，运维清理 | `.db`/`.bak` 属运维域，研发不删 |
-| E2 | `data/market.bak-*`（3 份）、`data/replay_v2t6_win.bak-*`（2 份） | e（运行时备份） | 登记，运维清理 | 同上 |
-| E3 | `data/item_backtest_full_2025.json.bak-preaudit-20260809` | e（文本备份） | 登记，运维清理 | 同上 |
+| E1 | `data/market.db.bak-*`（9 份，2026-08-08~08-13） | e（运行时备份） | 登记，运维清理 | 生产库，④运维域 |
+| E2 | `data/market.bak-*`（3 份） | e（运行时备份） | 登记，运维清理 | 生产库（缺 `.db` 命名的 market.db 备份），④运维域 |
+| E3 | `data/replay_v2t6_win.bak-*`（2 份） | e（运行时备份） | 登记，②自清 | 回放混合库，②研究+研发域 |
+| E4 | `data/item_backtest_full_2025.json.bak-preaudit-20260809` | e（文本备份） | 登记，②自清 | HIST-FULL 研究基线，②研究+研发域 |
 
 ## 三、明确不处置（评估后保留，避免误删/超出本轮范围）
 
