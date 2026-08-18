@@ -31,7 +31,7 @@
       <tr><td>{{ r.name_cell|safe }}</td>
       <td>¥{{ "%.2f"|format(r.price) }}</td>
       <td>{{ r.badge|safe }}</td>
-      <td style="font-size:12px;">{{ r.valuation_tier }}<br><span style="color:var(--text-muted);">pct={{ "%.1f"|format(r.pct) }}%</span></td>
+      <td style="font-size:12px;">{{ {'undervalued':'历史低位，比较便宜','fair':'价格适中','overvalued':'历史高位，偏贵','bubble':'历史顶点，太贵了'}.get(r.valuation_tier, r.valuation_tier) }}<br><span style="color:var(--text-muted);">pct={{ "%.1f"|format(r.pct) }}%</span></td>
       <td>{{ r.bd_cell|safe }}</td>
       <td>{{ r.refresh_btn|safe }}</td></tr>
     {% endfor %}

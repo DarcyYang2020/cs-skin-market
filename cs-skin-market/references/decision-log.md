@@ -774,3 +774,14 @@
 - **修复**：`market_index_stats` 对齐到 91 值含当日窗口——`analyze_index(market_history[-90:])`→`[-91:]`、`compute_market_trend_health(values[-90:])`→`[-91:]`。**不改 TH 评分公式/阈值/情绪/周期**，仅改窗口切片长度。
 - **影响评估（判据 3）**：纯口径对齐——live TH 由 33 修正为 35（与回测事实源一致）；TH 公式/阈值零改动，无信号/基线变化（当前 TH 33→35 均在 <40 区间，不跨越任何守卫/族闸门阈值），**不 bump ENGINE_VERSION**（保持 v2-T13）。
 - **验证**：`tests/test_smoke.py` **131 passed / 0 failed / 0 skipped**（`t_live_snapshot_sync` 恢复通过）；`tests/check_encoding.py` PASS（hard 0）；`ENGINE_VERSION` 仍 `v2-T13`。
+
+---
+
+## BP. DISPLAY-8 批量扫描估值列改大白话（2026-08-18，纯展示）
+
+- **立项卡**：DISPLAY-8（PM 交②执行）。纯展示文案改造，只回答「贵不贵」，不暗示「买不买」。
+- **改动点**（仅 `webapp/templates/partials/scan_html.html` 估值单元格，第 34 行）：
+  - 映射固定：`undervalued→「历史低位，比较便宜」`、`fair→「价格适中」`、`overvalued→「历史高位，偏贵」`、`bubble→「历史顶点，太贵了」`（`.get(r.valuation_tier, r.valuation_tier)` 兜底未知值）。
+  - 主文案改为一句人话，不再显示 `r.valuation_tier` 英文键；`pct=X%` 保留为次要小字（非主答案）。
+- **零改动**：估值判定逻辑/阈值/评分/引擎/决策/距买点口径（低估线 pct≤30）均未动；不新增采集；不 bump ENGINE_VERSION。
+- **验证**：`tests/test_smoke.py` **131 passed / 0 failed / 0 skipped**；`tests/check_encoding.py` PASS（hard 0）；`ENGINE_VERSION` 仍 `v2-T13`。
