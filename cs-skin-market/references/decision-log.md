@@ -727,3 +727,15 @@
   - **数据源核对**：`data/_exp_stage14_p1c_extrapolation.json` 的 `S3阴跌--15~-5` 桶 n=8314 / fwd14_med=−7.97（≈−8.0%）/ win=23.1（≈23%），与文案数字一致。
   - **不改算法**：`pipeline/shortterm_expectancy.py::compute_shortterm_expectancy` 零改动（git diff 为空）；DISPLAY-2 短期期望卡主体数字不变；不 bump ENGINE_VERSION。
 - **验证**：`tests/test_smoke.py` **131 passed / 0 failed / 0 skipped**；`tests/check_encoding.py` PASS（hard 0）；`ENGINE_VERSION` 仍 `v2-T13`。
+
+---
+
+## BL. DISPLAY-6 单品报告冗余模块下架（2026-08-18，纯展示）
+
+- **立项卡**：DISPLAY-6（PM 交②执行，用户裁定「短期期望无用 + 大盘语境冗余」）。纯展示删除，不改变引擎/决策/信号族/基线。
+- **删除点**（`webapp/analysis_service.py` + `webapp/templates/partials/analysis.html`）：
+  1. 短期期望卡（DISPLAY-2 `compute_shortterm_expectancy` 注入 + DISPLAY-5 深跌 S3 标注）：删除 `_shortterm_expectancy_note` 调用 + `fd["shortterm_expectancy"]` 注入 + `regime_note`；删除 `_shortterm_expectancy_note` 函数（无其他活跃引用）；模板删除短期期望卡渲染块（「短期期望/7d 期望/14d 期望/深跌阴跌 regime」全部移除）。
+  2. 大盘语境行（DISPLAY-3「当前时期+动作区」）：删除 `market_signal` 调用 + 「大盘语境：当前…」caveat 追加。
+- **保留**：独特性状态行（`_uniqueness_note` + 模板 mapping 分支，DISPLAY-1 结构）与其余研究口径提示（族特征/F 判别/供给三态/恐慌口径）不受影响。
+- **研究存证去向**：`pipeline/shortterm_expectancy.py` + `data/_exp_shortterm_table.json` + `config.SHORTTERM_EXPECTANCY` **保留为研究存证**（`t_shortterm_expectancy` 仍测其逻辑）；`compute_shortterm_expectancy` 逻辑**零改动**（git diff 为空）。webapp 无 `shortterm_expectancy`/`regime_note`/`大盘语境` 活跃引用（仅存 DISPLAY-3/6 删除注释）。
+- **验证**：`tests/test_smoke.py` **131 passed / 0 failed / 0 skipped**；`tests/check_encoding.py` PASS（hard 0）；`ENGINE_VERSION` 仍 `v2-T13`。

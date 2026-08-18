@@ -1254,38 +1254,10 @@ def _f_pullback_note(name):
 # `_exp_period_continuous_curve.json` 仍由 `references/build_period_continuous_curve.py` 产出，仅不再被单品报告读取。
 
 
-def _shortterm_expectancy_note(analysis, period, period_days):
-    """DISPLAY-2 单品短期期望（2026-08-18，纯展示）：提取单品特征 + 查表，返回展示 dict 或 None。
-
-    不进决策、不 bump ENGINE_VERSION；特征口径与宇宙面板 v2 同源：
-    chg7=(p[-1]/p[-8]-1)*100、chg3=(p[-1]/p[-4]-1)*100、z=position.zscore_90d、
-    th=trend_health.score、supply30=supply_analysis.supply_change_30d。
-    """
-    try:
-        from pipeline import db as _db
-        conn = _db.get_conn()
-        try:
-            r = conn.execute("SELECT id FROM items WHERE name=? AND good_id>0", (analysis.name,)).fetchone()
-            if not r:
-                return None
-            rows = conn.execute(
-                "SELECT price_rmb FROM price_history WHERE item_id=? AND price_rmb IS NOT NULL "
-                "ORDER BY date", (r["id"],)).fetchall()
-        finally:
-            conn.close()
-        prices = [float(x["price_rmb"]) for x in rows]
-        if len(prices) < 9:
-            return None
-        chg7 = (prices[-1] / prices[-8] - 1) * 100
-        chg3 = (prices[-1] / prices[-4] - 1) * 100
-        pos = getattr(analysis, "position", None)
-        z = getattr(pos, "zscore_90d", None)
-        th = (getattr(analysis, "trend_health", None) or {}).get("score")
-        supply30 = (getattr(analysis, "supply_analysis", None) or {}).get("supply_change_30d")
-        from pipeline.shortterm_expectancy import compute_shortterm_expectancy as _cse
-        return _cse(period, period_days, chg7, chg3, z, th, supply30)
-    except Exception:
-        return None
+# 2026-08-18 DISPLAY-6：`_shortterm_expectancy_note`（DISPLAY-2 单品短期期望注入）已删除——
+# 用户裁定「短期期望无用 + 大盘语境冗余」，单品报告下架短期期望卡与大盘语境行，
+# 保留独特性状态行（唯一有长持结构信息增量）。`pipeline/shortterm_expectancy.py` +
+# `data/_exp_shortterm_table.json` + `config.SHORTTERM_EXPECTANCY` 保留为研究存证（t_shortterm_expectancy 仍测其逻辑）。
 
 
 def _fd_display(fd, analysis=None):
@@ -1296,7 +1268,6 @@ def _fd_display(fd, analysis=None):
     build_analysis_ctx 与 save_analysis_result 共用，保证快照/重建口径一致。
     """
     fd = dict(fd or {})
-    fd.setdefault("shortterm_expectancy", None)
     _src_labels = [_SOURCE_LABELS.get(str(s), str(s)) for s in (fd.get("deduction_sources") or [])]
     _caveats = []
     _action_label = str(fd.get("action_label") or "")
@@ -1351,30 +1322,6 @@ def _fd_display(fd, analysis=None):
         _fn = _f_pullback_note(analysis.name)
         if _fn:
             _caveats.append(_fn)
-    # 大盘语境行（2026-08-17 模块 A；2026-08-18 DISPLAY-3 收敛）：只保留「时期+动作区」
-    try:
-        from pipeline.market_signal import market_signal as _ms
-        _msig = _ms()
-        if _msig.get("ok") and _msig.get("period") != "unknown":
-            _caveats.append(
-                "大盘语境：当前 {}——{}".format(_msig["period"], _msig.get("action_note", ""))
-            )
-            # DISPLAY-2 单品短期期望（2026-08-18，纯展示）：时期×时点先验 + 分时期单品特性（P/S1/S2），
-            # 为单品报告 7d/14d 期望唯一入口
-            if getattr(analysis, "name", None):
-                _se = _shortterm_expectancy_note(analysis, _msig["period"], _msig.get("period_days"))
-                if _se and (_se.get("fwd14") or {}).get("med") is not None:
-                    # DISPLAY-5 展示校准（2026-08-18，③审计#3 复审路径⑤）：S3 深跌 regime 诚实标注
-                    # 触发=S3弱市阴跌 且 大盘 chg30≤-5%；仅展示标注，不改变预测算法/决策
-                    _c30 = _msig.get("chg30")
-                    if _msig["period"] == "S3弱市阴跌" and _c30 is not None and _c30 <= -5:
-                        _se["regime_note"] = (
-                            "深跌阴跌 regime：历史同态 14d 中位数 −8.0%、翻正率 23%（n=8314），"
-                            "该 regime 为历史未出现的新 regime，无样本外能力，外推·低置信，"
-                            "由 B 通道(~2027-04)/live pilot 承担")
-                    fd["shortterm_expectancy"] = _se
-    except Exception:
-        pass
     # 独特性状态行（2026-08-17 查漏补缺，纯展示；2026-08-18 DISPLAY-1 结构化）：主形式置顶 + 其余折叠 + F6 警告独立
     if getattr(analysis, "name", None):
         _u = _uniqueness_note(analysis.name)
