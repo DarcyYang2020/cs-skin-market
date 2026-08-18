@@ -1,5 +1,5 @@
 {
- "generated": "2026-08-16T23:04",
+ "generated": "2026-08-17T18:26",
  "thresholds": {
   "min_n_watch": 10,
   "min_n_decay": 20,
@@ -11,40 +11,32 @@
    "live_n": 0,
    "live_win": null,
    "live_avg": null,
-   "card_win14": 61.5,
-   "card_avg14": 9.26,
+   "card_win14": 64.4,
+   "card_avg14": 11.44,
    "flag": null
   },
   "deep_value": {
    "live_n": 0,
    "live_win": null,
    "live_avg": null,
-   "card_win14": 62.5,
-   "card_avg14": 22.37,
+   "card_win14": 66.7,
+   "card_avg14": 25.94,
    "flag": null
   },
   "panic_easing": {
    "live_n": 0,
    "live_win": null,
    "live_avg": null,
-   "card_win14": 82.8,
-   "card_avg14": 21.76,
-   "flag": null
-  },
-  "rise_accum": {
-   "live_n": 0,
-   "live_win": null,
-   "live_avg": null,
-   "card_win14": 35.6,
-   "card_avg14": 3.77,
+   "card_win14": 84.2,
+   "card_avg14": 22.25,
    "flag": null
   },
   "supply_accum": {
    "live_n": 0,
    "live_win": null,
    "live_avg": null,
-   "card_win14": 57.9,
-   "card_avg14": 13.06,
+   "card_win14": 75.0,
+   "card_avg14": 23.83,
    "flag": null
   },
   "panic_resonance": {
@@ -52,7 +44,15 @@
    "live_win": null,
    "live_avg": null,
    "card_win14": 100.0,
-   "card_avg14": 44.77,
+   "card_avg14": 47.78,
+   "flag": null
+  },
+  "rise_accum": {
+   "live_n": 0,
+   "live_win": null,
+   "live_avg": null,
+   "card_win14": 41.7,
+   "card_avg14": 9.77,
    "flag": null
   }
  }

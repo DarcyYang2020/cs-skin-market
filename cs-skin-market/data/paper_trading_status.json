@@ -13,15 +13,13 @@
    "avg_net_pct": -19.91
   }
  },
+ "criteria": {
+  "threshold_n": 20,
+  "n_closed": 1,
+  "state": "accumulating",
+  "note": "结算 1/20 笔，达到 20 笔后按族判据自动评估（胜率≥族卡−15pp 且 期望≥−5pp）"
+ },
  "date": "2026-08-17",
- "closed_today": [
-  {
-   "item": "AK-47 | 轨道 Mk01 (崭新出厂)",
-   "family": "supply_accum",
-   "reason": "止损",
-   "net_pct": -19.91,
-   "held": 8
-  }
- ],
- "opened_today": 2
+ "closed_today": [],
+ "opened_today": 0
 }
