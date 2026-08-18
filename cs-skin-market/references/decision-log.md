@@ -715,3 +715,15 @@
 - **落地（纯展示，不改算法）**：`webapp/analysis_service.py` 追加一行标注（S3 深跌时）+ `analysis.html` 渲染；不改 `compute_shortterm_expectancy`、不改决策、不 bump ENGINE_VERSION。
 - **完整优化线收官（decision-log BC~BI）**：P0 单特征 / P1 市场条件化 / P2 校准 / P3 单品差异 / P2-B A 模型 全部探完，**可验证预测力上限 = 时期×时点（现状）**；「看似有效」的深跌 S3 外推 = 无样本外能力的新 regime。
 - **下一步**：交 PM 立项（展示校准收口）+ 研发落地。
+
+---
+
+## BK. DISPLAY-5 单品短期期望·展示校准收口执行（2026-08-18，纯展示）
+
+- **立项卡**：DISPLAY-5（PM 交②执行，对应 ③审计#3 复审路径⑤「展示校准豁免预测验证」口径 + decision-log BC~BJ 收官）。
+- **改动点**（仅 `webapp/analysis_service.py` + `webapp/templates/partials/analysis.html`）：
+  - 触发条件固定：当前时期 = `S3弱市阴跌` 且 大盘 `chg30 ≤ −5%`（`market_signal()["chg30"]`）；其他时期/浅跌不追加。
+  - 追加文案（`_se["regime_note"]`）：`深跌阴跌 regime：历史同态 14d 中位数 −8.0%、翻正率 23%（n=8314），该 regime 为历史未出现的新 regime，无样本外能力，外推·低置信，由 B 通道(~2027-04)/live pilot 承担`；模板在短期期望卡「本品特性」行下渲染 ⚠️ 标注。
+  - **数据源核对**：`data/_exp_stage14_p1c_extrapolation.json` 的 `S3阴跌--15~-5` 桶 n=8314 / fwd14_med=−7.97（≈−8.0%）/ win=23.1（≈23%），与文案数字一致。
+  - **不改算法**：`pipeline/shortterm_expectancy.py::compute_shortterm_expectancy` 零改动（git diff 为空）；DISPLAY-2 短期期望卡主体数字不变；不 bump ENGINE_VERSION。
+- **验证**：`tests/test_smoke.py` **131 passed / 0 failed / 0 skipped**；`tests/check_encoding.py` PASS（hard 0）；`ENGINE_VERSION` 仍 `v2-T13`。

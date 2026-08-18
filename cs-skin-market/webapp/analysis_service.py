@@ -1364,6 +1364,14 @@ def _fd_display(fd, analysis=None):
             if getattr(analysis, "name", None):
                 _se = _shortterm_expectancy_note(analysis, _msig["period"], _msig.get("period_days"))
                 if _se and (_se.get("fwd14") or {}).get("med") is not None:
+                    # DISPLAY-5 展示校准（2026-08-18，③审计#3 复审路径⑤）：S3 深跌 regime 诚实标注
+                    # 触发=S3弱市阴跌 且 大盘 chg30≤-5%；仅展示标注，不改变预测算法/决策
+                    _c30 = _msig.get("chg30")
+                    if _msig["period"] == "S3弱市阴跌" and _c30 is not None and _c30 <= -5:
+                        _se["regime_note"] = (
+                            "深跌阴跌 regime：历史同态 14d 中位数 −8.0%、翻正率 23%（n=8314），"
+                            "该 regime 为历史未出现的新 regime，无样本外能力，外推·低置信，"
+                            "由 B 通道(~2027-04)/live pilot 承担")
                     fd["shortterm_expectancy"] = _se
     except Exception:
         pass

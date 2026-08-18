@@ -82,6 +82,9 @@
     <div>14d 期望 {{ "%+.1f"|format(_se.fwd14.med) }}% · 翻正率 {{ _se.fwd14.win if _se.fwd14.win is not none else 'n/a' }}%（n={{ _se.fwd14.n }}）</div>
     {% endif %}
     <div>本品特性：{{ _se.trait_note }}</div>
+    {% if _se.regime_note %}
+    <div style="color:#b45309;font-weight:600;margin-top:2px;">⚠️ {{ _se.regime_note }}</div>
+    {% endif %}
   </div>
   {% endif %}
   {% if fusion_decision.action != 'buy' and fusion_decision.proximity %}
