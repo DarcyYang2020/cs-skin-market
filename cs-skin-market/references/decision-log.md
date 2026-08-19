@@ -856,4 +856,4 @@
 - **范围边界**：只写回放库 `replay_cycle_win.db`，未碰生产库 `market.db`；未改引擎/决策/信号族/守卫链/组合层/基线；未删改任何 `_exp_*.json` 回放产物。
 - **交付物**：`references/backfill_full_pool.py` + `data/_exp_data1_plan.json` + `data/_exp_data1_audit.json` + 回放库（266,333 行）+ 本条目 + commit。
 - **后续接力（登记，不并入本卡）**：数据就绪后另立卡交②重做族划分（240 品 3 年窗口）+ 新信号验证（预注册探针 + ③审计）；BQ 子题②「急跌型恐慌」探针可全历史重跑。
-- **状态**：数据就绪，待 PM 对照验收。commit `f5c2d05`（脚本+决策+产物）+ PROJECT_STRUCTURE 同步另见后续 commit。
+- **状态**：数据就绪，待 PM 对照验收。commit `f5c2d05`（脚本+决策+产物）+ `fade8a9`（PROJECT_STRUCTURE 同步）。
