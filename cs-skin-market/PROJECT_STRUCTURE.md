@@ -140,6 +140,8 @@ cs-skin-market/
 - `sync_expectancy_config.py` / `sync_replay_snapshot.py` — 期望统计/回放口径同步
 - `j1_event_counts.py` — 各族独立事件数 → `signal_event_counts.json`
 - `run_item_backtest_full.py` — 全窗口单品回放（产出 HIST-FULL 冻结归档 `item_backtest_full_2025.json`）
+- `backfill_cycle_window.py` — 回放池 A 96 品 3 年历史回填（v69，写死 96 品，仅存证）
+- `backfill_full_pool.py` — DATA-1 全池 3 年历史回填（非印花非角色 240 品，good_id 对齐，去重不覆盖）→ `_exp_data1_plan.json` / `_exp_data1_audit.json`
 - `trend_leg_*.py / th_*_study.py / topup_replay.py / tranche_fit*.py / c1_p10_replay.py / advice_layer_fit.py / portfolio_cap_fit.py` — 历史研究脚本
 - `scripts-archive/` — 已下线脚本归档（成交量时代等，仅存证）
 - `archive/` — 已完成专项文档存证（2026-08-18 CLEANUP-1 归档 17 篇：optimization-* 2026-08-14 两份 + 外审立项基线/一次性审计/过时交接等，清单见 `cleanup-plan-2026-08-18.md`）
