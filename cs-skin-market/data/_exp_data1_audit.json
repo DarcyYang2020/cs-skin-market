@@ -1,0 +1,20 @@
+{
+ "backup": "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\replay_cycle_win.db.bak-data1",
+ "target_total": 240,
+ "no_good_id_skipped": 16,
+ "with_good_id": 224,
+ "inserted_items_rows": 50,
+ "inserted_dates": 145692,
+ "skipped_existing_dates": 113438,
+ "failed_goods": 0,
+ "before_price_rows": 120641,
+ "after_price_rows": 266333,
+ "overwritten_existing": 0,
+ "overwrite_check_count": 120641,
+ "first_date_covered": 222,
+ "first_date_not_covered": [
+  "AK-47 | 流金王朝 (崭新出厂)",
+  "挂件 | 丁烷拍档"
+ ],
+ "cover_rate": 0.9911
+}
