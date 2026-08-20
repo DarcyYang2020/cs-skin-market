@@ -100,7 +100,7 @@ cs-skin-market/
 | `render_html.py` | HTML 渲染纯函数（报告/发现榜/闪光图） |
 | `static/css/style.css` | 全局样式 |
 | `static/js/app.js` | 前端交互（HTMX/模态/表单） |
-| `templates/` | `base/dashboard/search/watchlist/discover/replay/checkup + partials/analysis,analysis_results,dashboard_refresh,discover_html,exec_modal,index_analysis,index_card,scan_html` |
+| `templates/` | `base/dashboard/search/watchlist/discover/replay/checkup/ops + partials/analysis,analysis_results,dashboard_refresh,discover_html,engine_telemetry,exec_modal,index_analysis,index_card,scan_html` |
 
 ## `tests/` 测试
 

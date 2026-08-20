@@ -1,0 +1,257 @@
+<!-- 引擎状态 (J-2 监测, 纯展示) · UI-2 迁移自 dashboard，仅供 /ops 引擎/研究视图 -->
+{% if engine_status %}
+<div class="card" style="margin-top:12px;">
+  <div class="card-header">
+    <span class="card-title">⚙️ 引擎状态 · {{ engine_status.engine_version }}</span>
+    <span style="font-size:12px;color:var(--text-muted);margin-left:auto;">v2 引擎起点 {{ engine_status.monitor_start }} · 样本目标 {{ engine_status.sample_target_days }} 天</span>
+    <button class="btn btn-outline btn-sm" onclick="createBackup()" style="margin-left:8px;">💾 备份数据</button>
+    <span id="backup-msg" style="font-size:11px;color:var(--text-muted);"></span>
+  </div>
+  <div style="padding:10px 14px;font-size:12px;display:flex;gap:18px;flex-wrap:wrap;color:var(--text-secondary);">
+    <span>🔵 独立恐慌事件 <b style="color:var(--text-primary);">{{ engine_status.a_value }}/{{ engine_status.a_threshold }}</b>（{{ engine_status.a_status }}）</span>
+    <span>🟢 新数据积累 <b style="color:var(--text-primary);">{{ engine_status.b_days }}/{{ engine_status.b_threshold }}</b> 天（至 {{ engine_status.b_target }}）</span>
+    {% if engine_status.c_flagged %}
+    <span style="color:var(--yellow);">⚠️ C 通道告警：{{ engine_status.c_flagged }} 个月度胜率低于阈值{% if engine_status.c_latest_month %}（最近 {{ engine_status.c_latest_month }}）{% endif %}</span>
+    {% else %}
+    <span>✅ C 通道胜率监测：无告警</span>
+    {% endif %}
+    {% if engine_status.optimization_view %}
+    <span>📈 期望+Calmar（主指标）：net14 win {{ engine_status.optimization_view.win14_pct }}% / avg {{ "%+.1f"|format(engine_status.optimization_view.avg14_net) }}% · 策略 Calmar {{ engine_status.optimization_view.strategy_active.calmar }}（maxDD {{ engine_status.optimization_view.strategy_active.max_drawdown_pct }}%）</span>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<!-- F-1 未来事件日历 (2026-08-10, 纯提示层): EVENT_CALENDAR 未来条目, 不参与信号决策 -->
+{% if upcoming_events %}
+<div class="card" style="margin-top:12px;border-color:var(--blue-border-soft);">
+  <div class="card-header"><span class="card-title">📅 未来事件</span>
+    <span style="font-size:11px;color:var(--text-muted);margin-left:auto;">配置：pipeline/config.py EVENT_CALENDAR（日期 > 今天）</span>
+  </div>
+  <div style="padding:10px 14px;font-size:12px;display:flex;gap:18px;flex-wrap:wrap;color:var(--text-secondary);">
+    {% for ev in upcoming_events %}
+    <span>📌 <b style="color:var(--text-primary);">{{ ev.name }}</b> {{ ev.date }}（{{ ev.days_left }} 天后）{% if ev.impact_days %}· 影响期 {{ ev.impact_days }} 天{% endif %}</span>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- 数据健康 (A1, 2026-08-05): run_health_monitor 自动检查结果, 每日采集收尾/手动触发写 health_checks -->
+<div class="card" id="health-card" style="display:none;margin-top:16px;">
+  <div class="card-header">
+    <span class="card-title">🩺 数据健康</span>
+    <span id="health-time" style="font-size:12px;color:var(--text-muted);"></span>
+    <button class="btn btn-outline btn-sm" onclick="loadHealth()" style="margin-left:auto;"><span id="health-spinner" class="htmx-indicator">⏳</span> 🔄 刷新</button>
+  </div>
+  <div id="health-body" style="padding:10px 14px;font-size:13px;"></div>
+</div>
+
+<!-- 数据积累进度 (P0-3, 2026-08-04) -->
+<div class="card" id="data-progress-card" style="display:none;margin-top:16px;">
+  <div class="card-header">
+    <span class="card-title">📊 数据积累进度</span>
+    <span id="data-progress-time" style="font-size:12px;color:var(--text-muted);"></span>
+  </div>
+  <div id="data-progress-body" style="padding:12px 14px;font-size:13px;color:var(--text-secondary);"></div>
+</div>
+
+<script>
+// ---- 数据备份 (P2-3) ----
+function createBackup() {
+  fetch("/api/backup/create", {method: "POST"})
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var el = document.getElementById("backup-msg");
+      if (!el) return;
+      if (d.ok) { el.textContent = "✅ 备份成功：" + d.file + "（" + Math.round(d.size / 1024) + " KB）"; }
+      else { el.textContent = "❌ 备份失败：" + (d.error || ""); }
+    });
+}
+// ---- 数据健康 (A1, 2026-08-05): 实时检查 + 自动检查状态 + 明细（接口异常也显示，不静默隐藏） ----
+function _healthBadge(st, label) {
+  var colors = {pass: "var(--green)", warn: "var(--yellow)", fail: "var(--red)"};
+  var color = colors[st] || "var(--text-muted)";
+  return '<span class="badge" style="background:var(--accent-bg);color:' + color + ';font-weight:700;">' + label + '</span>';
+}
+function renderHealth(d) {
+  var st = d.status || "pass";
+  var la = d.last_auto;
+  var autoHtml = la && la.created_at
+    ? _healthBadge(la.status, (la.status === "pass" ? "自动通过" : "自动异常") + " " + la.created_at)
+    : '<span style="font-size:11px;color:var(--text-muted);">无自动检查记录</span>';
+  var html = '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">'
+    + _healthBadge(st, st === "pass" ? "实时检查 · 正常" : "实时检查 · 异常")
+    + '<span style="font-size:11px;color:var(--text-muted);">数据日期 ' + (d.data_date || "--") + '</span>'
+    + autoHtml
+    + '</div>';
+  var checks = d.checks || [];
+  html += '<div class="mt-8 divider-t dashboard-sub">'
+    + '<div style="font-size:12px;color:var(--text-muted);margin-bottom:2px;">检查明细（' + checks.length + ' 项）</div>'
+    + '<table style="width:100%;font-size:12px;"><tbody>';
+  checks.forEach(function(x) {
+    var ok = x.level === "PASS";
+    html += '<tr><td style="width:120px;padding:2px 0;white-space:nowrap;color:' + (ok ? "var(--text-secondary)" : "var(--red)") + ';">'
+      + (ok ? "✅ " : "❌ ") + x.name + '</td>'
+      + '<td style="padding:2px 0;color:var(--text-muted);">' + x.detail + '</td></tr>';
+  });
+  html += '</tbody></table></div>';
+  document.getElementById("health-body").innerHTML = html;
+}
+function _spinShow(id) { var el = document.getElementById(id); if (el) el.style.display = 'inline'; }
+function _spinHide(id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; }
+function loadHealth() {
+  _spinShow("health-spinner");
+  var card = document.getElementById("health-card");
+  if (!card) { _spinHide("health-spinner"); return; }
+  fetch("/api/health/status")
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    _spinHide("health-spinner");
+    card.style.display = "block";
+    if (!d.found) {
+      document.getElementById("health-time").textContent = "";
+      document.getElementById("health-body").innerHTML = '<div style="color:var(--red);">健康检查不可用：' + (d.error || "未知错误") + '</div>';
+      return;
+    }
+    document.getElementById("health-time").textContent = "实时 " + (d.checked_at || "--");
+    renderHealth(d);
+  })
+  .catch(function(e) {
+    _spinHide("health-spinner");
+    card.style.display = "block";
+    document.getElementById("health-time").textContent = "";
+    document.getElementById("health-body").innerHTML = '<div style="color:var(--red);">健康检查接口暂不可用：' + e + '</div>';
+  });
+}
+loadHealth();
+
+function _dpFmt(s) { return s ? String(s).slice(0, 10) : "--"; }
+fetch("/api/data/progress")
+.then(function(r) { return r.json(); })
+.then(function(d) {
+  var card = document.getElementById("data-progress-card");
+  if (!card || !d.ok) return;
+  card.style.display = "block";
+  var idx = d.index || {}, p = d.price || {}, v = d.supply || {};
+  var ms = d.market_snapshot || {}, mr = d.monitor_rank || {};
+  var rows = [
+    ["大盘指数", (idx.rows || 0) + " 条 · " + _dpFmt(idx.start) + " ~ " + _dpFmt(idx.end)],
+    ["价格K线", (p.items || 0) + " 个物品 · " + (p.rows || 0) + " 条 · 中位 " + (p.median_days || 0) + " 天 · 90日覆盖 " + (p.pct_90d || 0) + "%"],
+    ["在售量覆盖", (v.items_with_supply || 0) + " 个物品 · " + (v.rows || 0) + " 条 · 均 " + (v.avg_days_per_item || 0) + " 天/品 · 最近 " + _dpFmt(v.latest)],
+    ["全市场快照", (ms.days || 0) + " 天 " + "·" + " " + (ms.n || 0) + " 品 " + "·" + " 最近 " + _dpFmt(ms.latest)],
+    ["大户集中度", (mr.days || 0) + " 天 " + "·" + " " + (mr.n || 0) + " 品 " + "·" + " 最近 " + _dpFmt(mr.latest)]
+  ];
+  var html = '<table style="width:100%;font-size:13px;"><tbody>' + rows.map(function(r) {
+    return '<tr><td style="width:130px;color:var(--text-muted);padding:4px 0;">' + r[0] + '</td><td style="padding:4px 0;">' + r[1] + '</td></tr>';
+  }).join("") + '</tbody></table>';
+  html += '<div style="margin-top:10px;font-size:11px;color:var(--text-secondary);">在售量覆盖目标 90 天/品 —— 供给数据积累主线（在售量驱动引擎，覆盖到位解锁完整供给回测）</div>';
+  // ---- 信号族样本深度 (J-3, 2026-08-06): 信号数/独立事件数随采集增长 + J-2 重拟合门槛 ----
+  var fam = d.families;
+  if (fam && fam.display_keys) {
+    var dk = fam.display_keys;
+    function _dk(key, field) { return dk[key] ? (dk[key][field] != null ? dk[key][field] : "-") : "-"; }
+    function _dkLatest(key) { var r = dk[key] && dk[key].date_range; return (r && r[1]) ? r[1] : "-"; }
+    var famRows = [
+      ["恐慌族(共振+退潮)", _dk("panic","n") + " 信号 · " + _dk("panic","events") + " 次独立事件 · 最近 " + _dkLatest("panic")],
+      ["深值·大盘企稳", _dk("deep_value","n") + " 信号 · " + _dk("deep_value","events") + " 次独立事件 · 最近 " + _dkLatest("deep_value")],
+      ["吸筹族(供给收缩等)", _dk("accumulate","n") + " 信号 · " + _dk("accumulate","events") + " 次独立事件 · 最近 " + _dkLatest("accumulate")]
+    ];
+    html += '<div class="mt-12 divider-t dashboard-sub">'
+      + '<div style="color:var(--text-muted);font-size:12px;margin-bottom:4px;">信号族样本深度 HIST-FULL（K-2 回放 ' + (fam.total_signals || 0) + ' 信号 · ' + _dpFmt(fam.generated) + ' 口径）</div>'
+      + '<table style="width:100%;font-size:12px;"><tbody>' + famRows.map(function(r) {
+        return '<tr><td style="width:130px;color:var(--text-muted);padding:2px 0;">' + r[0] + '</td><td style="padding:2px 0;">' + r[1] + '</td></tr>';
+      }).join("") + '</tbody></table>';
+      var clean = fam.baselines && fam.baselines["CLEAN-CUR"];
+      if (clean && clean.display_keys) {
+        var cdk = clean.display_keys;
+        function _cdk(key, field) { return cdk[key] ? (cdk[key][field] != null ? cdk[key][field] : "-") : "-"; }
+        function _cdkLatest(key) { var r = cdk[key] && cdk[key].date_range; return (r && r[1]) ? r[1] : "-"; }
+        var cleanRows = [
+          ["恐慌族(共振+退潮)", _cdk("panic","n") + " 信号 · " + _cdk("panic","events") + " 次独立事件 · 最近 " + _cdkLatest("panic")],
+          ["深值·大盘企稳", _cdk("deep_value","n") + " 信号 · " + _cdk("deep_value","events") + " 次独立事件 · 最近 " + _cdkLatest("deep_value")],
+          ["吸筹族(供给收缩等)", _cdk("accumulate","n") + " 信号 · " + _cdk("accumulate","events") + " 次独立事件 · 最近 " + _cdkLatest("accumulate")]
+        ];
+        html += '<div class="mt-8 dashboard-sub-dashed">'
+          + '<div style="color:var(--text-muted);font-size:12px;margin-bottom:4px;">信号族样本深度 CLEAN-CUR（当前引擎干净回调段，' + (clean.total_signals || 0) + ' 信号）</div>'
+          + '<table style="width:100%;font-size:12px;"><tbody>' + cleanRows.map(function(r) {
+            return '<tr><td style="width:130px;color:var(--text-muted);padding:2px 0;">' + r[0] + '</td><td style="padding:2px 0;">' + r[1] + '</td></tr>';
+          }).join("") + '</tbody></table>'
+          + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">CLEAN-CUR 仅展示参考，不参与 C 通道监测告警；HIST-FULL 仍为 C 通道主口径。</div></div>';
+      }
+
+      // ---- 去簇胜率主视图对照 (第四批 ③, 2026-08-12): 全量 vs 独立事件去簇, 纯展示层 ----
+      var dd = d.dedup;
+      if (dd && dd.f14_all) {
+        function _winLine(x) {
+          if (!x) return '-';
+          return x.win_pct + "% / " + (x.avg >= 0 ? "+" : "") + x.avg + "% (n=" + x.n + ")";
+        }
+        html += '<div style="margin-top:6px;font-size:12px;color:var(--text-secondary);">'
+          + '去簇对照（2% 成本）：全量 14d ' + _winLine(dd.f14_all)
+          + ' · 独立事件去簇 14d ' + _winLine(dd.f14_dedup)
+          + ' · 全量 30d ' + _winLine(dd.f30_all) + '</div>';
+      }
+      // ---- J-2 三通道监测: A 独立恐慌事件 / B v2 样本积累 / C 胜率监测 ----
+      var j2 = d.j2;
+      if (j2 && j2.channels) {
+        var ch = j2.channels;
+        function _cBadge(st) {
+          if (st === "已触发" || st === "已达标") return '<span style="color:var(--red);font-weight:bold;">' + st + '</span>';
+          return '<span style="color:var(--yellow);">' + st + '</span>';
+        }
+        function _pctBar(pct) {
+          pct = Math.max(0, Math.min(100, pct || 0));
+          var fill = pct > 0 ? '<div style="width:' + pct + '%;height:100%;background:linear-gradient(90deg,var(--accent),var(--blue));border-radius:3px;"></div>' : '';
+          return '<div style="display:inline-flex;align-items:center;gap:6px;">'
+            + '<div class="dashboard-mini-track">' + fill + '</div>'
+            + '<span style="font-size:11px;color:var(--text-secondary);">' + pct + '%</span></div>';
+        }
+        var crows = ch.C.monthly || [];
+        var lastC = crows.length ? crows[crows.length - 1] : null;
+        var cFlags = [];
+        crows.forEach(function(r) { (r.flags || []).forEach(function(f) { cFlags.push(r.month + " " + f); }); });
+        var cText = lastC ? (lastC.month + " 14d " + (lastC.win14 == null ? "-" : lastC.win14) + "% / 30d " + (lastC.win30 == null ? "-" : lastC.win30) + "% (n=" + lastC.n + ")") : "-";
+        function _prodText(ch) {
+          var p = ch && ch.production;
+          if (!p) return "未启用";
+          var w14 = (p.n_filled14 >= 1 && p.net14 && p.net14.win != null) ? (" · 实盘14d " + p.net14.win + "%") : "";
+          return p.n_total + " 信号 · 已回填14d " + p.n_filled14 + "/30d " + p.n_filled30 + w14 + "（14/30 交易日后按真实价格回填）";
+        }
+        function _cTrigText(ch) {
+          var ra = ch && ch.replay_alert;
+          var t = '';
+          if (ra && ra.triggered) t += ' · 回放告警自 ' + (ra.since || '-');
+          if (ch && ch.trigger_state) t += ' · ' + ch.trigger_state;
+          return t;
+        }
+        function _cGateText(ch) {
+          var g = ch && ch.production_gate;
+          if (!g) return '';
+          return ' · 判定门槛 回填 ' + g.filled14 + '/' + g.min_filled14;
+        }
+        function _famText() {
+          var fm = ch.C.family_monitor;
+          if (!fm || !fm.families) return '-';
+          var parts = [];
+          Object.keys(fm.families).forEach(function(k) {
+            var f = fm.families[k];
+            if (f.flags && f.flags.length) parts.push(f.label + ' ' + f.flags.join('；'));
+          });
+          return parts.length ? '<span style="color:var(--red);">' + parts.join(' · ') + '</span>'
+            : '未触发（族级提示项，n≥' + fm.thresholds.min_n + ' 生效）';
+        }
+        html += '<div class="mt-12 divider-t dashboard-sub">'
+          + '<div style="color:var(--text-muted);font-size:12px;margin-bottom:4px;">重拟合触发（J-2 三通道，' + _dpFmt(j2.generated) + ' 口径）</div>'
+          + '<table style="width:100%;font-size:12px;"><tbody>'
+          + '<tr><td style="width:130px;color:var(--text-muted);padding:2px 0;">A 独立恐慌事件</td><td style="padding:2px 0;">' + ch.A.value + '/' + ch.A.threshold + ' · ' + _pctBar(ch.A.progress_pct) + ' · ' + _cBadge(ch.A.status) + '</td></tr>'
+          + '<tr><td style="width:130px;color:var(--text-muted);padding:2px 0;">B v2 样本积累</td><td style="padding:2px 0;">' + ch.B.value_days + '/' + ch.B.threshold_days + ' 天 · ' + _pctBar(ch.B.progress_pct) + ' · ' + _cBadge(ch.B.status) + ' · 约 ' + ch.B.target_date + ' 观察点</td></tr>'
+          + '<tr><td style="width:130px;color:var(--text-muted);padding:2px 0;">C 胜率监测</td><td style="padding:2px 0;">' + cText + ' · ' + _cBadge(ch.C.status) + _cTrigText(ch.C) + (cFlags.length ? ' <span style="color:var(--red);">' + cFlags.join('；') + '</span>' : '') + '</td></tr>'
+          + '<tr><td style="width:130px;color:var(--text-muted);padding:2px 0;">C 族级失效</td><td style="padding:2px 0;">' + _famText() + '</td></tr>'
+          + '<tr><td style="width:130px;color:var(--text-muted);padding:2px 0;">C 生产实盘</td><td style="padding:2px 0;">' + _prodText(ch.C) + _cGateText(ch.C) + '</td></tr>'
+          + '</tbody></table>'
+          + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + (j2.overall ? j2.overall.note : '') + (j2.overall && j2.overall.trigger_action ? '；触发动作：' + j2.overall.trigger_action : '') + '</div></div>';
+      }
+  }
+  document.getElementById("data-progress-body").innerHTML = html;
+});
+</script>

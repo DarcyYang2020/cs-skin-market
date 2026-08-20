@@ -207,17 +207,9 @@ def _upcoming_events(days: int = 45):
     except Exception:
         return []
 
-@app.get("/", response_class=HTMLResponse)
-async def page_dashboard(request: Request):
-    mi, last_update, chart_data = _dashboard_context()
-    # Index analysis
-    analysis_data = index_analysis.analyze_index_full(chart_data) if chart_data else None
-    # I-1 市场状态标注(2026-08-06 接入；2026-08-16 起五时期口径): 接线 index_card 的 regime 占位, 纯展示层
-    from pipeline.batch_scan import market_regime
-    _ms_r = market_snapshot()
-    _regime_label, _regime_cls, _regime_strategy = market_regime(
-        _ms_r.get("chg180"), _ms_r.get("chg30"), _ms_r.get("sentiment"))
-    # ---- 引擎状态徽章（J-2 监测，纯展示；读 j2_channel_status.json）----
+def _build_engine_status():
+    """引擎状态徽章（J-2 监测，纯展示；读 j2_channel_status.json）。
+    UI-2（2026-08-20）抽出为 helper，供 / 与 /ops 共用。"""
     _engine_status = None
     _j2 = _j2_status()
     if _j2:
@@ -243,6 +235,19 @@ async def page_dashboard(request: Request):
             }
         except Exception:
             _engine_status = None
+    return _engine_status
+
+
+@app.get("/", response_class=HTMLResponse)
+async def page_dashboard(request: Request):
+    mi, last_update, chart_data = _dashboard_context()
+    # Index analysis
+    analysis_data = index_analysis.analyze_index_full(chart_data) if chart_data else None
+    # I-1 市场状态标注(2026-08-06 接入；2026-08-16 起五时期口径): 接线 index_card 的 regime 占位, 纯展示层
+    from pipeline.batch_scan import market_regime
+    _ms_r = market_snapshot()
+    _regime_label, _regime_cls, _regime_strategy = market_regime(
+        _ms_r.get("chg180"), _ms_r.get("chg30"), _ms_r.get("sentiment"))
     response = templates.TemplateResponse(request, "dashboard.html", {
         "active_page": "dashboard",
         "index": mi,
@@ -252,9 +257,19 @@ async def page_dashboard(request: Request):
         "last_update": last_update,
         "chart_data": chart_data,
         "analysis": analysis_data,
-        "engine_status": _engine_status,
-        "upcoming_events": _upcoming_events(),
         "market_status": _market_status_card(analysis_data),
+    })
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    return response
+
+
+# ---- Ops page (UI-2, 2026-08-20): 引擎/研究遥测视图，复用大盘遥测上下文，不新造接口 ----
+@app.get("/ops", response_class=HTMLResponse)
+async def page_ops(request: Request):
+    response = templates.TemplateResponse(request, "ops.html", {
+        "active_page": "ops",
+        "engine_status": _build_engine_status(),
+        "upcoming_events": _upcoming_events(),
     })
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     return response

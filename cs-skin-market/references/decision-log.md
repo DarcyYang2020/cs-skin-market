@@ -1205,3 +1205,20 @@
 - **复核方法（用户提醒）**：全局 `grep -rn "rgba(" webapp/templates/`，**不带 `grep -v "var(--"`**。原 3 处残留已清零、新 token 已加，但此方法抓到 **`dashboard.html:24` 裸 `rgba(239,68,68,0.08)`**（红色崩溃告警框背景）——该行同时含 `var(--red)`，故任何 `grep -v "var(--"` 会整行删除、永久漏检。用户预警的 `-v var(--` 坑**实锤**。
 - **处置**：`dashboard.html:24` 改 `background:var(--red-bg)`（与既有 `--red-bg:rgba(220,38,38,0.1)` 同系近似）；改完 PM 重跑全局 grep 零命中 + 冒烟 131/0/0 后正式关闭 UI-1。不碰引擎/路由/测试。
 - **状态**：UI-1 仍未关闭；UI-2/UI-3 按序挂账。
+
+## UI-1 正式关闭（2026-08-20 15:15 后，PM 独立重验通过）
+- **复核方式**：不采信自述，独立跑 `grep -rn "rgba(" webapp/templates/`（按用户提醒、不带 `-v var(--`）→ **零命中**；dashboard.html:24 已改 `var(--red-bg)`；重跑冒烟 **131 passed/0 failed/0 skipped**、encoding PASS；`ENGINE_VERSION` 仍 `v2-T13`（config.py:445 赋值确认）；commit `535eaba`/`76112ef`/`6c59d64` 在库。
+- **最终验收**：C1 全局零裸 rgba ✅、C2 watchlist 192→9 ✅、C3 regime-s2 `--blue-text:#1D4ED8` 五类共用重算 5.83/5.35/5.59 ✅、C4 MASTER.md 归档浅色 v3 ✅、C5 冒烟/编码/版本 ✅、C6 交付物 ✅。**UI-1 全卡通过，正式关闭。**
+- **关键经验固化**：UI-1 验收中实锤 `grep -v "var(--"` 漏检坑（dashboard:24 裸 rgba 同行含 `var(--red)` 被整行吞掉）；结论——全局清零一律用 `grep -rn "rgba("` 不带 `-v`，逐条肉眼判裸色。此经验已写入 roadmap UI-1 卡 + 待沉淀为可复用 checklist。
+- **接力**：UI-2（首屏拆分 /ops）、UI-3（系统化其余页）按序挂账；UI-2 待 PM 出正式执行指令后研发开干。
+
+---
+
+## UK. UI-2 首屏拆分 + /ops 引擎/研究视图落地（2026-08-20，②前端/研发执行）
+
+- **改造范围（纯前端编排，零引擎/决策/接口逻辑改动）**：`webapp/templates/dashboard.html`（首屏 7 卡→3 卡）、新增 `webapp/templates/ops.html` + `webapp/templates/partials/engine_telemetry.html`、`webapp/main.py`（抽 `_build_engine_status()` helper + 新增 `@app.get("/ops")`）、`webapp/templates/base.html`（导航加「研发视图 / 引擎/研究」）。
+- **首屏 3 卡投资视图**：删除 4 张遥测卡（引擎状态 J-2 / 未来事件 / 数据健康 / 数据积累进度），保留 综合指数+情绪（market-index-block）/ 市场状态·该怎么做（主 CTA 语义已在该卡）/ 模拟盘精简。首屏 `dashboard.html` + `app.js` grep **零命中** `J-2` / `去簇` / `信号族样本`。
+- **/ops 引擎研究视图**：独立路由 GET `/ops`（渲染 ops.html），数据复用 `_build_engine_status()`（原首页 J-2 徽章构建逻辑抽为 helper）+ `_upcoming_events()`，遥测 4 块完整迁入 `partials/engine_telemetry.html`（含 JS：createBackup/loadHealth/data-progress fetch + J-2 三通道/信号族样本深度/去簇胜率渲染逻辑原样迁入，未改逻辑）。
+- **导航**：base.html 加「研发视图」分组 + 「引擎/研究」→ `/ops`（`.nav-link` 既有样式 + active 高亮），active_page='ops'。
+- **验证**：`/` 与 `/ops` TestClient 渲染均 200；/ops 4 块遥测 + 备份按钮 + J-2/信号族/去簇 JS 全在位；导航 /ops 高亮正确、首页不高亮；`/api/data/progress` `/api/health/status` `/api/paper/status` 均 200；冒烟 **131 passed / 0 failed / 0 skipped**；编码 PASS；`ENGINE_VERSION` 仍 `v2-T13`（config.py:445）。未动引擎/决策/信号族/守卫链/组合层/数据接口。
+- **状态**：待 PM/UiDesigner 对照 UI-2 立项卡验收（首屏≤3卡、/ops 4块完整、导航跳转高亮、冒烟不回退）。
