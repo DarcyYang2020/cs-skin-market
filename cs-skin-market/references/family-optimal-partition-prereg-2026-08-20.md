@@ -36,6 +36,8 @@ CS 真实结构有两类：**事件驱动型**（恐慌深跌只在恐慌事件�
 - **单月占比 > 50%** → 标记「单事件簇」，**A2 否决线（单月>50% 自动驳回）只对「该加」（新增族）候选生效**，不得按族落地。
 - **事件驱动型结构（含恐慌深跌）不适用单月否决**：改走**事件级验证路径**（A 通道口径：独立事件 ≥3 才重验），不自动驳回。
 
+**事件计数规则（锁定，可复现）**：候选族信号按 `YYYY-MM` 聚合为有信号月份；**相邻月差 ≤1 的月份合并为同一事件窗口**（如 2025-05 与 2025-06 相邻 → 同一事件），月差 ≥2 的记为独立事件。`独立事件数` = 合并后的窗口个数；中间态/事件驱动型据此判「样本内独立事件 ≥N」。
+
 ## 六、逐族对照口径（核心产出）
 
 把「数据最优族划分」与现有 11 族（5 开 6 关）逐族对照，产出：
@@ -47,6 +49,22 @@ CS 真实结构有两类：**事件驱动型**（恐慌深跌只在恐慌事件�
 | 现有族有、数据无 / 数据里平庸或单事件 | 冗余/过度细分 | 该删或该并（候选，**须看 unobserved_dims**）|
 
 **字段映射约束（数据支撑度初判，非定论）**：现有族里 panic_resonance/deep_value/panic_easing 依赖 sent/TH/micro_th/stopped，supply/rise/xishou 依赖 s7/s30 均值（全量 sc7/sc30 是变化率，不可互换）。对照表对每个族**标注 `unobserved_dims`**（该族未被全量特征覆盖的维度清单），对照结论仅作「**数据支撑度初判（待补维度）**」——**不据此下「该删」结论**；带 unobserved_dims 的族由后续阶段重算引擎特征后再定留/删。
+
+**unobserved_dims 逐族分层表（锁定）**：
+
+| 层级 | 族 | unobserved_dims（全量特征未覆盖的引擎维度） |
+|---|---|---|
+| ✅ 无 | rs_accum | —（仅 chg30/mchg30/pct/sc30，全可映射）|
+| ✅ 无 | ct_accum | —（仅 mchg30/chg30/pct/sc30，全可映射）|
+| ⚠️ 部分 | supply_accum | s7/s30 在售量均值、sent、market_th、chg8 |
+| ⚠️ 部分 | rise_accum | s7/s30 在售量均值、market_th |
+| ⚠️ 部分 | rise_contract | s7/s30 在售量均值、market_th |
+| ⚠️ 部分 | xishou_mid | s7/s30 在售量均值、chg5、sent、market_th |
+| ⚠️ 部分 | volatile_accum | vol7 单位（引擎原始 std ≠ 全量年化%）、s30 在售量均值 |
+| ❌ 不可 | panic_resonance | micro_th、sent、current |
+| ❌ 不可 | deep_value | th、market_th、sent |
+| ❌ 不可 | panic_easing | sent、stopped |
+| ❌ 不可 | second_wave | mkt180、dd20、dd20_age、bid_now、bid_peak |
 
 ## 七、反过拟合声明
 
@@ -66,4 +84,5 @@ CS 真实结构有两类：**事件驱动型**（恐慌深跌只在恐慌事件�
 
 ## 十、修订记录
 
+- **v3（2026-08-20，③核验补齐）**：§五补事件计数规则（相邻月差≤1 合并同一事件窗口，独立事件数=合并后窗口数）；§六补 unobserved_dims 逐族分层表（✅rs/ct ⚠️supply/rise/rise_contract/xishou/volatile ❌panic_resonance/deep_value/panic_easing/second_wave）。
 - **v2（2026-08-20，③审修订落地）**：①单事件否决线限定到「该加」候选，事件驱动型（含恐慌深跌）改走事件级验证路径（A 通道：独立事件≥3 才重验）；②字段映射「必要非充分」改为「数据支撑度初判（待补维度）」+ unobserved_dims 标记，消除与对照表「该删」的自相矛盾；③样本口径锁定 CB 同款分析集 208,517（非 236,686，后者是 fwd14 有效行数、含 25,896 缺 mchg 行）。
