@@ -74,8 +74,9 @@ for g in ["牛市/强势上行", "恐慌深跌", "深值慢修复", "深值+大�
         "source": r["source"], "n": r["n"], "grade": r["grade"],
         "event": r["event"], "hit": r["engine_hits"],
         "centroid": r["centroid"], "rule": r["rule"],
-        "note": "事件驱动型（该留，走事件级验证）" if g in ("恐慌深跌",) else
-                ("该加候选，单事件簇触 A2 否决线" if g == "深跌反弹右侧" else "")
+        "note": ("事件驱动型（该留，走事件级验证）" if g in ("恐慌深跌",)
+                 or (g == "深值慢修复" and r["grade"] == "单事件簇") else
+                 ("已驳回（单事件簇，A2 否决线，关联 CE crash_vol 证伪）" if g == "深跌反弹右侧" else ""))
     } for r in rs]
 
 for f in FAMILIES:
@@ -83,7 +84,7 @@ for f in FAMILIES:
         "key": f["key"], "label": f["label"], "default_on": f["on"],
         "unobserved_dims": f["unobserved"], "data_match": f["match"],
         "verdict": "该留" if f["match"] in ("恐慌深跌", "深值慢修复") else
-                   ("该加（大盘上行段盲区）" if f["key"] == "rise_accum" else
+                   ("该加（大盘上行段盲区，须高选择性；关联 CE bull_steady 证伪）" if f["key"] == "rise_accum" else
                     ("待补维度（不判删）" if not f["on"] or f["key"] == "supply_accum" else "待补维度"))
     })
 

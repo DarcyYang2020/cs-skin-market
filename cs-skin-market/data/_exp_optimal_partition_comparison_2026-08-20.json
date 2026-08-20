@@ -415,7 +415,7 @@
      "mchg30": -20.17
     },
     "rule": "chg7>-21.86 AND vol30>142.80 AND vol30<=327.82 AND mchg30<=-2.95",
-    "note": ""
+    "note": "事件驱动型（该留，走事件级验证）"
    },
    {
     "source": "tree_fwd30_leaf5",
@@ -483,7 +483,7 @@
      "mchg30": -13.53
     },
     "rule": "chg7>-21.86 AND vol30<=142.80 AND mchg7<=-7.32 AND chg7<=-6.66",
-    "note": ""
+    "note": "事件驱动型（该留，走事件级验证）"
    },
    {
     "source": "tree_fwd30_leaf25",
@@ -830,7 +830,7 @@
      "mchg30": -32.98
     },
     "rule": "vol30>79.39 AND mchg7<=-7.32 AND mchg21>-48.40 AND vol7>421.25",
-    "note": "该加候选，单事件簇触 A2 否决线"
+    "note": "已驳回（单事件簇，A2 否决线，关联 CE crash_vol 证伪）"
    }
   ]
  },
@@ -892,7 +892,7 @@
     "market_th"
    ],
    "data_match": "牛市/强势上行（单品维度，非大盘维度）",
-   "verdict": "该加（大盘上行段盲区）"
+   "verdict": "该加（大盘上行段盲区，须高选择性；关联 CE bull_steady 证伪）"
   },
   {
    "key": "rise_contract",

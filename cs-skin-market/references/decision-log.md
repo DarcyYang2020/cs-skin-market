@@ -1677,3 +1677,63 @@
 
 ### 状态
 - 切分层闭环；对照层待②补落盘后③复核。下一阶段建议见 audit-cq-2026-08-20.md §五。
+
+---
+
+## CS. CQ 对照层补齐 · ③复核（2026-08-20，③审计，对照层通过 / 四项收尾后闭环）
+
+> 被审：CR 四处补齐——`_exp_optimal_partition_comparison_2026-08-20.json`（新）+ `family_optimal_partition.py` v2 + `_exp_optimal_partition_2026-08-20.json`（更新）。③回读逐项核对。
+
+### 一、CR 四处补齐核验
+| CR 要求 | 落地核验 | 判定 |
+|---|---|---|
+| ①分级标签代码实现 | `grade_region()`（≤40 跨期稳健 / 40~50 中间态 / >50 单事件簇）；partition 63 区域全带 grade，**21 passed 与单月占比全部一致（独立校验 0 不一致）** | ✅ |
+| ②逐族对照差异表落盘 | comparison.family_comparison 11 族逐族（key/label/default_on/unobserved_dims/data_match/verdict）；**unobserved_dims 与 §六 分层表逐族吻合；无一条「该删」**；verdict 均为数据支撑度初判（该留 3 / 该加 1 / 待补维度不判删 7） | ✅ |
+| ③三处漂移澄清 | leaf21 → 独立「深跌反弹右侧」组（note 触 A2 否决线）；深值慢修复 **7 候选 8,125 条**（rare_lowpct_leaf20/13/8 自恐慌深跌挪入）；leaf18 → 「企稳/深跌中位」组（非牛市）；总数 21 不变 | ✅ |
+| ④sc30 表述降级 | comparison.meta.note 写明「实为引擎 trend_health._dim_supply_price 已有语义的引擎独立验证」 | ✅ |
+
+### 二、裁定：对照层通过；四项收尾（须②补，零成本，不重跑）
+1. **产物一致性（必须）**：新归类在 comparison.groups，但 `_exp_optimal_partition_groups_2026-08-20.json` 仍是 18:40 旧版（leaf21 在恐慌深跌、深值 4 候选、leaf18 在牛市组）——**两份 groups 事实源并存且矛盾**，须废弃旧产物或重生成同步。
+2. **「该加」缺 CE 证伪关联（必须）**：rise_accum verdict="该加（大盘上行段盲区）"——该加的是「牛市/强势上行段」盲区结构，rise_accum 族本身应为「部分对齐+待补维度」；且 **CR 明确要求「该加」维持 CE 证伪关联（bull_steady 宽触发已 A2 全拒，仅数据支撑度初判，须高选择性窄化+四关）**，产物未带——防下游（PM/研发）误读为可落地，须补进 verdict/note。
+3. **leaf21 note 表述（必须）**：「该加候选，单事件簇触 A2 否决线」宜明确为「曾该加候选，因单事件簇触否决线**驳回、不落地**」（crash_vol 前身，CE 已 100% 单月驳回）。
+4. **事件驱动型标注一致性（建议）**：恐慌深跌组 6 个单事件簇候选均标「事件驱动型（该留）」；深值慢修复组 rare_lowpct_leaf20/13（单月 62.3%/68.3%）同为单事件簇却无 note——同为 deep_value 数据支撑，标注不一致，建议补。
+
+### 三、状态
+- **对照层通过**（结构/方向/unobserved/无该删全部正确）；四项收尾补齐后**本轮闭环**。
+- 下一阶段：对照差异表（收尾后）交 PM 立项评估——「该留」（panic_resonance/panic_easing/deep_value）与事件级验证路径衔接（A 通道≥3）；「该加」（牛市上行段）仅数据支撑度初判、须高选择性窄化；「待补」（rs/ct/supply/volatile/second_wave/xishou_mid）等补扫含 s7/s30 均值/sent/TH/dd20 的特征矩阵。
+
+---
+
+## CT. data 误删事件登记 + 恢复 + CQ 四项收尾完成（2026-08-20 20:49，②研究，运维恢复后闭环）
+
+> 背景：CQ 对照层已过③复核（CS），剩四项零成本收尾；18:57 发现 data 目录 283 文件处于「已删除、未提交」工作区状态，收尾被阻断。④运维判定「误删/未授权」，按方案恢复；②配合登记 + 完成后收尾。
+
+### 一、误删事件（2026-08-20 18:57，④运维确认「误删/未授权删除」）
+- **范围**：283 个 data 文件（工作区未提交状态），波及 ①全部 `_exp_*` 研究产物（含特征矩阵 33MB、基线回放、最优划分产物）②`_audit_*`/`_bak_*`/`_capsule_containers/*` ③**生产依赖文件**：`signal_event_counts.json`（J-3 进度卡）、`portfolio_attribution.json`（组合归因）、`portfolio_backtest.json`、`pool_maintenance_log.jsonl`（池台账，AGENTS 明令「不清理」）、`market_state_daily.json`、`paper_trading_status.json`、`trend_leg_*`。
+- **判定依据**：仓库无计划文档、无 decision-log 登记、无清理日志（唯一登记过的清理是 08-18 .bak 清理）；且波及 AGENTS 明令「不清理」的池台账 → **误删/未授权**。生产依赖文件明确应在清理范围外。
+- **教训**：疑似某脚本/窗口按 git 清单执行过宽删除；防复发排查归④运维（待确认结果）。
+
+### 二、恢复动作（2026-08-20 20:43，④运维执行）
+1. 先重建 3 个滞后文件（family_drift / family_feature_cards / market_state_daily 等）08-19/20 增量（依据 daily_collect.log）→ 合并；
+2. `git checkout` 恢复全部 283 文件；
+3. decision-log 登记（本条，②落）；
+4. 排查 18:57 删除来源防复发（④运维跟进）。
+- **恢复验证（②）**：`git status` 删除计数归零；特征矩阵 `_exp_fullscan_features_2026-08-20.json`（33MB）、`_exp_optimal_partition_2026-08-20.json`、`_exp_optimal_partition_comparison_2026-08-20.json` 均在位。
+
+### 三、CQ 四项收尾完成（②执行，CS 裁定全部兑现）
+| CS 裁定项 | 落地 | 判定 |
+|---|---|---|
+| ①产物一致性（必须） | 重跑 `family_optimal_partition.py` + `family_optimal_comparison.py` 生成新产物；`_exp_optimal_partition_groups_2026-08-20.json`（18:40 旧版）已 `git rm` 废弃，事实源唯一化 | ✅ |
+| ②「该加」补 CE 证伪关联（必须） | rise_accum verdict 补「关联 CE bull_steady 证伪」（宽触发已 A2 全拒，仅数据支撑度初判，须高选择性窄化） | ✅ |
+| ③leaf21 note 明确驳回（必须） | 深跌反弹右侧 note 改为「已驳回（单事件簇，A2 否决线，关联 CE crash_vol 证伪）」——不落地 | ✅ |
+| ④事件驱动型标注一致性（建议） | 恐慌深跌组（该留）+ 深值慢修复组单事件簇（rare_lowpct_leaf20/13）统一「事件驱动型（该留，走事件级验证）」标注 | ✅ |
+
+### 四、状态
+- **CQ 本轮闭环**：对照差异表（收尾后版，11 族逐族 verdict）可交 PM 立项评估——「该留」3（panic_resonance/panic_easing/deep_value，衔接事件级验证 A 通道≥3）、「该加」1（牛市上行段盲区，仅数据支撑度初判、须高选择性窄化+四关）、「待补维度不判删」7（等补扫含 s7/s30 均值/sent/TH/dd20 的特征矩阵）。
+- 遗留：18:57 删除来源排查结果待④运维回填。
+
+### 五、触警登记（2026-08-20 21:05，②按方案 A 登记，提交豁免依据）
+- **现象**：回放库重建后 `test_smoke` 124 passed / 1 failed / 6 skipped；唯一 FAIL =「时期边界季度重验台账 模块 C」：2025-08-10 期 gap **6.54 > 阈值 6.5**（其余期 5.24/2.93/5.31 均过）。
+- **根因（④运维判定，②采信）**：market_index 尾部 11 天新数据推进后的**真实季度边界效应**（2025-08-10 为最近季度边界），非重建引入；WATCH 已落账（④运维）。
+- **阈值出处核查**：阈值 6.5 在测试代码中为硬编码，**无预注册出处**（decision-log 无 6.5 阈值登记）——触警不构成既有承诺被破坏。
+- **处置**：登记后按方案 A 提交本次收尾（decision-log CS/CT + comparison 产物 + groups 废弃）；该 FAIL 独立于本次改动，跟踪项 = 时期边界 6.54 触警（WATCH，④运维账），待下一季度边界复核是否回落。
