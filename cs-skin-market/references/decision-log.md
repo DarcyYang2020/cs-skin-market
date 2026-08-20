@@ -1397,9 +1397,9 @@
 
 ---
 
-## CG. C1 三口径统一落地（2026-08-20，②研发窗口，工程卫生、不改信号）
+## CG. C1 三口径统一候选（2026-08-20，②研究产出，已回滚待 PM 立项）
 
-> 承接 CE 状态「C1 可独立推进」+ ③ BY 审计「C1 工程卫生、不在闸门范围、可独立落地」。纯展示层，零信号发射改动（冒烟 131/0/0 + ENGINE_VERSION v2-T13 未变）。
+> 承接 CE 状态「C1 可独立推进」+ ③ BY 审计「C1 工程卫生、不在闸门范围」。**②已按候选方案做过一次完整验证落地（原 CG 条目，commit 7c475ea），随后按用户裁定「②窗口只做研究，落地须 PM 立项 → 研发执行」回滚生产代码**（本条目改写为候选移交记录，方案细节保留给研发）。纯展示层、零信号发射改动，ENGINE_VERSION v2-T13 不受影响。
 
 ### 改动点
 1. **`pipeline/config.py` SIGNAL_FAMILY_TAXONOMY（唯一事实源）**：细族由 6 扩为 14 = 引擎 `SIGNAL_FAMILIES` 11 族 + `base`（分批建仓=融合基础买点）+ `deep_dip`（深度回调低吸=P0 超跌）+ `weak_market`（弱市抗跌=历史遗留）；展示键由 3 扩为 8 = `panic`/`deep_value`/`accumulate`/`rise`/`longhold`/`oversold`/`base`/`weak_market`；`base` 从 accumulate 独立（C1 前 accumulate=supply+deep_dip+base，C1 后不含 base）。fine_order 按关键字特异性排序，`分批建仓`最后兜底。
@@ -1417,4 +1417,6 @@
 - C1 前 accumulate 含 base（HIST-FULL n=198，归因 +111.69pp）；C1 后 accumulate 不含 base（n=176，归因 +95.72pp），base 独立 22 条 +19.66pp。`terminology.md` / `AGENTS.md` 已同步。
 
 ### 状态
-- C1 落地完成，待③/PM 复核。族划分重构「新增族」方向已证伪闭环（CE/CF），C1 为原三观察（族划分乱）的工程收口。
+- **已回滚**：生产代码恢复至 C1 前（`pipeline/config.py`/`batch_scan.py`/`tests/test_smoke.py`/`AGENTS.md`/`terminology.md`/`sync_expectancy_config.py`/`portfolio_attribution.json`/`signal_event_counts.json` 8 文件还原到 commit b1d20a5 状态，冒烟 131/0/0 复验）。**C1 移交 PM 立项 → 研发按上文方案落地。**
+- 研发落地时注意（踩坑固化）：改 taxonomy 展示键会连带 4 处数据重跑（`ITEM_EXPECTANCY_STATS` / CLEAN-CUR / `signal_event_counts.json` 进度卡 / `portfolio_attribution.json` 归因）+ `tests/test_smoke.py` 2 处硬编码 3 分组（t_replay_source / t_data_progress）须同步改用 `display_key_for_label`；小样本组（n<5）期望统计跳过（sync 脚本需带该修复）。
+- 族划分重构「新增族」方向已证伪闭环（CE/CF）；C1 为原三观察（族划分乱）的工程收口候选，落地与否由 PM 排期。

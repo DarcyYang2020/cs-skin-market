@@ -9,10 +9,8 @@
 
 ## 信号族分类
 - 唯一事实源：`pipeline/config.py:SIGNAL_FAMILY_TAXONOMY`。
-- 展示键（C1 三口径统一，2026-08-20）：`panic` / `deep_value` / `accumulate` / `rise` / `longhold` / `oversold` / `base` / `weak_market`。
-- 细族 = 引擎 `SIGNAL_FAMILIES` 11 族 + `base`（分批建仓=融合基础买点）+ `deep_dip`（深度回调低吸=P0 超跌）+ `weak_market`（弱市抗跌=历史遗留）；`signal_guidance` 已改用 `assign_fine_family`（废除自身关键词匹配）。
-- `accumulate` 展示组 = supply_accum + deep_dip + rise_contract + volatile_accum + second_wave（低吸/吸筹类），**不含 base**（分批建仓独立展示组）；不要把 142/198/212 这类不同时期统计当成同一口径。C1 前 accumulate 含 base（如 HIST-FULL n=198），C1 后 base 独立（accumulate n=176），两口径不可混用。
-- `weak_market`（弱市抗跌）为历史遗留 label（trend_health 旧路径，与 rs_accum/ct_accum 语义重叠），展示层单列，引擎路径未删。
+- 展示键：`panic` / `deep_value` / `accumulate`。
+- `accumulate` 是展示聚合键，语义 = supply_accum + deep_dip + base，不等于 `supply_accum`细族；不要把 142/198/212 这类不同时期统计当成同一口径。
 
 ## Calmar 唯一标尺
 - 唯一口径：`references/calmar_standard.py` + `data/_exp_calmar_standard.json`。

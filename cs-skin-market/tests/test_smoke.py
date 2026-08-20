@@ -1730,14 +1730,13 @@ def t_data_progress():
         from pathlib import Path as _P
         replay = _J.loads(_P(__file__).resolve().parent.parent.joinpath('data', 'item_backtest_full_2025.json').read_text(encoding='utf-8'))
         from collections import Counter as _C
-        from pipeline.config import display_key_for_label as _dkf
         def _dk(lab):
-            # C1（2026-08-20）：改用 config 单一事实源（display_key_for_label），废除硬编码 3 分组
-            return _dkf(lab or '')
+            lab = lab or ''
+            if '恐慌' in lab: return 'panic'
+            if '深值' in lab: return 'deep_value'
+            return 'accumulate'
         cnt = _C(_dk(s.get('action_label', '')) for s in replay['signals'])
         for k, n in cnt.items():
-            if k not in fam['display_keys']:
-                continue  # 小样本组（n<5）sync 已跳过，同口径
             assert fam['display_keys'][k]['n'] == n, f"进度卡 {k} n={fam['display_keys'][k]['n']} 与回放 {n} 不一致"
         assert fam['total_signals'] == len(replay['signals']), 'total_signals 与回放不一致'
     finally:
@@ -2419,14 +2418,14 @@ def t_replay_source():
     assert 250 < len(sigs) < 600, f'回放信号数异常: {len(sigs)}'
     assert all(s.get('fwd_series') for s in sigs), 'fwd_series 缺失'
     assert all(s.get('net14') is not None for s in sigs), 'net14 缺失'
-    from pipeline.config import ITEM_EXPECTANCY_STATS, display_key_for_label
+    from pipeline.config import ITEM_EXPECTANCY_STATS
     def _fam(lab):
-        # C1（2026-08-20）：改用 config 单一事实源（display_key_for_label），废除硬编码 3 分组
-        return display_key_for_label(lab or '')
+        lab = lab or ''
+        if '恐慌' in lab: return 'panic'
+        if '深值' in lab: return 'deep_value'
+        return 'accumulate'
     cnt = Counter(_fam(s.get('action_label', '')) for s in sigs)
     for k, n in cnt.items():
-        if k not in ITEM_EXPECTANCY_STATS:
-            continue  # 小样本组（n<5）sync 已跳过，同口径
         assert ITEM_EXPECTANCY_STATS[k]['n'] == n, \
             f"{k} 期望n={ITEM_EXPECTANCY_STATS[k]['n']} 与回放信号 {n} 不一致"
 check('replay 数据源 + 期望统计对接新版引擎', t_replay_source)

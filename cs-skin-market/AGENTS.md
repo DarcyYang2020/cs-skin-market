@@ -37,7 +37,7 @@
 - **基准对照**：`python references/benchmark_compare.py` → `data/benchmark_compare.json`
   （策略 cap0.8 vs 池内等权买入持有 vs 大盘指数，full/active 双窗口）。2026-08-10 结论（365d 窗口，317 信号，组合模拟口径 hold21——2026-08-10 对齐单品 hold_guidance，见 decision-log）：策略 +200.55%/-9.13%
   大幅跑赢大盘 -24.20%/-58.21%，但低于池内等权 +252.32%/-55.59% —— 引擎边际价值在风险控制（maxDD 9.13% vs 55~58%）。
-- **组合归因（A1-3，2026-08-15 重跑 hold21 + taxonomy 双基线；2026-08-20 C1 后重跑 8 组展示键）**：`python references/portfolio_attribution.py` → `data/portfolio_attribution.json`（leave-one-out 族级/月度/集中度，与 portfolio_backtest 同源口径，按 `display_key_for_label` 分组）。**C1 三口径统一（2026-08-20）后展示键由 3 组扩为 8 组（panic/deep_value/accumulate/rise/longhold/oversold/base/weak_market），base（分批建仓）从 accumulate 独立**——C1 前 accumulate 含 base（HIST-FULL n=198，+111.69pp），C1 后 accumulate 不含 base（n=176，数字以重跑后 `portfolio_attribution.json` 为准），两口径不可混用。HIST-FULL（317）：panic +56.35pp（n=92）/ deep_value +59.39pp（n=27）；CLEAN-CUR（230，展示参考）：以 `baselines.CLEAN-CUR` 为唯一当前数字。旧 hold14 口径仅作历史存证。
+- **组合归因（A1-3，2026-08-15 重跑 hold21 + taxonomy 双基线）**：`python references/portfolio_attribution.py` → `data/portfolio_attribution.json`（leave-one-out 族级/月度/集中度，与 portfolio_backtest 同源口径）。HIST-FULL（317）：accumulate +111.69pp（n=198）、deep_value +59.39pp（n=27）、panic +56.35pp（n=92）；CLEAN-CUR（230，展示参考）：以 `data/portfolio_attribution.json` 的 `baselines.CLEAN-CUR` 为唯一当前数字。旧 hold14 口径 +34.2pp（n=212）/ +21.65pp（n=93）/ +13.98pp（n=27）仅作历史存证，不与当前 hold21 + taxonomy 标尺混用。
 
 
 ## 数据来源与采集
@@ -330,8 +330,7 @@ monitor_events / positions / executions / signal_tracking / analysis_results / h
 <!-- PROJECT-MEMORY -->
 ## 会话分工约定（重要）
 
-- 策略研究（大盘/单品引擎 + 回测验证）由独立新会话「算法研究专家（研究+研发）」承担，是唯一长期策略会话；其余短任务应提醒用户新开会话执行。
-- 产品经理（PM）会话只做方向盘：立项、路线图、优先级、验收；不碰引擎代码、不回测、不写探针。
+- 策略研究（大盘/单品引擎 + 回测验证）是唯一长期会话，其余短任务应提醒用户新开会话执行。
 - 短任务类型：修 bug、改前端/报告、采集数据、样本扩展、工程清理、文档更新等。
 - 短任务开工前读 AGENTS.md + references/decision-log.md，干完把涉及口径的改动补记进 decision-log.md。
 - 避免并行改同一文件：webapp/main.py 归前端短任务会话，pipeline/item_analysis.py 归策略会话。
