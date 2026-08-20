@@ -1222,3 +1222,40 @@
 - **导航**：base.html 加「研发视图」分组 + 「引擎/研究」→ `/ops`（`.nav-link` 既有样式 + active 高亮），active_page='ops'。
 - **验证**：`/` 与 `/ops` TestClient 渲染均 200；/ops 4 块遥测 + 备份按钮 + J-2/信号族/去簇 JS 全在位；导航 /ops 高亮正确、首页不高亮；`/api/data/progress` `/api/health/status` `/api/paper/status` 均 200；冒烟 **131 passed / 0 failed / 0 skipped**；编码 PASS；`ENGINE_VERSION` 仍 `v2-T13`（config.py:445）。未动引擎/决策/信号族/守卫链/组合层/数据接口。
 - **状态**：待 PM/UiDesigner 对照 UI-2 立项卡验收（首屏≤3卡、/ops 4块完整、导航跳转高亮、冒烟不回退）。
+
+---
+
+## CE. 候选族族开回放 + delta 清单 + A2 四关（2026-08-20，②研究窗口，两候选全部被拒）
+
+> 承接 CD（③裁定研究脚本变体）+ 预注册 `family-candidates-prereg-2026-08-20.md`。结果 = **两候选均被 A2 硬门槛拒绝**，无落地项。
+
+### 一、族开回放执行（研究脚本变体，不改 pipeline/）
+- 脚本 `references/run_family_variant_replay.py`：复用回放内核（backtest_item），运行时注入 bull_steady（①，priority22/limit0.12，进买涨腿 hold/reduce 循环）+ crash_vol（②，priority20/limit0.10，进 _POST_FAMILIES watch/avoid）。三处派生结构同步重建（SIGNAL_FAMILIES=13 族 / BY_KEY / _POST_FAMILIES）+ DEDUP_PRIO_BY_LABEL + exec 补丁买涨腿硬编码元组尾加 bull_steady。
+- 多进程全池回放（8 worker，约 1h）→ `data/_exp_family_variant_replay_2026-08-20.json`（13,865 信号，0 错误）。单进程跑多品会静默崩溃（exit1 无 traceback，基线也崩=既有问题），多进程规避。
+
+### 二、delta 清单（③硬验收，产物 `_exp_family_delta_2026-08-20.json`）
+| 项 | 值 |
+|---|---|
+| 基线 / 族开 | 377 / 13,865 |
+| added | 13,500（bull_steady 13,279 + crash_vol 221，knock-on 0）|
+| displaced | 12（基线被挤，多为「分批建仓」基础族）|
+| relabel | 13（如 2025-06-04 弱市抗跌→深值）|
+| **net 漂移** | **0**（同在 365 条 fwd/net 逐条字节一致 ✅ 注入无数值漂移）|
+
+### 三、A2 四关（硬门槛，`references/a2_emission.py`）
+- **② crash_vol｜A2 否决线触发，自动驳回**：221 条信号 **100% 挤在 2025-10**（单月占比 >50% 预注册否决线），印证 CC 预判。不得按族落地。
+- **① bull_steady｜A2 发射复算 FAILED**（`_exp_a2_bull_steady_2026-08-20.json`）：added 13,279 条（n_val=4,106 ≥15 ✅），但——
+  - val 段：added win14 **49.1%** avg14 **+5.99** vs 基线 book win14 **78.9%** avg14 **+25.07** → 远劣于买书；
+  - fit 段：added win14 46.6% avg14 +1.71 vs book 55.2%/+1.88 → 也劣；
+  - p_avg=1.0（置换 100% 随机子集更优）→ 五门裁定 **FAILED**。
+
+### 四、结论（核心发现）
+1. **扫描发现的「正期望区域」是真实的，但作为「宽触发族」进引擎会稀释高质量买书**：bull_steady 触发极宽（13,279 条，最大月 12.7% 不触否决线），但每条 avg14 仅 +5.99 vs 基线买书 +25.07——引擎现有的选择性（374 条高期望信号）远优于 13k 条平庸信号。四关正确拒绝。
+2. **子题②盲区（牛市上行段）实锤但朴素修补证伪**：引擎对牛市上行段欠覆盖是事实，但「加宽触发族」不是解法；解法须是「高选择性」的（如牛市上行段内再叠加更强的过滤，使信号量级与买书可比），留作未来研究方向（本轮不落地）。
+3. **注入机制经验（复用）**：research-script variant 可行——tuple 重赋值 + BY_KEY/_POST_FAMILIES 同步重建 + exec 补丁硬编码元组，net 漂移 0 证明无数值污染。单进程多品崩溃是既有坑，多进程规避。
+
+### 五、产物
+`_exp_family_variant_replay_2026-08-20.json`（族开全量）/ `_exp_family_bull_replay_2026-08-20.json`（bull-only）/ `_exp_family_delta_2026-08-20.json`（delta 清单）/ `_exp_a2_bull_steady_2026-08-20.json`（A2 复算）+ 脚本 `run_family_variant_replay.py` + 预注册 `family-candidates-prereg-2026-08-20.md`。
+
+### 状态
+- 两候选全部被 A2 拒，**无落地项**；族划分重构的「新增族」方向本轮闭环（证伪）。C1 三口径统一（工程卫生）仍可独立推进。交③审 CE。

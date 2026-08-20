@@ -1,0 +1,77 @@
+{
+ "probe": "A2 第五件套 发射分布复算",
+ "family": "bull_steady",
+ "split": "2025-08-10",
+ "regime": "all",
+ "added_total": 13279,
+ "displaced_total": 12,
+ "added_by_label": {
+  "🟢 牛市稳态上行·分批建仓": 13279
+ },
+ "segments": {
+  "fit": {
+   "added": {
+    "n": 9173,
+    "win14": 46.6,
+    "avg14": 1.71,
+    "win30": 57.6,
+    "avg30": 5.35
+   },
+   "displaced": {
+    "n": 3,
+    "win14": 66.7,
+    "avg14": -2.59,
+    "win30": 66.7,
+    "avg30": -1.21
+   },
+   "book": {
+    "n": 116,
+    "win14": 55.2,
+    "avg14": 1.88,
+    "win30": 62.9,
+    "avg30": 7.75
+   },
+   "p_avg": 0.936,
+   "p_win": 1.0,
+   "book_avg14": 1.88,
+   "book_win14": 55.2,
+   "with_replacement": true
+  },
+  "val": {
+   "added": {
+    "n": 4106,
+    "win14": 49.1,
+    "avg14": 5.99,
+    "win30": 48.6,
+    "avg30": 11.76
+   },
+   "displaced": {
+    "n": 9,
+    "win14": 44.4,
+    "avg14": 7.29,
+    "win30": 55.6,
+    "avg30": 16.02
+   },
+   "book": {
+    "n": 261,
+    "win14": 78.9,
+    "avg14": 25.07,
+    "win30": 74.3,
+    "avg30": 27.19
+   },
+   "p_avg": 1.0,
+   "p_win": 1.0,
+   "book_avg14": 25.07,
+   "book_win14": 78.9,
+   "with_replacement": true
+  }
+ },
+ "gates": {
+  "n_val>=15": true,
+  "val_avg14_excess>=2pp": false,
+  "val_win14>=book": false,
+  "fit_val_direction": false,
+  "p_avg<0.05": false
+ },
+ "passed": false
+}
