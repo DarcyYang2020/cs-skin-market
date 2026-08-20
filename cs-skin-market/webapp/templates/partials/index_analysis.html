@@ -22,7 +22,7 @@
       </div>
     </div>
   </div>
-  <div style="margin-top:12px;padding:10px 14px;background:rgba(15,23,42,0.04);border-radius:6px;font-size:13px;line-height:1.6;color:var(--text-secondary);">
+  <div style="margin-top:12px;padding:10px 14px;background:var(--bg-inset-2);border-radius:6px;font-size:13px;line-height:1.6;color:var(--text-secondary);">
     {{ analysis.market_fusion_decision.action_detail }}
   </div>
 </div>
@@ -70,7 +70,7 @@
 
 <!-- ====== 抛压衰竭信号（熊市底部先行指标） ====== -->
 {% if analysis.selling_pressure and analysis.selling_pressure.score is defined %}
-<div class="card" style="margin-top:12px;border-color:{% if analysis.selling_pressure.score >= 70 %}rgba(16,185,129,0.5){% elif analysis.selling_pressure.score >= 50 %}rgba(245,158,11,0.5){% else %}var(--border){% endif %};">
+<div class="card" style="margin-top:12px;border-color:{% if analysis.selling_pressure.score >= 70 %}var(--green-border-strong){% elif analysis.selling_pressure.score >= 50 %}var(--amber-border-strong){% else %}var(--border){% endif %};">
   <div class="card-header" style="padding:8px 14px;">
     <span class="card-title">📉 抛压衰竭 <span style="font-size:11px;color:var(--text-muted);font-weight:400;">熊市底部先行指标</span></span>
     <div class="row-flex" style="gap:6px;">

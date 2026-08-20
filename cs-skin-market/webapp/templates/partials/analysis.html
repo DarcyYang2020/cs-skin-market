@@ -1,5 +1,5 @@
 {% if error %}
-<div class="card" style="border-color: rgba(239,68,68,0.5);">
+<div class="card" style="border-color: var(--red-border-strong);">
   <div class="card-header"><span class="card-title">⚠️ 分析失败</span></div>
   <p style="color: var(--red);">{{ error }}</p>
 </div>
@@ -203,7 +203,7 @@
   </div>
   {% endif %}
   {% if whale and whale.probability > 12 %}
-  <div class="card" style="padding:10px 12px;{% if whale.probability > 30 %}border-color:rgba(239,68,68,0.5);{% endif %}">
+  <div class="card" style="padding:10px 12px;{% if whale.probability > 30 %}border-color:var(--red-border-strong);{% endif %}">
     <div style="font-size:11px;color:var(--text-muted);">庄家检测 · {{ "%.0f"|format(whale.probability) }}%</div>
     <div style="font-size:13px;font-weight:700;margin-top:2px;{% if whale.probability > 30 %}color:var(--red);{% endif %}">{{ whale.level_label }}</div>
     <div style="font-size:11px;color:var(--text-secondary);margin-top:2px;line-height:1.5;">{{ whale.trading_rule }}</div>
@@ -232,7 +232,7 @@
 {# ====== 术语速查 ====== #}
 <details style="margin-top:10px;font-size:12px;color:var(--text-secondary);">
   <summary style="cursor:pointer;font-weight:600;">📖 术语速查</summary>
-  <div style="margin-top:6px;line-height:1.8;padding:8px 10px;background:rgba(100,116,139,0.08);border-radius:8px;">
+  <div style="margin-top:6px;line-height:1.8;padding:8px 10px;background:var(--slate-bg);border-radius:8px;">
     <b>趋势健康 TH</b>：0-100 趋势强度与结构质量（≥55 强劲 / 35-54 中性 / &lt;35 走弱）。<br>
     <b>90日分位</b>：当前价在近 90 日价格中的百分位，越低越接近历史低位（≤30 低估区 / ≥70 高估区）。<br>
     <b>Z-score</b>：相对 90 日均价的偏离标准差数，≤-2 为深度超跌。<br>

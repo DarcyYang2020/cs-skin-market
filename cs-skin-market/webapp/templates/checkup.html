@@ -8,7 +8,7 @@
   </div>
 
   {% if j2 and j2.optimization_view %}
-  <div class="card" style="margin-bottom:14px;padding:12px 14px;border-color:rgba(59,130,246,0.35);">
+  <div class="card" style="margin-bottom:14px;padding:12px 14px;border-color:var(--blue-border-soft);">
     <div style="font-size:12px;font-weight:700;margin-bottom:6px;">📈 主指标：期望 + 风险调整后收益（胜率只作为下限约束）</div>
     <div style="font-size:12px;line-height:1.7;color:var(--text-secondary);">
       <div>回放 net14：win {{ j2.optimization_view.win14_pct }}% / 期望 {{ "%+.1f"|format(j2.optimization_view.avg14_net) }}%；net30：win {{ j2.optimization_view.win30_net }}% / 期望 {{ "%+.1f"|format(j2.optimization_view.avg30_net) }}%</div>

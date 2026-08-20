@@ -124,7 +124,7 @@ fetch('/api/paper/status')
 
 <!-- F-1 未来事件日历 (2026-08-10, 纯提示层): EVENT_CALENDAR 未来条目, 不参与信号决策 -->
 {% if upcoming_events %}
-<div class="card" style="margin-top:12px;border-color:rgba(59,130,246,0.35);">
+<div class="card" style="margin-top:12px;border-color:var(--blue-border-soft);">
   <div class="card-header"><span class="card-title">📅 未来事件</span>
     <span style="font-size:11px;color:var(--text-muted);margin-left:auto;">配置：pipeline/config.py EVENT_CALENDAR（日期 > 今天）</span>
   </div>
@@ -174,7 +174,7 @@ function createBackup() {
 function _healthBadge(st, label) {
   var colors = {pass: "var(--green)", warn: "var(--yellow)", fail: "var(--red)"};
   var color = colors[st] || "var(--text-muted)";
-  return '<span class="badge" style="background:rgba(79,70,229,0.1);color:' + color + ';font-weight:700;">' + label + '</span>';
+  return '<span class="badge" style="background:var(--accent-bg);color:' + color + ';font-weight:700;">' + label + '</span>';
 }
 function renderHealth(d) {
   var st = d.status || "pass";

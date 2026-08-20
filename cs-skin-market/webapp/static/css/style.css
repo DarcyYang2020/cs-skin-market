@@ -15,6 +15,8 @@
   --bg-inset: #F1F5F9;
   --bg-hover: rgba(15,23,42,0.05);
   --bg-active: rgba(15,23,42,0.09);
+  --bg-inset-2: rgba(15,23,42,0.04);
+  --slate-bg: rgba(100,116,139,0.08);
   --border: #E2E8F0;
   --border-light: #E2E8F0;
   --border-strong: #CBD5E1;
@@ -34,18 +36,22 @@
   --accent-ink: #3730A3;
   --accent-glow: rgba(79,70,229,0.25);
   --accent-ring: rgba(79,70,229,0.22);
+  --accent-bg: rgba(79,70,229,0.1);
 
   /* Semantic */
   --green: #059669;
   --green-bg: rgba(5,150,105,0.1);
   --green-border: rgba(5,150,105,0.3);
+  --green-border-strong: rgba(16,185,129,0.5);
   --red: #DC2626;
   --red-strong: #DC2626;
   --red-bg: rgba(220,38,38,0.1);
   --red-border: rgba(220,38,38,0.3);
+  --red-border-strong: rgba(239,68,68,0.5);
   --yellow: #B45309;
   --yellow-bg: rgba(180,83,9,0.1);
   --yellow-border: rgba(180,83,9,0.3);
+  --amber-border-strong: rgba(245,158,11,0.5);
   --purple: #7C3AED;
   --purple-bg: rgba(124,58,237,0.1);
   --purple-border: rgba(124,58,237,0.3);
@@ -53,6 +59,7 @@
   --blue-text: #1D4ED8;
   --blue-bg: rgba(37,99,235,0.1);
   --blue-border: rgba(37,99,235,0.3);
+  --blue-border-soft: rgba(59,130,246,0.35);
   --orange: #C2410C;
   --orange-bg: rgba(194,65,12,0.1);
   --orange-border: rgba(194,65,12,0.3);
