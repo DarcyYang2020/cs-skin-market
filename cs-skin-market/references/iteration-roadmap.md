@@ -8,6 +8,15 @@
 
 | 版本 | 日期 | 摘要 |
 |---|---|---|
+| v80 | 2026-08-20，PM 立项（CQ 差异表评估），研究预注册 | 新增 CQ-ADD-1「牛市上行段高选择性候选验证」立项卡——CQ 全链闭环（CP→CQ→CR/CS→CT，commit 7cd1f9f）差异表「该加 1」唯一候选；前置 CE bull_steady 证伪关联（宽触发稀释买书 A2 拒）；须预注册高选择性窄化判据，族开回放 + 完整四关 + ③审 |
+| v79 | 2026-08-20，用户方法论裁定，旧路径取消 | **族划分重构旧路径（C1–C5）整体取消**（decision-log CN，commit 1e9475f）：C1-UNIFY 回滚（taxonomy 14细族/8键→6细族/3键，8 文件还原 3a31bb1）、C2-RISE-ACCUM 取消（②引擎独立全量证伪 chg7>10，CM）、C3/C4/C5 确认关闭；理由=374 有偏样本旧产物被「完全重构」（引擎独立扫描）新方法取代；冒烟 131/0/0、ENGINE_VERSION v2-T13；研究窗口聚焦新路径 |
+| v78 | 2026-08-20，PM 立项（C2 候选移交），研究预注册 | 新增 C2-RISE-ACCUM「rise_accum 追涨腿收紧（chg7 下限 3→10）」立项卡——②预注册草案已备（references/c2-rise-accum-prereg-2026-08-20.md + decision-log CK，commit ee0c9ff）；样本内候选仅出研究，完整四关后交③审；验收=delta 零漂移 + 四关 + 附加否决线（⚠️ 2026-08-20 17:2x 已被 v79 取消——②引擎独立全量证伪，见 CM/CN） |
+| v77 | 2026-08-20，PM 验收，零信号发射改动 | **C1-UNIFY 验收通过、关闭**（decision-log CJ）：独立核验冲突清零（base 组 64 条冲突 0）+ 新分布 6 组与 CG 预注册逐项一致 + 冒烟 131/0/0 + ENGINE_VERSION v2-T13；C2（rise_accum chg7 下限 3→10）按接力登记可另行立项 |
+| v76 | 2026-08-20，PM 立项（C1 候选移交），零信号发射改动 | 新增 C1-UNIFY「三口径统一」立项卡——②候选移交（decision-log CG，commit 3a31bb1 已回滚生产代码、方案细节保留）；展示键 3→8 / 细族 6→14 / base 独立 / signal_guidance 派生；纯展示层零发射改动，ENGINE_VERSION v2-T13 不变；验收=冲突清零 + 冒烟 131/0/0 |
+| v75 | 2026-08-20，用户实测否决，UI 回滚 | **UI 系列回滚（decision-log UI-R）**：用户实测反馈「除引擎/研究划分外，其他 UI 不如上个版本」→ 恢复 watchlist/checkup/discover/search/replay + analysis 等 partials + style.css 至 cc83e69 原版（UI-1/UI-3 验收结论作废）；**仅保留引擎/研究划分**（/ops 路由 + ops.html + engine_telemetry partial + 导航 + dashboard 3 卡拆分）；修复 /ops 404（根因：服务器未重启）；冒烟 131/0/0、ENGINE_VERSION 仍 v2-T13；commit b1d20a5 |
+| v74 | 2026-08-20，PM 验收，零引擎变更 | **UI-1/UI-2/UI-3 三卡全部验收关闭，UI 系列收官（2026-08-20 15:5x 被用户实测否决，详见 v75/UI-R）**。UI-1（token 化止血 + regime-s2 对比度 + 文档归档）→ UI-2（首屏 7→3 拆分 + /ops 引擎研究视图）→ UI-3（discover/search/replay + analysis partials token 化 + emoji 语义 badge 化）均经 PM 独立只读核验通过；冒烟 131/0/0 保持、ENGINE_VERSION 仍 v2-T13 |
+| v73 | 2026-08-20，UiDesigner 立项，零引擎变更 | 新增 UI-1/UI-2/UI-3 三卡——UI 全站优化（A+ token化止血 + 首屏拆分 + 系统化），纯 CSS/HTML/模板层，不动引擎/路由行为/测试，冒烟 131/0/0 不回退 |
+| v72 | 2026-08-19，PM 立项，零引擎变更 | 新增 DATA-1「全池 3 年历史补全」立项卡（用户带话立项，交②执行）——解决品类孤品无历史→族划分失真；数据就绪后接力族划分重做+新信号验证（另立卡） |
 | v71 | 2026-08-18，PM 同步，零引擎变更 | 路线图补录 2026-08-16~18——① 大盘五时期路由 v2-T13 落地（PERIOD_… |
 | v70 | 2026-08-15，进行中 | 新引擎 v3「收益增强器」技术方案（外审方案基线 `references/v3-engine-e… |
 | v69 | 2026-08-15，进行中 | 历史扩窗口重拟合技术方案（外审立项基线 `references/cycle-refit-2026… |
@@ -257,5 +266,496 @@
   5. 交付物：`references/doc-compact-plan-2026-08-18.md` + 归档卷 + decision-log 条目 + commit；PM 对照本卡验收，不达标回炉。
 - **红线**：不删任何仍被活跃引用/审计依赖/决策编号依赖的内容；不碰代码/测试/引擎/基线；不改变文档语义；不把活跃手册（data-layer/terminology/project-principles）整体归档。
 
+### PM 验收结论（2026-08-18）
+- **结果：通过，DOC-COMPACT-1 关闭。**
+- 对照项逐项核验：
+  1. 主文件行数：`decision-log.md` 4757 → 573/586（≤1500 ✅）；`iteration-roadmap.md` 823 → 262（≤500 ✅）；其余 11 个候选按实际评估报告，本轮不激进压缩。✅
+  2. 归档卷完整：`references/archive/doc-compact-2026-08-18/` 下 `decision-log-archive-2026-08-18.md`（4517 行）+ `iteration-roadmap-archive-2026-08-18.md`（700 行），主文件头部/索引含归档链接，可定位原编号/章节。✅
+  3. 预注册清单：`references/doc-compact-plan-2026-08-18.md` 已落盘，处置与清单一致。✅
+  4. 指针同步：`PROJECT_STRUCTURE.md` 新增 `archive/doc-compact-2026-08-18/` 条目；AGENTS.md 无被归档内容活跃引用，无需改动。✅
+  5. 活跃内容保留：`iteration-roadmap.md` 保留版本摘要表 + 当前基线 + 未收口台账 + 活跃立项卡（CLEANUP-1/DISPLAY-1/DISPLAY-2/DOC-COMPACT-1）及 PM 验收结论；`decision-log.md` 保留 AM~AZ 最新战役 + 审计条目 + 归档索引。✅
+  6. 冒烟与编码：decision-log BA 记录 **131 passed / 0 failed / 0 skipped**，`tests/check_encoding.py` PASS；文档压缩未改变测试数。✅
+  7. 交付物：doc-compact-plan ✅ + 归档卷 ✅ + decision-log BA 条目 ✅ + commit（用户确认已随本次提交入库；BA 未登记 hash，如需可补记）。✅
+
+---
+
+## DISPLAY-3 单品报告语境收敛（2026-08-18 立项，交②算法研究专家执行）
+
+### 立项卡
+- **目标**：消除单品报告里重复/冲突的期望语境，收敛为单一、互补的展示语义：
+  1. **删除**「大盘语境行」中的「当下期望」（旧读 `_exp_period_continuous_curve.json` 均值曲线）——与 DISPLAY-2「单品短期期望」查表中位数完全重叠，两个「14d 期望」会打架；
+  2. **删除**「大盘语境行」中的「大盘前视 period_forward」（该时期大盘自身前视 14d/30d）——与 DISPLAY-2 时期先验语义重叠，且大盘仪表盘已有；
+  3. 大盘语境只保留**「时期 + 动作区」**（如 S3空仓 / P抄底）；
+  4. **保留**独特性状态行（长持 60d/180d 结构与 7d/14d 短期期望互补）；**F6 供给锁仓是否并入 S1/S2 供给收缩特性仅作评估项**，本次不强制实施。
+- **预注册判据**：
+  1. `webapp/analysis_service.py` 中删除 `_point_in_time_expectancy` 调用及其追加的「当下期望：...」文案；若 `_point_in_time_expectancy` 无其他活跃引用则一并删除函数，有则保留并标注仅供其他入口。
+  2. `webapp/analysis_service.py` 大盘语境行只保留 `当前 {period}——{action_note}`（或等价「时期+动作区」），不再拼接 `period_forward` 的 14d/30d 前视数字。
+  3. `webapp/templates/partials/analysis.html` 同步删除/收敛对应文案，DISPLAY-2「短期期望」卡保持不变，成为单品报告 7d/14d 期望的唯一入口。
+  4. 独特性状态行保持 DISPLAY-1 现有结构；F6 并入评估只允许输出评估结论，不得未经 PM/用户确认直接改变展示。
+  5. 纯展示收敛：不触碰引擎/信号族/守卫链/proximity/组合层；不 bump ENGINE_VERSION；不改基线数字。
+- **验收标准**：
+  1. 单品报告不再出现两个「14d 期望」数字；大盘语境行不再出现「当下期望」「大盘自身前视 14d/30d」字样。
+  2. 大盘语境行仍显示时期与动作区；DISPLAY-2 短期期望卡正常渲染。
+  3. `_point_in_time_expectancy` 调用已删除；若函数无引用则已删除或标记废弃，`_exp_period_continuous_curve.json` 不再被单品报告读取。
+  4. 独特性状态行保留；F6 并入评估结论已写入 decision-log（可评估为不并入）。
+  5. `tests/test_smoke.py` **当前 131 passed / 0 failed 不得回退**（用户口述 130 为旧基线，以当前 131 为准）；`tests/check_encoding.py` PASS；`ENGINE_VERSION` 仍为 `v2-T13`。
+  6. 交付物：decision-log 条目（改动点 + F6 评估结论）+ commit；PM 对照本卡验收，不达标回炉。
+- **红线**：不碰融合决策/信号族/守卫链/proximity/期望机制/组合层/基线；不新增数据采集；不 bump ENGINE_VERSION；不删除独特性状态行；F6 并入不得在未确认时落地。
+
+### PM 验收结论（2026-08-18）
+- **结果：通过，DISPLAY-3 关闭。**
+- 对照项逐项核验：
+  1. 大盘语境行已收敛为「当前 {时期}——{动作区}」，`_fd_display` 中不再拼接 `period_forward` 14d/30d，也不再调用 `_point_in_time_expectancy`。✅
+  2. `_point_in_time_expectancy` 整函数已删除，`_exp_period_continuous_curve.json` 不再被单品报告读取（保留为 build 产物存证）。✅
+  3. DISPLAY-2「短期期望」卡保持为单品报告 7d/14d 期望唯一入口，模板无「当下期望」「period_forward」残留。✅
+  4. 独特性状态行保持 DISPLAY-1 结构；F6 并入评估结论已写入 decision-log BB：**不并入**（F6=高位供缩警示，S1/S2 trait=正向吸筹信号，语义相反且位置条件不同）。✅
+  5. 冒烟与编码：decision-log BB 记录 **131 passed / 0 failed / 0 skipped**，`tests/check_encoding.py` PASS；`ENGINE_VERSION` 仍 `v2-T13`。✅
+  6. 交付物：decision-log BB 条目 ✅ + commit（BB 未登记 hash，需研发/外部补交后视为最终闭环）。✅
+
+---
+
+## DISPLAY-5 单品短期期望·展示校准收口（2026-08-18 立项，③审计#3 复审路径⑤，交②算法研究专家执行）
+
+### 立项卡
+- **目标**：按 `references/item-shortterm-expectancy-display-calibration.md`（decision-log BC~BI 收官 + ③审计#3 复审路径⑤「展示校准豁免预测验证」口径）落地——当单品分析处于「S3 弱市阴跌 + chg30 ≤ −5%（深跌）」时，在短期期望卡片追加一行诚实标注，不改变预测算法与决策。
+- **预注册判据**：
+  1. 触发条件固定为：当前时期 = `S3弱市阴跌` 且 `chg30 ≤ −5%`；其他时期/浅跌不追加该行。
+  2. 追加文案（含数字）必须与审计认可的展示校准口径一致，至少包含：
+     `深跌阴跌 regime：历史同态 14d 中位数 −8.0%、翻正率 23%（n=8314），该 regime 为历史未出现的新 regime，无样本外能力，外推·低置信，由 B 通道(~2027-04)/live pilot 承担`。
+  3. 数据来源：`data/_exp_stage14_p1c_extrapolation.json` 的 `S3阴跌--15~-5` 桶（n=8314 / fwd14_med=-7.97 / win=23.1），数字可读表或硬编码，但必须与产物一致。
+  4. **不得修改** `pipeline/shortterm_expectancy.py::compute_shortterm_expectancy`（查表/预测逻辑不动），不得把 chg30 条件化写入预测算法；DISPLAY-2 短期期望卡主体数字保持不变。
+  5. 纯展示：仅 `webapp/analysis_service.py` + `webapp/templates/partials/analysis.html`；不碰引擎/信号族/守卫链/proximity/组合层/基线；不 bump ENGINE_VERSION。
+- **验收标准**：
+  1. S3 深跌时短期期望卡显示该诚实标注行；S3 浅跌/其他时期不显示。
+  2. `compute_shortterm_expectancy` 未被修改（可 diff 验证）；展示标注明确带「无样本外能力，外推·低置信，由 B 通道/live pilot 承担」，不声称预测。
+  3. `tests/test_smoke.py` **当前 131 passed / 0 failed 不得回退**；`tests/check_encoding.py` PASS；`ENGINE_VERSION` 仍 `v2-T13`。
+  4. 交付物：decision-log 条目（触发条件 + 文案 + 数据源核对）+ commit；PM 对照本卡验收，不达标回炉。
+- **红线**：不把深跌 S3 的 −8%/23% 作为「预测」落地；不改 `compute_shortterm_expectancy`；不 bump ENGINE_VERSION；不新增数据采集；不碰决策/基线。
+
+### PM 验收结论（2026-08-18）
+- **结果：通过，DISPLAY-5 关闭。**
+- 对照项逐项核验：
+  1. 触发条件：`analysis_service.py` 仅在 `period == "S3弱市阴跌"` 且 `market_signal()["chg30"] <= -5` 时设置 `regime_note`；其他时期/浅跌不追加。✅
+  2. 文案与数据：`regime_note` 文案含「深跌阴跌 regime：历史同态 14d 中位数 −8.0%、翻正率 23%（n=8314）…无样本外能力，外推·低置信，由 B 通道(~2027-04)/live pilot 承担」；与 `_exp_stage14_p1c_extrapolation.json` S3 深跌桶（n=8314 / −7.97 / 23.1）一致。✅
+  3. 不改算法：`pipeline/shortterm_expectancy.py::compute_shortterm_expectancy` 零改动；DISPLAY-2 主体数字不变；不 bump ENGINE_VERSION。✅
+  4. 渲染：`analysis.html` 在短期期望卡「本品特性」下渲染 ⚠️ regime_note。✅
+  5. 冒烟与编码：decision-log BK 记录 **131 passed / 0 failed / 0 skipped**，`tests/check_encoding.py` PASS；`ENGINE_VERSION` 仍 `v2-T13`。✅
+  6. 交付物：decision-log BK 条目 ✅ + commit（BK 未登记 hash，需研发/外部补交后视为最终闭环）。✅
+
+---
+
+## DISPLAY-6 单品报告冗余模块下架（2026-08-18 立项，交②算法研究专家执行）
+
+### 立项卡
+- **目标**：按用户裁定「短期期望无用 + 大盘语境冗余」，下架单品分析报告的：
+  1. **短期期望卡片**（DISPLAY-2 `compute_shortterm_expectancy` 注入 + DISPLAY-5 深跌 S3 标注）；
+  2. **大盘语境行**（DISPLAY-3「当前时期+动作区」）。
+  保留**独特性状态行**（唯一有长持结构信息增量）。纯展示删除，不改变任何引擎/决策/信号族/基线。
+- **预注册判据**：
+  1. `webapp/analysis_service.py` 删除：`_shortterm_expectancy_note` 调用及 `fd["shortterm_expectancy"]` 注入、`regime_note` 设置；删除「大盘语境：当前 {时期}——{动作区}」caveat 追加；若 `_shortterm_expectancy_note` 无其他引用则一并删除函数。
+  2. `webapp/templates/partials/analysis.html` 删除：短期期望卡渲染块（`{% if fusion_decision.shortterm_expectancy %}...{% endif %}`）；不再渲染任何「短期期望」「7d 期望」「14d 期望」「深跌阴跌 regime」内容；不再渲染「大盘语境」。
+  3. 保留：独特性状态行（`_uniqueness_note` + 模板 mapping 分支）与 DISPLAY-1 结构；保留其他研究口径提示（族特征/F 判别等）。
+  4. `pipeline/shortterm_expectancy.py` 与 `data/_exp_shortterm_table.json`：允许归档为研究存证或保留但确保无活跃引用；**不得修改 `compute_shortterm_expectancy` 逻辑**；不得触碰其他引擎/决策/信号族/基线。
+  5. 纯展示：不 bump ENGINE_VERSION；不新增数据采集；不改基线数字。
+- **验收标准**：
+  1. 单品报告不再显示短期期望卡（无「短期期望」「7d 期望」「14d 期望」「深跌阴跌 regime」等文案）；不再显示「大盘语境：当前」。
+  2. `analysis_service.py` 无 `_shortterm_expectancy_note` 调用/`shortterm_expectancy` 字段/`regime_note` 注入；模板无对应渲染块。
+  3. 独特性状态行仍正常显示；其余研究口径提示不受影响。
+  4. `pipeline/shortterm_expectancy.py` 与查表产物无活跃引用或已归档为研究存证；`ENGINE_VERSION` 仍 `v2-T13`。
+  5. `tests/test_smoke.py` **当前 131 passed / 0 failed 不得回退**；`tests/check_encoding.py` PASS。
+  6. 交付物：decision-log 条目（删除点 + 研究存证去向）+ commit；PM 对照本卡验收，不达标回炉。
+- **红线**：不碰融合决策/信号族/守卫链/proximity/组合层/基线；不 bump ENGINE_VERSION；不删除独特性状态行；不改 `compute_shortterm_expectancy` 逻辑（仅允许归档/去引用）。
+
+### PM 验收结论（2026-08-18）
+- **结果：通过，DISPLAY-6 关闭。**
+- 对照项逐项核验：
+  1. 短期期望卡已下架：`analysis_service.py` 无 `_shortterm_expectancy_note` 调用/`fd["shortterm_expectancy"]`/`regime_note`；模板无「短期期望」「7d 期望」「14d 期望」「深跌阴跌 regime」渲染块。✅
+  2. 大盘语境行已下架：`_fd_display` 无 `market_signal` 调用与「大盘语境：当前…」caveat；模板无对应渲染。✅
+  3. 独特性状态行保留：`_uniqueness_note` + 模板 mapping 分支仍在，DISPLAY-1 结构未动；其余研究口径提示保留。✅
+  4. 研究存证：`pipeline/shortterm_expectancy.py` + `data/_exp_shortterm_table.json` + `config.SHORTTERM_EXPECTANCY` 保留为研究存证，`compute_shortterm_expectancy` 逻辑零改动；webapp 无活跃引用。✅
+  5. 冒烟与编码：decision-log BL 记录 **131 passed / 0 failed / 0 skipped**，`tests/check_encoding.py` PASS；`ENGINE_VERSION` 仍 `v2-T13`。✅
+  6. 交付物：decision-log BL 条目 ✅ + commit（BL 未登记 hash，需研发/外部补交后视为最终闭环）。✅
+
+---
+
+## EXEC-1 P0 执行飞轮（2026-08-18 立项，交②算法研究专家执行）
+
+### 立项卡
+- **目标**：把「发现 → 分析 → 决定 → 执行 → 复盘」跑通，驱动真实执行记录增长到 **≥20 条有效记录**，解锁 A1-4 成本/滑点校准与真实组合净值复盘。纯产品/展示/数据闭环改动，不碰引擎/决策/信号族/基线。
+- **预注册判据**：
+  1. 执行记录零摩擦：单品报告、批量扫描、discover 高分榜、watchlist 四处均保留/补齐「一键记录执行」入口（复用共享 exec-modal，已有能力不重造）。
+  2. 未记录 buy 提醒：watchlist 对近 7 天已出现 buy 但未记录执行的条目给出明确提醒/待决策状态（已有雏形则强化到可操作）。
+  3. 自动结算与滑点：执行记录到期自动结算（14/30 日）、滑点展示（advice_price vs exec_price）保持可用；复盘页真实 vs 纸面（executions vs signal_tracking）对照卡可解释。
+  4. 不新增数据采集、不改引擎/决策/信号族/守卫链/组合层/基线；不 bump ENGINE_VERSION；不触碰 `pipeline/shortterm_expectancy.py` 研究存证逻辑。
+  5. 冒烟不得回退：当前 **131 passed / 0 failed**；`tests/check_encoding.py` PASS。
+- **验收标准**：
+  1. 四处入口均能一键记录执行，且记录后自动同步持仓/到期结算/滑点。
+  2. watchlist 未记录 buy 提醒可看到、可点击记录。
+  3. 复盘页真实 vs 纸面对照卡正常展示；`executions` 从当前基线增长，2 周内达到 **≥20 条有效记录**（含手动/一键录入；已有历史记录算入）。
+  4. `tests/test_smoke.py` **131 passed / 0 failed 不得回退**；`tests/check_encoding.py` PASS；`ENGINE_VERSION` 仍 `v2-T13`。
+  5. 交付物：decision-log 条目（改动点 + 当前 executions 基线 + 达成情况）+ commit；PM 对照本卡验收，不达标回炉。
+- **红线**：不碰融合决策/信号族/守卫链/proximity/组合层/基线；不新增数据采集；不 bump ENGINE_VERSION；不删已有执行记录能力；不把模拟盘/真实盘口径混为一谈。
+
+### PM 验收结论（2026-08-18）
+- **结果：通过（实现验收），EXEC-1 关闭；过程目标待观测。**
+- 对照项逐项核验：
+  1. 四处一键执行入口核对：单品报告（analysis.html buy 按钮）✓、批量扫描（`batch_scan._exec_btn`）✓、discover（经单品报告入口）✓、自选（`openExecManual`）✓；记录后自动同步持仓 / 14-30 日自动结算 / 滑点均已有。✅
+  2. 未记录 buy 提醒：`page_watchlist` 注入 `monitor.unrecorded_buys`，watchlist 今日关注卡新增「📝 未记录执行」行（蓝底 + 记录执行 + 报告）。✅
+  3. 复盘对照：真实 vs 纸面（executions vs signal_tracking）复盘能力已有，未破坏。✅
+  4. 冒烟与编码：decision-log BM 记录 **131 passed / 0 failed / 0 skipped**，`tests/check_encoding.py` PASS；`ENGINE_VERSION` 仍 `v2-T13`。✅
+  5. 过程目标：`executions` 当前基线 **8 条**（BM 已登记）；2 周内 ≥20 为**观测目标**，非本改动即时验收项。PM 后续按 BM 基线跟踪，达标后另行登记；若到期未达标，再评估是否需要更强提醒/激励。✅
+  6. 交付物：decision-log BM 条目 ✅ + commit（BM 未登记 hash，需研发/外部补交后视为最终闭环）。✅
+
+---
+
+## DISPLAY-7 信号复盘数据源更新到当前基线（2026-08-18 立项，交②算法研究专家执行）
+
+### 立项卡
+- **目标**：将 `/replay` 信号复盘页数据源从 `data/item_backtest_full_2025.json`（317 信号，v2-T4/T5 旧引擎冻结基线）切换到 `data/_exp_cycle_replay_period_route.json`（189 信号，v2-T13 官方 HQ 口径），使复盘页展示当前基线。
+- **预注册判据**：
+  1. 仅切换 `webapp/main.py` 的 `api_signals_replay` 读取文件路径（一行改动）及页面 meta 口径说明同步；不改字段结构、不改渲染逻辑。
+  2. 目标文件 `data/_exp_cycle_replay_period_route.json` 必须存在且 `signals` 字段结构与旧文件一致（signal 明细字段可被现有复盘页渲染）。
+  3. 页面 meta 口径说明同步为：**189 信号 / v2-T13 / 官方 HQ 口径**，并注明旧 317 基线已冻结为历史存证（不在复盘页主数据源使用）。
+  4. 纯数据源切换：不碰引擎/决策/信号族/基线数字；不 bump ENGINE_VERSION；不新增数据采集。
+  5. 冒烟不得回退：当前 **131 passed / 0 failed**；`tests/check_encoding.py` PASS。
+- **验收标准**：
+  1. `/replay` 页面加载后显示 **189 信号**，且页面口径标注为 v2-T13 / 官方 HQ（可含旧 317 存证说明）。
+  2. 信号明细列表/聚合/事件标注等现有功能在新数据源下正常渲染（不依赖旧文件独有字段）。
+  3. `item_backtest_full_2025.json` 仍保留为 HIST-FULL 冻结基线，但不作为 `/replay` 主数据源。
+  4. `tests/test_smoke.py` **131 passed / 0 failed 不得回退**；`tests/check_encoding.py` PASS；`ENGINE_VERSION` 仍 `v2-T13`。
+  5. 交付物：decision-log 条目（数据源切换 + 口径说明）+ commit；PM 对照本卡验收，不达标回炉。
+- **红线**：不碰引擎/决策/信号族/守卫链/组合层/基线数字；不 bump ENGINE_VERSION；不新增数据采集；不改变信号复盘页功能范围。
+
+### PM 验收结论（2026-08-18）
+- **结果：通过，DISPLAY-7 正式关闭（2026-08-18，BUG-1 已恢复冒烟 131/0/0）。**
+- 对照项逐项核验：
+  1. 数据源切换：`api_signals_replay` 已改读 `data/_exp_cycle_replay_period_route.json`（189 信号 v2-T13 官方 HQ），字段结构兼容（date/name/entry_price/fwd_series/fwd14/fwd30），渲染逻辑零改动。✅
+  2. 页面口径：`meta` 含 `engine="v2-T13"` / `caliber="官方 HQ 口径"` / `frozen_note`，replay.html 同步展示「189 信号 · v2-T13 · 官方 HQ」+ 旧 317 冻结说明。✅
+  3. 旧基线保留：`item_backtest_full_2025.json` 仍为 HIST-FULL 冻结存证，不作 `/replay` 主数据源。✅
+  4. 引擎/基线未触碰：`ENGINE_VERSION` 仍 `v2-T13`；未改信号/决策/基线。✅
+  5. 冒烟：BN 记录 **130 passed / 1 failed / 0 skipped**，1 个失败 = `t_live_snapshot_sync`（TH 窗口 off-by-one，独立于 DISPLAY-7）；编码 PASS。→ 按立项卡条件已由 BUG-1 修复后满足：BO 记录 131/0/0，`t_live_snapshot_sync` 恢复通过 → DISPLAY-7 正式关闭。✅
+  6. 交付物：decision-log BN 条目 ✅ + commit（BN 未登记 hash，需补记后最终闭环）。✅
+
+---
+
+## BUG-1 TH 窗口 off-by-one 修复（2026-08-18 立项，交②算法研究专家执行）
+
+### 立项卡
+- **目标**：修复 `market_index_stats` 与 `build_market_context` 对大盘 TH 计算窗口不一致的问题（live 用 `values[-90:]` 90 值，backtest 用 `values[i-90:i+1]` 91 值），使 live 大盘 TH 与回测口径一致，恢复 `t_live_snapshot_sync` 通过和冒烟 131/0/0。
+- **预注册判据**：
+  1. 先确认设计口径：以 `build_market_context`（回测/统一口径，含当前日共 91 值）为事实源；`market_index_stats` 对齐到同一窗口语义（含当前日）。
+  2. 只改窗口切片/输入长度，不改 TH 评分公式、阈值、情绪/周期等任何引擎参数。
+  3. 若修复导致 live/回测信号或基线数字变化，必须先回测先行 + 登记 decision-log，并评估是否需要 ENGINE_VERSION bump；若仅对齐口径且无信号变化，则不 bump。
+  4. 不新增数据采集；不碰其他引擎/决策/信号族/基线。
+  5. 冒烟必须恢复 **131 passed / 0 failed**；`tests/check_encoding.py` PASS。
+- **验收标准**：
+  1. `t_live_snapshot_sync` 通过；冒烟 **131 passed / 0 failed / 0 skipped**。
+  2. `market_index_stats` 与 `build_market_context` 的 TH 窗口长度/语义一致（可测试断言或代码审查确认）。
+  3. 无其他测试回退；`ENGINE_VERSION` 如未发生信号/基线变化则保持 `v2-T13`（如有变化按预注册判据处理）。
+  4. 交付物：decision-log 条目（根因 + 修复 + 对信号/基线影响说明）+ commit；PM 对照本卡验收，不达标回炉。
+- **红线**：不改变 TH 公式/阈值/参数；不新增数据采集；不 bump ENGINE_VERSION（除非评估必须且已走审计）；不掩盖测试失败。
+
+### PM 验收结论（2026-08-18）
+- **结果：通过，BUG-1 关闭。**
+- 对照项逐项核验：
+  1. 根因确认：`market_index_stats` 原用 90 值窗口，`build_market_context` 用 91 值含当日窗口；TH 差 2 分（33 vs 35）。✅
+  2. 修复内容：`analyze_index(market_history[-91:])` + `compute_market_trend_health(values[-91:])`，仅改窗口切片，未改 TH 公式/阈值/情绪/周期。✅
+  3. 影响评估：live TH 33→35 与回测事实源一致；未跨越任何守卫/族闸门阈值，无信号/基线变化，`ENGINE_VERSION` 保持 `v2-T13`。✅
+  4. 冒烟与编码：decision-log BO 记录 **131 passed / 0 failed / 0 skipped**（`t_live_snapshot_sync` 恢复通过）；`tests/check_encoding.py` PASS。✅
+  5. 交付物：decision-log BO 条目 ✅ + commit（BO 未登记 hash，需研发/外部补交后视为最终闭环）。✅
+
+---
+
+## DISPLAY-8 批量扫描估值列改大白话（2026-08-18 立项，交②算法研究专家执行）
+
+### 立项卡
+- **目标**：把批量扫描结果「估值列」从「低估/合理/高估/泡沫 + pct=X%」改为一句人话，只回答「贵不贵」，不暗示「可不可买」（买不买交给距买点列）。
+- **预注册判据**：
+  1. 映射固定为：
+     - `undervalued` → **「历史低位，比较便宜」**
+     - `fair` → **「价格适中」**
+     - `overvalued` → **「历史高位，偏贵」**
+     - `bubble` → **「历史顶点，太贵了」**
+  2. 仅改 `webapp/templates/partials/scan_html.html` 的估值单元格文案；估值判定阈值/评分/引擎/决策逻辑一律不动。
+  3. 主文案必须是一句人话，不再以「低估/合理/高估/泡沫」作为主答案；pct 可保留为次要小字或移除，但不得作为主答案，且不得暗示买卖建议。
+  4. 口径与距买点对齐保持不变（低估线同为 pct≤30），不新增/修改任何判定。
+  5. 纯展示：不 bump ENGINE_VERSION；不新增数据采集；不改基线数字。
+  6. 冒烟不得回退：当前 **131 passed / 0 failed**；`tests/check_encoding.py` PASS。
+- **验收标准**：
+  1. 批量扫描估值列按上述映射显示一句话人话；不再出现「低估/合理/高估/泡沫」作为主标签（可接受作为 tooltip/隐藏口径说明，但主显示必须是新文案）。
+  2. 估值判定逻辑、阈值、评分、引擎/决策输出均未改变（可 diff 验证）。
+  3. `tests/test_smoke.py` **131 passed / 0 failed 不得回退**；`tests/check_encoding.py` PASS；`ENGINE_VERSION` 仍 `v2-T13`。
+  4. 交付物：decision-log 条目（映射表 + 改动点）+ commit；PM 对照本卡验收，不达标回炉。
+- **红线**：不碰估值判定/阈值/评分/引擎/决策/基线；不 bump ENGINE_VERSION；不新增采集；不把「贵不贵」暗示成「买不买」。
+
+### PM 验收结论（2026-08-18）
+- **结果：通过，DISPLAY-8 关闭。**
+- 对照项逐项核验：
+  1. 映射正确：`scan_html.html` 估值单元格使用 `{'undervalued':'历史低位，比较便宜','fair':'价格适中','overvalued':'历史高位，偏贵','bubble':'历史顶点，太贵了'}.get(...)`，未知值兜底原值。✅
+  2. 主文案已改人话：不再显示 `r.valuation_tier` 英文键/「低估/合理/高估/泡沫」主标签；pct 保留为次要小字。✅
+  3. 零改动：估值判定/阈值/评分/引擎/决策/距买点口径未动；不新增采集；不 bump ENGINE_VERSION。✅
+  4. 冒烟与编码：decision-log BP 记录 **131 passed / 0 failed / 0 skipped**，`tests/check_encoding.py` PASS；`ENGINE_VERSION` 仍 `v2-T13`。✅
+  5. 交付物：decision-log BP 条目 ✅ + commit（BP 未登记 hash，需研发/外部补交后视为最终闭环）。✅
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+---
+
+## DATA-1 全池 3 年历史补全（2026-08-19 立项，用户带话立项，交②算法研究专家执行）
+
+### 背景与动机（PM 只读盘点，数字已核实）
+- **问题**：生产库 405 品中，非印花非角色饰品约 241 品；其中**只有 92 品历史 first_date < 2025-08-01**（能覆盖 2025 恐慌事件 + 2025 牛市段），**66 品完全无历史**（含新加手套 9、武器箱、挂件、冷门枪等），其余大量品历史起点为 2026-05-10（生产库 365 天保留策略的截断）。→ 「品类孤品无历史 → 族划分失真、2025 信号缺失无法归因」的数据面证据确凿。
+- **先例已实测**：v2-T9（2026-08-15）确认 csQAQ `/info/chart` `period=1095` 返回 2023-06-01 起 1171 根日线（`main_data`=价格、`num_data`=在售量）；`references/backfill_cycle_window.py` 已建 `data/replay_cycle_win.db` 并回填过回放池 A 96 品 120,641 行（2023-06-01~2026-08-14）。本卡是**同一机制的存量扩容**（96 品 → 全池 241 品）。
+- **范围口径（dry-run 前须核对）**：目标 = 405 − 印花 160 − 角色（清单）。印花 160 = `name LIKE '印花 |%'`（排除枪皮「M4A1消音版 | 印花集」，其名含「印花」但属枪皮）；角色清单（用户口径 4，实际核查 5，dry-run 以清单为准）：
+  `指挥官 梅 "极寒" 贾米森 | 特警` / `海军上尉里克索尔 | 海军水面战中心海豹部队` / `陆军中尉普里米罗 | 巴西第一营` / `亚诺（野草） | 游击队` / `德拉戈米尔 | 军刀勇士`（注意「亚诺」用全角括号）。
+- **目标库**：`data/replay_cycle_win.db`（3 年历史只进回放库；生产库 365 天保留策略不动）。
+- **与 BQ 诊断联动**：本卡为研究窗口 2026-08-19 只读诊断（decision-log BQ「信号族分类审计 + 池子品类覆盖诊断」→ `data/_exp_family_audit_2026-08-19.json`）的**数据底座落地**——BQ 确诊「族三口径冲突（base 兜底 80 条混 4 语义）/ 2025-02~04 信号真空 / 孤品无历史（树篱迷宫仅 96 天）」并建议扩池为数据层职责；本卡补齐 3 年历史后，BQ 子题②「急跌型恐慌」探针可在全历史窗口重跑，族划分重做另立卡。
+
+### 立项卡
+- **目标**：把全池非印花非角色饰品（约 241 品，含手套/匕首/冷门枪/箱/挂件）的 3 年（period=1095）价格 + 在售量历史补齐到回放库 `replay_cycle_win.db`，使**回放池内每品 first_date 早于 2025-08-01**，覆盖 2025 恐慌事件与 2025 牛市段；为后续族划分重做与新信号验证提供完整数据底座。本卡只到「数据就绪」，族划分重做与新信号验证在数据验收通过后**另立卡**交②。
+- **预注册判据（执行窗口必须先按此做，禁止先跑再改判据）**：
+  1. **dry-run 先行**：基于 `references/backfill_cycle_window.py` 改造（允许新增独立脚本，不得改动既有回放脚本的活跃行为），先 `--dry-run` 产出**精确目标清单**落盘 `data/_exp_data1_plan.json`：含每品名称 / 是否已有历史 / first_date / 需补日期数 / 排除理由（印花 160 + 角色清单）；**清单即预注册**，实际回填品必须与清单一致，清单外零改动；若清单总数 ≠ 241（角色 4 vs 5 差异），以清单为准并在清单内登记差异说明。
+  2. **数据源与字段**：csQAQ `/info/chart` `period=1095`（`main_data`=价格 → `price_rmb`、`num_data`=在售量 → `in_sale_count`），与 v2-T9 实测口径一致；沿用采集纪律（单浏览器会话 / 失败重试退避 / K 线失败台账），避开每日 18:00 全量采集窗口执行，冲突先在 decision-log 占坑。
+  3. **去重不覆盖**：回填前按 `(item_id, date)` 与库中已有数据去重，只补缺失日期，**不覆盖已有值**；回填完成后必须做二次审计（gap 区间行数变化 / 区间外已有值零覆盖 / `failed_goods=0`），审计口径参照 v2-T9 回填审计（decision-log 归档卷）。
+  4. **只写回放库**：不得写生产库 `market.db`；不改引擎/决策/信号族/守卫链/组合层/基线；不 bump ENGINE_VERSION；不改 `pipeline/` 活跃逻辑（脚本可新增于 `references/`）。
+  5. **回放产物保护**：回填前若需重建 `replay_cycle_win.db` 或以任何方式改动既有回放库，必须先备份既有库（`.bak` 按研究域自清规则）并在 decision-log 占坑；不得删除/覆盖任何 `_exp_*.json` 回放产物。
+  6. 冒烟不得回退：当前 **131 passed / 0 failed**；`tests/check_encoding.py` PASS。
+- **验收标准（PM 对照）**：
+  1. `data/_exp_data1_plan.json` 与实际回填逐项一致（无清单外回填；清单内未回填品须注明原因）。
+  2. **覆盖率**：目标池（约 241 品）中每品 `price_history.first_date < 2025-08-01` 覆盖率达到 100%，或列出无法覆盖品及其原因（如 2024 年后上市新品、无 num_data 品——该类登记为「数据源无历史」而非「回填失败」）；目标池内无 first_date 停留在生产库 365 天截断起点（2026-05 前后）的品。
+  3. 去重审计：已存在日期零覆盖；补入日期数 = 清单预估（允许 ±5%）；`failed_goods=0`。
+  4. 冒烟 **131 passed / 0 failed 不得回退**；`tests/check_encoding.py` PASS；`ENGINE_VERSION` 仍 `v2-T13`。
+  5. 交付物：改造脚本（或新脚本）+ `data/_exp_data1_plan.json` + 回填产物（回放库）+ decision-log 条目（含二次审计数字）+ commit；PM 对照本卡验收，不达标回炉。
+- **红线**：不写生产库；不改引擎/决策/基线/测试；不 bump ENGINE_VERSION；不删改 `_exp_*.json` 回放产物；不把回放库 3 年历史当实时价格回灌生产；不把「回填后重做族划分 + 新信号验证」混入本卡（数据就绪后另立卡）。
+- **后续接力（登记，不并入本卡）**：数据验收通过 → ②重做族划分（241 品 3 年窗口）→ 新信号验证走预注册探针 + ③审计；届时 PM 按需立「族划分重做」卡。
+
+### PM 验收结论
+- **结果：通过，DATA-1 关闭（2026-08-19，PM 独立只读核验，未采信执行窗口自述）。**
+- 对照项逐项核验：
+  1. 清单与实际一致：`data/_exp_data1_plan.json`（240 品 = 405−印花160−角色5，差异已登记 note；清单即预注册）与实际回填一致——inserted_dates 145,692 与 dry-run 预估完全一致，清单外零改动。✅
+  2. 覆盖率：good_id>0 的 224 品中 **222 品 first_date<2025-08-01（99.11%）**；2 品豁免 = `AK-47 | 流金王朝`（接口最早 2025-09-25）/ `挂件 | 丁烷拍档`（接口最早 2025-10-09），均 2025-09~10 上市新品 → 「数据源无历史」豁免（非回填失败）；16 品 no_good_id（2026-08-19 当日新加品，csQAQ 无 good_id 映射）登记跳过。✅
+  3. 去重审计：`overwritten_existing=0`（overwrite_check_count=120,641 全量比对）；PM 独立查库 `(item_id,date)` 重复组数=0；inserted_dates 145,692 与预估一致；`failed_goods=0`。✅
+  4. 冒烟与编码：PM 亲自重跑 **131 passed / 0 failed / 0 skipped**；`check_encoding.py` PASS（hard 0，warnings 为历史已知脏名）；`ENGINE_VERSION` 仍 `v2-T13`。✅
+  5. 交付物：`references/backfill_full_pool.py` + `_exp_data1_plan.json` + `_exp_data1_audit.json` + 回放库（120,641→266,333 行，238 品）+ decision-log BS + commit `f5c2d05`/`fade8a9`（PM 已验）。✅
+  6. 抽查：专业手套翠绿之网 / AK-47 二西莫夫 / 反恐精英武器箱 各 1175 行、in_sale 全非空、2023-06-01~2026-08-18。✅
+- **遗留待办（不阻塞关闭，登记）**：16 品 no_good_id（今日新增）无 3 年历史，待 csQAQ good_id 映射建立后小补（交运维/研发登记）；PM 侧落盘（roadmap v72 + decision-log BR/验收）待统一 commit。
+- **接力登记**：族划分重做 + 新信号验证待 PM 另立卡（数据底座已就绪）。
+
+---
+
+## UI-1 全站 UI 止血：token 化 + 对比度 + 文档归档（2026-08-20 立项，UiDesigner 提出，交前端/研发窗口执行）
+
+### 背景与动机（UiDesigner 实地评审，全站指纹已扫描）
+- 设计系统 `webapp/static/css/style.css` v3 本身成熟（indigo 主色 / IBM Plex Sans / 4px 间距 / 44px 触控 / reduced-motion / skip-link / focus-visible），但**页面层几乎未用**：全站 6 整页 + 4 partials 大量内联 `style=`、硬编码 rgba 裸写、emoji 当唯一状态载体。
+- 量化指纹（templates 扫描）：watchlist 内联192/硬色10/emoji31（最重）、dashboard 内联89/硬色10、checkup 内联42/硬色3（regime-s2 对比度不达标）、analysis partial 内联86、index_analysis partial 内联48、discover 内联21/硬色1/emoji8、replay 内联23/emoji3、search 内联9（btn-scan 重复定义）。
+- 文档漂移：`design-system/cs-market/MASTER.md` 是失效深色 OLED 概念稿（自称"禁止浅色模式/禁止 emoji"），与已落地浅色 indigo v3 冲突，且 `pages/` 空置从未管辖页面。
+
+### 立项卡
+- **目标**：让 style.css v3 token 真正生效——补一组语义工具类、以 watchlist 为样板去内联/硬色、修 checkup regime-s2 对比度到 AA、归档失效 MASTER.md；**纯 CSS/HTML，零功能变更**。本卡为 UI 系统化（UI-3）的先行止血。
+- **预注册判据（执行窗口必须先按此做，禁止先改再定判据）**：
+  1. **补 token 工具类**：`style.css` 新增 `.tint-accent`(rgba(79,70,229,.1)) / `.bg-inset-2`(rgba(15,23,42,.04)) / `.bg-amber`(rgba(245,158,11,.08)/.12) / `.bg-purple`(rgba(139,92,246,.12)) / `.border-blue`(#2563EB) 等，覆盖全站裸 rgba 模式。
+  2. **watchlist 样板**：内联 192 → 抽 partial + 工具类；裸 `rgba(245,158,11,..)` / `rgba(139,92,246,..)` / `rgba(15,23,42,0.5/0.2)`（加载层）全部替换；趋势列 `📈/📉/➖` 加文字（涨/跌/平）或 `aria-label`。
+  3. **checkup regime-s2**：`#1890ff`/`#e6f7ff`（Ant 蓝）改为 `--blue` #2563EB 体系或加深文字色，使对比度 ≥ 4.5:1。
+  4. **文档归档**：`MASTER.md` 更新为"实际系统 = style.css v3 浅色 indigo"，删"禁止浅色/禁止 emoji"等过时条款；`pages/` 补各页规格（可选）。
+  5. **禁令**：不动 `main.py` / 引擎 / `pipeline/` / 测试；不 bump `ENGINE_VERSION`；不改任何功能行为（仅视觉 token 化，渲染结果应像素一致）。
+  6. 冒烟不得回退：当前 **131 passed / 0 failed**；`tests/check_encoding.py` PASS。
+- **验收标准（UiDesigner 对照）**：
+  1. grep 全站 `templates/` 无裸 `rgba(15,23,42` / `rgba(245,158,11` / `rgba(139,92,246` / `#1890ff`（允许 `var()` 内或注释）。
+  2. watchlist 内联 `style=` 数从 192 显著下降（目标 < 40）且裸色值清零；视觉回归无破损。
+  3. regime-s2 对比度工具测 ≥ 4.5:1。
+  4. MASTER.md 无"禁止浅色模式"/"禁止 emoji"等过时条款。
+  5. 冒烟 **131 passed / 0 failed 不回退**；`check_encoding.py` PASS；`ENGINE_VERSION` 仍 `v2-T13`。
+  6. 交付物：改动文件 + decision-log 条目 + commit；对照本卡验收，不达标回炉。
+- **红线**：不碰引擎/决策/路由/测试；不 bump ENGINE_VERSION；不改功能行为；不创建设计系统以外的样式体系。
+- **后续接力（登记，不并入本卡）**：UI-2（首屏拆分）→ UI-3（系统化其余整页/partials）。
+
+### PM 验收状态（2026-08-20 独立只读核验，⚠️ 已作废——2026-08-20 15:5x 用户实测否决，详见 v75 / decision-log UI-R）
+- **核验方式**：PM 未采信执行窗口自述，独立读原始产物（style.css 逐行 grep / templates 全局裸 rgba 扫描 / 亲自重跑冒烟+编码 / 读 MASTER.md / 取真实色值用 WCAG 公式重算对比度）。
+- **逐项结论**：
+  - C1 模板无裸 rgba：**通过（最终复核）**。原先 3 处（`index_card.html:39`、`index_analysis.html:25,73`）已按严格口径清零、新增 `--green-border-strong`/`--amber-border-strong` token 已落地 ✅；PM 按用户提醒的「**全局 `grep -rn "rgba(" webapp/templates/`、`不带 -v var(--`**」方法复核，发现 **`dashboard.html:24` 仍有裸 `rgba(239,68,68,0.08)`**（红色崩溃告警框背景，同行含 `var(--red)`，`grep -v "var(--"` 会整行吞掉漏检）——研发补 `535eaba` 改 `var(--red-bg)` 后，PM 于 2026-08-20 15:15 后重跑 `grep -rn "rgba(" webapp/templates/` **零命中**，C1 字面+全局双通过。另 `render_html.py:128`/`main.py:1004` 裸 rgba 属 discover 页（UI-3 范围，不计入 UI-1）。
+  - C2 watchlist 去内联：**通过**（192→9，裸色零命中）。
+  - C3 regime-s2 对比度：**通过**（新增 `--blue-text:#1D4ED8` 五类共用；重算 白卡 5.83 / inset 5.35 / hover 5.59，全表面 ≥5；commit `6c59d64`；原研发报 4.55 经独立重算实为 4.50 且 inset 仅 4.13，已纠正）。
+  - C4 MASTER.md：**通过**（已归档为浅色 v3 事实源，无"禁止浅色模式"过时条款；第 22 行为合理 emoji 新规）。
+  - C5 冒烟/编码/版本：**通过**（131 passed/0 failed；encoding PASS；ENGINE_VERSION 仍 v2-T13）。
+  - C6 交付物：**通过**（commit `6c59d64`/`76112ef`/`535eaba` 在库；本状态文本 + decision-log 关闭条目由 PM 落盘）。
+- **遗留与处置（待裁决）**：C1 的 3 处裸 rgba 落在 `index_card`/`index_analysis` 两个 partial（本属 UI-3 范围）。两种收口方式：① **严格（推荐）**：在 UI-1 内把这 3 行迁到 `.bg-inset-2` + 新增 `--green-border-strong`/`--amber-border-strong` 用于 index_analysis:73 动态边框，C1 字面通过、UI-1 关闭；② **收窄口径**：把 C1 验收文字改为"watchlist+checkup 无裸 rgba"（对齐 UI-1 实际范围），2 个 partial 标记为 UI-3 承接，UI-1 现价关闭。两种均不碰引擎/路由/测试。
+- **遗留与处置（更新）**：C1 原 3 处已清零；现余 `dashboard.html:24` 裸 `rgba(239,68,68,0.08)` 待迁（改 `var(--red-bg)`，与既有 `--red-bg:rgba(220,38,38,0.1)` 同系近似；不碰引擎/路由/测试）。该处迁完且全局 `grep -rn "rgba(" webapp/templates/` 零命中后，C1 字面+全局双通过、UI-1 正式关闭。
+- **状态**：**✅ 已关闭**（2026-08-20 15:15 后 PM 重验，C1~C6 全过）。关键抓手：C1 用用户提醒的 `grep -rn "rgba(" webapp/templates/`（不带 `-v`）最终复核零命中，坐实并修复了 `-v var(--` 漏检坑（dashboard:24 裸 rgba 同行含 var(--red)）。UI-2（首屏拆分 /ops）、UI-3（系统化其余页）按序挂账待接力。
+
+## UI-2 首屏信息架构拆分：投资视图 + /ops 引擎研究视图（2026-08-20 立项，UiDesigner 提出，交前端/研发窗口执行）
+
+### 背景与动机
+- `dashboard.html` 首屏堆 7 卡：综合指数/市场状态/模拟盘（投资视图）+ 引擎状态 J-2/未来事件/数据健康/数据积累进度（研发遥测），普通用户被 J-2 三通道/信号族样本深度/去簇胜率淹没。与项目多 agent 治理呼应：投资者视图与引擎/研究视图应物理分离。
+- 遥测数据接口已存在：`/api/data/progress`（J-2 三通道/信号族样本深度/去簇胜率/重拟合触发）、`/api/health/status`、`/api/portfolio/dashboard`、`/api/paper/status`；`main.py` 现有 6 路由无 `/ops`。
+
+### 立项卡
+- **目标**：首屏改为 3 卡投资视图（综合指数+情绪 / 市场状态·该怎么做 / 模拟盘精简），新增 `/ops` 独立路由承载全部研发遥测；普通用户首屏路径零处出现 J-2/去簇术语。
+- **预注册判据**：
+  1. `dashboard.html` 首屏 7 卡 → 3 卡（删 4 张遥测卡，其"该怎么做"语义上移至市场状态卡作为主 CTA）。
+  2. 新增 `templates/ops.html`（复用 `base.html`）+ `main.py` `@app.get("/ops")` 路由（GET，渲染 ops.html；数据复用现有 `/api/data/progress` + `/api/health/status`，不新造接口）。
+  3. `base.html` 导航加"引擎/研究"项 → `/ops`（用既有 `.nav-link` token）。
+  4. 抽遥测为 `templates/partials/engine_telemetry.html` partial 供 `/ops` 复用（可选，降耦）。
+  5. 不动引擎/决策/信号族/守卫链/组合层；不 bump ENGINE_VERSION；不改数据接口逻辑（仅前端编排）。
+  6. 冒烟 131/0/0 不回退。
+- **验收标准**：
+  1. 首屏卡片 ≤ 3；首屏 `dashboard.html` + `app.js` grep 无 `J-2` / `去簇` / `信号族样本` 字样。
+  2. `/ops` 可独立访问，4 块遥测数据完整（对照 `/api/data/progress` 字段）。
+  3. 导航"引擎/研究"跳转正确、高亮正确。
+  4. 冒烟 131/0/0；`ENGINE_VERSION` 仍 `v2-T13`。
+- **红线**：同 UI-1；不把引擎/研究视图做成"新功能"，仅重排既有遥测。
+- **后续接力**：UI-3（系统化其余页面 token 化）。
+
+### PM 验收状态（2026-08-20 独立只读核验，⚠️ 已作废——2026-08-20 15:5x 用户实测否决，详见 v75 / decision-log UI-R）
+- **核验方式**：不采信执行窗口自述，独立读原始产物（dashboard.html 全卡结构 / ops.html + engine_telemetry.html 4 块遥测逐块核对 / main.py 路由与传参 / base.html 导航高亮逻辑 / 亲自重跑冒烟+编码 / ENGINE_VERSION 取值）。
+- **逐项结论（对照立项卡验收标准）**：
+  1. 首屏卡片 ≤ 3 + 术语零命中：**通过**。按立项卡 7 卡口径（综合指数/市场状态/模拟盘 + 4 遥测卡），首屏剩 3 区块：`market-index-block`（index_card 综合指数 + index_analysis 大盘分析明细）、市场状态·该怎么做（主 CTA 上移）、模拟盘精简；遥测 4 卡（引擎状态 J-2 / 未来事件 / 数据健康 / 数据积累进度）已物理移出 dashboard → 全部收进 `engine_telemetry.html` partial。`dashboard.html` + `app.js` grep `J-2`/`去簇`/`信号族样本` **零命中** ✅。
+  2. `/ops` 独立访问 + 4 块遥测完整：**通过**。`main.py:267 @app.get("/ops")` 渲染 ops.html（extends base.html，page-header + include engine_telemetry.html）；partial 内 4 块齐：引擎状态(J-2 监测) / 未来事件 / 数据健康 / 数据积累进度（内含 J-2 三通道 A/B/C、信号族样本深度 HIST-FULL/CLEAN-CUR、去簇对照、重拟合触发）；数据复用 `/api/data/progress` + `/api/health/status`，**零新造接口** ✅。
+  3. 导航跳转 + 高亮：**通过**。`base.html:57` 新增「引擎/研究」`href="/ops"` + `{% if active_page=='ops' %}class="active" aria-current="page"{% endif %}`；`/ops` 路由传 `active_page="ops"` ✅。
+  4. 冒烟/编码/版本：**通过**。PM 亲自重跑 **131 passed / 0 failed / 0 skipped**；encoding PASS；`ENGINE_VERSION` 仍 `v2-T13`（config.py:445 赋值确认）✅。
+- **口径备注（明示防歧义）**：首屏「≤3 卡」按立项卡自身的区块级口径计数（综合指数区块含 index_analysis 的大盘分析明细子卡——决策/四宫格/抛压/大盘阶段，均属投资视图既有内容，非 UI-2 引入、非遥测卡）；若按 HTML `.card` 元素级计数则远超 3，UI-3 阶段可作信息密度优化项。
+- **交付物**：commit `92eeb44`（UI-2 split dashboard 7→3 + /ops + engine_telemetry partial）；本状态文本 + decision-log 条目由 PM 落盘。
+- **状态**：**✅ 已关闭**（2026-08-20 15:35 后 PM 重验，标准 1~4 全过）。**UI-3 按序接力**。
+
+## UI-3 UI 系统化：其余整页 + partials token 化 + emoji 语义规范（2026-08-20 立项，UiDesigner 提出，交前端/研发窗口执行，挂账后续）
+
+### 背景与动机
+- UI-1/UI-2 覆盖 watchlist/checkup/dashboard 后，剩余：整页 discover(21/1/8)/replay(23/3)/search(9，btn-scan 重复)；partials analysis(86)/index_analysis(48)/analysis_results（被 report modal 复用）。问题与 UI-1 同源（内联/硬色/emoji），需统一收口。
+
+### 立项卡
+- **目标**：discover/replay/search 整页 + analysis/index_analysis/analysis_results partials 全面 token 化；落地 emoji 语义规范（图标型可保留，禁止 emoji 当唯一状态载体）。
+- **预注册判据**：
+  1. `discover.html` 批量扫描结果面板套统一 card/table token；`render_html.py` → `discover_html.html` partial 同步改。
+  2. `search.html` 删内联 `<style>` 重复 `.btn-scan` 定义，统一 `style.css`。
+  3. `analysis`/`index_analysis`/`analysis_results` partials 抽公共 partial + token 化；评级 S/A/B/C 用 badge（非 emoji+色块裸写）。
+  4. **emoji 语义规范**：图标型 emoji（🔍📊）作装饰可保留；**禁止 emoji 当唯一状态载体**（趋势📈/评级🔴须配文字或 `aria-label`）；或统一迁移 Lucide SVG。
+  5. `replay.html` 残留内联 token 化（低优先）。
+  6. 不动引擎；不 bump ENGINE_VERSION；冒烟 131/0/0。
+- **验收标准**：
+  1. 各页内联 `style=` 数较基线下降（discover 21→<10；search 9→0 重复定义消除；analysis 86→<30；index_analysis 48→<20）。
+  2. emoji 当唯一状态载体清零（grep 无无文字兜底的 📈/🔴 状态用法）。
+  3. 冒烟 131/0/0；`ENGINE_VERSION` 仍 `v2-T13`。
+- **红线**：同 UI-1/UI-2。
+- **执行顺序（登记）**：watchlist→checkup（UI-1）→ dashboard/ops（UI-2）→ discover→analysis→index_analysis→search→replay（UI-3）。
+
+### PM 验收状态（2026-08-20 独立只读核验，⚠️ 已作废——2026-08-20 15:5x 用户实测否决，详见 v75 / decision-log UI-R）
+- **核验方式**：不采信执行窗口自述，独立扫描各页内联 `style=` 计数（与立项基线对比）/ emoji 状态载体全局 grep / 评级 badge 落地 / discover_html partial 同步 / 裸 rgba 不回退复核 / 亲自重跑冒烟+编码 / ENGINE_VERSION 取值。
+- **逐项结论（对照立项卡验收标准）**：
+  1. 各页内联 `style=` 降幅：**全部达标**。discover 21→**1**（<10 ✅）、search 9→**0** 且内联 `<style>` 归零、`.btn-scan` 重复定义消除（统一到 style.css:330 唯一定义 ✅）、analysis 86→**11**（<30 ✅）、index_analysis 48→**7**（<20 ✅）、replay 23→**1**、analysis_results→**1**。残留 1~2 处均为合理动态样式（progress-fill 宽度 / JS 动态色 / rank_style 动态 rank 样式），非硬编码色值。
+  2. emoji 语义清零：**通过**。状态型 emoji（趋势 📈/📉/➖、评级 🔴🟢🟡）grep **零命中**（无文字兜底的状态 emoji 清零）；评级 S/A/B/C 已 badge 化——`.grade-s/a/b/c` 四档 token badge 落地（style.css:384-387，`--green-bg`/`--blue-bg` 等 token + `--blue-text`）；装饰型 emoji（🔍📊📡 等）按规范保留。
+  3. 冒烟/编码/版本：**通过**。PM 亲自重跑 **131 passed / 0 failed / 0 skipped**；encoding PASS；`ENGINE_VERSION` 仍 `v2-T13`（config.py:445 赋值确认）✅。
+- **附加核验**：裸 rgba 全局 `grep -rn "rgba(" webapp/templates/` **零命中**（UI-1 成果未回退）✅；`render_html.py` → `discover_html.html` partial 同步落地（内联 1 处动态样式）✅。
+- **交付物**：commit `7eb9d2a`（UI-3 systematize discover/search/replay + analysis partials，inline 86→11、52→7、emoji text fallback）；本状态文本 + decision-log 条目由 PM 落盘。
+- **状态**：**✅ 已关闭**（2026-08-20 15:48 后 PM 重验，标准 1~3 全过）。**UI-1/UI-2/UI-3 全部收官，UI 系列完结。**
+
+---
+
+## C1-UNIFY 三口径统一（2026-08-20 立项，②候选移交，交研发窗口执行）【⚠️ 已取消——2026-08-20 17:2x 用户方法论裁定，见 v79 / decision-log CN】
+
+### 背景与动机（PM 只读核查，已核实）
+- **候选来源**：decision-log CG 条目（②研究产出，完整方案细节保留）；commit `3a31bb1` 已按角色边界回滚生产代码（②只做研究、落地须 PM 立项→研发执行），回滚后 8 文件还原至 `b1d20a5` 状态、冒烟 131/0/0 复验。
+- **问题**：族划分三口径（引擎 SIGNAL_FAMILIES / config 展示键 / signal_guidance 关键词匹配）互不统一 → family_map 冲突清单 80 条 base 兜底（深值/吸筹型上涨误归 base），展示分类失真。
+- **当前现状（PM 独立核实）**：`SIGNAL_FAMILY_TAXONOMY` 细族 6、展示键 3（panic/deep_value/accumulate）；`signal_guidance` 用自身关键词匹配（未用 assign_fine_family）；`ENGINE_VERSION` 仍 `v2-T13`；pipeline/tests/webapp 工作区无未提交生产改动。
+
+### 立项卡
+- **目标**：三口径统一——`config.SIGNAL_FAMILY_TAXONOMY` 细族 6→14、展示键 3→8（panic/deep_value/accumulate/rise/longhold/oversold/base/weak_market），`signal_guidance` 改用 `assign_fine_family` 派生展示键，`base` 从 accumulate 独立；**纯展示层、零信号发射改动**，ENGINE_VERSION `v2-T13` 不变。本卡按 decision-log CG 条目方案落地（改动点 1~5 + 踩坑固化）。
+- **预注册判据（执行窗口必须先按此做，禁止先改再定判据）**：
+  1. **config.py**（唯一事实源）：`SIGNAL_FAMILY_TAXONOMY` 细族 6→14 = 引擎 `SIGNAL_FAMILIES` 11 族 + `base`（分批建仓=融合基础买点）+ `deep_dip`（深度回调低吸=P0 超跌）+ `weak_market`（弱市抗跌=历史遗留）；展示键 3→8（panic/deep_value/accumulate/rise/longhold/oversold/base/weak_market）；`base` 从 accumulate 独立（C1 前 accumulate=supply+deep_dip+base，C1 后不含 base）；fine_order 按关键字特异性排序、`分批建仓`最后兜底。
+  2. **batch_scan.py signal_guidance**：废除自身关键词匹配，改用 `assign_fine_family`→展示键；仅对 taxonomy 未识别的历史/通用标签（周期吸筹/超跌反弹）保留关键词兜底；补 deep_value/rise/weak_market 持有指引。
+  3. **sync_expectancy_config.py**：小样本组（n<5，如弱市抗跌 n≈2）跳过期望统计（无统计意义）——修复 C1 8 组下 render None 崩溃。
+  4. **连带数据重跑（4 处）**：`ITEM_EXPECTANCY_STATS`（HIST-FULL 4 组：panic 92 / deep_value 27 / accumulate 176 / base 22）+ `ITEM_EXPECTANCY_STATS_CLEAN_CUR` + `data/signal_event_counts.json`（J-3 进度卡）+ `data/portfolio_attribution.json`（8 组归因）。
+  5. **测试更新**（`tests/test_smoke.py` 2 处）：t_replay_source / t_data_progress 的硬编码 3 分组（恐慌/深值/else→accumulate）改用 `display_key_for_label`（单一事实源），小样本组同口径跳过。
+  6. **文档同步**：`references/terminology.md` / `AGENTS.md` 口径同步（C1 前 accumulate 含 base n=198 归因 +111.69pp；C1 后 accumulate 不含 base n=176 归因 +95.72pp、base 独立 22 条 +19.66pp）。
+  7. **禁令**：不改信号发射/决策/守卫链/组合层；不 bump ENGINE_VERSION；不写生产库；不回改 C1 前任何行为。
+  8. 冒烟不得回退：当前 **131 passed / 0 failed / 0 skipped**；`tests/check_encoding.py` PASS。
+- **验收标准（PM 对照 CG 条目验证节）**：
+  1. **冲突清零**：基线 374 信号中「深值/吸筹型上涨 误归 base」= 0（C1 前 deep_value→base、rise_accum→base 兜底）。
+  2. 新 signal_type 分布：panic 149 / accumulate 82 / deep_value 48 / base 64 / rise 29 / weak_market 2（基线 374 滤污染后）。
+  3. 冒烟 **131 passed / 0 failed / 0 skipped 不回退**；`check_encoding.py` PASS；`ENGINE_VERSION` 仍 `v2-T13`。
+  4. 模板零硬编码 signal_type（UI 安全）；4 处数据重跑产物与 CG 数字一致（HIST-FULL 4 组 n 值）；8 文件落地 + decision-log 落地条目 + commit；PM 对照本卡验收，不达标回炉。
+- **红线**：零信号发射改动；不 bump ENGINE_VERSION；不写生产库；不把 C1 与族划分重构/新信号族混入本卡。
+- **后续接力（登记，不并入本卡）**：C1 落地后，C2（rise_accum chg7 下限 3→10，证据最充分）可另行立项；C3/C4/C5 按 CE 闭环结论挂账（C1 外暂无新族落地项）。
+
+### PM 验收结论（2026-08-20 ✅ 通过，关闭）
+- **核验方式**：不采信执行窗口自述，独立只读核验原始产物（config.py taxonomy 直查 / signal_guidance 实现直读 / 独立对 374 基线信号重算分布 / base 组标签内容审计 / 4 处数据产物直查 / 亲自重跑冒烟+编码 / ENGINE_VERSION 取值）。
+- **逐项结论（对照本卡验收标准）**：
+  1. **冲突清零：通过**。独立用 `signal_guidance` 对 `_exp_cycle_replay_fullpool_2026.json` 377 信号滤污染 3 条（流金王朝×2/丁烷拍档×1）= 374 重算：base 组 64 条全部为「🟢 分批建仓」标签，含深值/吸筹/恐慌/涨 的冲突标签 **= 0**（C1 前 deep_value→base、rise_accum→base 兜底已消除）✅
+  2. **新分布 6 组：通过**。panic **149** / accumulate **82** / deep_value **48** / base **64** / rise **29** / weak_market **2**，合计 374、无未知键，与 CG 预注册逐项一致（longhold/oversold 当前基线 0 属数据现状）✅
+  3. **冒烟/编码/版本：通过**。PM 亲自重跑 **131 passed / 0 failed / 0 skipped**；encoding PASS；`ENGINE_VERSION` 仍 `v2-T13`（config.py:506 赋值确认）✅
+  4. **交付物：通过**。config 细族 14/展示键 8、signal_guidance 用 assign_fine_family（历史标签兜底）、sync 小样本跳过（n<5）、4 处数据产物直查一致（EXPECTANCY_STATS HIST-FULL panic 92/deep_value 27/accumulate 176/base 22 + CLEAN-CUR + 进度卡 + 归因）、test_smoke 2 处改 display_key_for_label、terminology/AGENTS 同步、commit `dd8c47c` 在库 ✅
+- **口径备注**：rise_contract（深收缩）/deep_dip（深度回调）映射到 accumulate 展示组为设计如此（terminology「accumulate 展示组 = supply_accum + deep_dip + rise_contract + volatile_accum + second_wave」），非误归。
+- **状态**：**✅ 已关闭**（2026-08-20 16:38 后 PM 重验，标准 1~4 全过）。**C2（rise_accum chg7 下限 3→10，证据最充分）按接力登记可另行立项**；C3/C4/C5 按 CE 闭环结论挂账。
+
+---
+
+## C2-RISE-ACCUM rise_accum 追涨腿收紧（chg7 下限 3→10）（2026-08-20 立项，②预注册草案移交，交②研究窗口执行）【⚠️ 已取消——②引擎独立全量证伪 chg7>10（decision-log CM），随旧路径一并取消，见 v79 / decision-log CN】
+
+### 背景与动机（PM 只读核查，已核实）
+- **候选来源**：decision-log CE 闭环（C2 为唯一独立落地候选）+ H3 验证（`_exp_h2h3_family_boundary_2026-08-20.json`）；②预注册草案已落盘 `references/c2-rise-accum-prereg-2026-08-20.md` + decision-log CK（commit `ee0c9ff`），本卡直接提取。
+- **当前现状（PM 独立核实）**：`pipeline/item_analysis.py:1262` rise_accum trigger 现为 `chg7 > 3`；上限 `_rise_chg7_cap()` 默认 15（item_analysis.py:1124）；TH≥55 环境门 / `supply_change_30d > 5` / `s7 ≤ 0.85*s30` / limit 0.05 / priority 28 / dedup 28 均在；`references/run_family_variant_replay.py` 注入机制在库；基线全池回放 `_exp_cycle_replay_fullpool_2026.json` 374 信号（滤污染 3 条）中 rise_accum **29 条**，chg7 分桶 ≤5:4 / 5<chg7≤10:11 / >10:14 与草案 H3 表一致。
+- **样本内证据（非结论）**：chg7 3~10 段 win 18.2% / avg −4.58（温和追涨陷阱）；>10 段 win 50% / avg +24.0（强势追涨段）。剔除 rise_accum 后全样本 win14 71.9%→75.1%；rise_accum 是唯一负中位数族（med14 −3.2）。
+
+### 立项卡
+- **目标**：研究 rise_accum 族 trigger 收紧为 `chg7 > 10` 后的全池回放表现——若四关通过则作为落地候选交③审计、PM 立项研发落地；**本卡仅研究，不落地**。候选锁定：只改 `chg7 > 3 → chg7 > 10`，上限 15 / TH≥55 / sc30>5 / s7≤0.85*s30 / limit / priority / dedup 等其余条件一律不动。
+- **预注册判据（②必须先按此做，禁止先跑再定判据）**：
+  1. **反过拟合声明（硬门槛）**：阈值 10 是 374 样本内按 chg7 分桶选出的候选（n=14 小样本），**只能作为候选阈值**；最终以四关 walk-forward 验证段（≥2025-08-10）为准——验证段 chg7>10 段不显著即**证伪**，不得以样本内数字辩护。
+  2. **回放口径**：复用 `references/run_family_variant_replay.py` 注入机制，**替换 rise_accum 的 trigger**（非新增族）：运行时注入 `chg7 > 10` 版 trigger 到 `SIGNAL_FAMILY_BY_KEY["rise_accum"]`，同步重建派生结构（BY_KEY / _POST_FAMILIES / 买涨腿循环）；池 = 232 品 3 年（同基线全池回放口径）；env：CS_ENGINE_PERIOD_ROUTE=1；输出独立文件 `data/_exp_c2_rise_accum_replay_2026-08-20.json`。不改 pipeline/ 任何生产代码。
+  3. **delta 清单（③硬验收，与 CE 同口径）**：①基线非 rise_accum 信号逐条字节一致（fwd/net 零漂移）——证明注入没污染其他族；②rise_accum 信号数变化 29 → N，列出 chg7 3~10 段被砍的 11 条明细；③displaced/relabeled：被砍信号是否被其他族重新捕获或彻底消失；④月度/单品分布（防单事件簇）。
+  4. **完整四关（沿用 CC 否决线）**：A2 发射分布复算（`a2_emission.analyze(变体, 基线, "吸筹型上涨", "rise_accum")`——added/displaced 是否改善买书质量，验证段 win14 ≥ 基线 book 78.9% 贡献方向正确、p_avg 显著）→ 组合级（`b1_risk_backtest_v2.py` simulate：期望/胜率 ≥ 基线、maxDD 不恶化）→ 前后半段一致（切点 2025-08-10，两段方向一致）→ 置换检验（chg7>10 段 win/avg 相对随机子集显著）。
+  5. **附加否决线（沿用 CC 预注册）**：单月信号占比 >50% 自动驳回。
+  6. 冒烟不得回退：当前 **131 passed / 0 failed / 0 skipped**；`tests/check_encoding.py` PASS。
+- **验收标准（PM 对照）**：
+  1. delta 清单 4 项齐全：零漂移（基线非 rise_accum 字节一致）+ 29→N + 被砍 11 条明细 + displaced/月度分布。
+  2. 完整四关逐关通过（A2 / 组合级 / 前后半段 / 置换），验证段（≥2025-08-10）chg7>10 显著；任一关不通过 = 证伪关闭，不替③改到通过。
+  3. 产物落 `data/_exp_c2_rise_accum_replay_2026-08-20.json` + decision-log 落地条目（正/负结果一律登记）+ commit；PM 对照本卡验收，不达标回炉。
+- **红线**：②只做研究——不落地生产代码、不改 pipeline/、不 bump ENGINE_VERSION、不写生产库；样本内只出候选；不替③"改到通过"；产物只写 `data/_exp_*.json`。
+- **后续接力（登记，不并入本卡）**：四关通过 → 候选交③审计 → PM 立落地卡交研发；证伪则关闭并登记。
+- **C3/C4/C5 排期结论（用户裁定 2026-08-20）**：C4（急跌型恐慌族）**已关闭不排期**——crash_vol 单月 100% 触 A2 否决线；C5（新老池）**已结论不排期**——不分池；C3（低吸按持有期重划）**不随 C2 排期**——C1 落地后 signal_guidance 已有 deep_value 21 日 / rise 14 日持有指引，核心主张被部分覆盖，剩余为展示层微调，视 PM 意愿单独评估或关闭。
+
+### PM 验收结论
+- （待②执行后对照本卡逐项验收）
+
+---
+
+## CQ-ADD-1 牛市上行段高选择性候选验证（2026-08-20 立项，CQ 差异表「该加 1」唯一候选，交②研究窗口执行）
+
+### 背景与动机（PM 只读核查，已核实）
+- **候选来源**：CQ 全链闭环（CP 预注册 → CQ 切分 → CR/CS ③审计 → CT 收尾，commit `7cd1f9f`）产出对照差异表 `_exp_optimal_partition_comparison_2026-08-20.json`——**「该加 1」= 牛市/强势上行段盲区**（PM 独立读产物确认：rise_accum verdict「该加（大盘上行段盲区，须高选择性；关联 CE bull_steady 证伪）」，unobserved_dims=[s7/s30 均值, market_th]）。
+- **前置证伪关联（硬约束）**：CE 已证伪朴素版（bull_steady 族开回放 added 13,279 条，avg14 +5.99 vs 基线买书 +25.07，win14 49.1% vs 78.9% → A2 发射复算 FAILED）——**「宽触发族」不可落地**；CQ 数据支撑（leaf11/12 供缩更强 + 事件 7 个最稳）仅初判，**须高选择性窄化使信号量级与买书可比**，否则直接复用 CE 证伪结论。
+- **切分数据背景**：CQ 切分 208,517 分析集 → 21 过 gate；牛市/强势上行 5 候选 49,421 条（大盘上行 mchg21>3.7~14.5 + 低波动 vol30≤82 + 供给收缩 sc30 −0.1~−10.8）；leaf8 n=27,677 超宽（窗口 72%）排除，leaf11/12 供缩更强、事件 7 个最稳。
+
+### 立项卡
+- **目标**：研究「牛市上行段高选择性窄化」候选族——若族开回放 + 完整四关通过，作为落地候选交③审计 → PM 立落地卡交研发；**本卡仅研究，不落地**。
+- **预注册判据（②必须先按此做，禁止先跑再定判据）**：
+  1. **高选择性窄化定义（候选锁定，跑前定死）**：以 CQ leaf11/12（供缩更强、事件 7 个最稳）为数据支撑，预注册窄化条件——须含大盘上行段（mchg21 上界）∩ 供给收缩（sc30 负区间）∩ 低波动（vol30 上界），并声明目标信号量级（与基线买书可比，参考 added 量级目标 ≤ 数百条而非万级）；窄化条件未预注册不得开跑。
+  2. **反过拟合声明（硬门槛）**：CQ 切分区域为样本内观察，窄化阈值仅作候选；最终以 walk-forward 验证段（≥2025-08-10）为准，验证段不显著即证伪，不得以样本内数字辩护。
+  3. **回放口径**：复用 `references/run_family_variant_replay.py` 注入机制（运行时注入新 trigger，非新增族属性改版；同步重建 BY_KEY/_POST_FAMILIES/买涨腿循环）；池 = 232 品 3 年（同基线全池回放口径）；env：CS_ENGINE_PERIOD_ROUTE=1；输出独立文件 `data/_exp_cq_add1_replay_2026-08-20.json`。不改 pipeline/ 生产代码。
+  4. **delta 清单（③硬验收，与 CE 同口径）**：①基线非新族信号逐条字节一致（fwd/net 零漂移）；②added 数量与量级声明对照（防宽触发——若 added 万级直接对齐 CE 证伪）；③displaced/relabeled；④月度/单品分布（防单事件簇）。
+  5. **完整四关（沿用 CC 否决线）**：A2 发射分布复算（`a2_emission.analyze(变体, 基线, ...)`——added 质量须与买书可比：val 段 win14 ≥ 基线 book 78.9% 贡献方向正确、p_avg 显著）→ 组合级（`b1_risk_backtest_v2.py` simulate：期望/胜率 ≥ 基线、maxDD 不恶化）→ 前后半段一致（切点 2025-08-10）→ 置换检验。
+  6. **附加否决线（沿用 CC 预注册）**：单月信号占比 >50% 自动驳回；**added 量级万级（≥10,000）自动对齐 CE bull_steady 证伪结论驳回**。
+  7. 冒烟不得回退：当前 **131 passed / 0 failed / 0 skipped**；`tests/check_encoding.py` PASS。
+- **验收标准（PM 对照）**：
+  1. 预注册窄化条件先行落盘（`references/cq-add1-prereg-2026-08-20.md` 或 decision-log 条目），未预注册即视为无效执行。
+  2. delta 清单 4 项齐全（零漂移 + added 量级 + displaced + 月度分布）；added 量级与买书可比（非万级）。
+  3. 完整四关逐关通过（A2 / 组合级 / 前后半段 / 置换），验证段显著；任一关不通过 = 证伪关闭。
+  4. 产物落 `data/_exp_cq_add1_replay_2026-08-20.json` + decision-log 落地条目（正/负一律登记）+ commit；PM 对照本卡验收，不达标回炉。
+- **红线**：②只做研究——不落地生产代码、不改 pipeline/、不 bump ENGINE_VERSION、不写生产库；样本内只出候选；不替③"改到通过"；产物只写 `data/_exp_*.json`。
+- **后续接力（登记，不并入本卡）**：四关通过 → 候选交③审计 → PM 立落地卡交研发；证伪则关闭登记。CQ 差异表「该留 3」（恐慌共振/恐慌退潮/深值企稳）登记衔接事件级验证（A 通道≥3，J-2 监测既有）；「待补 7」挂账等特征矩阵补扫（含 s7/s30 均值/sent/TH/dd20）后下一轮对照。
+- **遗留（登记，不阻塞）**：18:57 data 误删事件来源排查结果待④运维回填（CT 条目）。
+
+### PM 验收结论
+- （待②执行后对照本卡逐项验收）

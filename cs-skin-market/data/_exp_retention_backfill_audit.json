@@ -1,0 +1,1363 @@
+{
+ "meta": {
+  "task": "RETENTION-BACKFILL-APPLY",
+  "date": "2026-08-20 22:32:08",
+  "backup": "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\_ops_recovery_2026-08-20\\market.db.pre-backfill"
+ },
+ "expected_need_days": 213179,
+ "inserted_days": 213179,
+ "match_expected": true,
+ "before_rows": 62151,
+ "after_rows": 275330,
+ "delta_rows": 213179,
+ "overwrite_check_count": 62151,
+ "overwritten_existing": 0,
+ "failed_goods": 0,
+ "per_item": [
+  {
+   "good_id": 8,
+   "name": "Tec-9 | 冰冠 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 13,
+   "name": "MP9 | 生化泄漏 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 21,
+   "name": "USP 消音版 | 力矩 (崭新出厂)",
+   "inserted": 1073,
+   "need": 1073
+  },
+  {
+   "good_id": 24,
+   "name": "沙漠之鹰 | 锈蚀烈焰 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 26,
+   "name": "MP7 | 都市危机 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 28,
+   "name": "FN57 | 霸意大名 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 38,
+   "name": "AK-47 | 深海复仇 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 42,
+   "name": "AK-47 | 黑色层压板 (崭新出厂)",
+   "inserted": 1080,
+   "need": 1080
+  },
+  {
+   "good_id": 46,
+   "name": "AK-47 | 血腥运动 (崭新出厂)",
+   "inserted": 902,
+   "need": 902
+  },
+  {
+   "good_id": 50,
+   "name": "AK-47 | 蓝色层压板 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 55,
+   "name": "AK-47 | 卡特尔 (崭新出厂)",
+   "inserted": 813,
+   "need": 813
+  },
+  {
+   "good_id": 58,
+   "name": "AK-47 | 表面淬火 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 62,
+   "name": "AK-47 | 精英之作 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 67,
+   "name": "AK-47 | 翡翠细条纹 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 72,
+   "name": "AK-47 | 火蛇 (崭新出厂)",
+   "inserted": 1080,
+   "need": 1080
+  },
+  {
+   "good_id": 77,
+   "name": "AK-47 | 至高皮革 (崭新出厂)",
+   "inserted": 1080,
+   "need": 1080
+  },
+  {
+   "good_id": 82,
+   "name": "AK-47 | 前线迷雾 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 91,
+   "name": "AK-47 | 水栽竹 (崭新出厂)",
+   "inserted": 812,
+   "need": 812
+  },
+  {
+   "good_id": 111,
+   "name": "AK-47 | 霓虹革命 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 120,
+   "name": "AK-47 | 混沌点阵 (崭新出厂)",
+   "inserted": 1085,
+   "need": 1085
+  },
+  {
+   "good_id": 144,
+   "name": "AK-47 | 皇后 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 149,
+   "name": "AK-47 | 火神 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 175,
+   "name": "AUG | 变色龙 (崭新出厂)",
+   "inserted": 1083,
+   "need": 1083
+  },
+  {
+   "good_id": 237,
+   "name": "AWP | *嘣* (崭新出厂)",
+   "inserted": 1079,
+   "need": 1079
+  },
+  {
+   "good_id": 240,
+   "name": "AWP | 珊瑚树 (崭新出厂)",
+   "inserted": 817,
+   "need": 817
+  },
+  {
+   "good_id": 246,
+   "name": "AWP | 电子蜂巢 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 255,
+   "name": "AWP | 浮生如梦 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 259,
+   "name": "AWP | 石墨黑 (崭新出厂)",
+   "inserted": 902,
+   "need": 902
+  },
+  {
+   "good_id": 262,
+   "name": "AWP | 暴怒野兽 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 266,
+   "name": "AWP | 雷击 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 275,
+   "name": "AWP | 鬼退治 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 279,
+   "name": "AWP | 火卫一 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 284,
+   "name": "AWP | 粉红 DDPAT (崭新出厂)",
+   "inserted": 1080,
+   "need": 1080
+  },
+  {
+   "good_id": 433,
+   "name": "反恐精英武器箱",
+   "inserted": 1077,
+   "need": 1077
+  },
+  {
+   "good_id": 534,
+   "name": "沙漠之鹰 | 炽烈之炎 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 537,
+   "name": "沙漠之鹰 | 青铜装饰 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 541,
+   "name": "沙漠之鹰 | 钴蓝禁锢 (崭新出厂)",
+   "inserted": 1071,
+   "need": 1071
+  },
+  {
+   "good_id": 544,
+   "name": "沙漠之鹰 | 阴谋者 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 547,
+   "name": "沙漠之鹰 | 科林斯遗产 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 552,
+   "name": "沙漠之鹰 | 深红之网 (崭新出厂)",
+   "inserted": 1080,
+   "need": 1080
+  },
+  {
+   "good_id": 557,
+   "name": "沙漠之鹰 | 指挥 (崭新出厂)",
+   "inserted": 818,
+   "need": 818
+  },
+  {
+   "good_id": 561,
+   "name": "沙漠之鹰 | 黄金锦鲤 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 564,
+   "name": "沙漠之鹰 | 手上加农炮 (崭新出厂)",
+   "inserted": 1080,
+   "need": 1080
+  },
+  {
+   "good_id": 568,
+   "name": "沙漠之鹰 | 遗产 (崭新出厂)",
+   "inserted": 1080,
+   "need": 1080
+  },
+  {
+   "good_id": 572,
+   "name": "沙漠之鹰 | 蛊惑之色 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 574,
+   "name": "沙漠之鹰 | 大佬龙 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 578,
+   "name": "沙漠之鹰 | 陨星 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 582,
+   "name": "沙漠之鹰 | 午夜风暴 (崭新出厂)",
+   "inserted": 1077,
+   "need": 1077
+  },
+  {
+   "good_id": 590,
+   "name": "沙漠之鹰 | 纳迦蛇神 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 735,
+   "name": "法玛斯 | 残影 (崭新出厂)",
+   "inserted": 819,
+   "need": 819
+  },
+  {
+   "good_id": 739,
+   "name": "法玛斯 | 殖民侵略者 (崭新出厂)",
+   "inserted": 815,
+   "need": 815
+  },
+  {
+   "good_id": 749,
+   "name": "法玛斯 | 湖蓝涂装 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 754,
+   "name": "法玛斯 | 灯神 (崭新出厂)",
+   "inserted": 1080,
+   "need": 1080
+  },
+  {
+   "good_id": 760,
+   "name": "法玛斯 | 蓝巢 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 764,
+   "name": "法玛斯 | 死亡之舞 (崭新出厂)",
+   "inserted": 1080,
+   "need": 1080
+  },
+  {
+   "good_id": 769,
+   "name": "法玛斯 | 机械工业 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 774,
+   "name": "法玛斯 | 神经网 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 778,
+   "name": "法玛斯 | 电子脉冲 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 783,
+   "name": "法玛斯 | 防滚架 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 863,
+   "name": "FN57 | 神祗 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 994,
+   "name": "加利尔 AR | 水蓝阶地 (崭新出厂)",
+   "inserted": 1080,
+   "need": 1080
+  },
+  {
+   "good_id": 998,
+   "name": "加利尔 AR | 黑砂 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 1002,
+   "name": "加利尔 AR | 蓝钛 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 1004,
+   "name": "加利尔 AR | 地狱看门犬 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 1012,
+   "name": "加利尔 AR | 深红海啸 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 1021,
+   "name": "加利尔 AR | 火线冲锋 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 1026,
+   "name": "加利尔 AR | 隐蔽猎手 (崭新出厂)",
+   "inserted": 1047,
+   "need": 1047
+  },
+  {
+   "good_id": 1030,
+   "name": "加利尔 AR | 神祇 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 1039,
+   "name": "加利尔 AR | 火箭冰棒 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 1044,
+   "name": "加利尔 AR | 贤者涂装 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 1058,
+   "name": "加利尔 AR | 冷石 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 1089,
+   "name": "格洛克 18 型 | 蓝色裂纹 (崭新出厂)",
+   "inserted": 1080,
+   "need": 1080
+  },
+  {
+   "good_id": 1094,
+   "name": "格洛克 18 型 | 黄铜 (崭新出厂)",
+   "inserted": 1080,
+   "need": 1080
+  },
+  {
+   "good_id": 1099,
+   "name": "格洛克 18 型 | 本生灯 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 1102,
+   "name": "格洛克 18 型 | 红苹果 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 1106,
+   "name": "格洛克 18 型 | 亡者之寝 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 1114,
+   "name": "格洛克 18 型 | 黑龙纹身 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 1116,
+   "name": "格洛克 18 型 | 渐变之色 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 1118,
+   "name": "格洛克 18 型 | 粉碎者 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 1127,
+   "name": "格洛克 18 型 | 铁之作 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 1132,
+   "name": "格洛克 18 型 | 噩梦之夜 (崭新出厂)",
+   "inserted": 1080,
+   "need": 1080
+  },
+  {
+   "good_id": 1137,
+   "name": "格洛克 18 型 | 异星世界 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 1163,
+   "name": "格洛克 18 型 | 荒野反叛 (崭新出厂)",
+   "inserted": 1085,
+   "need": 1085
+  },
+  {
+   "good_id": 1168,
+   "name": "格洛克 18 型 | 水灵 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 1182,
+   "name": "手套武器箱",
+   "inserted": 1085,
+   "need": 1085
+  },
+  {
+   "good_id": 1196,
+   "name": "M4A1消音版 | 原子合金 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 1201,
+   "name": "M4A1消音版 | 翼蜥 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 1205,
+   "name": "M4A1消音版 | 血虎 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 1209,
+   "name": "M4A1消音版 | 北方森林 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 1214,
+   "name": "M4A1消音版 | 简报 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 1221,
+   "name": "M4A1消音版 | 女火神之炽焰 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 1226,
+   "name": "M4A1消音版 | 次时代 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 1233,
+   "name": "M4A1消音版 | 毁灭者 2000 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 1238,
+   "name": "M4A1消音版 | 闪回 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 1243,
+   "name": "M4A1消音版 | 金蛇缠绕 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 1251,
+   "name": "M4A1消音版 | 赤红新星 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 1254,
+   "name": "M4A1消音版 | 暴怒野兽 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 1258,
+   "name": "M4A1消音版 | 伊卡洛斯殒落 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 1262,
+   "name": "M4A1消音版 | 破碎铅秋 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 1272,
+   "name": "M4A1消音版 | 机械工业 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 1277,
+   "name": "M4A1消音版 | 氮化处理 (崭新出厂)",
+   "inserted": 1085,
+   "need": 1085
+  },
+  {
+   "good_id": 1287,
+   "name": "M4A4 | 二西莫夫 (久经沙场)",
+   "inserted": 1085,
+   "need": 1085
+  },
+  {
+   "good_id": 1290,
+   "name": "M4A4 | 弹雨 (崭新出厂)",
+   "inserted": 813,
+   "need": 813
+  },
+  {
+   "good_id": 1295,
+   "name": "M4A4 | 喧嚣杀戮 (崭新出厂)",
+   "inserted": 813,
+   "need": 813
+  },
+  {
+   "good_id": 1296,
+   "name": "M4A4 | 喧嚣杀戮 (久经沙场)",
+   "inserted": 1085,
+   "need": 1085
+  },
+  {
+   "good_id": 1297,
+   "name": "M4A4 | 喧嚣杀戮 (略有磨损)",
+   "inserted": 1085,
+   "need": 1085
+  },
+  {
+   "good_id": 1300,
+   "name": "M4A4 | 破晓 (崭新出厂)",
+   "inserted": 1080,
+   "need": 1080
+  },
+  {
+   "good_id": 1304,
+   "name": "M4A4 | 沙漠风暴 (崭新出厂)",
+   "inserted": 819,
+   "need": 819
+  },
+  {
+   "good_id": 1309,
+   "name": "M4A4 | 沙漠精英 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 1314,
+   "name": "M4A4 | 死寂空间 (崭新出厂)",
+   "inserted": 902,
+   "need": 902
+  },
+  {
+   "good_id": 1319,
+   "name": "M4A4 | 杀意大名 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 1323,
+   "name": "M4A4 | 渐变斑纹 (崭新出厂)",
+   "inserted": 1025,
+   "need": 1025
+  },
+  {
+   "good_id": 1328,
+   "name": "M4A4 | 狮鹫 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 1332,
+   "name": "M4A4 | 地狱烈焰 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 1349,
+   "name": "M4A4 | 波塞冬 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 1362,
+   "name": "M4A4 | 战场之星 (崭新出厂)",
+   "inserted": 1077,
+   "need": 1077
+  },
+  {
+   "good_id": 1376,
+   "name": "M4A4 | X 射线 (崭新出厂)",
+   "inserted": 1081,
+   "need": 1081
+  },
+  {
+   "good_id": 1384,
+   "name": "M4A4 | 龙王 (崭新出厂)",
+   "inserted": 1085,
+   "need": 1085
+  },
+  {
+   "good_id": 1496,
+   "name": "MP7 | 非洲部落 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 1500,
+   "name": "MP7 | 深蓝电镀处理 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 1503,
+   "name": "MP7 | 装甲核心 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 1508,
+   "name": "MP7 | 陆军斥候 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 1513,
+   "name": "MP7 | 星点 (崭新出厂)",
+   "inserted": 1080,
+   "need": 1080
+  },
+  {
+   "good_id": 1516,
+   "name": "MP7 | 卷云 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 1521,
+   "name": "MP7 | 森林 DDPAT (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 1526,
+   "name": "MP7 | 逮捕者 (崭新出厂)",
+   "inserted": 1078,
+   "need": 1078
+  },
+  {
+   "good_id": 1536,
+   "name": "MP7 | 硝烟 (崭新出厂)",
+   "inserted": 1071,
+   "need": 1071
+  },
+  {
+   "good_id": 1540,
+   "name": "MP7 | 帝国 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 1576,
+   "name": "MP9 | 气密 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 1588,
+   "name": "MP9 | 黑暗时代 (崭新出厂)",
+   "inserted": 1080,
+   "need": 1080
+  },
+  {
+   "good_id": 1591,
+   "name": "MP9 | 飞驰 (崭新出厂)",
+   "inserted": 1080,
+   "need": 1080
+  },
+  {
+   "good_id": 1595,
+   "name": "MP9 | 致命毒药 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 1605,
+   "name": "MP9 | 焦油缠绕 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 1610,
+   "name": "MP9 | 绿色格纹 (崭新出厂)",
+   "inserted": 1063,
+   "need": 1063
+  },
+  {
+   "good_id": 1614,
+   "name": "MP9 | 赤红新星 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 1616,
+   "name": "MP9 | 蛊惑之色 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 1619,
+   "name": "MP9 | 橘皮涂装 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 1623,
+   "name": "MP9 | 潘多拉魔盒 (崭新出厂)",
+   "inserted": 1080,
+   "need": 1080
+  },
+  {
+   "good_id": 1759,
+   "name": "P2000 | 银质 (崭新出厂)",
+   "inserted": 1077,
+   "need": 1077
+  },
+  {
+   "good_id": 2052,
+   "name": "PP-野牛 | 阿努比斯之审判 (崭新出厂)",
+   "inserted": 1083,
+   "need": 1083
+  },
+  {
+   "good_id": 2291,
+   "name": "SSG 08 | 无尽深海 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 2295,
+   "name": "SSG 08 | 渐变强酸 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 2297,
+   "name": "SSG 08 | 巨铁 (崭新出厂)",
+   "inserted": 1080,
+   "need": 1080
+  },
+  {
+   "good_id": 2301,
+   "name": "SSG 08 | 水中之血 (崭新出厂)",
+   "inserted": 819,
+   "need": 819
+  },
+  {
+   "good_id": 2305,
+   "name": "SSG 08 | 蓝色云杉 (崭新出厂)",
+   "inserted": 813,
+   "need": 813
+  },
+  {
+   "good_id": 2312,
+   "name": "SSG 08 | 鬼脸天蛾 (崭新出厂)",
+   "inserted": 1080,
+   "need": 1080
+  },
+  {
+   "good_id": 2316,
+   "name": "SSG 08 | 迂回路线 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 2321,
+   "name": "SSG 08 | 炎龙之焰 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 2322,
+   "name": "SSG 08 | 炎龙之焰 (久经沙场)",
+   "inserted": 1085,
+   "need": 1085
+  },
+  {
+   "good_id": 2323,
+   "name": "SSG 08 | 炎龙之焰 (略有磨损)",
+   "inserted": 1085,
+   "need": 1085
+  },
+  {
+   "good_id": 2326,
+   "name": "SSG 08 | 幽灵战士 (崭新出厂)",
+   "inserted": 1074,
+   "need": 1074
+  },
+  {
+   "good_id": 6355,
+   "name": "Tec-9 | 竹林 (崭新出厂)",
+   "inserted": 1085,
+   "need": 1085
+  },
+  {
+   "good_id": 6375,
+   "name": "Tec-9 | 燃料喷射器 (崭新出厂)",
+   "inserted": 1077,
+   "need": 1077
+  },
+  {
+   "good_id": 6530,
+   "name": "USP 消音版 | 蓝图 (崭新出厂)",
+   "inserted": 1083,
+   "need": 1083
+  },
+  {
+   "good_id": 6543,
+   "name": "USP 消音版 | 次时代 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 6554,
+   "name": "USP 消音版 | 守护者 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 6568,
+   "name": "USP 消音版 | 黑色魅影 (崭新出厂)",
+   "inserted": 1085,
+   "need": 1085
+  },
+  {
+   "good_id": 6620,
+   "name": "电竞 2013 冬季武器箱",
+   "inserted": 812,
+   "need": 812
+  },
+  {
+   "good_id": 6868,
+   "name": "驾驶手套（★） | 深红织物 (久经沙场)",
+   "inserted": 1085,
+   "need": 1085
+  },
+  {
+   "good_id": 7369,
+   "name": "摩托手套（★） | 清凉薄荷 (久经沙场)",
+   "inserted": 1085,
+   "need": 1085
+  },
+  {
+   "good_id": 7452,
+   "name": "专业手套（★） | 翠绿之网 (久经沙场)",
+   "inserted": 1085,
+   "need": 1085
+  },
+  {
+   "good_id": 7466,
+   "name": "运动手套（★） | 干旱 (久经沙场)",
+   "inserted": 1085,
+   "need": 1085
+  },
+  {
+   "good_id": 7470,
+   "name": "运动手套（★） | 树篱迷宫 (久经沙场)",
+   "inserted": 1070,
+   "need": 1070
+  },
+  {
+   "good_id": 8062,
+   "name": "AWP | 巨龙传说 (崭新出厂)",
+   "inserted": 1077,
+   "need": 1077
+  },
+  {
+   "good_id": 8118,
+   "name": "M4A4 | 黑色魅影 (崭新出厂)",
+   "inserted": 1085,
+   "need": 1085
+  },
+  {
+   "good_id": 8460,
+   "name": "AWP | 猫猫狗狗 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 8506,
+   "name": "M4A1消音版 | 梦魇 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 8566,
+   "name": "AK-47 | 霓虹骑士 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 9563,
+   "name": "AWP | 冥界之河 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 9583,
+   "name": "MP7 | 渐变之色 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 9612,
+   "name": "AK-47 | 安全网 (崭新出厂)",
+   "inserted": 1085,
+   "need": 1085
+  },
+  {
+   "good_id": 9655,
+   "name": "M4A1消音版 | 控制台 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 9839,
+   "name": "AK-47 | 二西莫夫 (崭新出厂)",
+   "inserted": 1077,
+   "need": 1077
+  },
+  {
+   "good_id": 10353,
+   "name": "FN57 | 怒氓 (崭新出厂)",
+   "inserted": 1077,
+   "need": 1077
+  },
+  {
+   "good_id": 10360,
+   "name": "沙漠之鹰 | 轻轨 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 10548,
+   "name": "M4A4 | 皇帝 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 11490,
+   "name": "M4A1消音版 | 苔藓石英 (崭新出厂)",
+   "inserted": 1077,
+   "need": 1077
+  },
+  {
+   "good_id": 11553,
+   "name": "沙漠之鹰 | 翡翠巨蟒 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 11661,
+   "name": "AK-47 | 巴洛克之紫 (崭新出厂)",
+   "inserted": 1077,
+   "need": 1077
+  },
+  {
+   "good_id": 11828,
+   "name": "AWP | 永恒之枪 (崭新出厂)",
+   "inserted": 1077,
+   "need": 1077
+  },
+  {
+   "good_id": 12196,
+   "name": "沙漠之鹰 | 蓝色层压板 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 12248,
+   "name": "AK-47 | 幻影破坏者 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 12260,
+   "name": "格洛克 18 型 | 子弹皇后 (崭新出厂)",
+   "inserted": 1077,
+   "need": 1077
+  },
+  {
+   "good_id": 12304,
+   "name": "M4A1消音版 | 二号玩家 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 12519,
+   "name": "沙漠之鹰 | 古铜密码 (崭新出厂)",
+   "inserted": 1085,
+   "need": 1085
+  },
+  {
+   "good_id": 12633,
+   "name": "FN57 | 蓝莓樱桃 (崭新出厂)",
+   "inserted": 1077,
+   "need": 1077
+  },
+  {
+   "good_id": 12659,
+   "name": "M4A4 | 全球攻势 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 12716,
+   "name": "USP 消音版 | 小绿怪 (崭新出厂)",
+   "inserted": 1077,
+   "need": 1077
+  },
+  {
+   "good_id": 12789,
+   "name": "AWP | 亡灵之主 (崭新出厂)",
+   "inserted": 1085,
+   "need": 1085
+  },
+  {
+   "good_id": 12800,
+   "name": "M4A1消音版 | 印花集 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 12832,
+   "name": "M4A4 | 赛博 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 12884,
+   "name": "沙漠之鹰 | 午夜凶匪 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 12919,
+   "name": "AWP | 锦虎 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 13031,
+   "name": "AK-47 | X 射线 (崭新出厂)",
+   "inserted": 812,
+   "need": 812
+  },
+  {
+   "good_id": 13198,
+   "name": "沙漠之鹰 | 后发制人 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 13263,
+   "name": "加利尔 AR | 迷人眼 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 13281,
+   "name": "USP 消音版 | 倒吊人 (崭新出厂)",
+   "inserted": 1077,
+   "need": 1077
+  },
+  {
+   "good_id": 13283,
+   "name": "M4A4 | 活色生香 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 13342,
+   "name": "沙漠之鹰 | 人造卫星 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 13363,
+   "name": "AK-47 | 抽象派 1337 (略有磨损)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 13365,
+   "name": "M4A4 | 合纵 (略有磨损)",
+   "inserted": 1085,
+   "need": 1085
+  },
+  {
+   "good_id": 13366,
+   "name": "M4A4 | 合纵 (久经沙场)",
+   "inserted": 1085,
+   "need": 1085
+  },
+  {
+   "good_id": 13373,
+   "name": "M4A4 | 合纵 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 13449,
+   "name": "M4A1消音版 | 气泡流行 (崭新出厂)",
+   "inserted": 1085,
+   "need": 1085
+  },
+  {
+   "good_id": 13463,
+   "name": "AWP | 复古流行 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 13493,
+   "name": "AK-47 | 抽象派 1337 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 13575,
+   "name": "AK-47 | 抽象派 1337 (久经沙场)",
+   "inserted": 1085,
+   "need": 1085
+  },
+  {
+   "good_id": 13623,
+   "name": "M4A4 | 彼岸花 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 13660,
+   "name": "USP 消音版 | 紫色 DDPAT (崭新出厂)",
+   "inserted": 1077,
+   "need": 1077
+  },
+  {
+   "good_id": 13691,
+   "name": "SSG 08 | 速度激情 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 13710,
+   "name": "MAC-10 | 表面淬火 (崭新出厂)",
+   "inserted": 1083,
+   "need": 1083
+  },
+  {
+   "good_id": 13812,
+   "name": "USP 消音版 | 银装素裹 (崭新出厂)",
+   "inserted": 816,
+   "need": 816
+  },
+  {
+   "good_id": 14712,
+   "name": "USP 消音版 | 地狱门票 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 14758,
+   "name": "MP9 | 星使 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 14771,
+   "name": "法玛斯 | 目皆转睛 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 16544,
+   "name": "格洛克 18 型 | 拉美西斯之触 (崭新出厂)",
+   "inserted": 811,
+   "need": 811
+  },
+  {
+   "good_id": 17243,
+   "name": "格洛克 18 型 | 伽玛多普勒 (崭新出厂)",
+   "inserted": 1014,
+   "need": 1014
+  },
+  {
+   "good_id": 19357,
+   "name": "AK-47 | 轨道 Mk01 (崭新出厂)",
+   "inserted": 650,
+   "need": 650
+  },
+  {
+   "good_id": 19364,
+   "name": "AWP | 精英之作 (崭新出厂)",
+   "inserted": 916,
+   "need": 916
+  },
+  {
+   "good_id": 20459,
+   "name": "AWP | CMYK (崭新出厂)",
+   "inserted": 313,
+   "need": 313
+  },
+  {
+   "good_id": 21726,
+   "name": "法玛斯 | 幻灭之旅 (崭新出厂)",
+   "inserted": 399,
+   "need": 399
+  },
+  {
+   "good_id": 22266,
+   "name": "XM1014 | 幽独 (崭新出厂)",
+   "inserted": 399,
+   "need": 399
+  },
+  {
+   "good_id": 23872,
+   "name": "AK-47 | 流金王朝 (崭新出厂)",
+   "inserted": 236,
+   "need": 236
+  },
+  {
+   "good_id": 24065,
+   "name": "挂件 | 丁烷拍档",
+   "inserted": 222,
+   "need": 222
+  }
+ ],
+ "ok": true
+}

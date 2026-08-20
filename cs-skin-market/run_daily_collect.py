@@ -522,7 +522,7 @@ def main():
     except Exception as e:
         log(f"大盘时期持久化异常（不中断采集）: {e}")
 
-    # 数据保留清理（365/1095/90/7 天 + VACUUM，口径 references/data-layer.md）
+    # 数据保留清理（price_history/market_index/monitor_events 1095 天、其余 365/90/7 天 + VACUUM，口径 references/data-layer.md）
     try:
         from pipeline.db import run_retention_cleanup
         _rc = run_retention_cleanup(vacuum=True)

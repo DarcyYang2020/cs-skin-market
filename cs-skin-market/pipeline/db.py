@@ -1370,8 +1370,12 @@ def item_history_start(conn, item_id):
 # ---- Cleanup ----
 
 
-# 数据保留策略（2026-08-09 落地，2026-08-16 大盘五时期更新，口径见 references/data-layer.md）：
-#   price_history / snapshots / monitor_events / market_snapshot 保留 365 天；
+# 数据保留策略（2026-08-09 落地，2026-08-16 大盘五时期更新，2026-08-20 price_history/monitor_events 放长至 3 年，口径见 references/data-layer.md，决策见 decision-log CV）：
+#   price_history 保留 1095 天（3 年）——2026-08-20 用户指令：与回放库 3 年窗口对齐，
+#     回放库重建/研究不再依赖联网回填（历史已从回放库回填，decision-log CV）；
+#   monitor_events 保留 1095 天（3 年）——2026-08-20 PM 裁定：监控事件为研究价值数据，
+#     J-2 A 通道/事件级验证依赖历史事件（decision-log CV）；
+#   snapshots / market_snapshot 保留 365 天；
 #   market_index 保留 1095 天（3 年）——五时期长周期轴 chg180 需 180 天回看 + 周期完整性
 #     （2026-08-16 一次性回填至 2023-11-17 起，见 references/backfill_market_index_3y.py）；
 #   scan_progress_*.json / discover_progress_*.json 等进度文件 7 天；scan_*.md 旧报告 90 天；
@@ -1380,10 +1384,10 @@ def item_history_start(conn, item_id):
 # 调用点：批量扫描收尾（webapp/main.py）与每日任务收尾（run_daily_collect.py）。
 # 纯运维动作，不触碰引擎参数；单表失败隔离，不影响其他表。
 _RETENTION_TABLE_DAYS = {
-    "price_history": 365,
+    "price_history": 1095,
     "snapshots": 365,   # date 为 YYYY-MM-DD HH:MM:SS，按日期部分比较
     "market_index": 1095,
-    "monitor_events": 365,
+    "monitor_events": 1095,   # 2026-08-20 PM 裁定：研究价值数据，防未来误删（decision-log CV）
     "market_snapshot": 365,   # 2026-08-13：全市场周度快照保留 365 天，控制研究型面板增长预算
 }
 _PROGRESS_FILE_GLOBS = ("scan_progress_*.json", "discover_progress_*.json")

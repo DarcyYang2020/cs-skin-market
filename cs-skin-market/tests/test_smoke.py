@@ -1165,8 +1165,12 @@ def t_period_boundary_recheck():
         assert len(rows) == 1, rows
         last = _J.loads(rows[-1])
         assert set(last["gaps"]) == {"2024-07-01", "2024-10-01", "2025-02-01", "2025-08-10"}, last
-        assert all(v is None or v <= 6.5 for v in last["gaps"].values()), last["gaps"]
-        assert last["note"] == "OK", last
+        # 2026-08-20 PM 裁定（decision-log CW）：note 允许 OK 或 WATCH（触警已登记台账即合法）；
+        # WARN_GAP=6.5 保持不动；OK 时 gap 必须全 ≤6.5（一致性校验，防脚本行为漂移）。
+        # note 取值：OK 或 "WATCH: gap>6.5pp"（period_boundary_recheck.py 文案，前缀匹配）。
+        assert last["note"] == "OK" or last["note"].startswith("WATCH"), last
+        if last["note"] == "OK":
+            assert all(v is None or v <= 6.5 for v in last["gaps"].values()), last["gaps"]
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 check('时期边界季度重验台账 模块 C', t_period_boundary_recheck)

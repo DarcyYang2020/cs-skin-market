@@ -9,9 +9,11 @@
 | # | 窗口 | 角色 | 拥有 | 产出物 | 开工必读 |
 |---|---|---|---|---|---|
 | ① | **产品经理** | 方向盘 | 立项/路线图/优先级/验收 | `iteration-roadmap.md`、立项卡 | AGENTS.md + decision-log |
-| ② | **研究+研发**（唯一长期） | 发动机 | 引擎/回测/探针/`pipeline`/`webapp` 代码 | 预注册探针、`_exp_*.json`、候选、落地代码、测试 | AGENTS.md + decision-log + terminology |
+| ② | **算法研究专家（研究+研发）**（唯一长期） | 发动机 | 引擎/回测/探针/`pipeline`/`webapp` 代码 | 预注册探针、`_exp_*.json`、候选、落地代码、测试 | AGENTS.md + decision-log + terminology + iteration-roadmap |
 | ③ | **审计**（独立） | 刹车 | 复核/证伪 | 审计报告、三关结论、置换检验 | 只读原始产物 + 预注册判据 |
 | ④ | **运维**（短任务/自动化） | 维持 | 采集/监控/备份 | 日报、J-2 告警、数据健康 | data-layer.md |
+
+> ②窗口由独立新会话承担，身份 = **算法研究专家（研究+研发）**；①PM 会话不兼任研究。开工 Prompt 见 `references/window-prompts.md` 窗口②。
 
 ## 二、三条铁律（架构红线，不可违背）
 
