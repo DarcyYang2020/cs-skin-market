@@ -8,6 +8,7 @@
 
 | 版本 | 日期 | 摘要 |
 |---|---|---|
+| v81 | 2026-08-21，PM 立项（用户需求），新增功能 | 新增 AUTH-1「用户登录门禁」立项卡——不登录仅可看大盘（/ 只读），其余 7 页面 + 39 API 需登录；单用户凭据走 .env 先例（G-1 同款 CS_MARKET_PASSWORD）；starlette SessionMiddleware（补 itsdangerous）+ 登录页 + 导航登录态；不动引擎/决策 |
 | v80 | 2026-08-20，PM 立项（CQ 差异表评估），研究预注册 | 新增 CQ-ADD-1「牛市上行段高选择性候选验证」立项卡——CQ 全链闭环（CP→CQ→CR/CS→CT，commit 7cd1f9f）差异表「该加 1」唯一候选；前置 CE bull_steady 证伪关联（宽触发稀释买书 A2 拒）；须预注册高选择性窄化判据，族开回放 + 完整四关 + ③审 |
 | v79 | 2026-08-20，用户方法论裁定，旧路径取消 | **族划分重构旧路径（C1–C5）整体取消**（decision-log CN，commit 1e9475f）：C1-UNIFY 回滚（taxonomy 14细族/8键→6细族/3键，8 文件还原 3a31bb1）、C2-RISE-ACCUM 取消（②引擎独立全量证伪 chg7>10，CM）、C3/C4/C5 确认关闭；理由=374 有偏样本旧产物被「完全重构」（引擎独立扫描）新方法取代；冒烟 131/0/0、ENGINE_VERSION v2-T13；研究窗口聚焦新路径 |
 | v78 | 2026-08-20，PM 立项（C2 候选移交），研究预注册 | 新增 C2-RISE-ACCUM「rise_accum 追涨腿收紧（chg7 下限 3→10）」立项卡——②预注册草案已备（references/c2-rise-accum-prereg-2026-08-20.md + decision-log CK，commit ee0c9ff）；样本内候选仅出研究，完整四关后交③审；验收=delta 零漂移 + 四关 + 附加否决线（⚠️ 2026-08-20 17:2x 已被 v79 取消——②引擎独立全量证伪，见 CM/CN） |
@@ -758,4 +759,52 @@
 - **遗留（登记，不阻塞）**：18:57 data 误删事件来源排查结果待④运维回填（CT 条目）。
 
 ### PM 验收结论
-- （待②执行后对照本卡逐项验收）
+- **（自主模式执行，非独立人类，可复核）CQ-ADD-1 证伪关闭**（decision-log DB，2026-08-21 01:33 执行完成）：
+  1. 预注册窄化条件先行落盘 ✓（`references/cq-add1-prereg-2026-08-20.md`）
+  2. delta 清单 4 项齐全，**net_drift=0**、added=463（新族 460，非万级，与买书可比量级声明一致）✓
+  3. 完整四关：**第一关 A2 FAILED**（val p_avg=1.0）、第二关新族独立组合 maxDD -70.65%（劣于基线 -30.85%）、第三关 val win14 44.7%<60 不可比、第四关置换 val p=1.0 不显著 → **任一不过即证伪关闭** ✗
+  4. 产物已落：回放/delta/3年重算基线 + decision-log DB 条目；提交待与当日工作一并处理
+- **验收结论**：不达标回炉 → **候选证伪，无落地卡**；CQ 差异表「该加 1」牛市上行段缺口维持未解（CE 朴素版 + CQ-ADD-1 窄化版双证伪），「待补 7」特征矩阵维度挂账为下一轮突破口。
+
+---
+
+## AUTH-1 用户登录门禁（2026-08-21 立项，用户需求，交研发窗口执行）
+
+### 背景与动机（PM 只读勘察，已核实）
+- **需求**：上线需要用户登录功能——不登录只能看大盘，其他功能需登录。
+- **现状**：8 页面路由（/ 大盘 /ops /search /watchlist /checkup /replay /discover）+ **39 个 /api 接口**，**零鉴权基础**（无 session/login/auth/cookie/password 痕迹）；依赖栈 FastAPI + Jinja2Templates，无 SessionMiddleware；单用户本机工具（run_server host=127.0.0.1:8000）；凭据环境变量化先例 = G-1（`API_TOKEN = os.environ.get("CSQAQ_API_TOKEN")`，.env 已存在）。
+- **技术前提（PM 已核实）**：`starlette.middleware.sessions.SessionMiddleware` 可用，但依赖 `itsdangerous` **未安装**（ModuleNotFoundError 实测）——需补装（唯一运行时新依赖）。
+
+### 立项卡
+- **目标**：加装登录门禁——**未登录仅可访问大盘页（/，只读）与登录页**；其余 7 页面（/ops /search /watchlist /checkup /replay /discover）+ 全部受保护 API 需登录。单用户（无注册），凭据环境变量化。**纯 webapp 层改动，不动引擎/决策/信号族。**
+- **预注册判据（研发必须先按此做，禁止先改再定判据）**：
+  1. **登录方案**：starlette `SessionMiddleware`（secret_key 从环境变量 `CS_MARKET_SESSION_SECRET` 读，未配置则生成随机临时 key 并告警）；登录态存 `request.session["auth"] = True`。
+  2. **凭据**：单用户密码 = 环境变量 `CS_MARKET_PASSWORD`（G-1 同款 .env 先例；未配置时登录接口拒绝并报错提示，同 collector 缺配置报错语义）。无注册/无多用户/无找回。
+  3. **登录页**：`templates/login.html`（复用 base.html 风格 token；表单 POST `/login` → 校验 → 成功写 session 跳回原页，失败提示）。登出 POST `/logout`（清 session）。
+  4. **访问控制**：未登录访问受保护页面 → 302 重定向 `/login?next=<原路径>`；受保护 API → 401 JSON（未登录）或 403（已登录但无权限——本卡无角色，403 不适用，统一 401）。**大盘页 / 与大盘只读 API 豁免**（见验收 4 清单）。
+  5. **导航**：base.html 导航显示登录态（未登录隐藏受保护入口或点击跳登录；已登录显示「退出」）。
+  6. **豁免清单（预注册，PM 裁定）**：`/`（大盘页）、`/login`、`/logout`、`/static/*`、`/favicon.ico` 豁免；**大盘只读 API 豁免**：`/api/market/signal`（大盘信号——「看大盘」核心）、`/api/data/progress`、`/api/health/status`、`/api/portfolio/dashboard`、`/api/paper/status`（dashboard 页渲染依赖，只读展示）；**写操作一律保护**：`/api/market/refresh`、`/api/items/*`、`/api/watchlist/*`、`/api/backup/*`、`/api/discover/*`、`/api/analysis/*`、`/api/executions/*` 等。豁免清单以实际页面渲染依赖为准，研发实现时逐路由核对并登记。
+  7. **安全底线**：密码比对用 `hmac.compare_digest`（防时序）；session cookie `httponly=True`（SessionMiddleware 默认）；明文密码不落库（环境变量只在进程内）。
+  8. **禁令**：不改引擎/决策/信号族/守卫链/组合层；不 bump ENGINE_VERSION；不改 `pipeline/` 核心逻辑；登录不影响采集/回放/计划任务（后台任务不经 web 鉴权）。
+  9. 冒烟不得回退：当前 **131 passed / 0 failed / 0 skipped**；`tests/check_encoding.py` PASS。
+- **验收标准（PM 对照）**：
+  1. **未登录**：`curl /` → 200（大盘可看）；`curl /watchlist` → 302 到 /login；`curl /api/watchlist/executions` → 401；`curl /api/market/signal` → 200（豁免）。
+  2. **已登录**（cookie 会话）：`curl -c cookies -b cookies` 登录流程 → 全部页面 200、受保护 API 200。
+  3. 错误密码 → 401/拒绝且不写 session；登出后受保护页恢复 302。
+  4. 豁免清单逐项核对：大盘只读 5 API 未登录 200；写 API（market/refresh 等）未登录 401。
+  5. 冒烟 **131 passed / 0 failed / 0 skipped 不回退**；`check_encoding.py` PASS；`ENGINE_VERSION` 仍 `v2-T13`。
+  6. 交付物：main.py 鉴权改动 + login.html + 导航改动 + .env 样例（CS_MARKET_PASSWORD 说明，**不提交真实密码**）+ decision-log 落地条目 + commit；PM 对照本卡验收，不达标回炉。
+- **红线**：不动引擎/决策/测试/基线；不 bump ENGINE_VERSION；凭据不提交代码库；登录功能不引入多用户/注册体系（本卡仅单用户门禁）。
+- **后续接力（登记，不并入本卡）**：如需局域网访问（改 host 绑定 0.0.0.0）或 HTTPS/更强安全，另行立项。
+
+### PM 验收结论（2026-08-21 ✅ 代码通过；⚠️ 部署缺口 1 项待运维配置后闭环）
+- **核验方式**：不采信自述，独立 curl 实测运行中服务器 + TestClient 带 env 复现完整登录流程（未登录/错误密码/正确密码/登出/豁免清单）+ 亲自重跑冒烟+编码 + 读鉴权代码（_safe_next/hmac/session）+ ENGINE_VERSION 取值。
+- **逐项结论（对照本卡验收标准）**：
+  1. 未登录：`/` 200、`/login` 200、6 受保护页面全 302→`/login?next=`、受保护 API 全 401 ✅（curl 实测）
+  2. 已登录：TestClient 带 `CS_MARKET_PASSWORD` 注入复现——POST /login 302 + **httponly cookie**、6 页面全 200、受保护 API 200 ✅
+  3. 错误密码 401 且不写 session（后续仍 302）；登出后恢复 302 ✅
+  4. 豁免清单：5 只读 API 未登录 200（market/signal、data/progress、health/status、portfolio/dashboard、paper/status）；写 API 401 ✅
+  5. 冒烟 **131 passed / 0 failed / 0 skipped**（PM 重跑）；encoding PASS；`ENGINE_VERSION` 仍 `v2-T13`（config.py:445）✅
+  6. 交付物：commit `5b621a4` + login.html + base.html 登录态 + requirements（itsdangerous==2.2.0）+ .env.example（不含真实密码）+ decision-log CY ✅；`_safe_next` 防 open redirect ✅；hmac.compare_digest ✅
+- **⚠️ 部署缺口（唯一未闭环项）**：当前运行中服务器进程（PID 10580）env **未配置 `CS_MARKET_PASSWORD`** → `POST /login` 返回 500（设计内「未配置提示」行为，同 collector 缺配置语义；非代码 bug）。**待运维在 .env 配置 CS_MARKET_PASSWORD + CS_MARKET_SESSION_SECRET 后重启服务器**，登录即可用；配置后 PM 复测 POST /login 302 即闭环。
+- **状态**：**代码验收通过；部署配置待运维（配置密码 + 重启）后闭环。**

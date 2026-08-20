@@ -1795,3 +1795,37 @@
 - **一处顺带修复**：`data/j2_channel_status.json` 跨日 stale（8/20 生成 value_days=13，8/21 测试期望 14）导致 t_j2_channel_status 失败——重跑 `references/j2_channel_monitor.py` 刷新至当日，与 AUTH 无关。
 - **禁令遵守**：不动引擎/决策/信号族/守卫链/组合层；不 bump ENGINE_VERSION；未改 pipeline/ 核心逻辑（密码/session 读取均在 webapp 层）；凭据不落代码库；登录不影响采集/回放/计划任务（后台任务不经 web 鉴权）。
 - **状态**：待 PM 对照 roadmap v81 AUTH-1 卡验收（未登录/已登录/错误密码/豁免清单逐项 + 冒烟 131/0/0）。
+
+## CZ. AUTH-1 验收：代码通过，部署配置缺口待闭环（2026-08-21 01:49 后，①PM 独立核验）
+
+- **核验方式**：不采信自述——独立 curl 实测运行中服务器 + TestClient 带 env 复现完整登录流程 + 亲自重跑冒烟+编码 + 读鉴权代码 + ENGINE_VERSION 取值。
+- **逐项结果（对照 roadmap v81 AUTH-1 卡）**：
+  1. 未登录 curl 实测：`/` 200、`/login` 200、6 受保护页面（watchlist/search/checkup/replay/discover/ops）全 302→`/login?next=`、受保护 API（executions/backup/list/analysis/results/discover/latest/items/analyze）全 401 ✅
+  2. 已登录 TestClient 复现（env 注入 CS_MARKET_PASSWORD）：POST /login 302 + Set-Cookie httponly=True、6 页面全 200、受保护 API 200 ✅
+  3. 错误密码 401 且不写 session；登出后恢复 302 ✅
+  4. 豁免 5 只读 API 未登录 200；写 API 401 ✅
+  5. 冒烟 **131 passed / 0 failed / 0 skipped**（PM 重跑）、encoding PASS、ENGINE_VERSION 仍 v2-T13（config.py:445）✅
+  6. 交付物：commit `5b621a4`、login.html、base.html 登录态、requirements（itsdangerous==2.2.0）、.env.example（无真实密码）、`_safe_next` 防 open redirect、hmac.compare_digest ✅
+- **⚠️ 部署缺口（唯一未闭环）**：运行中服务器进程（PID 10580）env 未配置 `CS_MARKET_PASSWORD` → POST /login 500（设计内未配置提示，非代码 bug）。**处置**：运维在 .env 配置 `CS_MARKET_PASSWORD` + `CS_MARKET_SESSION_SECRET` 后重启服务器；PM 复测 POST /login 302 即闭环。
+- **状态**：代码验收通过；部署配置待运维闭环后 AUTH-1 正式关闭。
+
+## DA. AUTH-1 部署配置闭环：正式关闭（2026-08-21 01:51，①PM 复测）
+
+- **背景**：CZ 验收发现唯一缺口 = 服务器进程 env 未配 `CS_MARKET_PASSWORD` → POST /login 500。用户已配置密码（.env CS_MARKET_PASSWORD），服务器已生效。
+- **PM 复测（curl 实测）**：POST /login 正确密码 → **302** + Set-Cookie `cs_market_session`（httponly + samesite=lax + Max-Age 14 天）；错误密码 → **401**；登录后 cookie 会话 /watchlist → **200**。全链路可用。
+- **状态**：**AUTH-1 正式关闭**（roadmap v81 卡验收节 → 已闭环）。后续如需局域网访问/HTTPS 另立卡。
+
+## DB. CQ-ADD-1 执行结果：高选择性窄化证伪关闭（2026-08-21 01:33，②研究窗口执行，自主模式，可复核）
+
+- **执行链路（含两次数据/脚本修复）**：第5轮回放有效（00:04，838 信号/新族460/0错误）→ 发现旧基线数据版本错配（20:43 早于 23:36 3年回填，matched 漂移 103）→ 用当前 3 年库重算干净基线（01:33 完成，376 信号）→ 修复四关脚本 b1 字段适配 bug → 干净 delta + 完整四关。
+- **干净 delta（net_drift=0 达标）**：baseline 376 / fam_on 838 / **added=463**（新族 460 + 伪 knock-on 3，见注记）/ displaced=1 / matched=375 / **net_drift=0 ✓** / relabeled=0；最大月 2024-02 n=188 pct=40.9%（<50% 不触驳回）；added<10,000 不触自动驳回。新族分段：fit n=290 win14=61.0% avg14=+3.11｜val n=170 win14=44.7% avg14=+5.38；基线 book：fit n=115 win14=55.7% avg14=+1.99｜val n=261 win14=82.4% avg14=+26.55。
+- **完整四关（对照预注册 cq-add1-prereg §三/roadmap CQ-ADD-1 验收节）**：
+  1. **A2 发射复算**（n_iter=500 seed=42）：fit p_avg=0.052（边缘）｜**val p_avg=1.0 p_win=1.0**；gates：val_avg14_excess≥2pp / val_win14≥book / fit_val_direction / p_avg<0.05 全 False → **FAILED**。
+  2. **组合级**（b1 simulate）：基线全信号 1510.87%/-30.85%maxDD｜族开全信号 1948.94%/-58.43%｜**新族 added 411.52%/-70.65%** → 新族独立组合风险收益显著劣于基线（maxDD 恶化 2.3×）。
+  3. **前后半段一致**：新族 fit win14 61.0% → val win14 44.7%（大幅回落），val avg14 +5.38 vs book val +26.55 → **与 book 不可比（win14<60）**。
+  4. **置换检验**：**val 段 p_avg=1.0 → 验证段不显著**。
+- **判定（预注册硬判据）**：①added=463<10,000 不触驳回；②单月 40.9%<50% 不触驳回；③**验证段（≥2025-08-10）不显著 → 证伪**；④**四关任一不过 → 关闭**（第一/三/四关 FAILED，第二关风险收益劣化）。**结论：CQ-ADD-1 证伪关闭，无落地候选。**
+- **解读**：fit 段表面优势（win14 61%、2024-02 集中 40.9%）为单一强势月簇效应，验证段不成立；与 CE bull_steady 朴素版证伪（宽触发 13,279 条稀释）互相印证——**牛市上行段盲区两种解法均证伪，该缺口维持未解**（「待补 7」特征矩阵维度或为下一轮突破口，挂账不动）。
+- **数据质量注记（不改变结论）**：基线重算 2 品报错 `attempt to write a readonly database`（FN57 霸意大名 / M4A4 合纵，220 品中仅 2 品）→ delta 的 knock-on=3 实为这 2 品基线缺失所致（3 条信号全来自这 2 品），非注入效应；验证段证伪由数百信号驱动，不受影响。如需 100% 基线可另立小卡查 runner 只读写问题。
+- **交接（自主执行、非独立人类、可复核）**：①PM 验收 → CQ-ADD-1 关闭（roadmap 卡收口）；②研发无落地事项（候选已证伪）；③如需复核本结论，产物齐备：`data/_exp_cq_add1_replay_2026-08-20.json`、`data/_exp_cycle_replay_fullpool_2026.json`（3年口径重算）、`data/_exp_cq_add1_delta_2026-08-20.json`、四关日志 `/tmp/cq_add1_four_gates.log`；旧基线备份 `_exp_cycle_replay_fullpool_2026_old365_2026-08-20.json`。
+- **状态**：CQ-ADD-1 **关闭（证伪）**；roadmap v80 卡验收节已同步。

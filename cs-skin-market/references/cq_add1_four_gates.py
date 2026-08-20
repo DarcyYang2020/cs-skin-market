@@ -61,6 +61,21 @@ print("=" * 60)
 res = a2_emission.analyze(str(FAM), str(BASE), NEW_LABEL, "cq_add1", n_iter=500, seed=42, regime="all")
 a2_emission.print_report(res)
 
+def to_b1(recs):
+    """把族开回放信号适配为 b1.simulate 所需结构（date 转 date 对象/entry/limit/fwd/prio）。"""
+    out = []
+    for s in recs:
+        out.append({
+            "date": date.fromisoformat(s["date"]),
+            "entry": s["entry_price"],
+            "limit": s.get("position_limit") or 0.0,
+            "fwd": s.get("fwd_series") or [],
+            "net14": s.get("net14"),
+            "prio": b1.PRIORITY.get(b1.classify(s.get("action_label")), 1),
+        })
+    return out
+
+
 print()
 print("=" * 60)
 print("第二关：组合级（b1_risk_backtest_v2.simulate）")
@@ -69,9 +84,11 @@ for tag, recs in [("基线(全信号)", base), ("族开(全信号)", fam), ("新
     if not recs:
         print(f"{tag}: 无信号")
         continue
-    r = b1.simulate(recs)
-    print(f"{tag}: n={len(recs)} total_return={r.get('total_return_pct')}% maxDD={r.get('max_dd_pct')}% "
-          f"realized={r.get('realized_return_pct')}% wins={r.get('wins')}/{r.get('closed_count')}")
+    sim = b1.simulate(to_b1(recs))
+    m = b1.metrics(sim)
+    wins = sum(1 for c in sim["closed"] if c > 0)
+    print(f"{tag}: n={len(recs)} total_return={m['total_return_pct']}% maxDD={m['max_drawdown_pct']}% "
+          f"wins={wins}/{sim['n_trades']}")
 
 print()
 print("=" * 60)
