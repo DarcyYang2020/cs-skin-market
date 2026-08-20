@@ -50,6 +50,7 @@
   --purple-bg: rgba(124,58,237,0.1);
   --purple-border: rgba(124,58,237,0.3);
   --blue: #2563EB;
+  --blue-text: #1D4ED8;
   --blue-bg: rgba(37,99,235,0.1);
   --blue-border: rgba(37,99,235,0.3);
   --orange: #C2410C;
@@ -367,14 +368,14 @@ tbody tr:hover td { background: var(--bg-hover); }
   border: 1px solid transparent;
 }
 .badge-s { background: var(--green-bg); border-color: var(--green-border); color: var(--green); }
-.badge-a { background: var(--blue-bg); border-color: var(--blue-border); color: var(--blue); }
+.badge-a { background: var(--blue-bg); border-color: var(--blue-border); color: var(--blue-text); }
 .badge-b { background: var(--yellow-bg); border-color: var(--yellow-border); color: var(--yellow); }
 .badge-c { background: var(--red-bg); border-color: var(--red-border); color: var(--red); }
 .badge-unknown { background: var(--bg-elevated); border-color: var(--border); color: var(--text-secondary); }
 
 /* discover grade badges */
 .grade-s { display:inline-block; padding: 2px 8px; border-radius: var(--radius-full); font-size: 11px; font-weight: 700; background: var(--green-bg); border: 1px solid var(--green-border); color: var(--green); }
-.grade-a { display:inline-block; padding: 2px 8px; border-radius: var(--radius-full); font-size: 11px; font-weight: 700; background: var(--blue-bg); border: 1px solid var(--blue-border); color: var(--blue); }
+.grade-a { display:inline-block; padding: 2px 8px; border-radius: var(--radius-full); font-size: 11px; font-weight: 700; background: var(--blue-bg); border: 1px solid var(--blue-border); color: var(--blue-text); }
 .grade-b { display:inline-block; padding: 2px 8px; border-radius: var(--radius-full); font-size: 11px; font-weight: 700; background: var(--yellow-bg); border: 1px solid var(--yellow-border); color: var(--yellow); }
 .grade-c { display:inline-block; padding: 2px 8px; border-radius: var(--radius-full); font-size: 11px; font-weight: 700; background: var(--red-bg); border: 1px solid var(--red-border); color: var(--red); }
 .grade-z { display:inline-block; padding: 2px 8px; border-radius: var(--radius-full); font-size: 11px; font-weight: 700; background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-secondary); }
@@ -388,7 +389,7 @@ tbody tr:hover td { background: var(--bg-hover); }
 .regime-greedy { background: var(--red-bg); border-color: var(--red-border); color: var(--red); }
 .regime-p { background: var(--purple-bg); border-color: var(--purple-border); color: var(--purple); }
 .regime-s1 { background: var(--green-bg); border-color: var(--green-border); color: var(--green); }
-.regime-s2 { background: var(--blue-bg); border-color: var(--blue-border); color: var(--blue); }
+.regime-s2 { background: var(--blue-bg); border-color: var(--blue-border); color: var(--blue-text); }
 .regime-s3 { background: var(--red-bg); border-color: var(--red-border); color: var(--red); }
 .regime-s4 { background: var(--orange-bg); border-color: var(--orange-border); color: var(--orange); }
 
@@ -483,13 +484,13 @@ tbody tr:hover td { background: var(--bg-hover); }
 }
 .toast-success { background: var(--green-bg); border-color: var(--green-border); color: var(--green); }
 .toast-error { background: var(--red-bg); border-color: var(--red-border); color: var(--red); }
-.toast-info { background: var(--blue-bg); border-color: var(--blue-border); color: var(--blue); }
+.toast-info { background: var(--blue-bg); border-color: var(--blue-border); color: var(--blue-text); }
 
 /* ============================ Flash / empty state ============================ */
 .flash-msg { padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13px; margin-bottom: var(--space-3); border: 1px solid; }
 .flash-success { background: var(--green-bg); border-color: var(--green-border); color: var(--green); }
 .flash-error { background: var(--red-bg); border-color: var(--red-border); color: var(--red); }
-.flash-info { background: var(--blue-bg); border-color: var(--blue-border); color: var(--blue); }
+.flash-info { background: var(--blue-bg); border-color: var(--blue-border); color: var(--blue-text); }
 
 .empty-state { text-align: center; padding: var(--space-8) var(--space-4); color: var(--text-muted); }
 .empty-state .icon { font-size: 30px; opacity: 0.6; margin-bottom: var(--space-2); }
