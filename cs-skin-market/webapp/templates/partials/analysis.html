@@ -1,15 +1,15 @@
 {% if error %}
-<div class="card card-red-border">
+<div class="card" style="border-color: rgba(239,68,68,0.5);">
   <div class="card-header"><span class="card-title">⚠️ 分析失败</span></div>
-  <p class="red">{{ error }}</p>
+  <p style="color: var(--red);">{{ error }}</p>
 </div>
 {% else %}
 {# ====== 物品名称 ====== #}
 {% if name %}
-<div class="head-row">
-  <span class="head-name">{{ name }}</span>
-  <div class="head-actions">
-    {% if price_rmb %}<span class="text-14 muted">当前价 ¥{{ "%.2f"|format(price_rmb) }}</span>{% endif %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+  <span style="font-size:20px;font-weight:800;color:var(--text-primary);">{{ name }}</span>
+  <div style="display:flex;align-items:center;gap:10px;">
+    {% if price_rmb %}<span style="font-size:14px;color:var(--text-muted);">当前价 ¥{{ "%.2f"|format(price_rmb) }}</span>{% endif %}
     {% if in_watchlist is defined and not in_watchlist %}
     <button class="btn btn-xs btn-outline" data-name="{{ name }}" onclick="addToWatchlist(this.getAttribute('data-name'), this)" title="加入自选监控">➕ 加入自选</button>
     {% endif %}
@@ -17,50 +17,50 @@
 </div>
 {% endif %}
 {% if kline_stale_days is defined and kline_stale_days is not none %}
-<div class="card analysis-card-warn">
-  <div class="card-header card-header-compact">
-    <span class="text-14 fw-700 text-amber">⚠️ csQAQ 图表采集失败，已用数据库缓存K线</span>
+<div class="card" style="border-color: rgba(245,158,11,0.5);margin-bottom:12px;">
+  <div class="card-header" style="padding:10px 14px;">
+    <span style="font-size:14px;font-weight:700;color:var(--yellow);">⚠️ csQAQ 图表采集失败，已用数据库缓存K线</span>
   </div>
-  <div class="detail-text pad-x">数据截至 {{ kline_stale_date }}（过期 {{ kline_stale_days }} 天），仅供参考，建议稍后重新分析。</div>
+  <div style="padding:8px 14px;font-size:12px;color:var(--text-secondary);">数据截至 {{ kline_stale_date }}（过期 {{ kline_stale_days }} 天），仅供参考，建议稍后重新分析。</div>
 </div>
 {% elif collected_at is defined and collected_at %}
-<div class="analysis-sub">数据采集于 {{ collected_at }}</div>
+<div style="font-size:12px;color:var(--text-muted);margin:-4px 0 12px;">数据采集于 {{ collected_at }}</div>
 {% endif %}
 {# ====== 决策条 ====== #}
 {% if fusion_decision and fusion_decision.action %}
 <div class="card" style="border:2px solid {% if fusion_decision.action == 'buy' %}var(--green){% elif fusion_decision.action in ('sell','avoid') %}var(--red){% elif fusion_decision.action == 'reduce' %}var(--yellow){% else %}var(--border){% endif %};margin-bottom:12px;">
-  <div class="card-header card-header-compact">
+  <div class="card-header" style="padding:10px 14px;">
     <span style="font-size:22px;font-weight:800;color:{% if fusion_decision.action == 'buy' %}var(--green){% elif fusion_decision.action in ('sell','avoid') %}var(--red){% elif fusion_decision.action == 'reduce' %}var(--yellow){% else %}var(--text-primary){% endif %};">
       {{ fusion_decision.action_label }}
     </span>
-    <span class="text-14 muted ml-8">{{ fusion_decision.zone_label }}</span>
+    <span style="font-size:14px;color:var(--text-muted);margin-left:8px;">{{ fusion_decision.zone_label }}</span>
     {% if fusion_decision.state_bucket %}
-    <span class="text-12 muted ml-8">市场状态</span>
+    <span style="font-size:12px;color:var(--text-muted);margin-left:8px;">市场状态</span>
     <span class="regime-badge {{ {'P恐慌深跌':'regime-p','S1牛市上行':'regime-s1','S2牛市回调':'regime-s2','S3弱市阴跌':'regime-s3','S4弱市反弹':'regime-s4','贪婪禁入':'regime-greedy'}.get(fusion_decision.state_bucket, '') }}">{{ fusion_decision.state_bucket }}</span>
     {% endif %}
     {# 2026-08-12: 期望徽章（全局族 + regime 分层）已抽离为仪表盘常驻卡片 market_expectancy_card #}
   </div>
   {% if fusion_decision.action_detail %}
-  <div class="decision-detail">
+  <div style="padding:8px 14px;font-size:13px;line-height:1.5;color:var(--text-secondary);">
     {{ fusion_decision.action_detail }}
   </div>
   {% endif %}
   {% if fusion_decision.research_caveats %}
-  <div class="analysis-amber-note">
-    <div class="caveat-head">研究口径提示（仅标注，不改变决策）</div>
+  <div style="margin:4px 14px 8px;padding:8px 10px;background:rgba(245,158,11,0.08);border-left:3px solid var(--yellow);font-size:12px;line-height:1.5;color:var(--text-secondary);">
+    <div style="font-weight:700;color:var(--yellow);margin-bottom:3px;">研究口径提示（仅标注，不改变决策）</div>
     {% for _caveat in fusion_decision.research_caveats %}
       {% if _caveat is mapping %}
         {% if _caveat.warning %}
-        <div class="text-warn">⚠️ {{ _caveat.warning }}</div>
+        <div style="color:#b45309;font-weight:600;">⚠️ {{ _caveat.warning }}</div>
         {% endif %}
         {% if _caveat.main %}
         <div>• {{ _caveat.main }}</div>
         {% endif %}
         {% if _caveat.others %}
-        <details class="mt-2">
-          <summary class="sum-pointer">另 {{ _caveat.others|length }} 项并存（点击展开）</summary>
+        <details style="margin-top:2px;">
+          <summary style="cursor:pointer;color:var(--text-secondary);">另 {{ _caveat.others|length }} 项并存（点击展开）</summary>
           {% for _o in _caveat.others %}
-          <div class="ml-12">• {{ _o }}</div>
+          <div style="margin-left:12px;">• {{ _o }}</div>
           {% endfor %}
         </details>
         {% endif %}
@@ -71,23 +71,23 @@
   </div>
   {% endif %}
   {% if fusion_decision.action != 'buy' and fusion_decision.proximity %}
-  <div class="analysis-row">
-    <span>距买点最近信号：<b class="text-primary">{{ fusion_decision.proximity.nearest }}</b></span>
+  <div style="padding:6px 14px 10px;font-size:12px;color:var(--text-secondary);border-top:1px dashed var(--border);margin-top:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+    <span>距买点最近信号：<b style="color:var(--text-primary);">{{ fusion_decision.proximity.nearest }}</b></span>
     {% if fusion_decision.proximity.score > 0 %}
     <span style="font-weight:800;color:{% if fusion_decision.proximity.score >= 60 %}var(--green){% elif fusion_decision.proximity.score >= 35 %}var(--yellow){% else %}var(--red){% endif %};">{{ fusion_decision.proximity.score }}%</span>
-    <span class="text-11 muted">（该路径各条件综合达标度，非买入概率）</span>
-    {% if fusion_decision.proximity.gaps %}<span class="muted">还差：{{ fusion_decision.proximity.gaps|join(" · ") }}</span>{% endif %}
+    <span style="font-size:11px;color:var(--text-muted);">（该路径各条件综合达标度，非买入概率）</span>
+    {% if fusion_decision.proximity.gaps %}<span style="color:var(--text-muted);">还差：{{ fusion_decision.proximity.gaps|join(" · ") }}</span>{% endif %}
     {% else %}
-    <span class="muted">{{ fusion_decision.proximity.zero_reason or "暂无接近路径" }}</span>
+    <span style="color:var(--text-muted);">{{ fusion_decision.proximity.zero_reason or "暂无接近路径" }}</span>
     {% endif %}
   </div>
   {% endif %}
   {% if fusion_decision.trace %}
-  <details class="analysis-trace">
-    <summary class="sum-pointer-strong">🔍 为什么是这个结论</summary>
-    <div class="trace-body">
+  <details style="padding:0 14px 10px;font-size:12px;color:var(--text-secondary);">
+    <summary style="cursor:pointer;font-weight:600;color:var(--text-muted);">🔍 为什么是这个结论</summary>
+    <div style="margin-top:6px;line-height:1.7;">
       <div>估值区：{{ fusion_decision.trace.zone }}{% if fusion_decision.trace.bucket %} · 市场状态：{{ fusion_decision.trace.bucket }}{% endif %}</div>
-      {% if fusion_decision.trace.sources %}<div class="trace-line">关键路径/拦截：{{ fusion_decision.trace.sources|join(' → ') }}</div>{% else %}<div class="trace-line">无额外拦截，结论由基础矩阵直接给出</div>{% endif %}
+      {% if fusion_decision.trace.sources %}<div style="margin-top:2px;">关键路径/拦截：{{ fusion_decision.trace.sources|join(' → ') }}</div>{% else %}<div style="margin-top:2px;">无额外拦截，结论由基础矩阵直接给出</div>{% endif %}
     </div>
   </details>
   {% endif %}
@@ -109,16 +109,16 @@
 {% set disp_signal = holding_action.signal if holding_action else (fusion_decision.action_label or '') %}
 {% set disp_price = holding_action.price if holding_action else (price_rmb or 0) %}
 {% set disp_qty = holding_action.qty if holding_action else 0 %}
-<div class="exec-row">
+<div style="display:flex;justify-content:flex-end;align-items:center;gap:10px;margin:-4px 0 12px;">
   {% if disp_exec != 'hold' %}
-  <span class="text-12 muted">建议动作：
+  <span style="font-size:12px;color:var(--text-muted);">建议动作：
     <b style="color:{% if disp_exec in ('buy','add') %}var(--green){% elif disp_exec in ('sell','reduce') %}var(--red){% else %}var(--text-secondary){% endif %};">
       {{ disp_label }}
     </b>
-    {% if holding_action %}<span class="text-11 muted">（持仓风控优先）</span>{% endif %}
+    {% if holding_action %}<span style="font-size:11px;color:var(--text-muted);">（持仓风控优先）</span>{% endif %}
   </span>
   {% if not holding_action and fusion_decision.action in ('buy','oversold_buy') %}
-  <span class="text-11 muted">建议仓位 ≤{{ "%.0f"|format((fusion_decision.position_limit or 0.10) * 100) }}% · 首仓轻仓试探，单票总敞口≤30%</span>
+  <span style="font-size:11px;color:var(--text-muted);">建议仓位 ≤{{ "%.0f"|format((fusion_decision.position_limit or 0.10) * 100) }}% · 首仓轻仓试探，单票总敞口≤30%</span>
   {% endif %}
   <button type="button" class="btn btn-accent btn-sm exec-btn"
           data-name="{{ name|e }}"
@@ -128,8 +128,8 @@
           {% if disp_qty and disp_qty > 0 %}data-qty="{{ disp_qty }}"{% endif %}
           onclick="openExecModal(this)">💼 按建议记录执行</button>
   {% else %}
-  <span class="text-12 muted">建议动作：<b class="text-secondary">观望</b>
-    {% if holding_action %}<span class="text-11 muted">（{{ holding_action.signal }}）</span>
+  <span style="font-size:12px;color:var(--text-muted);">建议动作：<b style="color:var(--text-secondary);">观望</b>
+    {% if holding_action %}<span style="font-size:11px;color:var(--text-muted);">（{{ holding_action.signal }}）</span>
     {% else %}（无需记录；如有实际操作请到自选页手动录入）{% endif %}
   </span>
   {% endif %}
@@ -137,42 +137,42 @@
 {% endif %}
 
 {# ====== 关键指标条（D-1 报告分层：常显不折叠） ====== #}
-<div class="mb-12">
-  <div class="section-title">📊 关键指标：
-    趋势TH <b class="text-primary">{{ trend_health.score if trend_health else '-' }}</b>
-    · 90日分位 <b class="text-primary">{{ "%.1f"|format(position.percentile_90d) if position else '-' }}%</b>
-    {% if position and position.valuation_tier %}<span class="text-12 muted">（{{ {'undervalued':'低估','fair':'合理','overvalued':'高估','bubble':'泡沫'}.get(position.valuation_tier, position.valuation_tier) }}）</span>{% endif %}
-    · Z-Score <b class="text-primary">{{ "%+.2f"|format(position.zscore_90d) if position else '-' }}</b>
+<div style="margin-bottom:12px;">
+  <div style="font-weight:700;color:var(--text-primary);font-size:14px;">📊 关键指标：
+    趋势TH <b style="color:var(--text-primary);">{{ trend_health.score if trend_health else '-' }}</b>
+    · 90日分位 <b style="color:var(--text-primary);">{{ "%.1f"|format(position.percentile_90d) if position else '-' }}%</b>
+    {% if position and position.valuation_tier %}<span style="font-size:12px;color:var(--text-muted);">（{{ {'undervalued':'低估','fair':'合理','overvalued':'高估','bubble':'泡沫'}.get(position.valuation_tier, position.valuation_tier) }}）</span>{% endif %}
+    · Z-Score <b style="color:var(--text-primary);">{{ "%+.2f"|format(position.zscore_90d) if position else '-' }}</b>
   </div>
-  <div class="mt-8">
-  <div class="metric-grid">
-  <div class="card metric-card">
-    <div class="metric-value {% if trend_health and trend_health.score >= 55 %}green{% elif trend_health and trend_health.score >= 35 %}text-amber{% else %}red{% endif %};">
+  <div style="margin-top:8px;">
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
+  <div class="card" style="padding:10px;text-align:center;">
+    <div style="font-size:20px;font-weight:700;color:{% if trend_health and trend_health.score >= 55 %}var(--green){% elif trend_health and trend_health.score >= 35 %}var(--yellow){% else %}var(--red){% endif %};">
       {{ trend_health.score if trend_health else '-' }}
     </div>
-    <div class="metric-label">趋势健康TH</div>
+    <div style="font-size:11px;color:var(--text-muted);">趋势健康TH</div>
   </div>
-  <div class="card metric-card">
-    <div class="metric-value {% if position and position.percentile_90d <= 30 %}green{% elif position and position.percentile_90d >= 70 %}red{% else %}text-amber{% endif %};">
+  <div class="card" style="padding:10px;text-align:center;">
+    <div style="font-size:20px;font-weight:700;color:{% if position and position.percentile_90d <= 30 %}var(--green){% elif position and position.percentile_90d >= 70 %}var(--red){% else %}var(--yellow){% endif %};">
       {{ "%.1f"|format(position.percentile_90d) if position else '-' }}%
     </div>
-    <div class="metric-label">百分位
+    <div style="font-size:11px;color:var(--text-muted);">百分位
       {% if position and position.valuation_tier %}
       <br><span style="font-weight:600;{% if position.valuation_tier == 'undervalued' %}color:var(--green);{% elif position.valuation_tier in ('overvalued','bubble') %}color:var(--red);{% else %}color:var(--yellow);{% endif %}">{{ {'undervalued':'低估','fair':'合理','overvalued':'高估','bubble':'泡沫'}.get(position.valuation_tier, position.valuation_tier) }}</span>
       {% endif %}
     </div>
   </div>
-  <div class="card metric-card">
-    <div class="metric-value {% if position and position.zscore_90d <= -1.5 %}green{% elif position and position.zscore_90d >= 2 %}red{% else %}text-primary{% endif %};">
+  <div class="card" style="padding:10px;text-align:center;">
+    <div style="font-size:20px;font-weight:700;color:{% if position and position.zscore_90d <= -1.5 %}var(--green){% elif position and position.zscore_90d >= 2 %}var(--red){% else %}var(--text-primary){% endif %};">
       {{ "%+.2f"|format(position.zscore_90d) if position else '-' }}
     </div>
-    <div class="metric-label">Z-Score</div>
+    <div style="font-size:11px;color:var(--text-muted);">Z-Score</div>
   </div>
-  <div class="card metric-card">
-    <div class="metric-price">
+  <div class="card" style="padding:10px;text-align:center;">
+    <div style="font-size:18px;font-weight:700;color:var(--accent);">
       ¥{{ "%.2f"|format(price_rmb) if price_rmb else '-' }}
     </div>
-    <div class="metric-label">当前价</div>
+    <div style="font-size:11px;color:var(--text-muted);">当前价</div>
   </div>
   </div>
 </div>
@@ -180,33 +180,33 @@
 ﻿{# ====== 供给 · 流动性 · 庄家（去量 v2 引擎核心） ====== #}
 {% if supply_analysis or liquidity or whale %}
 <div style="margin-bottom:12px;">
-  <div class="section-title mb-6">📦 供给 · 流动性 · 庄家</div>
-  <div class="mt-8">
-  <div class="supply-grid">
+  <div style="font-weight:700;color:var(--text-primary);font-size:14px;margin-bottom:6px;">📦 供给 · 流动性 · 庄家</div>
+  <div style="margin-top:8px;">
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
   {% if supply_analysis %}
-  <div class="card supply-card">
-    <div class="supply-label">在售量 · 供给</div>
-    <div class="supply-value">{{ "{:,}".format(supply_analysis.current_supply) }} 件</div>
-    <div class="supply-note">
+  <div class="card" style="padding:10px 12px;">
+    <div style="font-size:11px;color:var(--text-muted);">在售量 · 供给</div>
+    <div style="font-size:17px;font-weight:700;margin-top:2px;color:var(--text-primary);">{{ "{:,}".format(supply_analysis.current_supply) }} 件</div>
+    <div style="font-size:11px;color:var(--text-secondary);margin-top:2px;line-height:1.6;">
       7日 <span style="{% if supply_analysis.supply_change_7d > 0 %}color:var(--red);{% elif supply_analysis.supply_change_7d < 0 %}color:var(--green);{% endif %}">{{ "%+.1f"|format(supply_analysis.supply_change_7d) }}%</span>
       · 30日 <span style="{% if supply_analysis.supply_change_30d > 0 %}color:var(--red);{% elif supply_analysis.supply_change_30d < 0 %}color:var(--green);{% endif %}">{{ "%+.1f"|format(supply_analysis.supply_change_30d) }}%</span><br>
       <span style="{% if supply_analysis.supply_risk == 'hoarding' %}color:var(--green){% elif supply_analysis.supply_risk == 'trap' %}color:var(--yellow);{% elif supply_analysis.supply_risk == 'dumping' %}color:var(--red){% else %}color:var(--text-muted){% endif %};font-weight:600;">{{ supply_analysis.supply_risk_label if supply_analysis.supply_risk_label else ('吸筹' if supply_analysis.supply_risk == 'hoarding' else ('派发' if supply_analysis.supply_risk == 'dumping' else '平稳')) }}</span>
-      {% if supply_analysis.supply_risk_note %}<br><span class="text-amber text-11">{{ supply_analysis.supply_risk_note }}</span>{% endif %}
+      {% if supply_analysis.supply_risk_note %}<br><span style="color:var(--yellow);font-size:11px;">{{ supply_analysis.supply_risk_note }}</span>{% endif %}
     </div>
   </div>
   {% endif %}
   {% if liquidity %}
-  <div class="card supply-card text-center">
-    <div class="supply-label">流动性 · 在售深度</div>
-    <div class="supply-value">{{ liquidity.score }}</div>
-    <div class="supply-note">{{ liquidity.level_label }}</div>
+  <div class="card" style="padding:10px 12px;text-align:center;">
+    <div style="font-size:11px;color:var(--text-muted);">流动性 · 在售深度</div>
+    <div style="font-size:17px;font-weight:700;margin-top:2px;color:var(--text-primary);">{{ liquidity.score }}</div>
+    <div style="font-size:11px;color:var(--text-secondary);margin-top:2px;">{{ liquidity.level_label }}</div>
   </div>
   {% endif %}
   {% if whale and whale.probability > 12 %}
-  <div class="card" style="padding:10px 12px;{% if whale.probability > 30 %}border-color:var(--red-border-strong);{% endif %}">
-    <div class="supply-label">庄家检测 · {{ "%.0f"|format(whale.probability) }}%</div>
-    <div class="supply-value fw-700" style="{% if whale.probability > 30 %}color:var(--red);{% endif %}">{{ whale.level_label }}</div>
-    <div class="supply-note">{{ whale.trading_rule }}</div>
+  <div class="card" style="padding:10px 12px;{% if whale.probability > 30 %}border-color:rgba(239,68,68,0.5);{% endif %}">
+    <div style="font-size:11px;color:var(--text-muted);">庄家检测 · {{ "%.0f"|format(whale.probability) }}%</div>
+    <div style="font-size:13px;font-weight:700;margin-top:2px;{% if whale.probability > 30 %}color:var(--red);{% endif %}">{{ whale.level_label }}</div>
+    <div style="font-size:11px;color:var(--text-secondary);margin-top:2px;line-height:1.5;">{{ whale.trading_rule }}</div>
   </div>
   {% endif %}
   </div>
@@ -214,13 +214,13 @@
 {% endif %}
 
 {% if data_quality %}
-<div class="dq-row">
+<div style="margin-top:8px;display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);">
   <span>数据质量: <b>{{ {'good':'高','medium':'中','low':'低'}.get(data_quality, data_quality) }}</b>（K 线 {{ {'good':'≥60 日','medium':'20~59 日','low':'<20 日'}.get(data_quality, '—') }}，在售量覆盖以图表为准）</span>
 </div>
 {% endif %}
 
 {# ====== 报告时间 ====== #}
-<div class="report-foot">
+<div style="text-align:right;font-size:12px;color:var(--text-muted);">
   报告时间: {{ analysis_time if analysis_time else 'N/A' }}
 </div>
 
@@ -230,9 +230,9 @@
 {% endif %}
 
 {# ====== 术语速查 ====== #}
-<details class="term-details">
-  <summary class="sum-pointer fw-600">📖 术语速查</summary>
-  <div class="term-body">
+<details style="margin-top:10px;font-size:12px;color:var(--text-secondary);">
+  <summary style="cursor:pointer;font-weight:600;">📖 术语速查</summary>
+  <div style="margin-top:6px;line-height:1.8;padding:8px 10px;background:rgba(100,116,139,0.08);border-radius:8px;">
     <b>趋势健康 TH</b>：0-100 趋势强度与结构质量（≥55 强劲 / 35-54 中性 / &lt;35 走弱）。<br>
     <b>90日分位</b>：当前价在近 90 日价格中的百分位，越低越接近历史低位（≤30 低估区 / ≥70 高估区）。<br>
     <b>Z-score</b>：相对 90 日均价的偏离标准差数，≤-2 为深度超跌。<br>

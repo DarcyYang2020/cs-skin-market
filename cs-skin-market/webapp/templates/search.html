@@ -7,21 +7,21 @@
   <div class="page-sub">输入饰品名称直接分析</div>
 </div>
 
-<div class="card card-pad">
-  <form id="search-form" class="row-flex" hx-post="/api/items/search" hx-target="#modal-body" hx-swap="innerHTML" hx-indicator="#search-spinner" onsubmit="showLoadingAndOpen()">
-    <input type="text" id="search-input" name="query" placeholder="输入饰品名称..." class="form-input flex-1" required minlength="2" autofocus value="{{ query }}">
+<div class="card" style="padding:16px;">
+  <form id="search-form" hx-post="/api/items/search" hx-target="#modal-body" hx-swap="innerHTML" hx-indicator="#search-spinner" onsubmit="showLoadingAndOpen()" style="gap:8px;display:flex;">
+    <input type="text" id="search-input" name="query" placeholder="输入饰品名称..." class="form-input" style="flex:1;" required minlength="2" autofocus value="{{ query }}">
     <button type="submit" class="btn btn-primary">
       <span class="htmx-indicator spinner" id="search-spinner"></span>
       🔍 分析
     </button>
   </form>
-  <div class="htmx-indicator mt-8 text-12 muted">
+  <div class="htmx-indicator" style="margin-top:8px;font-size:12px;color:var(--text-muted);">
     ⏳ 正在搜索和分析，预计 30-50 秒，请耐心等待...
   </div>
 </div>
 
-<div id="search-results" class="mt-16">
-  <div class="card"><div class="empty-state">输入关键词开始分析</div></div>
+<div id="search-results" style="margin-top:16px;">
+  <div class="card"><div class="empty-state" style="text-align:center;padding:40px;color:var(--text-muted);">输入关键词开始分析</div></div>
 </div>
 
 {% include 'partials/analysis_results.html' %}
@@ -30,7 +30,7 @@
 {% block scripts %}
 <script>
 function showLoadingAndOpen() {
-  document.getElementById("modal-body").innerHTML = '<div class="loading-hint"><div class="spinner spinner-lg"></div><p class="muted text-14">正在分析中，请耐心等待...</p></div>';
+  document.getElementById("modal-body").innerHTML = '<div style="text-align:center;padding:40px;"><div class="spinner" style="margin:0 auto 16px;width:32px;height:32px;"></div><p style="color:var(--text-muted);font-size:14px;">正在分析中，请耐心等待...</p></div>';
   openModal("analysis-modal");
 }
 

@@ -1,15 +1,15 @@
 {% if heatmap_rows %}
-<div class="card mb-16">
+<div class="card" style="margin-bottom:16px;">
   <div class="card-header"><span class="card-title">📊 品类热力图</span></div>
-  <table class="data-table">
+  <table style="width:100%;font-size:13px;">
     <thead><tr><th>武器</th><th>数量</th><th>均分</th><th>均估值</th><th>最优品</th><th>综合</th></tr></thead>
     <tbody>
     {% for r in heatmap_rows %}
       <tr><td><strong>{{ r.wt }}</strong></td><td>{{ r.count }}</td>
-      <td class="green">{{ "%.1f"|format(r.avg_score) }}</td>
+      <td style="color:var(--green);">{{ "%.1f"|format(r.avg_score) }}</td>
       <td class="{{ r.pct_cls }}">{{ "%.0f"|format(r.avg_pct) }}%</td>
-      <td class="text-12">{{ r.best_name }}</td>
-      <td class="fw-600">{{ "%.1f"|format(r.best_comp) }}</td></tr>
+      <td style="font-size:12px;">{{ r.best_name }}</td>
+      <td style="font-weight:600;">{{ "%.1f"|format(r.best_comp) }}</td></tr>
     {% endfor %}
     </tbody>
   </table>
@@ -17,26 +17,26 @@
 {% endif %}
 
 {% macro disc_table(rows) %}
-<div class="card-body card-body-flush"><div class="table-wrap"><table class="data-table table-full">
+<div class="card-body" style="padding:0;"><div class="table-wrap"><table class="data-table" style="width:100%;">
   <thead><tr><th>#</th><th>评级</th><th>品类</th><th>名称</th><th>价格</th><th>评分</th><th>综合</th><th>%位</th><th>周期</th><th>操作</th></tr></thead>
   <tbody>
   {% for r in rows %}
   {% if r.error %}
-    <tr><td colspan="10" class="cell-error">{{ r.name }}: {{ r.error }}</td></tr>
+    <tr><td colspan="10" style="color:var(--danger);padding:12px 16px;">{{ r.name }}: {{ r.error }}</td></tr>
   {% else %}
     <tr>
       <td style="{{ r.rank_style }}">{{ r.rank }}</td>
       <td><span class="{{ r.grade_cls }}">{{ r.grade }}</span></td>
-      <td>{% if r.category %}<span class="cat-tag">{{ r.category }}</span>{% endif %}</td>
-      <td class="cell-ellipsis"><a href="javascript:void(0)" onclick="showDiscoverReport('{{ r.esc_name|safe }}')" class="link-accent" title="查看分析报告">{{ r.name }}</a>{% if r.collected_at %}<br><span class="text-10 muted">采集于 {{ r.collected_at }}</span>{% endif %}</td>
+      <td>{% if r.category %}<span style="font-size:11px;color:var(--text-muted);border:1px solid var(--border);border-radius:4px;padding:1px 6px;">{{ r.category }}</span>{% endif %}</td>
+      <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><a href="javascript:void(0)" onclick="showDiscoverReport('{{ r.esc_name|safe }}')" style="color:var(--accent);text-decoration:none;cursor:pointer;" title="查看分析报告">{{ r.name }}</a>{% if r.collected_at %}<br><span style="font-size:10px;color:var(--text-muted);">采集于 {{ r.collected_at }}</span>{% endif %}</td>
       <td>¥{{ "%.2f"|format(r.price) }}</td>
       <td>{{ "%.1f"|format(r.score) }}</td>
-      <td class="fw-600">{{ "%.1f"|format(r.comp) }}</td>
+      <td style="font-weight:600;">{{ "%.1f"|format(r.comp) }}</td>
       <td class="{{ r.pct_clr }}">{{ "%.0f"|format(r.pct) }}%</td>
-      <td class="text-12">{{ r.cycle_label }}</td>
-      <td class="nowrap">
+      <td style="font-size:12px;">{{ r.cycle_label }}</td>
+      <td style="white-space:nowrap;">
       {% if r.in_wl %}
-        <button class="btn btn-xs btn-outline btn-disabled" disabled title="已在自选">✓ 已自选</button>
+        <button class="btn btn-xs btn-outline" disabled style="opacity:.55;cursor:default;" title="已在自选">✓ 已自选</button>
       {% else %}
         <button class="btn btn-xs btn-outline" onclick="addToWatchlist('{{ r.esc_name|safe }}', this)" title="加入自选">➕ 加入自选</button>
       {% endif %}
@@ -51,11 +51,11 @@
 
 <div class="card">
   <div class="card-header"><span class="card-title">🔍 Top 10 高分饰品</span>
-    <div class="tabs-inline" id="discover-tabs">
+    <div style="display:inline-flex;gap:6px;margin-left:12px;vertical-align:middle;" id="discover-tabs">
       <button id="tab-btn-all" class="btn btn-sm btn-primary" onclick="switchDiscoverTab('all')">综合榜</button>
     </div>
     <span class="card-subtitle">已扫描 {{ ok_count }} 个饰品，各展示前10{{ market_note|safe }}
-      <button class="btn btn-sm btn-outline ml-8" onclick="refreshDiscover('skin')" title="仅重扫综合榜">🔄 仅重扫综合榜</button>
+      <button class="btn btn-sm btn-outline" onclick="refreshDiscover('skin')" style="margin-left:8px;" title="仅重扫综合榜">🔄 仅重扫综合榜</button>
     </span>
   </div>
 

@@ -5,6 +5,7 @@
 .discover-hero { text-align:center; padding:40px 20px; }
 .discover-hero h2 { font-size:24px; margin-bottom:12px; }
 .discover-hero p { color:var(--text-muted); font-size:14px; max-width:500px; margin:0 auto 24px; }
+.btn-scan { padding:12px 40px; font-size:16px; border-radius:8px; }
 .top10-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:16px; margin-top:20px; }
 .top10-card { border:1px solid var(--border); border-radius:10px; padding:16px; background:var(--card-bg); }
 .top10-card .rank { font-size:20px; font-weight:800; color:var(--accent); margin-right:10px; }
@@ -17,35 +18,35 @@
 <div class="discover-hero">
   <h2>🔍 发现高分品</h2>
   <p>从池内活跃品中扫描（DB 新鲜 K 线复用，无需网络采集），按综合分排序筛出高分低估机会；可加入自选进入监控</p>
-  <div class="mt-22">
+  <div style="margin-top:22px;">
     <button id="btn-main-scan" class="btn btn-primary btn-scan" onclick="startScan('all')" title="扫描池内高分品（非贴纸）">🚀 扫描池内高分品</button>
   </div>
   
 </div>
 
-<div id="discover-progress" class="card d-none">
+<div id="discover-progress" style="display:none;" class="card">
   <div class="card-header"><span class="card-title">📊 扫描进度</span></div>
   <div class="card-body">
-    <div class="row-flex mb-10">
-      <div class="spinner-sm"></div>
-      <span id="discover-status" class="text-14 muted">正在准备...</span>
+    <div class="row-flex" style="gap:8px;align-items:center;margin-bottom:10px;">
+      <div class="spinner" style="width:18px;height:18px;border:2px solid var(--border-strong);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>
+      <span id="discover-status" style="font-size:14px;color:var(--text-muted);">正在准备...</span>
     </div>
-    <div class="progress-track-sm">
-      <div id="discover-bar" class="progress-fill" style="width:0%;"></div>
+    <div style="height:6px;background:var(--bg-input);border-radius:3px;overflow:hidden;">
+      <div id="discover-bar" style="height:100%;width:0%;background:var(--accent);border-radius:3px;transition:width 0.5s;"></div>
     </div>
-    <div id="discover-detail" class="text-12 muted mt-8"></div>
+    <div id="discover-detail" style="font-size:12px;color:var(--text-muted);margin-top:8px;"></div>
   </div>
 </div>
 
 <div id="discover-results"></div>
 
 <!-- 高分品追踪 (2026-08-05) -->
-<div class="card d-none mt-16" id="discover-history-card">
+<div class="card" id="discover-history-card" style="display:none;margin-top:16px;">
   <div class="card-header">
     <span class="card-title">📈 高分品追踪</span>
-    <span class="text-12 muted">每天仅保留最新一次扫描的 Top10，在 14/30 个交易日后的实际表现（自动结算，验证选品有效性；滚轮滚动查看历史）</span>
+    <span style="font-size:12px;color:var(--text-muted);">每天仅保留最新一次扫描的 Top10，在 14/30 个交易日后的实际表现（自动结算，验证选品有效性；滚轮滚动查看历史）</span>
   </div>
-  <div id="discover-history-body" class="history-body"></div>
+  <div id="discover-history-body" style="padding:10px 14px;font-size:13px;color:var(--text-secondary);max-height:420px;overflow-y:auto;"></div>
 </div>
 
 {% endblock %}
@@ -86,14 +87,14 @@ function loadDiscoverHistory() {
       var items = (e.items || []).map(function(it) {
         var p14 = it.fwd14 !== null ? it.fwd14 + "%" : "--";
         var p30 = it.fwd30 !== null ? it.fwd30 + "%" : "--";
-        return '<div class="history-item">' + it.name + ' · 14d ' + p14 + ' · 30d ' + p30 + '</div>';
+        return '<div style="font-size:11px;color:var(--text-muted);padding:2px 0 0 16px;">' + it.name + ' · 14d ' + p14 + ' · 30d ' + p30 + '</div>';
       }).join("");
-      return '<div class="discover-row divider-b">'
-        + '<div class="history-head">'
-        + '<span class="history-n">' + String(e.time || "").slice(0, 10) + '</span>'
+      return '<div style="padding:8px 0;border-bottom:1px solid rgba(15,23,42,0.08);">'
+        + '<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px;">'
+        + '<span style="font-weight:600;">' + String(e.time || "").slice(0, 10) + '</span>'
         + '<span>' + e.n + ' 品</span>'
-        + '<span class="history-accent">14d 均 ' + f14 + '</span>'
-        + '<span class="history-green">30d 均 ' + f30 + '</span>'
+        + '<span style="color:var(--accent);">14d 均 ' + f14 + '</span>'
+        + '<span style="color:var(--green);">30d 均 ' + f30 + '</span>'
         + '</div>' + items + '</div>';
     }).join("");
     document.getElementById("discover-history-body").innerHTML = rows;
@@ -166,12 +167,12 @@ function refreshDiscoverItem(name, btn) {
 function showDiscoverReport(name) {
   var body = document.getElementById("modal-body");
   if (!body) { showToast("弹窗组件缺失，请刷新页面后重试", "error"); return; }
-  body.innerHTML = '<div class="loading-hint"><div class="spinner spinner-lg"></div><p class="muted text-14">正在加载分析报告...</p></div>';
+  body.innerHTML = '<div style="text-align:center;padding:40px;"><div class="spinner" style="margin:0 auto 16px;width:32px;height:32px;"></div><p style="color:var(--text-muted);font-size:14px;">正在加载分析报告...</p></div>';
   openModal("analysis-modal");
   fetch("/api/discover/report?name=" + encodeURIComponent(name))
     .then(function(r) { return r.text(); })
     .then(function(html) { body.innerHTML = html; })
-    .catch(function() { body.innerHTML = '<div class="card report-error">报告加载失败，请稍后重试</div>'; });
+    .catch(function() { body.innerHTML = '<div class="card" style="padding:24px;text-align:center;color:var(--red);">报告加载失败，请稍后重试</div>'; });
 }
 
 function switchDiscoverTab(tab) {
