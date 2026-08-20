@@ -388,7 +388,7 @@ tbody tr:hover td { background: var(--bg-hover); }
 .regime-greedy { background: var(--red-bg); border-color: var(--red-border); color: var(--red); }
 .regime-p { background: var(--purple-bg); border-color: var(--purple-border); color: var(--purple); }
 .regime-s1 { background: var(--green-bg); border-color: var(--green-border); color: var(--green); }
-.regime-s2 { background: #e6f7ff; border-color: #91d5ff; color: #1890ff; }
+.regime-s2 { background: var(--blue-bg); border-color: var(--blue-border); color: var(--blue); }
 .regime-s3 { background: var(--red-bg); border-color: var(--red-border); color: var(--red); }
 .regime-s4 { background: var(--orange-bg); border-color: var(--orange-border); color: var(--orange); }
 
@@ -528,6 +528,220 @@ tbody tr:hover td { background: var(--bg-hover); }
 .green { color: var(--green); }
 .red { color: var(--red); }
 .muted { color: var(--text-muted) !important; }
+
+/* ---- UI-1 token utilities（2026-08-20）---- */
+/* 语义 tint / 背景 */
+.d-none { display: none; }
+.tint-accent { background: rgba(79,70,229,0.1); }
+.bg-inset-2 { background: rgba(15,23,42,0.04); }
+.bg-inset-3 { background: rgba(15,23,42,0.06); }
+.bg-inset-4 { background: rgba(15,23,42,0.08); }
+.bg-amber { background: rgba(245,158,11,0.12); }
+.bg-amber-soft { background: rgba(245,158,11,0.05); }
+.bg-purple { background: rgba(139,92,246,0.12); }
+.bg-blue-soft { background: rgba(37,99,235,0.06); }
+.border-blue { border-color: #2563EB; }
+.text-blue { color: #2563EB; }
+.text-accent { color: var(--accent); }
+.text-amber { color: var(--yellow); }
+/* 布局辅助 */
+.flex { display: flex; }
+.inline-flex { display: inline-flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.gap-4 { gap: 4px; }
+.gap-8 { gap: 8px; }
+.gap-10 { gap: 10px; }
+.gap-12 { gap: 12px; }
+.gap-16 { gap: 16px; }
+.flex-1 { flex: 1; }
+.w-full { width: 100%; }
+.w-auto { width: auto; }
+/* 文字/间距 */
+.text-11 { font-size: 11px; }
+.text-13 { font-size: 13px; }
+.text-15 { font-size: 15px; }
+.text-17 { font-size: 17px; }
+.fw-600 { font-weight: 600; }
+.fw-700 { font-weight: 700; }
+.fw-800 { font-weight: 800; }
+.nowrap { white-space: nowrap; }
+.text-center { text-align: center; }
+.p-0 { padding: 0; }
+.m-0 { margin: 0; }
+.ml-auto { margin-left: auto; }
+.mt-4 { margin-top: 4px; }
+.mt-6 { margin-top: 6px; }
+.mt-12 { margin-top: 12px; }
+.mb-12 { margin-bottom: 12px; }
+/* 徽章标签（观察桶/7日内已买 等 pill） */
+.pill-tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 1px 8px; border-radius: 8px; font-size: 11px; line-height: 1.6;
+  border: 1px solid transparent;
+}
+/* 进度条轨道 */
+.progress-track {
+  height: 6px; border-radius: 4px; overflow: hidden;
+  background: rgba(15,23,42,0.08);
+}
+.progress-track-sm {
+  height: 6px; border-radius: 3px; overflow: hidden;
+  background: rgba(15,23,42,0.06);
+}
+/* 分隔线（细分隔） */
+.divider-t { border-top: 1px solid rgba(15,23,42,0.08); }
+.divider-t-dashed { border-top: 1px dashed var(--border); }
+.divider-b { border-bottom: 1px solid rgba(15,23,42,0.08); }
+
+/* ---- watchlist / checkup 组件类（UI-1 抽 partial 后的语义类）---- */
+/* 通用文字色 */
+.text-primary { color: var(--text-primary); }
+.text-secondary { color: var(--text-secondary); }
+/* 扫描列表项 */
+.scan-item-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 9px; cursor: pointer;
+  border-bottom: 1px solid var(--border); font-size: 13px;
+}
+.scan-empty { padding: 18px; text-align: center; color: var(--text-muted); font-size: 13px; }
+/* 加载/空态/错误提示 */
+.loading-hint { text-align: center; padding: 40px; }
+.spinner-lg { margin: 0 auto 16px; width: 32px; height: 32px; }
+.text-14 { font-size: 14px; }
+.report-error { padding: 24px; text-align: center; color: var(--red); }
+.history-note { margin-bottom: 12px; padding: 8px 14px; font-size: 12px; color: var(--text-muted); }
+/* 执行飞轮单元格 */
+.flywheel-cell { border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
+.flywheel-cell-title { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+.flywheel-cell-main { font-size: 20px; font-weight: 800; color: var(--text-primary); }
+.flywheel-cell-sub { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+/* 复盘对照表 */
+.review-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.review-table th { padding: 4px 8px; color: var(--text-muted); font-size: 11px; text-align: left; }
+.review-table td { padding: 6px 8px; }
+.review-row { border-top: 1px solid var(--border); }
+.review-note { margin-top: 8px; font-size: 11px; color: var(--text-muted); line-height: 1.6; }
+/* 持仓分布条 */
+.holding-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.holding-name { flex: 0 0 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.holding-val { flex: 0 0 90px; text-align: right; font-size: 12px; }
+.holding-exp { flex: 0 0 110px; text-align: right; font-size: 12px; }
+.holding-exp-over { color: var(--red); font-weight: 700; }
+.holding-exp-ok { color: var(--text-muted); }
+.holding-fill { height: 100%; background: var(--accent); }
+
+/* ============================ Watchlist page ============================ */
+.wl-search-input { width: 180px; padding: 6px 12px; font-size: 13px; }
+.wl-sort-select { width: 120px; padding: 6px 10px; font-size: 12px; }
+.wl-batch-bar {
+  padding: 8px 14px; border-bottom: 1px solid var(--border);
+  align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.wl-check-label { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-muted); cursor: pointer; }
+.wl-hold-mark { margin-right: 5px; }
+.wl-empty { padding: 40px; color: var(--text-muted); }
+.wl-disclaimer {
+  padding: 8px 14px; border-top: 1px solid var(--border);
+  font-size: 12px; line-height: 1.5; color: var(--text-secondary);
+  background: rgba(245,158,11,0.05);
+}
+/* 表格列宽（自选表 + 执行表） */
+.col-check { width: 28px; }
+.col-name { min-width: 170px; }
+.col-holding { width: 120px; }
+.col-price { width: 105px; }
+.col-grade { width: 130px; }
+.col-trend { width: 190px; }
+.col-date { width: 90px; }
+.col-action { width: 60px; }
+.col-price-sm { width: 90px; }
+.col-slip { width: 70px; }
+.col-qty { width: 50px; }
+.col-pnl { width: 84px; }
+.col-r14 { width: 110px; }
+.col-r30 { width: 110px; }
+.col-ops { width: 132px; }
+/* 批量扫描结果 */
+.scan-header { margin: 20px 0 12px; }
+.scan-history-select { width: auto; padding: 4px 8px; font-size: 12px; }
+/* 资产卡片 */
+.asset-card { padding: 16px 18px; }
+.asset-header { padding-bottom: 10px; margin-bottom: 10px; }
+.asset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 18px; }
+.asset-foot { font-size: 11px; color: var(--text-muted); margin-top: 12px; line-height: 1.6; }
+.portfolio-dash { margin-top: 12px; border-top: 1px dashed var(--border); padding-top: 10px; }
+.portfolio-dash-stats { gap: 16px; flex-wrap: wrap; }
+.pd-val { margin-left: 5px; }
+/* 今日关注 */
+.focus-header { padding: 10px 14px; margin: 0; }
+.focus-list { padding: 8px 14px 12px; font-size: 12px; display: flex; flex-direction: column; gap: 8px; }
+.focus-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.focus-foot { padding-top: 6px; }
+.unrecorded-row { border-radius: 6px; padding: 4px 8px; }
+/* 执行复盘 */
+.exec-title { font-size: 17px; }
+.exec-flywheel-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; padding: 10px 14px; }
+.exec-calib { padding: 8px 14px 0; font-size: 12px; color: var(--text-secondary); }
+.exec-count-bar { height: 100%; border-radius: 4px; }
+.exec-summary { padding: 8px 14px 0; font-size: 12px; color: var(--text-secondary); }
+.exec-foot { padding: 6px 14px 8px; }
+.exec-foot2 { padding: 2px 14px 8px; }
+.exec-empty { padding: 20px; text-align: center; color: var(--text-muted); }
+.exec-review-body { padding: 10px 14px; }
+.edit-readonly { background: var(--bg-input); }
+.edit-totalbought { padding: 8px 0; font-weight: 600; color: var(--accent); }
+/* 扫描弹窗 */
+.scan-modal { width: 540px; max-width: 94vw; }
+.scan-search { margin-bottom: 10px; }
+.scan-quick { margin-bottom: 8px; }
+.scan-check { cursor: pointer; }
+.scan-selectall { cursor: pointer; user-select: none; margin-bottom: 8px; }
+.scan-list { max-height: 340px; overflow: auto; border: 1px solid var(--border); border-radius: 8px; padding: 4px 0; }
+.scan-foot { margin-top: 12px; }
+.scan-force { cursor: pointer; }
+/* 全屏加载弹窗 */
+.loading-modal {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 9999;
+  background: rgba(0,0,0,0.5); justify-content: center; align-items: center;
+}
+.checkup-section-head { padding: 12px 16px; }
+.checkup-note { border-radius: 6px; padding: 6px 10px; margin-bottom: 10px; line-height: 1.6; }
+
+/* ---- dashboard / discover / analysis 组件类（UI-1 全站裸色清零）---- */
+.dashboard-sub { padding-top: 8px; }
+.dashboard-sub-dashed { border-top: 1px dashed rgba(15,23,42,0.08); padding-top: 6px; }
+.dashboard-mini-track {
+  width: 90px; height: 8px; border-radius: 4px; overflow: hidden;
+  background: rgba(15,23,42,0.06); border: 1px solid rgba(15,23,42,0.12);
+}
+.dashboard-footnote { padding-top: 6px; color: var(--text-muted); font-size: 11px; }
+.discover-row { padding: 8px 0; }
+.analysis-card-warn { border-color: rgba(245,158,11,0.5); margin-bottom: 12px; }
+.analysis-amber-note {
+  margin: 4px 14px 8px; padding: 8px 10px;
+  background: rgba(245,158,11,0.08); border-left: 3px solid var(--yellow);
+  font-size: 12px; line-height: 1.5; color: var(--text-secondary);
+}
+.loading-box {
+  background: var(--bg-elevated); border-radius: 12px; padding: 40px;
+  text-align: center; max-width: 400px; box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+  position: relative;
+}
+.loading-close {
+  position: absolute; top: 6px; right: 10px; border: none; background: none;
+  font-size: 16px; cursor: pointer; color: var(--text-muted);
+}
+.loading-spinner {
+  width: 40px; height: 40px; margin: 0 auto 20px;
+  border: 3px solid var(--border-strong); border-top-color: var(--accent);
+  border-radius: 50%; animation: spin 0.8s linear infinite;
+}
+.loading-title { margin-bottom: 8px; color: var(--text-primary); }
+.loading-status { font-size: 13px; color: var(--text-secondary); }
+.loading-track { height: 6px; background: var(--bg-inset); border-radius: 3px; overflow: hidden; margin-top: 16px; }
+.loading-bar { height: 100%; background: var(--accent); transition: width .4s; }
 
 /* ============================ Keyframes ============================ */
 @keyframes spin { to { transform: rotate(360deg); } }

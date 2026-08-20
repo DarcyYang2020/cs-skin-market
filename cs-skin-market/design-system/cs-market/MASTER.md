@@ -1,24 +1,50 @@
 # Design System Master File
 
-> **LOGIC:** When building a specific page, first check `design-system/pages/[page-name].md`.
-> If that file exists, its rules **override** this Master file.
-> If not, strictly follow the rules below.
+> **LOGIC:** 当构建具体页面时，先检查 `design-system/pages/[page-name].md`。
+> 若该文件存在，其规则**覆盖**本 Master 文件。
+> 若不存在，严格遵循下方规则。
 
-> **2026-08-09 归档说明**：本文档为早期深色 OLED 概念稿；实际已落地为 `webapp/static/css/style.css` v3 浅色设计系统（IBM Plex Sans、indigo 主色、4px 间距、44px 触控目标、prefers-reduced-motion）。后续改动以 style.css 为准。
-
+> **2026-08-20 归档（UI-1）**：本文档原为早期深色 OLED 概念稿，与实际系统脱节。
+> **实际系统 = `webapp/static/css/style.css` v3 浅色 indigo 设计系统**，是唯一生效的样式事实源。
+> 页面实际渲染一律以 `style.css` v3 的 CSS 变量与语义类为准；本文下方历史章节仅供追溯，不再作为实现依据。
 
 ---
+
+## 实际设计系统（style.css v3，唯一事实源）
+
+- **主题**：浅色 dashboard（bright white fintech trading dashboard），indigo 主色。
+- **字体**：IBM Plex Sans + 中文回退（Microsoft YaHei / PingFang SC / Noto Sans SC）。
+- **间距**：4px 间距刻度（`--space-1` 4px ~ `--space-8` 32px）。
+- **圆角**：6/10/14px 三级（`--radius-sm` / `--radius` / `--radius-lg`）。
+- **触控目标**：移动端 ≥44px（`@media (max-width:639px)`）。
+- **可访问性**：skip-link、`:focus-visible` 可见焦点、`prefers-reduced-motion` 尊重、正文对比度 ≥4.5:1。
+- **语义色**：`--green` 涨/`--red` 跌（中国股市口径）、`--blue` 信息、`--purple` 紫色、`--amber/--yellow` 警示。
+- **emoji**：图标型 emoji（📈📉📊🔍）可作装饰；**禁止 emoji 作为唯一状态载体**——趋势/评级等状态须配文字或 `aria-label`。
+
+### 核心 CSS 变量（节选，完整见 style.css `:root`）
+
+| 角色 | 变量 | 值 |
+|---|---|---|
+| 主色 | `--accent` | `#4F46E5` |
+| 涨 | `--green` | `#059669` |
+| 跌 | `--red` | `#DC2626` |
+| 信息蓝 | `--blue` | `#2563EB` |
+| 警示 | `--yellow` | `#B45309` |
+| 正文 | `--text-primary` | `#0F172A` |
+
+---
+
+## 历史章节（追溯用，不再作为实现依据）
+
+<details>
+<summary>2026-08-08 早期深色 OLED 概念稿（已废弃）</summary>
 
 **Project:** CS Market
 **Generated:** 2026-08-08 09:50:27
 **Category:** Financial Dashboard
 **Design Dials:** Motion 2/10 (Subtle) | Density 8/10 (Dense / Dashboard)
 
----
-
-## Global Rules
-
-### Color Palette
+### Color Palette（废弃）
 
 | Role | Hex | CSS Variable |
 |------|-----|--------------|
@@ -35,21 +61,13 @@
 
 **Color Notes:** Knowledge blue + link purple + clean white
 
-### Typography
+### Typography（废弃）
 
 - **Heading Font:** Inter
 - **Body Font:** Inter
 - **Mood:** dark, cinematic, technical, precision, clean, premium, developer, professional, high-end utility
-- **Google Fonts:** [Inter + Inter](https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap)
 
-**CSS Import:**
-```css
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-```
-
-### Spacing Variables
-
-*Density: 8/10 — Dense / Dashboard*
+### Spacing Variables（废弃，已被 4px 刻度替代）
 
 | Token | Value | Usage |
 |-------|-------|-------|
@@ -61,7 +79,7 @@
 | `--space-2xl` | `24px` / `1.5rem` | Section margins |
 | `--space-3xl` | `32px` / `2rem` | Hero padding |
 
-### Shadow Depths
+### Shadow Depths（废弃）
 
 | Level | Value | Usage |
 |-------|-------|-------|
@@ -70,11 +88,7 @@
 | `--shadow-lg` | `0 10px 15px rgba(0,0,0,0.1)` | Modals, dropdowns |
 | `--shadow-xl` | `0 20px 25px rgba(0,0,0,0.15)` | Hero images, featured cards |
 
----
-
-## Component Specs
-
-### Buttons
+### Component Specs（废弃）
 
 ```css
 /* Primary Button */
@@ -86,11 +100,6 @@
   font-weight: 600;
   transition: all 200ms ease;
   cursor: pointer;
-}
-
-.btn-primary:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
 }
 
 /* Secondary Button */
@@ -106,63 +115,7 @@
 }
 ```
 
-### Cards
-
-```css
-.card {
-  background: #F8FAFC;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: var(--shadow-md);
-  transition: all 200ms ease;
-  cursor: pointer;
-}
-
-.card:hover {
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-2px);
-}
-```
-
-### Inputs
-
-```css
-.input {
-  padding: 12px 16px;
-  border: 1px solid #E2E8F0;
-  border-radius: 8px;
-  font-size: 16px;
-  transition: border-color 200ms ease;
-}
-
-.input:focus {
-  border-color: #1E3A8A;
-  outline: none;
-  box-shadow: 0 0 0 3px #1E3A8A20;
-}
-```
-
-### Modals
-
-```css
-.modal-overlay {
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-}
-
-.modal {
-  background: white;
-  border-radius: 16px;
-  padding: 32px;
-  box-shadow: var(--shadow-xl);
-  max-width: 500px;
-  width: 90%;
-}
-```
-
----
-
-## Style Guidelines
+### Style Guidelines（废弃）
 
 **Style:** Dark Mode (OLED)
 
@@ -170,61 +123,22 @@
 
 **Best For:** Night-mode apps, coding platforms, entertainment, eye-strain prevention, OLED devices, low-light
 
-**Key Effects:** Minimal glow (text-shadow: 0 0 10px), dark-to-light transitions, low white emission, high readability, visible focus
-
-### Page Pattern
+### Page Pattern（废弃）
 
 **Pattern Name:** Minimal Single Column
 
 - **Conversion Strategy:** Single CTA focus. Large typography. Lots of whitespace. No nav clutter. Mobile-first.
-- **CTA Placement:** Center, large CTA button
-- **Section Order:** 1. Hero headline, 2. Short description, 3. Benefit bullets (3 max), 4. CTA, 5. Footer
+
+### Motion（废弃）
+
+**Scroll Reveal** (Subtle) — 依赖 GSAP + ScrollTrigger，未在实际系统引入。
+
+</details>
 
 ---
 
-## Motion
+## 当前交付清单（UI-1，2026-08-20）
 
-**Scroll Reveal** (Subtle) — Trigger: scroll (viewport enter) | Duration: 300-400ms | Easing: `power1.out`
-
-```js
-gsap.from(el, { opacity: 0, y: 12, duration: 0.35, ease: 'power1.out', scrollTrigger: { trigger: el, start: 'top 90%', toggleActions: 'play none none reverse' } });
-```
-
-**Framework notes:** Requires the ScrollTrigger plugin registered once via gsap.registerPlugin(ScrollTrigger)
-
-- ✅ Keep the y offset small (8-16px) so it reads as a fade, not a slide
-- ❌ Don't reveal below-the-fold content needed for SEO/crawlers as invisible-by-default without a no-JS fallback
-- ⚡ toggleActions 'play none none reverse' avoids re-triggering on every scroll direction change
-
----
-
-## Anti-Patterns (Do NOT Use)
-
-- ❌ Light mode default
-- ❌ Slow rendering
-
-### Additional Forbidden Patterns
-
-- ❌ **Emojis as icons** — Use SVG icons (Heroicons, Lucide, Simple Icons)
-- ❌ **Missing cursor:pointer** — All clickable elements must have cursor:pointer
-- ❌ **Layout-shifting hovers** — Avoid scale transforms that shift layout
-- ❌ **Low contrast text** — Maintain 4.5:1 minimum contrast ratio
-- ❌ **Instant state changes** — Always use transitions (150-300ms)
-- ❌ **Invisible focus states** — Focus states must be visible for a11y
-
----
-
-## Pre-Delivery Checklist
-
-Before delivering any UI code, verify:
-
-- [ ] No emojis used as icons (use SVG instead)
-- [ ] All icons from consistent icon set (Heroicons/Lucide)
-- [ ] `cursor-pointer` on all clickable elements
-- [ ] Hover states with smooth transitions (150-300ms)
-- [ ] Light mode: text contrast 4.5:1 minimum
-- [ ] Focus states visible for keyboard navigation
-- [ ] `prefers-reduced-motion` respected
-- [ ] Responsive: 375px, 768px, 1024px, 1440px
-- [ ] No content hidden behind fixed navbars
-- [ ] No horizontal scroll on mobile
+- 页面渲染一律以 `style.css` v3 为准；不要在本文件或任何页面文档中复刻旧深色规则。
+- 状态色、间距、圆角、字号均引用 CSS 变量，禁止硬编码 hex / 裸 rgba（除非作为 style.css 变量定义）。
+- emoji 不承载唯一语义（见上方「实际设计系统」）。

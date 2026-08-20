@@ -78,7 +78,7 @@ fetch('/api/paper/status')
     }).join(' · ') + '</div>';
   }
   if (d.positions && d.positions.length) {
-    html += '<div style="margin-top:8px;border-top:1px solid rgba(15,23,42,0.08);padding-top:6px;color:var(--text-muted);font-size:11px;">在仓：'
+    html += '<div class="mt-8 divider-t dashboard-footnote">在仓：'
       + d.positions.map(function(p){
           var now = p.price_now;
           var chg = (now && p.entry_price) ? ((now / p.entry_price - 1) * 100) : null;
@@ -188,7 +188,7 @@ function renderHealth(d) {
     + autoHtml
     + '</div>';
   var checks = d.checks || [];
-  html += '<div style="margin-top:8px;border-top:1px solid rgba(15,23,42,0.08);padding-top:8px;">'
+  html += '<div class="mt-8 divider-t dashboard-sub">'
     + '<div style="font-size:12px;color:var(--text-muted);margin-bottom:2px;">检查明细（' + checks.length + ' 项）</div>'
     + '<table style="width:100%;font-size:12px;"><tbody>';
   checks.forEach(function(x) {
@@ -259,7 +259,7 @@ fetch("/api/data/progress")
       ["深值·大盘企稳", _dk("deep_value","n") + " 信号 · " + _dk("deep_value","events") + " 次独立事件 · 最近 " + _dkLatest("deep_value")],
       ["吸筹族(供给收缩等)", _dk("accumulate","n") + " 信号 · " + _dk("accumulate","events") + " 次独立事件 · 最近 " + _dkLatest("accumulate")]
     ];
-    html += '<div style="margin-top:12px;border-top:1px solid rgba(15,23,42,0.08);padding-top:8px;">'
+    html += '<div class="mt-12 divider-t dashboard-sub">'
       + '<div style="color:var(--text-muted);font-size:12px;margin-bottom:4px;">信号族样本深度 HIST-FULL（K-2 回放 ' + (fam.total_signals || 0) + ' 信号 · ' + _dpFmt(fam.generated) + ' 口径）</div>'
       + '<table style="width:100%;font-size:12px;"><tbody>' + famRows.map(function(r) {
         return '<tr><td style="width:130px;color:var(--text-muted);padding:2px 0;">' + r[0] + '</td><td style="padding:2px 0;">' + r[1] + '</td></tr>';
@@ -274,7 +274,7 @@ fetch("/api/data/progress")
           ["深值·大盘企稳", _cdk("deep_value","n") + " 信号 · " + _cdk("deep_value","events") + " 次独立事件 · 最近 " + _cdkLatest("deep_value")],
           ["吸筹族(供给收缩等)", _cdk("accumulate","n") + " 信号 · " + _cdk("accumulate","events") + " 次独立事件 · 最近 " + _cdkLatest("accumulate")]
         ];
-        html += '<div style="margin-top:8px;border-top:1px dashed rgba(15,23,42,0.08);padding-top:6px;">'
+        html += '<div class="mt-8 dashboard-sub-dashed">'
           + '<div style="color:var(--text-muted);font-size:12px;margin-bottom:4px;">信号族样本深度 CLEAN-CUR（当前引擎干净回调段，' + (clean.total_signals || 0) + ' 信号）</div>'
           + '<table style="width:100%;font-size:12px;"><tbody>' + cleanRows.map(function(r) {
             return '<tr><td style="width:130px;color:var(--text-muted);padding:2px 0;">' + r[0] + '</td><td style="padding:2px 0;">' + r[1] + '</td></tr>';
@@ -306,7 +306,7 @@ fetch("/api/data/progress")
           pct = Math.max(0, Math.min(100, pct || 0));
           var fill = pct > 0 ? '<div style="width:' + pct + '%;height:100%;background:linear-gradient(90deg,var(--accent),var(--blue));border-radius:3px;"></div>' : '';
           return '<div style="display:inline-flex;align-items:center;gap:6px;">'
-            + '<div style="width:90px;height:8px;background:rgba(15,23,42,0.06);border:1px solid rgba(15,23,42,0.12);border-radius:4px;overflow:hidden;">' + fill + '</div>'
+            + '<div class="dashboard-mini-track">' + fill + '</div>'
             + '<span style="font-size:11px;color:var(--text-secondary);">' + pct + '%</span></div>';
         }
         var crows = ch.C.monthly || [];
@@ -343,7 +343,7 @@ fetch("/api/data/progress")
           return parts.length ? '<span style="color:var(--red);">' + parts.join(' · ') + '</span>'
             : '未触发（族级提示项，n≥' + fm.thresholds.min_n + ' 生效）';
         }
-        html += '<div style="margin-top:12px;border-top:1px solid rgba(15,23,42,0.08);padding-top:8px;">'
+        html += '<div class="mt-12 divider-t dashboard-sub">'
           + '<div style="color:var(--text-muted);font-size:12px;margin-bottom:4px;">重拟合触发（J-2 三通道，' + _dpFmt(j2.generated) + ' 口径）</div>'
           + '<table style="width:100%;font-size:12px;"><tbody>'
           + '<tr><td style="width:130px;color:var(--text-muted);padding:2px 0;">A 独立恐慌事件</td><td style="padding:2px 0;">' + ch.A.value + '/' + ch.A.threshold + ' · ' + _pctBar(ch.A.progress_pct) + ' · ' + _cBadge(ch.A.status) + '</td></tr>'

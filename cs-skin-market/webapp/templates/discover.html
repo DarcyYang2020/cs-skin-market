@@ -89,7 +89,7 @@ function loadDiscoverHistory() {
         var p30 = it.fwd30 !== null ? it.fwd30 + "%" : "--";
         return '<div style="font-size:11px;color:var(--text-muted);padding:2px 0 0 16px;">' + it.name + ' · 14d ' + p14 + ' · 30d ' + p30 + '</div>';
       }).join("");
-      return '<div style="padding:8px 0;border-bottom:1px solid rgba(15,23,42,0.08);">'
+      return '<div class="discover-row divider-b">'
         + '<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px;">'
         + '<span style="font-weight:600;">' + String(e.time || "").slice(0, 10) + '</span>'
         + '<span>' + e.n + ' 品</span>'

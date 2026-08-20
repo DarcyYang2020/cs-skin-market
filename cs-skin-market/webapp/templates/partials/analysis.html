@@ -17,7 +17,7 @@
 </div>
 {% endif %}
 {% if kline_stale_days is defined and kline_stale_days is not none %}
-<div class="card" style="border-color: rgba(245,158,11,0.5);margin-bottom:12px;">
+<div class="card analysis-card-warn">
   <div class="card-header" style="padding:10px 14px;">
     <span style="font-size:14px;font-weight:700;color:var(--yellow);">⚠️ csQAQ 图表采集失败，已用数据库缓存K线</span>
   </div>
@@ -46,7 +46,7 @@
   </div>
   {% endif %}
   {% if fusion_decision.research_caveats %}
-  <div style="margin:4px 14px 8px;padding:8px 10px;background:rgba(245,158,11,0.08);border-left:3px solid var(--yellow);font-size:12px;line-height:1.5;color:var(--text-secondary);">
+  <div class="analysis-amber-note">
     <div style="font-weight:700;color:var(--yellow);margin-bottom:3px;">研究口径提示（仅标注，不改变决策）</div>
     {% for _caveat in fusion_decision.research_caveats %}
       {% if _caveat is mapping %}

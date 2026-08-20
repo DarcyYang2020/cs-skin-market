@@ -1123,6 +1123,43 @@
 - **②（深跌反弹右侧）｜最弱·单事件簇**：进四关，但**预注册 A2 否决线**：发射/聚类报告单月信号占比 >50%（本例 91.6%）即**自动驳回**（与 AGENTS.md「单簇>50%→warning」一致）；预判②极可能 A2 被拒，**不得预先按族落地**。
 - 两候选族开回放产物须含逐条 `signals[]`（date/name/action_label/net14/net30）+ 月度/单品分布，供③独立跑四关；严禁聚合/事件级探针替代。
 
+---
+
+## CD. 族开回放口径裁定 · ③拍板（2026-08-20，③审计）
+
+> 背景：CC 两条候选（①牛市上行段 / ②深跌反弹右侧）已放行，trigger 边界从树规则抽出并锁定（见下）。②问「族开回放」用研究脚本变体（不改 pipeline/）还是 env-flag 门控加进 SIGNAL_FAMILIES；②倾向前者。③裁定如下。
+
+### 一、裁定：采用「研究脚本变体」，否决 env-flag 改 pipeline/
+- **③确认口径 = 研究脚本变体**（②所倾向，红线最干净）。理由：
+  1. **pipeline/ 字节级不动** → 红线「不改生产代码」完全满足；回放产物纯研究产物。
+  2. 基线回放 `references/run_item_backtest_fullpool_parallel.py` 本就是此模式：导入 `scripts-archive/run_item_backtest.py` 的 `backtest_item`/`summarize` + `pipeline.backtest_common.build_market_context`，**从未改写生产内核**。族开回放照此写 `references/run_familyopen_replay.py` 即可。
+  3. `pipeline/item_analysis.py:1134 SIGNAL_FAMILIES` 是注册表驱动（line 968 注释「新增信号族只需向 SIGNAL_FAMILIES 注册并声明闸门」+ `SIGNAL_FAMILY_BY_KEY` 派生字典）。**家族定义可运行时注入**，无需碰生产文件。
+- **否决 env-flag 加进 SIGNAL_FAMILIES**：须改 `pipeline/item_analysis.py` 落盘（即便门控默认关），既弱化了红线、又有门控遗留生产的隐患；Option 1 已同时满足「比对有效性 + 红线干净」，无必要走 Option 2。
+
+### 二、研究脚本的硬约束（②必须遵守，否则③四关直接拒）
+1. **复用同一回放内核**：必须 `import` `backtest_item`/`summarize`（from `scripts-archive/run_item_backtest.py`）与 `build_market_context`（from `pipeline.backtest_common`）。**严禁重实现**信号发射 / 前向收益 / 决策逻辑。
+2. **仅注入家族注册表**：运行时 patch `pipeline.item_analysis` 的 `SIGNAL_FAMILIES`（tuple→重赋值含两新族）+ `SIGNAL_FAMILY_BY_KEY`（dict.update）+ 任何派生过滤列表。两新族 trigger 谓词须用引擎已算特征空间（pct/z/chg7/mchg7/mchg21/vol30/vol7…），与 CC 锁定边界逐字一致。
+3. **不动既有家族决策数学**：注入不得改变现有 374 信号的 fwd14/fwd30/net14/net30 计算。
+4. **输出独立文件**：经既有 `CS_ENGINE_REPLAY_OUT` 落到 `data/_exp_familyopen_bull_panic_2026-08-20.json`，`signals[]` schema 与基线一致（date/name/action_label/signal_type/fwd14/fwd30/net14/net30）。
+5. **同环境开关**：运行 env 开关与基线一致（如 `CS_ENGINE_PERIOD_ROUTE=1`），唯一差异 = 家族注入。
+
+### 三、③四关前的硬验收（替代「生产代码未改」的实证）
+②须随族开产物一并提供 **delta 清单**，③将：
+- 核验**现有 374 基线信号在族开产物中 fwd14/fwd30/net14/net30 逐条字节一致** → 证注入未污染既有数学（若任一字段漂移 → 拒，等于注入泄漏）。
+- 提取两新族的**新增信号**（action_label 属新族者）含 date/name/fwd14/fwd30 + **月度/单品分布**（供 A2 发射复算 gate）。
+- 核对注入 trigger 边界与预注册 ①/② 逐字吻合。
+
+### 四、落地前必做 smoke test（防注入 footgun）
+- `SIGNAL_FAMILIES` 为 tuple、`SIGNAL_FAMILY_BY_KEY` 为 dict、派生过滤列表为 comprehension —— **三者须同步 patch**，漏一即静默失效。要求②在 28 分钟全池回放前，先用 3 品跑「基线 vs 族开」，确认 374-等价信号一致 + 新族按预期触发，再跑全池。
+
+### 五、下一步
+- ②按本 CD 写 `references/run_familyopen_replay.py`（研究脚本变体）+ 预注册 trigger 文档（含 CC 两处更正：①「覆盖薄弱区」、②「A2 单月>50% 否决线」）。
+- 产物交③ → 完整四关（组合级 + 前后半段一致 + 置换 + **发射分布复算**，第五件套硬门槛不收窄）→ ③审 → 样本外/live。
+- ③不替②调参、不「帮忙改到通过」。
+
+### 状态
+- 族开回放口径已③拍板（研究脚本变体 + 注册表注入 + delta 验收）。待②写预注册 + 回放脚本并执行。
+
 ### 五、用到的检验与数字
 - `fullscan_features.py`/`fullscan_regions.py` 逐行核对；独立重算（`_audit_fullscan_verify_2026-08-20.py`，venv `fullscan` sklearn 1.9.0）复现 63/21/1 + 补 fit_n/val_n + 月度/单品集中度。
 - 关键数：① n=27,677/fit_n=21,582/val_n=6,095/最大月16.7%；② n=475/fit_n=36/val_n=439/2025-10占91.6%/top单品2.5%。
@@ -1130,3 +1167,29 @@
 ### 六、重审前置（②进四关前补交）
 1. 两候选「族开」回放产物（`signals[]` + 月度/单品分布）；2. 候选 vs 基线 cap0.8 组合回放；3. 候选②附「单事件簇」自陈（2025-10 占 91.6%）；4. CB「盲区」措辞更正。
 红线：真实重放、不替②调参、不「帮忙改到通过」。
+
+---
+
+## UI. UI 优化三卡立项（2026-08-20，UiDesigner 立项，交前端/研发窗口）
+
+- **来源**：UiDesigner 对 cs-skin-market Web UI 实地评审（全站指纹扫描 + 信息架构诊断），非引擎改动。
+- **三卡（roadmap v73）**：
+  - **UI-1（A+ 止血）**：补 token 工具类到 style.css + watchlist 样板去内联/硬色（192→<40、裸 rgba 清零）+ 修 checkup regime-s2 对比度 ≥4.5:1 + 归档失效 MASTER.md。**建议立即开干**。
+  - **UI-2（首屏拆分）**：dashboard 7卡→3卡投资视图 + 新增 /ops 引擎研究视图（复用现有遥测接口），抽离 J-2/信号族/去簇等研发术语。
+  - **UI-3（系统化）**：discover/replay/search 整页 + analysis/index_analysis/analysis_results partials token 化 + emoji 语义规范落地。
+- **核心发现**：style.css v3 设计系统成熟但页面层严重未用 token（watchlist 内联192/硬色10/emoji31 最重；checkup regime-s2 Ant 蓝 #1890ff 对比度不达标；MASTER.md 文档漂移仍称"禁止浅色"）。
+- **纪律（三卡共守）**：纯 CSS/HTML/模板层，不动引擎/pipeline/路由行为/测试；不 bump ENGINE_VERSION；冒烟 131 passed/0 failed 不回退；check_encoding.py PASS。
+- **状态**：已立项，UI-1 建议立即开干；UI-2/UI-3 挂账后续（按 watchlist→checkup→dashboard/ops→discover→analysis 顺序）。
+
+---
+
+## UJ. UI-1 全站 UI 止血落地（2026-08-20，②前端/研发执行）
+
+- **改造范围（纯 CSS/HTML/模板，零功能变更）**：`webapp/static/css/style.css` + `webapp/templates/watchlist.html` + `checkup.html` + `dashboard.html` + `discover.html` + `partials/analysis.html` + `design-system/cs-market/MASTER.md`。
+- **补 token 工具类**（style.css Utilities 区）：`.tint-accent` / `.bg-inset-2/3/4` / `.bg-amber(-soft)` / `.bg-purple` / `.bg-blue-soft` / `.border-blue` / `.text-blue` / `.text-accent` / `.text-amber`，以及布局类（`.flex/.flex-col/.items-center/.justify-between/.gap-4/8/10/12/16/.flex-1/.w-full/.ml-auto`）、文字类（`.text-11/13/15/17/.fw-600/700/800/.nowrap/.text-center`）、`.pill-tag` / `.progress-track(-sm)` / `.divider-t(-dashed)` / `.divider-b` 等语义类，覆盖全站裸 rgba 模式。
+- **watchlist 样板**：内联 `style=` 数 **192 → 10**（目标 <40，达标）；裸 `rgba(245,158,11..)` / `rgba(139,92,246..)` / `rgba(15,23,42,..)` / `#2563eb` 全部清零；趋势列 `📈/📉/➖` 加文字「涨/跌/平」。
+- **checkup regime-s2 对比度**：`.regime-s2` 由 Ant 蓝 `#e6f7ff/#91d5ff/#1890ff` 改为 `var(--blue-bg)/var(--blue-border)/var(--blue)`（#2563EB 体系）。对比度 **2.95:1 → 4.55:1**（≥4.5 AA 达标，独立计算验证）。
+- **全站裸色清零（验收标准 1）**：grep 全站 `templates/` 无裸 `rgba(15,23,42` / `rgba(245,158,11` / `rgba(139,92,246` / `#1890ff`（dashboard 5 处 / discover 1 处 / analysis 2 处 / checkup 2 处一并清理，抽为 `.dashboard-sub` / `.discover-row` / `.analysis-card-warn` / `.analysis-amber-note` / `.checkup-note` 等语义类）。
+- **文档归档**：`design-system/cs-market/MASTER.md` 重写为「实际系统 = style.css v3 浅色 indigo 唯一事实源」，历史深色 OLED 概念稿折叠进 `<details>` 追溯区；删除「禁止浅色模式」「禁止 emoji」等过时条款。
+- **验证**：`tests/test_smoke.py` **131 passed / 0 failed / 0 skipped**（不回退）；`tests/check_encoding.py` PASS；Jinja 编译检查全过；TestClient 渲染 `/watchlist`、`/checkup` 均 200。`ENGINE_VERSION` 保持 `v2-T13` 未变。
+- **状态**：待 UiDesigner/PM 对照 UI-1 立项卡验收。
