@@ -1,0 +1,56 @@
+{
+ "meta": {
+  "date": "2026-08-20",
+  "n_blind": 1
+ },
+ "blindspots": [
+  {
+   "n": 475,
+   "centroid": {
+    "pct": 55.33,
+    "z": 0.39,
+    "chg7": 12.48,
+    "chg30": 50.32,
+    "chg90": 196.62,
+    "sc7": 1.78,
+    "sc30": 11.33,
+    "vol7": 631.86,
+    "vol30": 355.1,
+    "mchg7": -40.21,
+    "mchg21": -36.36,
+    "mchg30": -32.98
+   },
+   "gate14": {
+    "n": 475,
+    "win": 83.6,
+    "avg": 31.73,
+    "trimmed_avg": 26.39,
+    "fit_avg": 16.11,
+    "fit_win": 58.3,
+    "val_avg": 33.01,
+    "val_win": 85.6,
+    "pass": true
+   },
+   "gate30": {
+    "n": 475,
+    "win": 81.3,
+    "avg": 48.52,
+    "trimmed_avg": 39.34,
+    "fit_avg": 40.37,
+    "fit_win": 66.7,
+    "val_avg": 49.18,
+    "val_win": 82.5,
+    "pass": true
+   },
+   "passed": true,
+   "natural_tenor": [
+    "14d",
+    "30d"
+   ],
+   "source": "tree_fwd30_leaf21",
+   "engine_hits": 0,
+   "coverage_ratio": 0.0,
+   "n_engine_signal_names": 0
+  }
+ ]
+}
