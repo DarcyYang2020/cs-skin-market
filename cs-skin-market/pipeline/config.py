@@ -142,21 +142,13 @@ ITEM_EXPECTANCY_STATS = {
         "win14": 63.0, "avg14": 11.55, "ci14_lo": 44.2, "ci14_hi": 78.5,
         "win30": 63.6, "avg30": 51.51,  # n30=22
     },
-    # 低吸/吸筹组（供给收缩 + 深度回调低吸 + 深收缩慢涨 + 震荡吸筹 + 二波回调）：供给收缩吸筹(142) + 深度回调低吸(34) 全量（自动生成）
+    # 吸筹/回补组（供给收缩 + 深度回调 + 基础分批）：供给收缩吸筹(142) + 深度回调低吸(34) + 基础分批(22) 全量（自动生成）
     "accumulate": {
-        "label": "低吸/吸筹组（供给收缩 + 深度回调低吸 + 深收缩慢涨 + 震荡吸筹 + 二波回调）",
-        "n": 176,
-        "events": 11,
-        "win14": 64.2, "avg14": 10.80, "ci14_lo": 56.9, "ci14_hi": 70.9,
-        "win30": 67.2, "avg30": 22.43,  # n30=174
-    },
-    # 基础分批组：基础分批(22) 全量（自动生成）
-    "base": {
-        "label": "基础分批组",
-        "n": 22,
-        "events": 7,
-        "win14": 54.5, "avg14": 4.62, "ci14_lo": 34.7, "ci14_hi": 73.1,
-        "win30": 45.5, "avg30": 5.71,  # n30=22
+        "label": "吸筹/回补组（供给收缩 + 深度回调 + 基础分批）",
+        "n": 198,
+        "events": 12,
+        "win14": 63.1, "avg14": 10.12, "ci14_lo": 56.2, "ci14_hi": 69.5,
+        "win30": 64.8, "avg30": 20.55,  # n30=196
     },
 }
 
@@ -188,21 +180,13 @@ ITEM_EXPECTANCY_STATS_CLEAN_CUR = {
         "win14": 63.6, "avg14": 10.24, "ci14_lo": 46.6, "ci14_hi": 77.8,
         "win30": 71.4, "avg30": 50.04,  # n30=28
     },
-    # 低吸/吸筹组（供给收缩 + 深度回调低吸 + 深收缩慢涨 + 震荡吸筹 + 二波回调）：供给收缩吸筹(56) + 深度回调低吸(32) 全量（自动生成）
+    # 吸筹/回补组（供给收缩 + 深度回调 + 基础分批）：供给收缩吸筹(56) + 深度回调低吸(32) + 基础分批(28) 全量（自动生成）
     "accumulate": {
-        "label": "低吸/吸筹组（供给收缩 + 深度回调低吸 + 深收缩慢涨 + 震荡吸筹 + 二波回调）",
-        "n": 88,
-        "events": 14,
-        "win14": 33.0, "avg14": 3.33, "ci14_lo": 24.0, "ci14_hi": 43.3,
-        "win30": 29.9, "avg30": 2.46,  # n30=87
-    },
-    # 基础分批组：基础分批(28) 全量（自动生成）
-    "base": {
-        "label": "基础分批组",
-        "n": 28,
-        "events": 9,
-        "win14": 53.6, "avg14": 3.10, "ci14_lo": 35.8, "ci14_hi": 70.5,
-        "win30": 35.7, "avg30": 1.57,  # n30=28
+        "label": "吸筹/回补组（供给收缩 + 深度回调 + 基础分批）",
+        "n": 116,
+        "events": 19,
+        "win14": 37.9, "avg14": 3.27, "ci14_lo": 29.6, "ci14_hi": 47.0,
+        "win30": 31.3, "avg30": 2.24,  # n30=115
     },
 }
 
@@ -239,90 +223,45 @@ BASELINE_LEDGER = {
 # sync_expectancy_config / benchmark_compare）必须从这里取定义，禁止各自硬编码。
 # 展示键 accumulate 是聚合键（supply_accum + deep_dip + base），不是 supply_accum 细族。
 SIGNAL_FAMILY_TAXONOMY = {
-    # C1 三口径统一（2026-08-20）：以引擎 SIGNAL_FAMILIES 为唯一事实源。
-    # 细族 = 引擎 11 族 + 融合基础买点(base=分批建仓) + P0 超跌例外(deep_dip=深度回调低吸) + 历史遗留(weak_market=弱市抗跌)。
-    # fine_order 按关键字特异性排序，base(分批建仓) 最后兜底（"分批建仓"是多数 label 的后缀，须最后匹配）。
-    "fine_order": [
-        "panic_resonance", "panic_easing", "deep_value",
-        "supply_accum", "rise_accum", "rise_contract",
-        "rs_accum", "ct_accum", "volatile_accum",
-        "second_wave", "xishou_mid", "deep_dip",
-        "weak_market", "base",
-    ],
+    "fine_order": ["panic_resonance", "panic_easing", "deep_value", "supply_accum", "deep_dip", "base"],
     "fine_keywords": {
         "panic_resonance": "恐慌共振",
         "panic_easing": "恐慌退潮",
         "deep_value": "深值",
         "supply_accum": "供给收缩",
-        "rise_accum": "吸筹型上涨",
-        "rise_contract": "深收缩",
-        "rs_accum": "相对强度",
-        "ct_accum": "逆市走强",
-        "volatile_accum": "震荡吸筹",
-        "second_wave": "二波回调",
-        "xishou_mid": "惜售中段",
         "deep_dip": "深度回调",
-        "weak_market": "弱市抗跌",
-        "base": "分批建仓",
+        "base": None,
     },
     "fine_labels": {
         "panic_resonance": "恐慌共振",
         "panic_easing": "恐慌退潮",
         "deep_value": "深值企稳",
         "supply_accum": "供给收缩吸筹",
-        "rise_accum": "吸筹型上涨",
-        "rise_contract": "深收缩慢涨",
-        "rs_accum": "相对强度",
-        "ct_accum": "逆市走强",
-        "volatile_accum": "震荡吸筹",
-        "second_wave": "二波回调",
-        "xishou_mid": "惜售中段",
         "deep_dip": "深度回调低吸",
-        "weak_market": "弱市抗跌",
         "base": "基础分批",
     },
-    "display_keys": ["panic", "deep_value", "accumulate", "rise", "longhold", "oversold", "base", "weak_market"],
+    "display_keys": ["panic", "deep_value", "accumulate"],
     "display_labels": {
         "panic": "恐慌族",
         "deep_value": "深值企稳",
-        "accumulate": "低吸/吸筹组（供给收缩 + 深度回调低吸 + 深收缩慢涨 + 震荡吸筹 + 二波回调）",
-        "rise": "追涨组（吸筹型上涨）",
-        "longhold": "长持组（相对强度 + 逆市走强）",
-        "oversold": "超跌组（惜售中段）",
-        "base": "基础分批组",
-        "weak_market": "弱市抗跌（历史遗留）",
+        "accumulate": "吸筹/回补组（供给收缩 + 深度回调 + 基础分批）",
     },
     "fine_to_display": {
         "panic_resonance": "panic",
         "panic_easing": "panic",
         "deep_value": "deep_value",
         "supply_accum": "accumulate",
-        "rise_accum": "rise",
-        "rise_contract": "accumulate",
-        "rs_accum": "longhold",
-        "ct_accum": "longhold",
-        "volatile_accum": "accumulate",
-        "second_wave": "accumulate",
-        "xishou_mid": "oversold",
         "deep_dip": "accumulate",
-        "weak_market": "weak_market",
-        "base": "base",
+        "base": "accumulate",
     },
     "display_to_fine": {
         "panic": ["panic_resonance", "panic_easing"],
         "deep_value": ["deep_value"],
-        "accumulate": ["supply_accum", "deep_dip", "rise_contract", "volatile_accum", "second_wave"],
-        "rise": ["rise_accum"],
-        "longhold": ["rs_accum", "ct_accum"],
-        "oversold": ["xishou_mid"],
-        "base": ["base"],
-        "weak_market": ["weak_market"],
+        "accumulate": ["supply_accum", "deep_dip", "base"],
     },
     "notes": {
-        "C1_2026-08-20": "三口径统一：细族=引擎11族+base+deep_dip+weak_market；展示键=语义组（panic/deep_value/accumulate/rise/longhold/oversold/base/weak_market）；signal_guidance 改用 assign_fine_family（废除自身关键词匹配）。废除 base 兜底吞并（原 rise_accum/rs_accum/ct_accum 等 7 族被 base 兜底）。",
-        "accumulate": "accumulate 展示组=低吸/吸筹类（供给收缩+深度回调低吸+深收缩慢涨+震荡吸筹+二波回调），不含 base 分批建仓（独立展示组）。",
-        "base": "base 细族=融合决策基础买点「分批建仓」，独立展示组；signal_guidance 不再归入「低位低估」。",
-        "weak_market": "weak_market=历史遗留「弱市抗跌·分批介入」（trend_health 旧路径，与 rs_accum/ct_accum 语义重叠；展示层单列，引擎路径未删）。",
+        "accumulate": "accumulate 是展示聚合键，不是 supply_accum 细族；语义=供给收缩+深度回调+基础分批，与历史 142/212 不同口径。",
+        "accumulate_semantics": "accumulate 组本质是「左侧/低吸类」（supply_accum + deep_dip + base），不是字面「供给吸筹」；改供给逻辑前必须以此语义边界为准，避免误伤最大贡献组。",
         "deep_value": "deep_value 展示键严格等于深值企稳细族，不含深度回调低吸/基础分批。",
     },
 }

@@ -2,7 +2,7 @@
  "baseline": "HIST-FULL",
  "caveat": "HIST-FULL: accumulate leave-out +111.69pp is hold21 portfolio attribution; contains ~50% missing-depth signals",
  "meta": "组合绩效归因双基线（A1-3）：与 portfolio_backtest 同源口径；leave-one-out=剔除该族后组合总收益差值(pp)。",
- "generated": "2026-08-20",
+ "generated": "2026-08-15",
  "base": {
   "total_return_pct": 201.06,
   "n_signals": 317
@@ -17,12 +17,12 @@
    "share_of_signals_pct": 8.5
   },
   "accumulate": {
-   "label": "低吸/吸筹组（供给收缩 + 深度回调低吸 + 深收缩慢涨 + 震荡吸筹 + 二波回调）",
-   "n_signals": 176,
-   "win14_pct": 64.2,
-   "avg14_net_pct": 10.8,
-   "leave_out_contrib_pp": 95.72,
-   "share_of_signals_pct": 55.5
+   "label": "吸筹/回补组（供给收缩 + 深度回调 + 基础分批）",
+   "n_signals": 198,
+   "win14_pct": 63.1,
+   "avg14_net_pct": 10.12,
+   "leave_out_contrib_pp": 111.69,
+   "share_of_signals_pct": 62.5
   },
   "panic": {
    "label": "恐慌族",
@@ -31,14 +31,6 @@
    "avg14_net_pct": 29.79,
    "leave_out_contrib_pp": 56.35,
    "share_of_signals_pct": 29.0
-  },
-  "base": {
-   "label": "基础族",
-   "n_signals": 22,
-   "win14_pct": 54.5,
-   "avg14_net_pct": 4.62,
-   "leave_out_contrib_pp": 19.66,
-   "share_of_signals_pct": 6.9
   }
  },
  "monthly_pnl": {
@@ -151,7 +143,7 @@
    "baseline": "HIST-FULL",
    "caveat": "HIST-FULL: accumulate leave-out +111.69pp is hold21 portfolio attribution; contains ~50% missing-depth signals",
    "meta": "组合绩效归因双基线（A1-3）：与 portfolio_backtest 同源口径；leave-one-out=剔除该族后组合总收益差值(pp)。",
-   "generated": "2026-08-20",
+   "generated": "2026-08-15",
    "base": {
     "total_return_pct": 201.06,
     "n_signals": 317
@@ -166,12 +158,12 @@
      "share_of_signals_pct": 8.5
     },
     "accumulate": {
-     "label": "低吸/吸筹组（供给收缩 + 深度回调低吸 + 深收缩慢涨 + 震荡吸筹 + 二波回调）",
-     "n_signals": 176,
-     "win14_pct": 64.2,
-     "avg14_net_pct": 10.8,
-     "leave_out_contrib_pp": 95.72,
-     "share_of_signals_pct": 55.5
+     "label": "吸筹/回补组（供给收缩 + 深度回调 + 基础分批）",
+     "n_signals": 198,
+     "win14_pct": 63.1,
+     "avg14_net_pct": 10.12,
+     "leave_out_contrib_pp": 111.69,
+     "share_of_signals_pct": 62.5
     },
     "panic": {
      "label": "恐慌族",
@@ -180,14 +172,6 @@
      "avg14_net_pct": 29.79,
      "leave_out_contrib_pp": 56.35,
      "share_of_signals_pct": 29.0
-    },
-    "base": {
-     "label": "基础族",
-     "n_signals": 22,
-     "win14_pct": 54.5,
-     "avg14_net_pct": 4.62,
-     "leave_out_contrib_pp": 19.66,
-     "share_of_signals_pct": 6.9
     }
    },
    "monthly_pnl": {
@@ -300,7 +284,7 @@
    "baseline": "CLEAN-CUR",
    "caveat": "CLEAN-CUR: clean after csQAQ period=1095 backfill; panic 26.9% family share, 97.5% of panic in 2026-05 single-event cluster",
    "meta": "组合绩效归因双基线（A1-3）：与 portfolio_backtest 同源口径；leave-one-out=剔除该族后组合总收益差值(pp)。",
-   "generated": "2026-08-20",
+   "generated": "2026-08-15",
    "base": {
     "total_return_pct": 262.3,
     "n_signals": 230
@@ -315,12 +299,12 @@
      "share_of_signals_pct": 14.3
     },
     "accumulate": {
-     "label": "低吸/吸筹组（供给收缩 + 深度回调低吸 + 深收缩慢涨 + 震荡吸筹 + 二波回调）",
-     "n_signals": 88,
-     "win14_pct": 33.0,
-     "avg14_net_pct": 3.33,
-     "leave_out_contrib_pp": 85.21,
-     "share_of_signals_pct": 38.3
+     "label": "吸筹/回补组（供给收缩 + 深度回调 + 基础分批）",
+     "n_signals": 116,
+     "win14_pct": 37.9,
+     "avg14_net_pct": 3.27,
+     "leave_out_contrib_pp": 107.78,
+     "share_of_signals_pct": 50.4
     },
     "panic": {
      "label": "恐慌族",
@@ -329,14 +313,6 @@
      "avg14_net_pct": 31.82,
      "leave_out_contrib_pp": 118.41,
      "share_of_signals_pct": 35.2
-    },
-    "base": {
-     "label": "基础族",
-     "n_signals": 28,
-     "win14_pct": 53.6,
-     "avg14_net_pct": 3.1,
-     "leave_out_contrib_pp": 47.28,
-     "share_of_signals_pct": 12.2
     }
    },
    "monthly_pnl": {
