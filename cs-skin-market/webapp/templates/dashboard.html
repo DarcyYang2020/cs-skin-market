@@ -21,7 +21,7 @@
   </div>
   <div style="padding:10px 14px;font-size:13px;">
     {% if _s.crash and _s.crash.active %}
-    <div style="background:rgba(239,68,68,0.08);border-left:3px solid var(--red);padding:6px 10px;margin-bottom:8px;font-size:12px;color:var(--red);font-weight:600;">⚠️ {{ _s.crash.response }}（单日 {{ _s.crash.chg1d if _s.crash.chg1d != none else '--' }}% · 3日 {{ _s.crash.chg3d if _s.crash.chg3d != none else '--' }}%）</div>
+    <div style="background:var(--red-bg);border-left:3px solid var(--red);padding:6px 10px;margin-bottom:8px;font-size:12px;color:var(--red);font-weight:600;">⚠️ {{ _s.crash.response }}（单日 {{ _s.crash.chg1d if _s.crash.chg1d != none else '--' }}% · 3日 {{ _s.crash.chg3d if _s.crash.chg3d != none else '--' }}%）</div>
     {% endif %}
     <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;">
       <span>市场状态
