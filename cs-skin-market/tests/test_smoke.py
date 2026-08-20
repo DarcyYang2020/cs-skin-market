@@ -3642,6 +3642,17 @@ def t_http_api_smoke():
         db._SCHEMA_INIT_PATHS.clear()
         client = TestClient(app, raise_server_exceptions=True)
 
+        # AUTH-1（2026-08-21）：受保护路由需登录门禁。先断言未登录拦截，再登录。
+        import os as _os
+        _os.environ["CS_MARKET_PASSWORD"] = "smoke-test-pass"  # 测试专用密码（login 延迟读取时生效）
+        _r = client.get("/watchlist", follow_redirects=False)
+        assert _r.status_code == 302 and "/login" in _r.headers.get("location", ""), \
+            (_r.status_code, _r.headers.get("location"))
+        _r = client.get("/api/analysis/results")
+        assert _r.status_code == 401, _r.status_code
+        _r = client.post("/login", data={"password": "smoke-test-pass"}, follow_redirects=False)
+        assert _r.status_code == 302, _r.text[:200]
+
         for url, marker in [
             ("/", "dashboard-content"),
             ("/watchlist", "wl-table"),

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}CS-Market 登录{% endblock %}
+
+{% block content %}
+<div class="page-dashboard" style="display:flex;justify-content:center;align-items:flex-start;padding-top:60px;">
+  <div class="card" style="width:360px;max-width:94vw;padding:24px;">
+    <div class="card-header" style="justify-content:center;margin-bottom:16px;">
+      <span class="card-title">🔐 登录</span>
+    </div>
+    {% if error %}
+    <div class="analysis-card-warn" style="margin-bottom:12px;padding:8px 12px;font-size:12px;color:var(--red);border:1px solid var(--red-border-strong);border-radius:6px;background:var(--red-bg);">{{ error }}</div>
+    {% endif %}
+    <form method="post" action="/login">
+      <input type="hidden" name="next" value="{{ next }}">
+      <div class="form-group">
+        <label for="login-password">密码</label>
+        <input type="password" id="login-password" name="password" class="form-input" required autofocus placeholder="请输入访问密码" autocomplete="current-password">
+      </div>
+      <div class="row-flex" style="margin-top:16px;">
+        <button type="submit" class="btn btn-primary" style="flex:1;">登录</button>
+      </div>
+      <div class="text-12 muted" style="margin-top:10px;text-align:center;">未登录仅可查看大盘页；登录后解锁全部分析功能</div>
+    </form>
+  </div>
+</div>
+{% endblock %}

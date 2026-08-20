@@ -1,6 +1,7 @@
-# CS-Market 运行依赖（2026-08-10 固化，个人部署迁移用）
+# CS-Market 运行依赖（2026-08-10 固化，个人部署迁移用；2026-08-21 AUTH-1 补 itsdangerous）
 # 安装: pip install -r requirements.txt && python -m playwright install chromium
 fastapi==0.139.0
 uvicorn==0.51.0
 jinja2==3.1.6
 playwright==1.61.0
+itsdangerous==2.2.0

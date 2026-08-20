@@ -1768,3 +1768,30 @@
   4. **不选 B**（WATCH 豁免 130/1/0 提交）：测试与脚本语义不一致是真实缺陷，应修测试而非豁免；也不选「6.5→6.6 改阈值」（掩耳盗铃、无预注册出处）。
 - **执行方**：运维按此语义改 `tests/test_smoke.py:1168` 断言（note 允许 WATCH），改后冒烟应 131/0/0，commit 交 PM 验收。
 - **状态**：已裁定，待运维执行 + 冒烟 + commit。
+
+## CX. AUTH-1 用户登录门禁立项（2026-08-21，①PM 立项，用户需求，交研发窗口执行）
+
+- **来源**：用户需求「上线需要用户登录功能——不登陆只能看大盘，其他需登录」。
+- **PM 只读勘察（已核实）**：8 页面路由 + 39 /api 接口零鉴权基础；依赖栈无 SessionMiddleware；`itsdangerous` 未安装（ModuleNotFoundError 实测，需补装）；G-1 环境变量化先例（CSQAQ_API_TOKEN / .env）；单用户本机工具（127.0.0.1:8000）。
+- **卡内容**：未登录仅可看大盘（/ 只读）+ 登录页；其余 7 页面 + 受保护 API 需登录；单用户密码 `CS_MARKET_PASSWORD`（.env，不提交真实密码）+ `CS_MARKET_SESSION_SECRET`；SessionMiddleware + hmac.compare_digest + httponly cookie；豁免清单预注册（/ /login /logout /static + 大盘只读 5 API：market/signal、data/progress、health/status、portfolio/dashboard、paper/status）；写 API 一律保护；纯 webapp 层，不动引擎/决策/测试。完整卡见 `references/iteration-roadmap.md` AUTH-1（roadmap v81）。
+- **验收**：未登录 /200 + /watchlist 302 + 写 API 401 + 只读 5 API 200；已登录全通；错误密码拒绝；冒烟 131/0/0 不回退；ENGINE_VERSION v2-T13。
+- **状态**：已立项，待研发执行；补装 itsdangerous 为唯一运行时新依赖。
+
+---
+
+## CY. AUTH-1 用户登录门禁落地（2026-08-21，②研发执行，按 roadmap v81 卡）
+
+- **改造范围（纯 webapp 层，零引擎/决策/信号族改动）**：`webapp/main.py`（鉴权中间件 + /login /logout）+ 新增 `webapp/templates/login.html` + `webapp/templates/base.html`（导航登录态）+ `requirements.txt`（补 `itsdangerous==2.2.0`，唯一运行时新依赖）+ 新增 `.env.example`（AUTH-1 键说明，**不提交真实密码**）+ `tests/test_smoke.py`（P1.2 登录改造）。
+- **登录方案（判据 1~2）**：starlette `SessionMiddleware`（secret 读 `CS_MARKET_SESSION_SECRET`，未配置生成随机临时 key 并告警）；登录态 `session["auth"]=True`；单用户密码 `CS_MARKET_PASSWORD`（.env，延迟读取支持运行时注入；未配置时 /login 报错提示）；密码比对 `hmac.compare_digest` 防时序；cookie 名 `cs_market_session`（httponly 为 SessionMiddleware 默认）；`next` 参数 `_safe_next` 防 open redirect。
+- **访问控制（判据 4）**：统一 HTTP middleware（`_auth_gate`）——受保护页面未登录 302 → `/login?next=<原路径>`；受保护 API 401 JSON；豁免清单逐路由核对：页面 `/` `/login` `/logout` `/favicon.ico` `/static/*` + 大盘只读 5 API（`/api/market/signal` `/api/data/progress` `/api/health/status` `/api/portfolio/dashboard` `/api/paper/status`）；写 API 一律保护。
+- **导航（判据 5）**：base.html sidebar-footer 显示登录态（未登录「登录」链接 / 已登录「退出」POST 表单）。
+- **验收标准逐项（TestClient 实测）**：
+  1. 未登录：`/` 200、`/login` 200、6 受保护页面全 302→/login、受保护 API 401 ✅
+  2. 已登录：POST /login 302 + Set-Cookie httponly=True、7 页面全 200、受保护 API 200 ✅
+  3. 错误密码 401 且不写 session（后续访问仍 302）；登出后恢复 302 ✅
+  4. 豁免清单：5 只读 API 未登录 200；5 写 API（market/refresh、items/search、analysis/clear、backup/create、discover/scan-all）未登录 401 ✅
+  5. 冒烟 **131 passed / 0 failed / 0 skipped**（P1.2 已改造为「未登录断言 + 登录后访问」）；编码 PASS；`ENGINE_VERSION` 仍 `v2-T13`（config.py:445）✅
+  6. 交付物齐备；.env 未配置真实密码（运行时由用户按 .env.example 自配）✅
+- **一处顺带修复**：`data/j2_channel_status.json` 跨日 stale（8/20 生成 value_days=13，8/21 测试期望 14）导致 t_j2_channel_status 失败——重跑 `references/j2_channel_monitor.py` 刷新至当日，与 AUTH 无关。
+- **禁令遵守**：不动引擎/决策/信号族/守卫链/组合层；不 bump ENGINE_VERSION；未改 pipeline/ 核心逻辑（密码/session 读取均在 webapp 层）；凭据不落代码库；登录不影响采集/回放/计划任务（后台任务不经 web 鉴权）。
+- **状态**：待 PM 对照 roadmap v81 AUTH-1 卡验收（未登录/已登录/错误密码/豁免清单逐项 + 冒烟 131/0/0）。

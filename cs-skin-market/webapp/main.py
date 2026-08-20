@@ -1,6 +1,7 @@
 """CS-Market Web App - FastAPI application."""
 
-import sys, io, asyncio, json, re, traceback, time
+import sys, io, asyncio, json, re, traceback, time, os, hmac, secrets
+from urllib.parse import quote as _url_quote
 if getattr(sys.stdout, "encoding", "").lower().replace("-", "") != "utf8":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 if getattr(sys.stderr, "encoding", "").lower().replace("-", "") != "utf8":
@@ -9,9 +10,10 @@ if getattr(sys.stderr, "encoding", "").lower().replace("-", "") != "utf8":
 from datetime import datetime, timedelta
 from pathlib import Path
 from fastapi import FastAPI, Request, Form, Query
-from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.middleware.sessions import SessionMiddleware
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import logging
@@ -64,6 +66,63 @@ app = FastAPI(title="CS-Market")
 BASE_DIR = Path(__file__).resolve().parent
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+
+# ============================================================
+#  AUTH-1 用户登录门禁（2026-08-21，纯 webapp 层，零引擎改动）
+# ============================================================
+# 单用户凭据走 .env（G-1 先例：pipeline/config._load_dotenv 已把 .env 塞入 os.environ）。
+# 密码延迟读取（函数式），支持运行时注入（测试/容器）；不落代码库、不落库。
+def _get_cs_password() -> str:
+    return os.environ.get("CS_MARKET_PASSWORD", "").strip()
+
+# session secret：优先 CS_MARKET_SESSION_SECRET；未配置则随机临时 key（重启后会话失效，仅告警不阻断）
+_CS_SESSION_SECRET = os.environ.get("CS_MARKET_SESSION_SECRET", "").strip()
+if not _CS_SESSION_SECRET:
+    _CS_SESSION_SECRET = secrets.token_hex(32)
+    _web_log.warning("AUTH-1: CS_MARKET_SESSION_SECRET 未配置，已生成随机临时 key（重启后所有会话失效）")
+
+# 豁免清单（roadmap v81 AUTH-1 预注册，PM 裁定）：
+#   页面：/（大盘只读）、/login、/logout、/favicon.ico、/static/*
+#   大盘只读 API 5 个：market/signal、data/progress、health/status、portfolio/dashboard、paper/status
+AUTH_EXEMPT_PATHS = {"/", "/login", "/logout", "/favicon.ico"}
+AUTH_EXEMPT_APIS = {
+    "/api/market/signal",
+    "/api/data/progress",
+    "/api/health/status",
+    "/api/portfolio/dashboard",
+    "/api/paper/status",
+}
+
+@app.middleware("http")
+async def _auth_gate(request: Request, call_next):
+    """未登录门禁：受保护页面 302 → /login?next=；受保护 API 401 JSON。豁免清单放行。"""
+    path = request.url.path
+    if path in AUTH_EXEMPT_PATHS or path.startswith("/static"):
+        return await call_next(request)
+    authed = bool(request.scope.get("session") and request.session.get("auth"))
+    if path.startswith("/api/"):
+        if path in AUTH_EXEMPT_APIS:
+            return await call_next(request)
+        if not authed:
+            return JSONResponse({"ok": False, "error": "未登录，请先登录（/login）"}, status_code=401)
+        return await call_next(request)
+    # 受保护页面
+    if not authed:
+        _next = _url_quote(request.url.path + (("?" + request.url.query) if request.url.query else ""), safe="")
+        return RedirectResponse(f"/login?next={_next}", status_code=302)
+    return await call_next(request)
+
+# SessionMiddleware 须在外层（先执行填充 session，auth_gate 才能读到）；后 add = 外层。
+# httponly 为 SessionMiddleware 默认（starlette 硬编码），cookie 名 cs_market_session。
+app.add_middleware(SessionMiddleware, secret_key=_CS_SESSION_SECRET, session_cookie="cs_market_session", same_site="lax")
+
+
+def _safe_next(next_url: str) -> str:
+    """防 open redirect：仅允许站内绝对路径。"""
+    n = (next_url or "").strip()
+    if n.startswith("/") and not n.startswith("//"):
+        return n
+    return "/"
 
 
 def _ae(msg: str) -> str:
@@ -236,6 +295,41 @@ def _build_engine_status():
         except Exception:
             _engine_status = None
     return _engine_status
+
+
+# ---- AUTH-1 登录/登出（2026-08-21，纯 webapp 层）----
+@app.get("/login", response_class=HTMLResponse)
+async def page_login(request: Request, next: str = Query(default="")):
+    if request.session.get("auth"):
+        return RedirectResponse(_safe_next(next), status_code=302)
+    return templates.TemplateResponse(request, "login.html", {
+        "active_page": "login",
+        "next": next or "",
+        "error": None,
+    })
+
+
+@app.post("/login")
+async def do_login(request: Request, password: str = Form(...), next: str = Form(default="")):
+    _pwd = _get_cs_password()
+    if not _pwd:
+        return templates.TemplateResponse(request, "login.html", {
+            "active_page": "login", "next": next or "",
+            "error": "服务端未配置 CS_MARKET_PASSWORD（.env），登录不可用；请先配置后重启。",
+        }, status_code=500)
+    if not hmac.compare_digest(password.encode("utf-8"), _pwd.encode("utf-8")):
+        return templates.TemplateResponse(request, "login.html", {
+            "active_page": "login", "next": next or "",
+            "error": "密码错误，请重试。",
+        }, status_code=401)
+    request.session["auth"] = True
+    return RedirectResponse(_safe_next(next), status_code=302)
+
+
+@app.post("/logout")
+async def do_logout(request: Request):
+    request.session.clear()
+    return RedirectResponse("/", status_code=302)
 
 
 @app.get("/", response_class=HTMLResponse)
