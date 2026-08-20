@@ -1,45 +1,45 @@
 <div id="analysis-results-section" style="margin-top:24px;">
   <div class="card" id="analysis-results-card">
-    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+    <div class="card-header ar-header">
       <span class="card-title">📊 分析结果</span>
-      <div style="display:flex;gap:8px;align-items:center;">
+      <div class="row-flex">
         <span class="card-subtitle" id="analysis-count">{{ analysis_results|length }} 条记录</span>
         <button class="btn btn-outline btn-sm" hx-post="/api/analysis/clear" hx-target="#analysis-results-section" hx-swap="outerHTML" title="清空全部">🗑 清空</button>
       </div>
     </div>
     <div class="table-wrap">
-      <table id="analysis-results-table">
+      <table id="analysis-results-table" class="ar-table">
         <thead>
           <tr>
-            <th style="min-width:180px;">物品名称</th>
-            <th style="width:100px;">价格</th>
-            <th style="width:48px;">评级</th>
-            <th style="width:60px;">趋势</th>
-            <th style="width:150px;">操作</th>
+            <th>物品名称</th>
+            <th>价格</th>
+            <th>评级</th>
+            <th>趋势</th>
+            <th>操作</th>
           </tr>
         </thead>
         <tbody id="analysis-results-tbody">
           {% if analysis_results %}
           {% for r in analysis_results %}
           <tr>
-            <td><strong>{{ r.name }}</strong><br><span style="font-size:11px;color:var(--text-muted);">{{ r.created_at }}</span></td>
+            <td><strong>{{ r.name }}</strong><br><span class="text-11 muted">{{ r.created_at }}</span></td>
             <td>{% if r.price_rmb %}¥{{ "%.2f"|format(r.price_rmb) }}{% else %}--{% endif %}</td>
             <td>{% if r.grade %}<span class="badge badge-{{ r.grade.lower() }}">{{ r.grade }}</span>{% else %}--{% endif %}</td>
             <td>
-              {% if r.trend_dir == "up" %}<span style="color:var(--green);">📈 {{ r.trend_score }}</span>
-              {% elif r.trend_dir == "down" %}<span style="color:var(--red);">📉 {{ r.trend_score }}</span>
-              {% else %}<span style="color:var(--text-muted);">➖ {{ r.trend_score or "--" }}</span>
+              {% if r.trend_dir == "up" %}<span class="green">📈 涨 {{ r.trend_score }}</span>
+              {% elif r.trend_dir == "down" %}<span class="red">📉 跌 {{ r.trend_score }}</span>
+              {% else %}<span class="muted">➖ 平 {{ r.trend_score or "--" }}</span>
               {% endif %}
             </td>
-            <td style="white-space:nowrap;">
+            <td class="nowrap">
               <button class="btn btn-outline btn-sm" onclick="viewReportHtml(this)" data-report="{{ r.id }}">📋 报告</button>
               <button class="btn btn-outline btn-sm" onclick="reanalyzeItem('{{ r.name }}')" title="重新分析">🔄 重析</button>
-              <button class="btn btn-outline btn-sm" hx-delete="/api/analysis/{{ r.id }}" hx-target="#analysis-results-section" hx-swap="outerHTML" hx-confirm="确定要删除该分析结果吗？" title="删除" style="color:var(--red);">🗑</button>
+              <button class="btn btn-outline btn-sm" hx-delete="/api/analysis/{{ r.id }}" hx-target="#analysis-results-section" hx-swap="outerHTML" hx-confirm="确定要删除该分析结果吗？" title="删除" class="red">🗑</button>
             </td>
           </tr>
           {% endfor %}
           {% else %}
-          <tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted);">暂无分析结果</td></tr>
+          <tr><td colspan="5" class="ar-empty">暂无分析结果</td></tr>
           {% endif %}
         </tbody>
       </table>

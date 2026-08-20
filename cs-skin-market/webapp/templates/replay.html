@@ -1,16 +1,16 @@
 {% extends "base.html" %}
 {% block title %}CS-Market 信号复盘{% endblock %}
 {% block content %}
-<div style="padding:16px 0;">
-  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
-    <h2 style="margin:0;font-size:20px;">📊 信号复盘</h2>
-    <span id="replay-meta" style="font-size:12px;color:var(--text-muted);">加载回放元数据…</span>
-    <button class="btn btn-sm btn-outline" onclick="loadReplay()" style="margin-left:auto;"><span id="replay-spinner" class="htmx-indicator">⏳</span> 🔄 刷新</button>
+<div class="page-pad">
+  <div class="replay-head">
+    <h2 class="replay-title">📊 信号复盘</h2>
+    <span id="replay-meta" class="text-12 muted">加载回放元数据…</span>
+    <button class="btn btn-sm btn-outline ml-auto" onclick="loadReplay()"><span id="replay-spinner" class="htmx-indicator">⏳</span> 🔄 刷新</button>
   </div>
-  <div id="replay-stats" style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;"></div>
-  <div class="card" style="padding:0;">
-    <div class="table-wrap" style="max-height:70vh;overflow-y:auto;">
-      <table class="data-table" style="width:100%;font-size:12px;">
+  <div id="replay-stats" class="stats-row"></div>
+  <div class="card card-flush">
+    <div class="table-wrap table-scroll">
+      <table class="data-table table-full">
         <thead>
           <tr>
             <th>日期</th><th>品名</th><th>类型</th>
@@ -51,7 +51,7 @@ function loadReplay() {
     _spinHide("replay-spinner");
     var statsEl = document.getElementById("replay-stats");
     var body = document.getElementById("replay-body");
-    if (!d.found) { body.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--text-muted);">未找到回测基准数据</td></tr>'; return; }
+    if (!d.found) { body.innerHTML = '<tr><td colspan="9" class="cell-empty">未找到回测基准数据</td></tr>'; return; }
     var sigs = d.signals || [];
     if (d.meta) {
       var metaEl = document.getElementById('replay-meta');
@@ -75,20 +75,20 @@ function loadReplay() {
       var w30 = g.r30.length ? Math.round(g.r30.filter(function(x){return x>0;}).length / g.r30.length * 100) : null;
       var a30 = g.r30.length ? Math.round(g.r30.reduce(function(a,b){return a+b;},0) / g.r30.length * 10) / 10 : null;
       var label = t;
-      return '<div class="card" style="padding:10px 14px;min-width:170px;">'
-        + '<div style="font-size:12px;color:var(--text-muted);">' + label + ' (n=' + g.n + ')</div>'
-        + '<div style="font-size:15px;font-weight:700;margin-top:4px;">' + fmtPct(a14, '%') + ' <span style="font-size:11px;color:var(--text-muted);">14d胜率 ' + (w14 !== null ? w14 + '%' : '--') + '</span></div>'
-        + '<div style="font-size:13px;margin-top:2px;">' + fmtPct(a21, '%') + ' <span style="font-size:11px;color:var(--text-muted);">21d胜率 ' + (w21 !== null ? w21 + '%' : '--') + '</span></div>'
-        + '<div style="font-size:13px;margin-top:2px;">' + fmtPct(a30, '%') + ' <span style="font-size:11px;color:var(--text-muted);">30d胜率 ' + (w30 !== null ? w30 + '%' : '--') + '</span></div>'
+      return '<div class="card stat-card">'
+        + '<div class="stat-title">' + label + ' (n=' + g.n + ')</div>'
+        + '<div class="stat-main">' + fmtPct(a14, '%') + ' <span class="stat-note">14d胜率 ' + (w14 !== null ? w14 + '%' : '--') + '</span></div>'
+        + '<div class="stat-sub">' + fmtPct(a21, '%') + ' <span class="stat-note">21d胜率 ' + (w21 !== null ? w21 + '%' : '--') + '</span></div>'
+        + '<div class="stat-sub">' + fmtPct(a30, '%') + ' <span class="stat-note">30d胜率 ' + (w30 !== null ? w30 + '%' : '--') + '</span></div>'
         + '</div>';
     }).join('');
-    statsEl.innerHTML = statsHtml || '<span style="color:var(--text-muted);font-size:13px;">无信号数据</span>';
+    statsEl.innerHTML = statsHtml || '<span class="muted text-13">无信号数据</span>';
 
     var rows = sigs.slice().sort(function(a, b) { return (a.date || '').localeCompare(b.date || ''); }).map(function(s) {
       var t = famOf(s.action_label || '');
       return '<tr>'
         + '<td>' + (s.date || '') + '</td>'
-        + '<td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (s.name || '') + '</td>'
+        + '<td class="cell-ellipsis">' + (s.name || '') + '</td>'
         + '<td>' + t + '</td>'
         + '<td>' + (s.entry_price !== undefined ? '¥' + s.entry_price : '--') + '</td>'
         + '<td>' + fmtPct(s.net14, '%') + '</td>'
@@ -96,10 +96,10 @@ function loadReplay() {
         + '<td>' + fmtPct(s.net30, '%') + '</td>'
         + '<td>' + (s.latest_price ? '¥' + s.latest_price : '--') + '</td>'
         + '<td>' + fmtPct(s.latest_ret, '%') + '</td>'
-        + '<td>' + (s.event_note ? '<span style="color:var(--red);font-size:11px;">⚠️ ' + s.event_note + '</span>' : '<span class="muted">--</span>') + '</td>'
+        + '<td>' + (s.event_note ? '<span class="red text-11">⚠️ ' + s.event_note + '</span>' : '<span class="muted">--</span>') + '</td>'
         + '</tr>';
     }).join('');
-    body.innerHTML = rows || '<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--text-muted);">无信号</td></tr>';
+    body.innerHTML = rows || '<tr><td colspan="9" class="cell-empty">无信号</td></tr>';
   })
   .catch(function() { _spinHide("replay-spinner"); });
 }

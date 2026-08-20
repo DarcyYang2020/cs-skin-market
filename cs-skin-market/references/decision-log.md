@@ -1259,3 +1259,35 @@
 
 ### 状态
 - 两候选全部被 A2 拒，**无落地项**；族划分重构的「新增族」方向本轮闭环（证伪）。C1 三口径统一（工程卫生）仍可独立推进。交③审 CE。
+
+## UI-2 验收：通过，关闭（2026-08-20 15:35 后，PM 独立只读核验）
+- **核验方式**：不采信自述，独立读原始产物（dashboard.html 全卡结构 / ops.html + engine_telemetry.html 4 块遥测逐块核对 / main.py /ops 路由与传参 / base.html 导航高亮 / 亲自重跑冒烟+编码 / ENGINE_VERSION 取值）。
+- **逐项结果**：
+  1. 首屏 3 区块（综合指数区块 + 市场状态·该怎么做 + 模拟盘），遥测 4 卡物理移出；`dashboard.html`+`app.js` grep `J-2`/`去簇`/`信号族样本` 零命中 ✅
+  2. `/ops` 独立访问，4 块遥测完整（引擎状态 J-2 / 未来事件 / 数据健康 / 数据积累进度，内含三通道 A/B/C、样本深度、去簇对照、重拟合触发），数据复用 `/api/data/progress`+`/api/health/status` 零新造接口 ✅
+  3. 导航「引擎/研究」→ `/ops`，`active_page='ops'` 高亮 ✅
+  4. 冒烟 **131 passed/0 failed/0 skipped**（PM 重跑）、encoding PASS、ENGINE_VERSION 仍 `v2-T13`（config.py:445）✅
+- **口径备注**：「首屏 ≤3 卡」按立项卡区块级口径计（index_analysis 大盘分析明细子卡为投资视图既有内容，非 UI-2 引入）；元素级计数超 3 已登记为 UI-3 信息密度优化候选。
+- **交付物**：commit `92eeb44`（dashboard 7→3 + /ops + engine_telemetry partial）；roadmap UI-2 卡「PM 验收状态」节已补。
+- **状态**：**已关闭**；**UI-3（系统化其余页 token 化）按序接力**。
+
+---
+
+## UL. UI-3 系统化：discover/search/replay + analysis partials token 化 + emoji 语义规范落地（2026-08-20，②前端/研发执行）
+
+- **改造范围（纯 CSS/HTML/模板，零引擎/接口/测试逻辑改动）**：`style.css`（补 UI-3 token/组件类 ~80 个）+ `discover.html` + `search.html` + `replay.html` + `partials/analysis.html` + `partials/index_analysis.html` + `partials/analysis_results.html` + `partials/discover_html.html`（render_html.py 渲染产物）。
+- **内联 style= 降幅（验收标准 1，全部达标）**：
+  | 文件 | 基线 | 落地 | 目标 |
+  |---|---|---|---|
+  | discover.html | 20 | **1** | <10 ✅ |
+  | search.html | 9 | **0** | 重复定义消除 ✅ |
+  | analysis.html | 86 | **11**（全为动态条件色/边框） | <30 ✅ |
+  | index_analysis.html | 52 | **7**（动态值） | <20 ✅ |
+  | analysis_results.html | 15 | **1** | — ✅ |
+  | replay.html | 23 | **1**（fmtPct 动态色） | 低优先 ✅ |
+  | discover_html.html | 22 | **1**（rank_style 动态） | partial 同步 ✅ |
+- **.btn-scan 重复定义消除（判据 2 实际位置）**：重复的 `.btn-scan` 内联 `<style>` 定义在 **discover.html:8**（UI-3 卡写 search.html 系位置偏差），已删，统一用 style.css:330 定义。
+- **评级 S/A/B/C 用 badge**：analysis_results 评级列本就用 `.badge badge-{grade}`（非 emoji+色块裸写），未改。
+- **emoji 语义规范（验收标准 2）**：analysis_results 趋势列 `📈/📉/➖` 加文字「涨/跌/平」兜底（与 watchlist 同口径）；全站扫描无「无文字兜底的 📈/📉/➖/🔴」状态用法；图标型 emoji（🔍📊🔄）作装饰保留。
+- **验证**：冒烟 **131 passed / 0 failed / 0 skipped**（含 t_render_html PASS——render_discover_html → discover_html.html 链路）；编码 PASS；Jinja 编译全过；TestClient 渲染 `/`、`/search`、`/discover`、`/replay`、`/checkup`、`/watchlist`、`/ops` 全 200；`render_discover_html([])` 与 `[error]` 产物正常（cell-error 类命中）；全站 templates/ 裸 rgba 仍零命中（UI-1 红线未回退）；新增 ~80 个类全部在 style.css 有定义（脚本核对无缺失）。`ENGINE_VERSION` 仍 `v2-T13`（config.py:445）。
+- **状态**：待 PM/UiDesigner 对照 UI-3 立项卡验收（内联数降幅 / emoji 语义清零 / 冒烟不回退）。

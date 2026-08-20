@@ -6,73 +6,62 @@
   <div class="card-header">
     <span class="card-title">🎯 决策</span>
   </div>
-  <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
-    <div style="display:flex;align-items:baseline;gap:12px;">
-      <span style="font-size:28px;font-weight:800;">{{ analysis.market_fusion_decision.action_label }}</span>
-      <span style="font-size:16px;color:var(--text-muted);">{{ analysis.market_fusion_decision.zone_label }}</span>
+  <div class="decide-row">
+    <div class="decide-main">
+      <span class="decide-action">{{ analysis.market_fusion_decision.action_label }}</span>
+      <span class="text-16 muted">{{ analysis.market_fusion_decision.zone_label }}</span>
     </div>
-    <div style="display:flex;align-items:center;gap:20px;">
-      <div style="text-align:center;">
-        <div style="font-size:24px;font-weight:700;">{{ "%.0f"|format(analysis.market_fusion_decision.global_position_limit * 100) }}%</div>
-        <div style="font-size:11px;color:var(--text-muted);">仓位上限</div>
+    <div class="decide-stats">
+      <div class="text-center">
+        <div class="decide-num">{{ "%.0f"|format(analysis.market_fusion_decision.global_position_limit * 100) }}%</div>
+        <div class="mini-label">仓位上限</div>
       </div>
-      <div style="text-align:center;">
-        <div style="font-size:24px;font-weight:700;">{{ "%.0f"|format(analysis.market_fusion_decision.corrected_th_score) }}</div>
-        <div style="font-size:11px;color:var(--text-muted);">趋势健康</div>
+      <div class="text-center">
+        <div class="decide-num">{{ "%.0f"|format(analysis.market_fusion_decision.corrected_th_score) }}</div>
+        <div class="mini-label">趋势健康</div>
       </div>
     </div>
   </div>
-  <div style="margin-top:12px;padding:10px 14px;background:var(--bg-inset-2);border-radius:6px;font-size:13px;line-height:1.6;color:var(--text-secondary);">
+  <div class="decide-detail">
     {{ analysis.market_fusion_decision.action_detail }}
   </div>
 </div>
 {% endif %}
 
 ﻿<!-- ====== 关键指标四宫格 ====== -->
-<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
-  <div class="card" style="padding:14px;text-align:center;">
-    <div style="font-size:24px;font-weight:700;
-      {% if analysis.position.percentile_90d <= 30 %}color:var(--green)
-      {% elif analysis.position.percentile_90d >= 70 %}color:var(--red)
-      {% else %}color:var(--yellow){% endif %};">
+<div class="metric-grid-lg">
+  <div class="card metric-card-lg">
+    <div class="metric-value-lg {% if analysis.position.percentile_90d <= 30 %}green{% elif analysis.position.percentile_90d >= 70 %}red{% else %}text-amber{% endif %};">
       {{ "%.1f"|format(analysis.position.percentile_90d) }}%
     </div>
-    <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">90日百分位<br><span style="font-size:10px;">≤30%=低估 70%=高估</span></div>
+    <div class="metric-label">90日百分位<br><span class="metric-sub">≤30%=低估 70%=高估</span></div>
   </div>
-  <div class="card" style="padding:14px;text-align:center;">
-    <div style="font-size:24px;font-weight:700;
-      {% if analysis.position.zscore_90d <= -1.5 %}color:var(--green)
-      {% elif analysis.position.zscore_90d >= 2 %}color:var(--red)
-      {% else %}color:var(--text-primary){% endif %};">
+  <div class="card metric-card-lg">
+    <div class="metric-value-lg {% if analysis.position.zscore_90d <= -1.5 %}green{% elif analysis.position.zscore_90d >= 2 %}red{% else %}text-primary{% endif %};">
       {{ "%.2f"|format(analysis.position.zscore_90d) }}
     </div>
-    <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Z-Score<br><span style="font-size:10px;">≤-1.5=低估 ≥2=泡沫</span></div>
+    <div class="metric-label">Z-Score<br><span class="metric-sub">≤-1.5=低估 ≥2=泡沫</span></div>
   </div>
-  <div class="card" style="padding:14px;text-align:center;">
-    <div style="font-size:24px;font-weight:700;
-      {% set th = analysis.market_trend_health.score if analysis.market_trend_health else 50 %}
-      {% if th >= 55 %}color:var(--green){% elif th >= 35 %}color:var(--yellow){% else %}color:var(--red){% endif %};">
+  <div class="card metric-card-lg">
+    <div class="metric-value-lg {% set th = analysis.market_trend_health.score if analysis.market_trend_health else 50 %}{% if th >= 55 %}green{% elif th >= 35 %}text-amber{% else %}red{% endif %};">
       {{ "%.0f"|format(th) }}
     </div>
-    <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">趋势健康TH<br><span style="font-size:10px;">≥55=健康 35=中性</span></div>
+    <div class="metric-label">趋势健康TH<br><span class="metric-sub">≥55=健康 35=中性</span></div>
   </div>
-  <div class="card" style="padding:14px;text-align:center;">
+  <div class="card metric-card-lg">
     {% set senti = analysis.macro_context.sentiment_score if analysis.macro_context else 50 %}
-    <div style="font-size:20px;font-weight:600;
-      {% if senti >= 70 %}color:var(--green)
-      {% elif senti <= 35 %}color:var(--red)
-      {% else %}color:var(--yellow){% endif %};">
+    <div class="metric-value-lg metric-value-senti {% if senti >= 70 %}green{% elif senti <= 35 %}red{% else %}text-amber{% endif %};">
       {{ analysis.macro_context.sentiment_label if analysis.macro_context else "中性" }}
     </div>
-    <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">市场情绪<br><span style="font-size:10px;">恐惧=买点 贪婪=谨慎</span></div>
+    <div class="metric-label">市场情绪<br><span class="metric-sub">恐惧=买点 贪婪=谨慎</span></div>
   </div>
 </div>
 
 <!-- ====== 抛压衰竭信号（熊市底部先行指标） ====== -->
 {% if analysis.selling_pressure and analysis.selling_pressure.score is defined %}
 <div class="card" style="margin-top:12px;border-color:{% if analysis.selling_pressure.score >= 70 %}var(--green-border-strong){% elif analysis.selling_pressure.score >= 50 %}var(--amber-border-strong){% else %}var(--border){% endif %};">
-  <div class="card-header" style="padding:8px 14px;">
-    <span class="card-title">📉 抛压衰竭 <span style="font-size:11px;color:var(--text-muted);font-weight:400;">熊市底部先行指标</span></span>
+  <div class="card-header card-header-sm">
+    <span class="card-title">📉 抛压衰竭 <span class="text-11 muted fw-400">熊市底部先行指标</span></span>
     <div class="row-flex" style="gap:6px;">
       <span style="font-size:22px;font-weight:800;
         {% if analysis.selling_pressure.score >= 70 %}color:var(--green)
@@ -80,11 +69,11 @@
         {% else %}color:var(--red){% endif %};">
         {{ analysis.selling_pressure.score }}
       </span>
-      <span style="font-size:12px;color:var(--text-muted);">/100</span>
+      <span class="text-12 muted">/100</span>
       <span style="font-size:13px;font-weight:600;{% if analysis.selling_pressure.score >= 70 %}color:var(--green){% elif analysis.selling_pressure.score >= 50 %}color:var(--yellow){% else %}color:var(--text-secondary){% endif %};">{{ analysis.selling_pressure.label }}</span>
     </div>
   </div>
-  <div style="padding:8px 14px;font-size:12px;color:var(--text-secondary);line-height:1.6;">
+  <div class="detail-text pad-x">
     卖家抛压枯竭+止跌企稳，是熊市 V 型底部的先行信号（需叠加 20 日真实跌幅验证，避免下跌中继误判）。≥70 进入底部观察。
   </div>
 </div>
@@ -92,16 +81,16 @@
 
 <!-- ====== 市场状态 ====== -->
 {% if analysis.market_state %}
-<div class="card" style="margin-top:12px;padding:16px;">
-  <div class="card-header" style="padding:0;border:0;margin-bottom:12px;">
+<div class="card mt-12 card-pad">
+  <div class="card-header card-header-flat">
     <span class="card-title">📊 大盘阶段</span>
   </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
-    <div style="text-align:center;">
-      <div style="font-size:22px;">{{ analysis.market_state.regime_label }}</div>
-      <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">市场阶段</div>
+  <div class="ms-grid">
+    <div class="text-center">
+      <div class="ms-val">{{ analysis.market_state.regime_label }}</div>
+      <div class="ms-label">市场阶段</div>
     </div>
-    <div style="text-align:center;">
+    <div class="text-center">
       <div style="font-size:22px;font-weight:700;
         {% if analysis.market_state.pct <= 20 %}color:var(--green)
         {% elif analysis.market_state.pct <= 45 %}color:var(--yellow)
@@ -109,14 +98,14 @@
         {% else %}color:var(--red){% endif %};">
         {{ analysis.market_state.val_label }}
       </div>
-      <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">估值 · {{ analysis.market_state.pct }}%分位</div>
+      <div class="ms-label">估值 · {{ analysis.market_state.pct }}%分位</div>
     </div>
-    <div style="text-align:center;">
-      <div style="font-size:18px;">{{ analysis.market_state.sent_label }}</div>
-      <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">情绪 · {{ analysis.market_state.sent }}分</div>
+    <div class="text-center">
+      <div class="ms-val-sm">{{ analysis.market_state.sent_label }}</div>
+      <div class="ms-label">情绪 · {{ analysis.market_state.sent }}分</div>
     </div>
   </div>
-  <div style="margin-top:12px;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-muted);">
+  <div class="ms-foot">
     <span>Z-score: {{ "%.2f"|format(analysis.market_state.zscore) }}</span>
     <span>|</span>
     <span>TH: {{ analysis.market_state.th }}</span>
