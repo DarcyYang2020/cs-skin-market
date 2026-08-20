@@ -76,7 +76,8 @@
     }
    },
    "engine_hits": 5,
-   "coverage_ratio": 0.0244
+   "coverage_ratio": 0.0244,
+   "grade": "单事件簇"
   },
   {
    "source": "tree_fwd14_leaf5",
@@ -135,7 +136,8 @@
     }
    },
    "engine_hits": 4,
-   "coverage_ratio": 0.0081
+   "coverage_ratio": 0.0081,
+   "grade": "单事件簇"
   },
   {
    "source": "tree_fwd14_leaf6",
@@ -194,7 +196,8 @@
     }
    },
    "engine_hits": 1,
-   "coverage_ratio": 0.0029
+   "coverage_ratio": 0.0029,
+   "grade": "单事件簇"
   },
   {
    "source": "tree_fwd14_leaf9",
@@ -253,7 +256,8 @@
     }
    },
    "engine_hits": 1,
-   "coverage_ratio": 0.0049
+   "coverage_ratio": 0.0049,
+   "grade": "跨期稳健"
   },
   {
    "source": "tree_fwd14_leaf10",
@@ -309,7 +313,8 @@
     }
    },
    "engine_hits": 2,
-   "coverage_ratio": 0.0032
+   "coverage_ratio": 0.0032,
+   "grade": "单事件簇"
   },
   {
    "source": "tree_fwd14_leaf12",
@@ -362,7 +367,8 @@
     }
    },
    "engine_hits": 1,
-   "coverage_ratio": 0.0047
+   "coverage_ratio": 0.0047,
+   "grade": "单事件簇"
   },
   {
    "source": "tree_fwd14_leaf13",
@@ -421,7 +427,8 @@
     }
    },
    "engine_hits": 7,
-   "coverage_ratio": 0.0042
+   "coverage_ratio": 0.0042,
+   "grade": "单事件簇"
   },
   {
    "source": "tree_fwd14_leaf17",
@@ -502,7 +509,8 @@
     }
    },
    "engine_hits": 140,
-   "coverage_ratio": 0.0015
+   "coverage_ratio": 0.0015,
+   "grade": "跨期稳健"
   },
   {
    "source": "tree_fwd14_leaf18",
@@ -562,7 +570,8 @@
     }
    },
    "engine_hits": 15,
-   "coverage_ratio": 0.0059
+   "coverage_ratio": 0.0059,
+   "grade": "跨期稳健"
   },
   {
    "source": "tree_fwd14_leaf20",
@@ -635,7 +644,8 @@
     }
    },
    "engine_hits": 42,
-   "coverage_ratio": 0.0009
+   "coverage_ratio": 0.0009,
+   "grade": "跨期稳健"
   },
   {
    "source": "tree_fwd14_leaf21",
@@ -701,7 +711,8 @@
     }
    },
    "engine_hits": 10,
-   "coverage_ratio": 0.0012
+   "coverage_ratio": 0.0012,
+   "grade": "跨期稳健"
   },
   {
    "source": "tree_fwd14_leaf24",
@@ -779,7 +790,8 @@
     }
    },
    "engine_hits": 92,
-   "coverage_ratio": 0.005
+   "coverage_ratio": 0.005,
+   "grade": "跨期稳健"
   },
   {
    "source": "tree_fwd14_leaf25",
@@ -860,7 +872,8 @@
     }
    },
    "engine_hits": 51,
-   "coverage_ratio": 0.002
+   "coverage_ratio": 0.002,
+   "grade": "跨期稳健"
   },
   {
    "source": "tree_fwd14_leaf27",
@@ -924,7 +937,8 @@
     }
    },
    "engine_hits": 1,
-   "coverage_ratio": 0.0001
+   "coverage_ratio": 0.0001,
+   "grade": "跨期稳健"
   },
   {
    "source": "tree_fwd14_leaf28",
@@ -983,7 +997,8 @@
     }
    },
    "engine_hits": 1,
-   "coverage_ratio": 0.0003
+   "coverage_ratio": 0.0003,
+   "grade": "跨期稳健"
   },
   {
    "source": "tree_fwd30_leaf4",
@@ -1042,7 +1057,8 @@
     }
    },
    "engine_hits": 7,
-   "coverage_ratio": 0.0053
+   "coverage_ratio": 0.0053,
+   "grade": "中间态"
   },
   {
    "source": "tree_fwd30_leaf5",
@@ -1102,7 +1118,8 @@
     }
    },
    "engine_hits": 12,
-   "coverage_ratio": 0.008
+   "coverage_ratio": 0.008,
+   "grade": "中间态"
   },
   {
    "source": "tree_fwd30_leaf7",
@@ -1186,7 +1203,8 @@
     }
    },
    "engine_hits": 133,
-   "coverage_ratio": 0.0012
+   "coverage_ratio": 0.0012,
+   "grade": "跨期稳健"
   },
   {
    "source": "tree_fwd30_leaf8",
@@ -1257,7 +1275,8 @@
     }
    },
    "engine_hits": 39,
-   "coverage_ratio": 0.0014
+   "coverage_ratio": 0.0014,
+   "grade": "跨期稳健"
   },
   {
    "source": "tree_fwd30_leaf11",
@@ -1322,7 +1341,8 @@
     }
    },
    "engine_hits": 9,
-   "coverage_ratio": 0.0017
+   "coverage_ratio": 0.0017,
+   "grade": "跨期稳健"
   },
   {
    "source": "tree_fwd30_leaf12",
@@ -1388,7 +1408,8 @@
     }
    },
    "engine_hits": 7,
-   "coverage_ratio": 0.0013
+   "coverage_ratio": 0.0013,
+   "grade": "跨期稳健"
   },
   {
    "source": "tree_fwd30_leaf14",
@@ -1454,7 +1475,8 @@
     }
    },
    "engine_hits": 0,
-   "coverage_ratio": 0.0
+   "coverage_ratio": 0.0,
+   "grade": "跨期稳健"
   },
   {
    "source": "tree_fwd30_leaf15",
@@ -1519,7 +1541,8 @@
     }
    },
    "engine_hits": 0,
-   "coverage_ratio": 0.0
+   "coverage_ratio": 0.0,
+   "grade": "跨期稳健"
   },
   {
    "source": "tree_fwd30_leaf18",
@@ -1572,7 +1595,8 @@
     }
    },
    "engine_hits": 2,
-   "coverage_ratio": 0.0092
+   "coverage_ratio": 0.0092,
+   "grade": "单事件簇"
   },
   {
    "source": "tree_fwd30_leaf20",
@@ -1632,7 +1656,8 @@
     }
    },
    "engine_hits": 21,
-   "coverage_ratio": 0.0073
+   "coverage_ratio": 0.0073,
+   "grade": "跨期稳健"
   },
   {
    "source": "tree_fwd30_leaf21",
@@ -1691,7 +1716,8 @@
     }
    },
    "engine_hits": 0,
-   "coverage_ratio": 0.0
+   "coverage_ratio": 0.0,
+   "grade": "单事件簇"
   },
   {
    "source": "tree_fwd30_leaf24",
@@ -1775,7 +1801,8 @@
     }
    },
    "engine_hits": 114,
-   "coverage_ratio": 0.0088
+   "coverage_ratio": 0.0088,
+   "grade": "跨期稳健"
   },
   {
    "source": "tree_fwd30_leaf25",
@@ -1857,7 +1884,8 @@
     }
    },
    "engine_hits": 5,
-   "coverage_ratio": 0.0037
+   "coverage_ratio": 0.0037,
+   "grade": "跨期稳健"
   },
   {
    "source": "tree_fwd30_leaf27",
@@ -1941,7 +1969,8 @@
     }
    },
    "engine_hits": 24,
-   "coverage_ratio": 0.0006
+   "coverage_ratio": 0.0006,
+   "grade": "跨期稳健"
   },
   {
    "source": "tree_fwd30_leaf28",
@@ -2023,7 +2052,8 @@
     }
    },
    "engine_hits": 0,
-   "coverage_ratio": 0.0
+   "coverage_ratio": 0.0,
+   "grade": "跨期稳健"
   },
   {
    "source": "pct_bin0(0-1)",
@@ -2107,7 +2137,8 @@
     }
    },
    "engine_hits": 28,
-   "coverage_ratio": 0.0038
+   "coverage_ratio": 0.0038,
+   "grade": "跨期稳健"
   },
   {
    "source": "pct_bin1(1-6)",
@@ -2191,7 +2222,8 @@
     }
    },
    "engine_hits": 49,
-   "coverage_ratio": 0.0041
+   "coverage_ratio": 0.0041,
+   "grade": "跨期稳健"
   },
   {
    "source": "pct_bin2(6-11)",
@@ -2275,7 +2307,8 @@
     }
    },
    "engine_hits": 91,
-   "coverage_ratio": 0.0087
+   "coverage_ratio": 0.0087,
+   "grade": "跨期稳健"
   },
   {
    "source": "pct_bin3(11-18)",
@@ -2359,7 +2392,8 @@
     }
    },
    "engine_hits": 58,
-   "coverage_ratio": 0.0052
+   "coverage_ratio": 0.0052,
+   "grade": "跨期稳健"
   },
   {
    "source": "pct_bin4(18-24)",
@@ -2443,7 +2477,8 @@
     }
    },
    "engine_hits": 62,
-   "coverage_ratio": 0.0061
+   "coverage_ratio": 0.0061,
+   "grade": "跨期稳健"
   },
   {
    "source": "pct_bin5(24-32)",
@@ -2527,7 +2562,8 @@
     }
    },
    "engine_hits": 23,
-   "coverage_ratio": 0.002
+   "coverage_ratio": 0.002,
+   "grade": "跨期稳健"
   },
   {
    "source": "pct_bin6(32-39)",
@@ -2611,7 +2647,8 @@
     }
    },
    "engine_hits": 5,
-   "coverage_ratio": 0.0005
+   "coverage_ratio": 0.0005,
+   "grade": "跨期稳健"
   },
   {
    "source": "pct_bin7(39-47)",
@@ -2695,7 +2732,8 @@
     }
    },
    "engine_hits": 10,
-   "coverage_ratio": 0.0009
+   "coverage_ratio": 0.0009,
+   "grade": "跨期稳健"
   },
   {
    "source": "pct_bin8(47-54)",
@@ -2779,7 +2817,8 @@
     }
    },
    "engine_hits": 5,
-   "coverage_ratio": 0.0005
+   "coverage_ratio": 0.0005,
+   "grade": "跨期稳健"
   },
   {
    "source": "pct_bin9(54-62)",
@@ -2863,7 +2902,8 @@
     }
    },
    "engine_hits": 7,
-   "coverage_ratio": 0.0007
+   "coverage_ratio": 0.0007,
+   "grade": "跨期稳健"
   },
   {
    "source": "pct_bin10(62-69)",
@@ -2947,7 +2987,8 @@
     }
    },
    "engine_hits": 9,
-   "coverage_ratio": 0.0009
+   "coverage_ratio": 0.0009,
+   "grade": "跨期稳健"
   },
   {
    "source": "pct_bin11(69-76)",
@@ -3031,7 +3072,8 @@
     }
    },
    "engine_hits": 4,
-   "coverage_ratio": 0.0004
+   "coverage_ratio": 0.0004,
+   "grade": "跨期稳健"
   },
   {
    "source": "pct_bin12(76-80)",
@@ -3115,7 +3157,8 @@
     }
    },
    "engine_hits": 0,
-   "coverage_ratio": 0.0
+   "coverage_ratio": 0.0,
+   "grade": "跨期稳健"
   },
   {
    "source": "pct_bin13(80-84)",
@@ -3199,7 +3242,8 @@
     }
    },
    "engine_hits": 2,
-   "coverage_ratio": 0.0002
+   "coverage_ratio": 0.0002,
+   "grade": "跨期稳健"
   },
   {
    "source": "pct_bin14(84-89)",
@@ -3283,7 +3327,8 @@
     }
    },
    "engine_hits": 2,
-   "coverage_ratio": 0.0002
+   "coverage_ratio": 0.0002,
+   "grade": "跨期稳健"
   },
   {
    "source": "pct_bin15(89-91)",
@@ -3367,7 +3412,8 @@
     }
    },
    "engine_hits": 4,
-   "coverage_ratio": 0.0006
+   "coverage_ratio": 0.0006,
+   "grade": "跨期稳健"
   },
   {
    "source": "pct_bin16(91-94)",
@@ -3451,7 +3497,8 @@
     }
    },
    "engine_hits": 4,
-   "coverage_ratio": 0.0003
+   "coverage_ratio": 0.0003,
+   "grade": "跨期稳健"
   },
   {
    "source": "pct_bin17(94-97)",
@@ -3535,7 +3582,8 @@
     }
    },
    "engine_hits": 7,
-   "coverage_ratio": 0.0007
+   "coverage_ratio": 0.0007,
+   "grade": "跨期稳健"
   },
   {
    "source": "pct_bin18(97-99)",
@@ -3619,7 +3667,8 @@
     }
    },
    "engine_hits": 2,
-   "coverage_ratio": 0.0002
+   "coverage_ratio": 0.0002,
+   "grade": "跨期稳健"
   },
   {
    "source": "pct_bin19(99-99)",
@@ -3703,7 +3752,8 @@
     }
    },
    "engine_hits": 1,
-   "coverage_ratio": 0.0001
+   "coverage_ratio": 0.0001,
+   "grade": "跨期稳健"
   },
   {
    "source": "rare_lowpct_leaf2",
@@ -3765,7 +3815,8 @@
     }
    },
    "engine_hits": 0,
-   "coverage_ratio": 0.0
+   "coverage_ratio": 0.0,
+   "grade": "单事件簇"
   },
   {
    "source": "rare_lowpct_leaf5",
@@ -3822,7 +3873,8 @@
     }
    },
    "engine_hits": 2,
-   "coverage_ratio": 0.0041
+   "coverage_ratio": 0.0041,
+   "grade": "单事件簇"
   },
   {
    "source": "rare_lowpct_leaf6",
@@ -3880,7 +3932,8 @@
     }
    },
    "engine_hits": 6,
-   "coverage_ratio": 0.0142
+   "coverage_ratio": 0.0142,
+   "grade": "单事件簇"
   },
   {
    "source": "rare_lowpct_leaf8",
@@ -3966,7 +4019,8 @@
     }
    },
    "engine_hits": 20,
-   "coverage_ratio": 0.0259
+   "coverage_ratio": 0.0259,
+   "grade": "跨期稳健"
   },
   {
    "source": "rare_lowpct_leaf9",
@@ -4043,7 +4097,8 @@
     }
    },
    "engine_hits": 0,
-   "coverage_ratio": 0.0
+   "coverage_ratio": 0.0,
+   "grade": "跨期稳健"
   },
   {
    "source": "rare_lowpct_leaf13",
@@ -4102,7 +4157,8 @@
     }
    },
    "engine_hits": 16,
-   "coverage_ratio": 0.0111
+   "coverage_ratio": 0.0111,
+   "grade": "单事件簇"
   },
   {
    "source": "rare_lowpct_leaf14",
@@ -4159,7 +4215,8 @@
     }
    },
    "engine_hits": 7,
-   "coverage_ratio": 0.0089
+   "coverage_ratio": 0.0089,
+   "grade": "单事件簇"
   },
   {
    "source": "rare_lowpct_leaf16",
@@ -4228,7 +4285,8 @@
     }
    },
    "engine_hits": 118,
-   "coverage_ratio": 0.0069
+   "coverage_ratio": 0.0069,
+   "grade": "跨期稳健"
   },
   {
    "source": "rare_lowpct_leaf17",
@@ -4310,7 +4368,8 @@
     }
    },
    "engine_hits": 111,
-   "coverage_ratio": 0.003
+   "coverage_ratio": 0.003,
+   "grade": "跨期稳健"
   },
   {
    "source": "rare_lowpct_leaf20",
@@ -4379,7 +4438,8 @@
     }
    },
    "engine_hits": 16,
-   "coverage_ratio": 0.0105
+   "coverage_ratio": 0.0105,
+   "grade": "单事件簇"
   },
   {
    "source": "rare_lowpct_leaf21",
@@ -4461,7 +4521,8 @@
     }
    },
    "engine_hits": 12,
-   "coverage_ratio": 0.0083
+   "coverage_ratio": 0.0083,
+   "grade": "单事件簇"
   },
   {
    "source": "rare_lowpct_leaf23",
@@ -4523,7 +4584,8 @@
     }
    },
    "engine_hits": 2,
-   "coverage_ratio": 0.0222
+   "coverage_ratio": 0.0222,
+   "grade": "单事件簇"
   },
   {
    "source": "rare_lowpct_leaf24",
@@ -4591,7 +4653,8 @@
     }
    },
    "engine_hits": 0,
-   "coverage_ratio": 0.0
+   "coverage_ratio": 0.0,
+   "grade": "跨期稳健"
   }
  ],
  "passed": [
@@ -4650,7 +4713,8 @@
     }
    },
    "engine_hits": 5,
-   "coverage_ratio": 0.0244
+   "coverage_ratio": 0.0244,
+   "grade": "单事件簇"
   },
   {
    "source": "tree_fwd14_leaf5",
@@ -4709,7 +4773,8 @@
     }
    },
    "engine_hits": 4,
-   "coverage_ratio": 0.0081
+   "coverage_ratio": 0.0081,
+   "grade": "单事件簇"
   },
   {
    "source": "tree_fwd14_leaf6",
@@ -4768,7 +4833,8 @@
     }
    },
    "engine_hits": 1,
-   "coverage_ratio": 0.0029
+   "coverage_ratio": 0.0029,
+   "grade": "单事件簇"
   },
   {
    "source": "tree_fwd14_leaf9",
@@ -4827,7 +4893,8 @@
     }
    },
    "engine_hits": 1,
-   "coverage_ratio": 0.0049
+   "coverage_ratio": 0.0049,
+   "grade": "跨期稳健"
   },
   {
    "source": "tree_fwd14_leaf13",
@@ -4886,7 +4953,8 @@
     }
    },
    "engine_hits": 7,
-   "coverage_ratio": 0.0042
+   "coverage_ratio": 0.0042,
+   "grade": "单事件簇"
   },
   {
    "source": "tree_fwd14_leaf18",
@@ -4946,7 +5014,8 @@
     }
    },
    "engine_hits": 15,
-   "coverage_ratio": 0.0059
+   "coverage_ratio": 0.0059,
+   "grade": "跨期稳健"
   },
   {
    "source": "tree_fwd14_leaf21",
@@ -5012,7 +5081,8 @@
     }
    },
    "engine_hits": 10,
-   "coverage_ratio": 0.0012
+   "coverage_ratio": 0.0012,
+   "grade": "跨期稳健"
   },
   {
    "source": "tree_fwd30_leaf4",
@@ -5071,7 +5141,8 @@
     }
    },
    "engine_hits": 7,
-   "coverage_ratio": 0.0053
+   "coverage_ratio": 0.0053,
+   "grade": "中间态"
   },
   {
    "source": "tree_fwd30_leaf5",
@@ -5131,7 +5202,8 @@
     }
    },
    "engine_hits": 12,
-   "coverage_ratio": 0.008
+   "coverage_ratio": 0.008,
+   "grade": "中间态"
   },
   {
    "source": "tree_fwd30_leaf8",
@@ -5202,7 +5274,8 @@
     }
    },
    "engine_hits": 39,
-   "coverage_ratio": 0.0014
+   "coverage_ratio": 0.0014,
+   "grade": "跨期稳健"
   },
   {
    "source": "tree_fwd30_leaf11",
@@ -5267,7 +5340,8 @@
     }
    },
    "engine_hits": 9,
-   "coverage_ratio": 0.0017
+   "coverage_ratio": 0.0017,
+   "grade": "跨期稳健"
   },
   {
    "source": "tree_fwd30_leaf12",
@@ -5333,7 +5407,8 @@
     }
    },
    "engine_hits": 7,
-   "coverage_ratio": 0.0013
+   "coverage_ratio": 0.0013,
+   "grade": "跨期稳健"
   },
   {
    "source": "tree_fwd30_leaf20",
@@ -5393,7 +5468,8 @@
     }
    },
    "engine_hits": 21,
-   "coverage_ratio": 0.0073
+   "coverage_ratio": 0.0073,
+   "grade": "跨期稳健"
   },
   {
    "source": "tree_fwd30_leaf21",
@@ -5452,7 +5528,8 @@
     }
    },
    "engine_hits": 0,
-   "coverage_ratio": 0.0
+   "coverage_ratio": 0.0,
+   "grade": "单事件簇"
   },
   {
    "source": "tree_fwd30_leaf25",
@@ -5534,7 +5611,8 @@
     }
    },
    "engine_hits": 5,
-   "coverage_ratio": 0.0037
+   "coverage_ratio": 0.0037,
+   "grade": "跨期稳健"
   },
   {
    "source": "rare_lowpct_leaf5",
@@ -5591,7 +5669,8 @@
     }
    },
    "engine_hits": 2,
-   "coverage_ratio": 0.0041
+   "coverage_ratio": 0.0041,
+   "grade": "单事件簇"
   },
   {
    "source": "rare_lowpct_leaf6",
@@ -5649,7 +5728,8 @@
     }
    },
    "engine_hits": 6,
-   "coverage_ratio": 0.0142
+   "coverage_ratio": 0.0142,
+   "grade": "单事件簇"
   },
   {
    "source": "rare_lowpct_leaf8",
@@ -5735,7 +5815,8 @@
     }
    },
    "engine_hits": 20,
-   "coverage_ratio": 0.0259
+   "coverage_ratio": 0.0259,
+   "grade": "跨期稳健"
   },
   {
    "source": "rare_lowpct_leaf13",
@@ -5794,7 +5875,8 @@
     }
    },
    "engine_hits": 16,
-   "coverage_ratio": 0.0111
+   "coverage_ratio": 0.0111,
+   "grade": "单事件簇"
   },
   {
    "source": "rare_lowpct_leaf20",
@@ -5863,7 +5945,8 @@
     }
    },
    "engine_hits": 16,
-   "coverage_ratio": 0.0105
+   "coverage_ratio": 0.0105,
+   "grade": "单事件簇"
   },
   {
    "source": "rare_lowpct_leaf21",
@@ -5945,7 +6028,8 @@
     }
    },
    "engine_hits": 12,
-   "coverage_ratio": 0.0083
+   "coverage_ratio": 0.0083,
+   "grade": "单事件簇"
   }
  ]
 }

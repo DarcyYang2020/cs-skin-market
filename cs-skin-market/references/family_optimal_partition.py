@@ -123,6 +123,18 @@ def centroid(X, mask):
     return {f: round(float(X[mask, i].mean()), 2) for i, f in enumerate(FEATURES)}
 
 
+def grade_region(r):
+    """单事件分级标签（§五，纯数值三档）：
+    ≤40% 跨期稳健；40~50% 中间态；>50% 单事件簇。
+    事件驱动型（走事件级验证 vs 否决线驳回）属对照层判定，见 comparison 脚本。"""
+    mx = r["event"]["max_month_pct"]
+    if mx <= 40:
+        return "跨期稳健"
+    if mx <= 50:
+        return "中间态"
+    return "单事件簇"
+
+
 def main():
     X, f14, f30, names, dates, meta = load_matrix()
     n = len(names)
@@ -185,6 +197,7 @@ def main():
         hits = keys & eng
         r["engine_hits"] = len(hits)
         r["coverage_ratio"] = round(len(hits) / len(keys), 4) if keys else None
+        r["grade"] = grade_region(r)
 
     passed = [r for r in regions if r["passed"]]
     print(f"\n候选区域 {len(regions)}，过 gate {len(passed)}")
