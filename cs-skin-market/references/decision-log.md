@@ -1445,3 +1445,25 @@
   4. 模板零硬编码 signal_type（engine_telemetry 的 display_keys 为数据驱动）；4 处数据重跑产物与 CG 数字一致 ✅
 - **禁令遵守**：零信号发射/决策/守卫链/组合层改动；不 bump ENGINE_VERSION；不写生产库（归因/进度卡 JSON 为 data/ 产物文件，非数据库）；未回改 C1 前行为。
 - **状态**：待 PM 对照 roadmap v76 C1-UNIFY 卡验收（冲突清零 + 分布 6 组 + 冒烟 131/0/0）。
+
+## CJ. C1-UNIFY 验收：通过，关闭（2026-08-20 16:38 后，①PM 独立只读核验）
+
+- **核验方式**：不采信执行窗口自述，独立只读核验原始产物——config.py taxonomy 直查（细族 14/展示键 8）、signal_guidance 实现直读（assign_fine_family + 历史标签兜底）、**独立对 `_exp_cycle_replay_fullpool_2026.json` 377 信号滤污染 3 条 = 374 重算分布**、base 组标签内容审计、4 处数据产物直查、亲自重跑冒烟+编码、ENGINE_VERSION 取值。
+- **逐项结果**：
+  1. 冲突清零：base 组 64 条全为「分批建仓」标签，含深值/吸筹/恐慌/涨冲突 = 0 ✅（C1 前 deep_value→base / rise_accum→base 兜底消除）
+  2. 新分布：panic 149 / accumulate 82 / deep_value 48 / base 64 / rise 29 / weak_market 2（合计 374，与 CG 预注册逐项一致；longhold/oversold 当前基线 0 属数据现状）✅
+  3. 冒烟 131 passed / 0 failed / 0 skipped（PM 重跑）、encoding PASS、ENGINE_VERSION 仍 v2-T13（config.py:506）✅
+  4. 交付物：4 处数据产物直查一致（HIST-FULL panic 92/deep_value 27/accumulate 176/base 22）、test_smoke 2 处改 display_key_for_label、terminology/AGENTS 同步、commit `dd8c47c` 在库 ✅
+- **口径备注**：rise_contract（深收缩）/deep_dip（深度回调）→ accumulate 为设计如此（terminology accumulate 展示组定义），非误归。
+- **状态**：**已关闭**（roadmap v76 C1-UNIFY 卡验收节）。**C2（rise_accum chg7 下限 3→10，证据最充分）按接力登记可另行立项**；C3/C4/C5 按 CE 闭环挂账。
+
+## CK. C2 预注册判据草案（2026-08-20，②研究，供 PM v78 立项卡提取）
+
+- **背景**：C1-UNIFY 关闭后（CI 落地 / PM 复核 / CJ 关闭），C2 为唯一独立落地候选（CE 闭环登记）。研发窗口已声明出卡前不跑回测/探针/改代码；按角色边界，**C2 的研究执行主体是②**（预注册→探针→回放→候选→交③审计），研发接审计通过后的落地。
+- **候选定义（锁定）**：`rise_accum` trigger 的 `chg7 > 3` 改 `chg7 > 10`（item_analysis.py:1262），其余条件（上限 15 / TH≥55 / sc30>5 / s7≤0.85s30 / limit 0.05 / prio 28）不动。语义=砍「温和追涨段」（chg7 3~10 样本内负期望 −4.58），留「强势追涨段」（chg7>10 样本内 +24.0）。
+- **证据（样本内，非结论）**：H3 分桶 n=29（≤5: n4 win25% −1.94 / 5~10: n11 win18.2% −4.58 / >10: n14 win50% +24.0）；剔除 rise_accum 后全样本 win14 71.9→75.1%。**反过拟合声明：阈值 10 为样本内候选，以四关 walk-forward 验证段为准，验证段不显著即证伪。**
+- **回放口径**：复用 `run_family_variant_replay.py` 注入机制**替换 trigger**（非新增族）；232 品 3 年、CS_ENGINE_PERIOD_ROUTE=1；输出独立文件。
+- **delta 验收**：基线非 rise_accum 信号字节一致（零漂移）+ rise_accum 29→N + chg7 3~10 段 11 条明细 + displaced/relabel + 月度/单品分布。
+- **四关**：A2 发射复算（keyword=吸筹型上涨）+ 组合级 simulate + 前后半段一致（切点 2025-08-10）+ 置换；沿用 CC 否决线（单月>50% 自动驳回）。
+- **完整判据**：`references/c2-rise-accum-prereg-2026-08-20.md`。
+- **状态**：草案待 PM 出卡（roadmap v78）。②在出卡后照卡执行，全程样本内只出候选。
