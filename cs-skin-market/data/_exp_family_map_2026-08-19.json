@@ -1,0 +1,256 @@
+{
+ "meta": {
+  "date": "2026-08-19",
+  "role": "algorithm-research (read-only static audit)",
+  "n_engine_families": 11,
+  "taxonomy_fine_order": [
+   "panic_resonance",
+   "panic_easing",
+   "deep_value",
+   "supply_accum",
+   "deep_dip",
+   "base"
+  ],
+  "taxonomy_display_keys": [
+   "panic",
+   "deep_value",
+   "accumulate"
+  ],
+  "signal_guidance_rules": [
+   [
+    "恐慌",
+    "panic",
+    "恐慌共振"
+   ],
+   [
+    "超跌",
+    "oversold",
+    "超跌反弹"
+   ],
+   [
+    "长持",
+    "longhold",
+    "长持结构"
+   ],
+   [
+    "吸筹",
+    "accumulate",
+    "周期吸筹"
+   ],
+   [
+    "__else__",
+    "base",
+    "低位低估"
+   ]
+  ]
+ },
+ "engine_families": [
+  {
+   "key": "panic_resonance",
+   "label": "🟢 恐慌共振·分批建仓",
+   "priority": 60,
+   "limit": 0.3,
+   "signal_guidance": "panic",
+   "taxonomy_fine": "panic_resonance",
+   "taxonomy_display": "panic"
+  },
+  {
+   "key": "deep_value",
+   "label": "🟢 深值·大盘企稳·分批建仓",
+   "priority": 50,
+   "limit": 0.2,
+   "signal_guidance": "base",
+   "taxonomy_fine": "deep_value",
+   "taxonomy_display": "deep_value"
+  },
+  {
+   "key": "panic_easing",
+   "label": "🟢 恐慌退潮·深跌止跌·分批建仓",
+   "priority": 40,
+   "limit": 0.1,
+   "signal_guidance": "panic",
+   "taxonomy_fine": "panic_easing",
+   "taxonomy_display": "panic"
+  },
+  {
+   "key": "supply_accum",
+   "label": "🟢 供给收缩·启动前吸筹·分批建仓",
+   "priority": 30,
+   "limit": 0.15,
+   "signal_guidance": "accumulate",
+   "taxonomy_fine": "supply_accum",
+   "taxonomy_display": "accumulate"
+  },
+  {
+   "key": "rise_accum",
+   "label": "🟢 吸筹型上涨·强势买涨·分批建仓",
+   "priority": 28,
+   "limit": 0.05,
+   "signal_guidance": "accumulate",
+   "taxonomy_fine": "base",
+   "taxonomy_display": "accumulate"
+  },
+  {
+   "key": "rise_contract",
+   "label": "🟢 深收缩慢涨·合纵型·分批建仓",
+   "priority": 27,
+   "limit": 0.05,
+   "signal_guidance": "base",
+   "taxonomy_fine": "base",
+   "taxonomy_display": "accumulate"
+  },
+  {
+   "key": "rs_accum",
+   "label": "🟢 相对强度·独立强势·长持建仓",
+   "priority": 32,
+   "limit": 0.05,
+   "signal_guidance": "longhold",
+   "taxonomy_fine": "base",
+   "taxonomy_display": "accumulate"
+  },
+  {
+   "key": "ct_accum",
+   "label": "🟢 逆市走强·独立行情·长持建仓",
+   "priority": 31,
+   "limit": 0.05,
+   "signal_guidance": "longhold",
+   "taxonomy_fine": "base",
+   "taxonomy_display": "accumulate"
+  },
+  {
+   "key": "volatile_accum",
+   "label": "🟢 震荡吸筹·启动前·分批建仓",
+   "priority": 26,
+   "limit": 0.05,
+   "signal_guidance": "accumulate",
+   "taxonomy_fine": "base",
+   "taxonomy_display": "accumulate"
+  },
+  {
+   "key": "second_wave",
+   "label": "🟢 二波回调·强势承接·分批建仓",
+   "priority": 24,
+   "limit": 0.05,
+   "signal_guidance": "base",
+   "taxonomy_fine": "base",
+   "taxonomy_display": "accumulate"
+  },
+  {
+   "key": "xishou_mid",
+   "label": "🟢 惜售中段·超跌反弹·分批建仓",
+   "priority": 25,
+   "limit": 0.1,
+   "signal_guidance": "oversold",
+   "taxonomy_fine": "base",
+   "taxonomy_display": "accumulate"
+  }
+ ],
+ "taxonomy_vs_engine": {
+  "panic_resonance": {
+   "taxonomy_label": "恐慌共振",
+   "taxonomy_display": "panic",
+   "engine_keys": [
+    "panic_resonance"
+   ],
+   "note": ""
+  },
+  "panic_easing": {
+   "taxonomy_label": "恐慌退潮",
+   "taxonomy_display": "panic",
+   "engine_keys": [
+    "panic_easing"
+   ],
+   "note": ""
+  },
+  "deep_value": {
+   "taxonomy_label": "深值企稳",
+   "taxonomy_display": "deep_value",
+   "engine_keys": [
+    "deep_value"
+   ],
+   "note": ""
+  },
+  "supply_accum": {
+   "taxonomy_label": "供给收缩吸筹",
+   "taxonomy_display": "accumulate",
+   "engine_keys": [
+    "supply_accum"
+   ],
+   "note": ""
+  },
+  "deep_dip": {
+   "taxonomy_label": "深度回调低吸",
+   "taxonomy_display": "accumulate",
+   "engine_keys": [],
+   "note": "taxonomy 有此细族、引擎无独立 SignalFamily"
+  },
+  "base": {
+   "taxonomy_label": "基础分批",
+   "taxonomy_display": "accumulate",
+   "engine_keys": [
+    "rise_accum",
+    "rise_contract",
+    "rs_accum",
+    "ct_accum",
+    "volatile_accum",
+    "second_wave",
+    "xishou_mid"
+   ],
+   "note": ""
+  }
+ },
+ "signal_189_by_action_label": {
+  "🟢 恐慌退潮·深跌止跌·分批建仓": 57,
+  "🟢 分批建仓": 34,
+  "🟢 供给收缩·启动前吸筹·分批建仓": 24,
+  "🟢 深度回调低吸·分批建仓": 24,
+  "🟢 深值·大盘企稳·分批建仓": 21,
+  "🟢 恐慌共振·分批建仓": 16,
+  "🟢 吸筹型上涨·强势买涨·分批建仓": 12,
+  "🟢 弱市抗跌·分批介入": 1
+ },
+ "conflicts": [
+  {
+   "point": "deep_value",
+   "engine": "有族",
+   "taxonomy": "独立展示键 deep_value",
+   "signal_guidance": "base（'深值' 不含恐慌/超跌/长持/吸筹）"
+  },
+  {
+   "point": "deep_dip",
+   "engine": "无独立族（supply_accum 的 P0-7b 例外派生）",
+   "taxonomy": "细族 deep_dip→accumulate",
+   "signal_guidance": "base（'深度回调低吸' 不含'吸筹'两字）"
+  },
+  {
+   "point": "rise_accum/rise_contract/volatile_accum",
+   "engine": "有族",
+   "taxonomy": "无映射（assign_fine_family 兜底 base）",
+   "signal_guidance": "accumulate（含'吸筹'）"
+  },
+  {
+   "point": "rs_accum/ct_accum",
+   "engine": "有族",
+   "taxonomy": "无映射（兜底 base）",
+   "signal_guidance": "longhold（含'长持'）"
+  },
+  {
+   "point": "second_wave",
+   "engine": "有族",
+   "taxonomy": "无映射（兜底 base）",
+   "signal_guidance": "base（else）"
+  },
+  {
+   "point": "xishou_mid",
+   "engine": "有族",
+   "taxonomy": "无映射（兜底 base）",
+   "signal_guidance": "oversold（含'超跌'）"
+  },
+  {
+   "point": "弱市抗跌（历史遗留）",
+   "engine": "无此族（旧引擎残留 label）",
+   "taxonomy": "无",
+   "signal_guidance": "base（else）"
+  }
+ ]
+}

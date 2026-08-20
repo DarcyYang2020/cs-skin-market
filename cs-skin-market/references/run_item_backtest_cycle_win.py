@@ -28,10 +28,13 @@ from pipeline import db  # noqa: E402
 OUT = ROOT / "data" / os.environ.get("CS_ENGINE_REPLAY_OUT", "_exp_cycle_replay_2026.json")
 
 
-# 高质量集过滤（2026-08-16 用户裁定：充分用满 188 品，贴纸/角色过滤）：
-# 排除贴纸（印花 | 前缀）、角色特工（游击队/军刀勇士/特警）、手套、武器箱；
+# 高质量集过滤（2026-08-19 DATA-1 后更新：全池除贴纸/角色）：
+# 排除贴纸（印花 | 前缀）与角色特工（游击队/军刀勇士/特警/巴西第一营/海豹部队）；
+# 纳入手套/武器箱/挂件/冷门枪（DATA-1 已回填 3 年历史，族划分研究需覆盖）；
 # 不再按 first_date 截断——新品短史一并入池（warmup 不足自动跳过）。
-HQ_EXCLUDE_MARKERS = ("印花 |", "手套", "武器箱", "游击队", "军刀勇士", "特警")
+HQ_EXCLUDE_MARKERS = ("印花 |", "游击队", "军刀勇士", "特警", "巴西第一营", "海豹部队")
+# 污染数据（用户 2026-08-20 裁定）：接口无 3 年历史，排除出研究池。
+POLLUTED_ITEMS = {"AK-47 | 流金王朝 (崭新出厂)", "挂件 | 丁烷拍档"}
 
 
 def pool_a_items():
@@ -43,6 +46,7 @@ def pool_a_items():
     conn.close()
     return {r["id"]: r["name"] for r in rows
             if r["name"] not in rib.EXCLUDED_ITEMS
+            and r["name"] not in POLLUTED_ITEMS
             and not any(m in r["name"] for m in HQ_EXCLUDE_MARKERS)}
 
 
@@ -71,7 +75,7 @@ def main():
     switches = ",".join("%s=1" % k for k in sorted(os.environ)
                         if k.startswith("CS_ENGINE_") and os.environ[k] == "1")
     out = {"args": {"start": START, "end": END, "warmup": WARMUP,
-                    "pool": "HQ(\u5168\u5e93\u6b66\u5668\u76ae\u80a4\u7ea6180\u54c1,\u6ee4\u8d34\u7eb8/\u89d2\u8272,3\u5e74\u7a97\u53e3)", "db": os.environ["CS_MODEL_DB"],
+                    "pool": "全池除贴纸/角色约234品(DATA-1 3年历史,含手套/武器箱/挂件/冷门枪)", "db": os.environ["CS_MODEL_DB"],
                     "engine": "v2-T10 (DECISION-6/7 + liquidity_filtered + csQAQ period=1095 NULL+0gap backfill + O1 仓位网格 supply_accum0.15/deep_value0.20 + cycle window)",
                     "env_switches": switches or None},
            "generated": datetime.now().strftime("%Y-%m-%d %H:%M"),
