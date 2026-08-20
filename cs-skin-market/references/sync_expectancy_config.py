@@ -49,6 +49,8 @@ def compute_display_stats(replay_path=None):
     stats, composition = {}, {}
     for key in DISPLAY_KEYS:
         sigs = [s for s in signals if j1.display_key(s.get("action_label") or "") == key]
+        if len(sigs) < 5:  # 小样本组（如弱市抗跌 n≈2）无统计意义，跳过（C1 8 组口径，2026-08-20）
+            continue
         st = j1.family_stats([s["date"] for s in sigs])
         p14 = j1.pnl_stats(sigs)
         ci = p14["win14"]["ci"] or (None, None)
@@ -83,6 +85,8 @@ def render_block(stats, total, composition, var_name="ITEM_EXPECTANCY_STATS",
     lines.append("    # display keys match action_label (panic/deep_value/accumulate); events = +/-3d clusters.")
     lines.append("    # win30/avg30 are n30 subsets; ci14 = Wilson 95% interval.")
     for key in DISPLAY_KEYS:
+        if key not in stats:  # 小样本组已被 compute_display_stats 跳过
+            continue
         v = stats[key]
         comp_txt = " + ".join("%s(%d)" % (lab, n) for lab, n in composition[key])
         lines.append('    # %s：%s 全量（自动生成）' % (LABELS[key], comp_txt))
@@ -152,6 +156,8 @@ if __name__ == "__main__":
     stats, total, composition = sync()
     print("=== HIST-FULL 期望统计（%d 信号）===" % total)
     for key in DISPLAY_KEYS:
+        if key not in stats:
+            continue
         v = stats[key]
         print("%-12s n=%3d n30=%3d events=%2d win14=%5.1f avg14=%6.2f ci14=[%4.1f,%4.1f] win30=%5.1f avg30=%6.2f" % (
             key, v["n"], v["n30"], v["events"], v["win14"], v["avg14"],

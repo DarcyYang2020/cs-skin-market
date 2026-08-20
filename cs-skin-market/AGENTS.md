@@ -37,7 +37,7 @@
 - **基准对照**：`python references/benchmark_compare.py` → `data/benchmark_compare.json`
   （策略 cap0.8 vs 池内等权买入持有 vs 大盘指数，full/active 双窗口）。2026-08-10 结论（365d 窗口，317 信号，组合模拟口径 hold21——2026-08-10 对齐单品 hold_guidance，见 decision-log）：策略 +200.55%/-9.13%
   大幅跑赢大盘 -24.20%/-58.21%，但低于池内等权 +252.32%/-55.59% —— 引擎边际价值在风险控制（maxDD 9.13% vs 55~58%）。
-- **组合归因（A1-3，2026-08-15 重跑 hold21 + taxonomy 双基线）**：`python references/portfolio_attribution.py` → `data/portfolio_attribution.json`（leave-one-out 族级/月度/集中度，与 portfolio_backtest 同源口径）。HIST-FULL（317）：accumulate +111.69pp（n=198）、deep_value +59.39pp（n=27）、panic +56.35pp（n=92）；CLEAN-CUR（230，展示参考）：以 `data/portfolio_attribution.json` 的 `baselines.CLEAN-CUR` 为唯一当前数字。旧 hold14 口径 +34.2pp（n=212）/ +21.65pp（n=93）/ +13.98pp（n=27）仅作历史存证，不与当前 hold21 + taxonomy 标尺混用。
+- **组合归因（A1-3，2026-08-15 重跑 hold21 + taxonomy 双基线；2026-08-20 C1 后重跑 8 组展示键）**：`python references/portfolio_attribution.py` → `data/portfolio_attribution.json`（leave-one-out 族级/月度/集中度，与 portfolio_backtest 同源口径）。HIST-FULL（317）：accumulate +95.72pp（n=176，C1 后不含 base）、deep_value +59.39pp（n=27）、panic +56.35pp（n=92）、base +19.66pp（n=22，C1 后独立）；CLEAN-CUR（230，展示参考）：以 `data/portfolio_attribution.json` 的 `baselines.CLEAN-CUR` 为唯一当前数字。C1 前 accumulate 含 base 归因 +111.69pp（n=198）仅作历史存证，与 C1 后口径不可混用。旧 hold14 口径 +34.2pp（n=212）/ +21.65pp（n=93）/ +13.98pp（n=27）亦仅作历史存证。
 
 
 ## 数据来源与采集

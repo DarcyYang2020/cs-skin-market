@@ -3,7 +3,7 @@ import html
 import logging
 
 from .buy_distance import tranche_plan_text
-from .config import TOPUP_EXPECTANCY_STATS
+from .config import TOPUP_EXPECTANCY_STATS, SIGNAL_FAMILY_TAXONOMY, assign_fine_family
 from .portfolio_risk import single_position_exposure
 from webapp.render_html import _tpl_env
 
@@ -16,23 +16,29 @@ def signal_guidance(action_label: str = "", expectancy: dict = None, action: str
     """Derive signal type + hold guidance from the fusion action label.
 
     Pure display-layer derivation: never changes any engine decision.
-    panic 判定与 item_analysis._is_panic 一致（action_label 含"恐慌"）。
+    C1（2026-08-20）：改用 config.SIGNAL_FAMILY_TAXONOMY 的 assign_fine_family 派生
+    （废除自身关键词匹配）——细族=引擎11族+base+deep_dip+weak_market，展示键=语义组。
+    仅对 taxonomy 未识别的历史/通用标签（如 周期吸筹/超跌反弹）保留关键词兜底。
     持有指引依据: 非恐慌段 30d 期望≈0（2026-08-03 扩展回测），恐慌簇 30d 胜率 83%。
     """
     raw = action_label or ""
     for emoji in _EMOJI_PREFIXES:
         raw = raw.replace(emoji, "")
     label = raw.strip()
-    if "恐慌" in label:
-        sig_type, type_label = "panic", "恐慌共振"
-    elif "超跌" in label:
-        sig_type, type_label = "oversold", "超跌反弹"
-    elif "长持" in label:
-        sig_type, type_label = "longhold", "长持结构"
-    elif "吸筹" in label:
-        sig_type, type_label = "accumulate", "周期吸筹"
+    fine = assign_fine_family(label)
+    if fine == "base" and ("恐慌" in label or "超跌" in label or "长持" in label or "吸筹" in label):
+        # 历史/通用标签兜底（taxonomy 未识别但语义明确）
+        if "恐慌" in label:
+            sig_type, type_label = "panic", "恐慌共振"
+        elif "超跌" in label:
+            sig_type, type_label = "oversold", "超跌反弹"
+        elif "长持" in label:
+            sig_type, type_label = "longhold", "长持结构"
+        else:
+            sig_type, type_label = "accumulate", "周期吸筹"
     else:
-        sig_type, type_label = "base", "低位低估"
+        sig_type = SIGNAL_FAMILY_TAXONOMY["fine_to_display"].get(fine, "base")
+        type_label = SIGNAL_FAMILY_TAXONOMY["fine_labels"].get(fine, "基础分批")
     if action and action not in ("buy", "oversold_buy"):
         hold = "未触发买入信号，暂无持有期建议；已持仓按止损止盈/补仓建议管理"
     elif sig_type == "panic":
@@ -43,10 +49,16 @@ def signal_guidance(action_label: str = "", expectancy: dict = None, action: str
     elif sig_type == "longhold":
         hold = ("长持结构类：独立强势长持参考 60~180 日（相对强度/逆市走强证据），"
                 "组合口径统一 hold21 模拟；止损建议-20%")
+    elif sig_type == "deep_value":
+        hold = "深值企稳类：建议持有21日退出（30d 慢修复参考），止损建议-20%"
+    elif sig_type == "rise":
+        hold = "追涨类：建议持有14日（吸筹型上涨回测胜率低、快进快出），止损建议-20%"
+    elif sig_type == "weak_market":
+        hold = "弱市抗跌类：建议持有21日退出，止损建议-20%"
     elif sig_type == "accumulate":
         hold = "周期吸筹类：建议持有21日退出（同低位低估类回测），止损建议-20%"
     else:
-        hold = "低位低估类：回测最优持有21日退出，止损建议-20%；固定止盈会截断反弹利润"
+        hold = "基础分批类：回测最优持有21日退出，止损建议-20%；固定止盈会截断反弹利润"
     if expectancy and isinstance(expectancy, dict) and expectancy.get("label"):
         type_label = expectancy["label"]
     if sig_type == "panic":

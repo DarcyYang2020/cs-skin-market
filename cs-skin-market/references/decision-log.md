@@ -1420,3 +1420,28 @@
 - **已回滚**：生产代码恢复至 C1 前（`pipeline/config.py`/`batch_scan.py`/`tests/test_smoke.py`/`AGENTS.md`/`terminology.md`/`sync_expectancy_config.py`/`portfolio_attribution.json`/`signal_event_counts.json` 8 文件还原到 commit b1d20a5 状态，冒烟 131/0/0 复验）。**C1 移交 PM 立项 → 研发按上文方案落地。**
 - 研发落地时注意（踩坑固化）：改 taxonomy 展示键会连带 4 处数据重跑（`ITEM_EXPECTANCY_STATS` / CLEAN-CUR / `signal_event_counts.json` 进度卡 / `portfolio_attribution.json` 归因）+ `tests/test_smoke.py` 2 处硬编码 3 分组（t_replay_source / t_data_progress）须同步改用 `display_key_for_label`；小样本组（n<5）期望统计跳过（sync 脚本需带该修复）。
 - 族划分重构「新增族」方向已证伪闭环（CE/CF）；C1 为原三观察（族划分乱）的工程收口候选，落地与否由 PM 排期。
+
+## CH. C1-UNIFY 三口径统一立项（2026-08-20，①PM 立项，交研发窗口执行）
+
+- **来源**：②候选移交（CG 条目，commit 3a31bb1 已回滚生产代码、方案细节保留）；用户带话立项「C1 三口径统一」。
+- **PM 只读核查（数字已核实）**：CG 条目存在且方案完整（改动点 1~5 + 踩坑固化）；3a31bb1 回滚在库；当前 `SIGNAL_FAMILY_TAXONOMY` 细族 6、展示键 3（panic/deep_value/accumulate）、`signal_guidance` 未用 assign_fine_family、ENGINE_VERSION 仍 `v2-T13`；pipeline/tests/webapp 工作区干净（无未提交生产改动）。
+- **卡内容**：目标 = 三口径统一（细族 6→14、展示键 3→8、base 独立、signal_guidance 派生）；纯展示层零信号发射改动；预注册判据 8 条（含 4 处数据重跑 + test_smoke 2 处硬编码改 display_key_for_label + 文档同步 + 禁令）；验收 = 冲突清零 + 新分布 6 组 + 冒烟 131/0/0 + ENGINE_VERSION v2-T13 + 产物对齐。完整卡见 `references/iteration-roadmap.md` C1-UNIFY（roadmap v76）。
+- **状态**：已立项，待研发执行；与 CG 条目联动（研发以 CG 改动点 1~5 为执行蓝本，本卡为验收蓝本）。
+
+---
+
+## CI. C1-UNIFY 三口径统一落地（2026-08-20，②研发执行，按 CG 方案 + roadmap v76 卡）
+
+- **改动点 1（config.py 唯一事实源）**：`SIGNAL_FAMILY_TAXONOMY` 细族 6→14（引擎 `SIGNAL_FAMILIES` 11 族 + `base` 分批建仓 + `deep_dip` 深度回调低吸 + `weak_market` 弱市抗跌）；展示键 3→8（panic/deep_value/accumulate/rise/longhold/oversold/base/weak_market）；`base` 从 accumulate 独立；fine_order 按关键字特异性排序、`分批建仓`最后兜底；BASELINE_LEDGER 双基线 accumulate/base 分组数据同步（HIST-FULL accumulate n=198→176 + base 22；CLEAN-CUR accumulate n=116→88 + base 28）。
+- **改动点 2（batch_scan.py signal_guidance）**：废除自身关键词匹配，改用 `assign_fine_family`→展示键派生；仅 taxonomy 未识别的历史/通用标签（周期吸筹/超跌反弹/长持）保留关键词兜底；补 deep_value/rise/weak_market 持有指引（deep_value 21 日、rise 14 日快进快出、weak_market 21 日）。
+- **改动点 3（sync_expectancy_config.py）**：小样本组（n<5，如 weak_market n≈2）跳过期望统计（compute_display_stats + render_block 双处），修复 8 组下 render None 崩溃。
+- **改动点 4（4 处数据重跑，产物与 CG 预注册数字逐项一致）**：`ITEM_EXPECTANCY_STATS`（HIST-FULL：panic 92 / deep_value 27 / accumulate 176 / base 22）+ `ITEM_EXPECTANCY_STATS_CLEAN_CUR`（panic 81 / deep_value 33 / accumulate 88 / base 28）+ `data/signal_event_counts.json`（J-3 进度卡）+ `data/portfolio_attribution.json`（8 组归因，与 7c475ea 版逐字节一致：accumulate 176 +95.72pp / base 22 +19.66pp / panic 92 +56.35pp / deep_value 27 +59.39pp）。
+- **改动点 5（test_smoke.py 2 处）**：t_replay_source / t_data_progress 硬编码 3 分组（恐慌/深值/else→accumulate）改用 `display_key_for_label`（单一事实源），小样本组同口径跳过（`k not in stats` continue）。
+- **改动点 6（文档同步）**：`terminology.md` 信号族分类节更新（展示键 8、细族 14、accumulate 不含 base、weak_market 历史遗留）；`AGENTS.md` 组合归因行更新（C1 后 accumulate n=176 +95.72pp、base n=22 +19.66pp，C1 前 +111.69pp 仅作历史存证）。
+- **验收标准逐项**：
+  1. **冲突清零**：基线 374 信号（滤污染品 3 条：流金王朝×2 + 丁烷拍档×1）中「深值/吸筹型上涨 误归 base」= **0** ✅
+  2. **新分布**：panic **149** / accumulate **82** / deep_value **48** / base **64** / rise **29** / weak_market **2**（与 CG 预注册逐项一致）✅
+  3. 冒烟 **131 passed / 0 failed / 0 skipped**；编码 PASS；`ENGINE_VERSION` 仍 `v2-T13`（config.py:506）✅
+  4. 模板零硬编码 signal_type（engine_telemetry 的 display_keys 为数据驱动）；4 处数据重跑产物与 CG 数字一致 ✅
+- **禁令遵守**：零信号发射/决策/守卫链/组合层改动；不 bump ENGINE_VERSION；不写生产库（归因/进度卡 JSON 为 data/ 产物文件，非数据库）；未回改 C1 前行为。
+- **状态**：待 PM 对照 roadmap v76 C1-UNIFY 卡验收（冲突清零 + 分布 6 组 + 冒烟 131/0/0）。

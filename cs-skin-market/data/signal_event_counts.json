@@ -1,5 +1,5 @@
 {
- "generated": "2026-08-16",
+ "generated": "2026-08-20",
  "window": 3,
  "total_signals": 317,
  "note": "去量引擎 v2 回放同源（item_backtest_full_2025.json）；事件簇数=±3天去簇；细族按 action_label 关键词，展示键按「恐慌/深值」匹配（与 config.ITEM_EXPECTANCY_STATS 同口径，config 由 sync_expectancy_config.py 同步生成）",
@@ -131,26 +131,99 @@
    "avg30": 51.51
   },
   "accumulate": {
-   "signals": 198,
-   "events": 12,
-   "unique_dates": 53,
-   "max_cluster_share": 0.7525,
+   "signals": 176,
+   "events": 11,
+   "unique_dates": 48,
+   "max_cluster_share": 0.75,
    "date_range": [
     "2025-11-18",
     "2026-07-22"
    ],
-   "n": 198,
-   "win14": 63.1,
-   "avg14": 10.12,
-   "ci14_lo": 56.2,
-   "ci14_hi": 69.5,
-   "win30": 64.8,
-   "avg30": 20.55
+   "n": 176,
+   "win14": 64.2,
+   "avg14": 10.8,
+   "ci14_lo": 56.9,
+   "ci14_hi": 70.9,
+   "win30": 67.2,
+   "avg30": 22.43
+  },
+  "rise": {
+   "signals": 0,
+   "events": 0,
+   "unique_dates": 0,
+   "max_cluster_share": 0.0,
+   "date_range": null,
+   "n": 0,
+   "win14": null,
+   "avg14": null,
+   "ci14_lo": null,
+   "ci14_hi": null,
+   "win30": null,
+   "avg30": null
+  },
+  "longhold": {
+   "signals": 0,
+   "events": 0,
+   "unique_dates": 0,
+   "max_cluster_share": 0.0,
+   "date_range": null,
+   "n": 0,
+   "win14": null,
+   "avg14": null,
+   "ci14_lo": null,
+   "ci14_hi": null,
+   "win30": null,
+   "avg30": null
+  },
+  "oversold": {
+   "signals": 0,
+   "events": 0,
+   "unique_dates": 0,
+   "max_cluster_share": 0.0,
+   "date_range": null,
+   "n": 0,
+   "win14": null,
+   "avg14": null,
+   "ci14_lo": null,
+   "ci14_hi": null,
+   "win30": null,
+   "avg30": null
+  },
+  "base": {
+   "signals": 22,
+   "events": 7,
+   "unique_dates": 14,
+   "max_cluster_share": 0.6818,
+   "date_range": [
+    "2025-11-22",
+    "2026-06-12"
+   ],
+   "n": 22,
+   "win14": 54.5,
+   "avg14": 4.62,
+   "ci14_lo": 34.7,
+   "ci14_hi": 73.1,
+   "win30": 45.5,
+   "avg30": 5.71
+  },
+  "weak_market": {
+   "signals": 0,
+   "events": 0,
+   "unique_dates": 0,
+   "max_cluster_share": 0.0,
+   "date_range": null,
+   "n": 0,
+   "win14": null,
+   "avg14": null,
+   "ci14_lo": null,
+   "ci14_hi": null,
+   "win30": null,
+   "avg30": null
   }
  },
  "baselines": {
   "HIST-FULL": {
-   "generated": "2026-08-16",
+   "generated": "2026-08-20",
    "window": 3,
    "total_signals": 317,
    "note": "去量引擎 v2 回放同源（item_backtest_full_2025.json）；事件簇数=±3天去簇；细族按 action_label 关键词，展示键按「恐慌/深值」匹配（与 config.ITEM_EXPECTANCY_STATS 同口径，config 由 sync_expectancy_config.py 同步生成）",
@@ -282,26 +355,99 @@
      "avg30": 51.51
     },
     "accumulate": {
-     "signals": 198,
-     "events": 12,
-     "unique_dates": 53,
-     "max_cluster_share": 0.7525,
+     "signals": 176,
+     "events": 11,
+     "unique_dates": 48,
+     "max_cluster_share": 0.75,
      "date_range": [
       "2025-11-18",
       "2026-07-22"
      ],
-     "n": 198,
-     "win14": 63.1,
-     "avg14": 10.12,
-     "ci14_lo": 56.2,
-     "ci14_hi": 69.5,
-     "win30": 64.8,
-     "avg30": 20.55
+     "n": 176,
+     "win14": 64.2,
+     "avg14": 10.8,
+     "ci14_lo": 56.9,
+     "ci14_hi": 70.9,
+     "win30": 67.2,
+     "avg30": 22.43
+    },
+    "rise": {
+     "signals": 0,
+     "events": 0,
+     "unique_dates": 0,
+     "max_cluster_share": 0.0,
+     "date_range": null,
+     "n": 0,
+     "win14": null,
+     "avg14": null,
+     "ci14_lo": null,
+     "ci14_hi": null,
+     "win30": null,
+     "avg30": null
+    },
+    "longhold": {
+     "signals": 0,
+     "events": 0,
+     "unique_dates": 0,
+     "max_cluster_share": 0.0,
+     "date_range": null,
+     "n": 0,
+     "win14": null,
+     "avg14": null,
+     "ci14_lo": null,
+     "ci14_hi": null,
+     "win30": null,
+     "avg30": null
+    },
+    "oversold": {
+     "signals": 0,
+     "events": 0,
+     "unique_dates": 0,
+     "max_cluster_share": 0.0,
+     "date_range": null,
+     "n": 0,
+     "win14": null,
+     "avg14": null,
+     "ci14_lo": null,
+     "ci14_hi": null,
+     "win30": null,
+     "avg30": null
+    },
+    "base": {
+     "signals": 22,
+     "events": 7,
+     "unique_dates": 14,
+     "max_cluster_share": 0.6818,
+     "date_range": [
+      "2025-11-22",
+      "2026-06-12"
+     ],
+     "n": 22,
+     "win14": 54.5,
+     "avg14": 4.62,
+     "ci14_lo": 34.7,
+     "ci14_hi": 73.1,
+     "win30": 45.5,
+     "avg30": 5.71
+    },
+    "weak_market": {
+     "signals": 0,
+     "events": 0,
+     "unique_dates": 0,
+     "max_cluster_share": 0.0,
+     "date_range": null,
+     "n": 0,
+     "win14": null,
+     "avg14": null,
+     "ci14_lo": null,
+     "ci14_hi": null,
+     "win30": null,
+     "avg30": null
     }
    }
   },
   "CLEAN-CUR": {
-   "generated": "2026-08-16",
+   "generated": "2026-08-20",
    "window": 3,
    "total_signals": 230,
    "note": "CLEAN-CUR baseline (C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\_exp_v2t9_win_replay.json): same display-key mapping as HIST-FULL",
@@ -433,21 +579,94 @@
      "avg30": 50.04
     },
     "accumulate": {
-     "signals": 116,
-     "events": 19,
-     "unique_dates": 47,
-     "max_cluster_share": 0.3534,
+     "signals": 88,
+     "events": 14,
+     "unique_dates": 29,
+     "max_cluster_share": 0.4659,
      "date_range": [
       "2025-09-13",
       "2026-07-17"
      ],
-     "n": 116,
-     "win14": 37.9,
-     "avg14": 3.27,
-     "ci14_lo": 29.6,
-     "ci14_hi": 47.0,
-     "win30": 31.3,
-     "avg30": 2.24
+     "n": 88,
+     "win14": 33.0,
+     "avg14": 3.33,
+     "ci14_lo": 24.0,
+     "ci14_hi": 43.3,
+     "win30": 29.9,
+     "avg30": 2.46
+    },
+    "rise": {
+     "signals": 0,
+     "events": 0,
+     "unique_dates": 0,
+     "max_cluster_share": 0.0,
+     "date_range": null,
+     "n": 0,
+     "win14": null,
+     "avg14": null,
+     "ci14_lo": null,
+     "ci14_hi": null,
+     "win30": null,
+     "avg30": null
+    },
+    "longhold": {
+     "signals": 0,
+     "events": 0,
+     "unique_dates": 0,
+     "max_cluster_share": 0.0,
+     "date_range": null,
+     "n": 0,
+     "win14": null,
+     "avg14": null,
+     "ci14_lo": null,
+     "ci14_hi": null,
+     "win30": null,
+     "avg30": null
+    },
+    "oversold": {
+     "signals": 0,
+     "events": 0,
+     "unique_dates": 0,
+     "max_cluster_share": 0.0,
+     "date_range": null,
+     "n": 0,
+     "win14": null,
+     "avg14": null,
+     "ci14_lo": null,
+     "ci14_hi": null,
+     "win30": null,
+     "avg30": null
+    },
+    "base": {
+     "signals": 28,
+     "events": 9,
+     "unique_dates": 19,
+     "max_cluster_share": 0.5714,
+     "date_range": [
+      "2025-11-22",
+      "2026-06-14"
+     ],
+     "n": 28,
+     "win14": 53.6,
+     "avg14": 3.1,
+     "ci14_lo": 35.8,
+     "ci14_hi": 70.5,
+     "win30": 35.7,
+     "avg30": 1.57
+    },
+    "weak_market": {
+     "signals": 0,
+     "events": 0,
+     "unique_dates": 0,
+     "max_cluster_share": 0.0,
+     "date_range": null,
+     "n": 0,
+     "win14": null,
+     "avg14": null,
+     "ci14_lo": null,
+     "ci14_hi": null,
+     "win30": null,
+     "avg30": null
     }
    }
   }
