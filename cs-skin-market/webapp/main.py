@@ -1703,10 +1703,10 @@ def _event_note(signal_date, fwd_series):
 
 @app.get("/api/signals/replay")
 async def api_signals_replay():
-    """信号复盘：读回放产物 data/_exp_cycle_replay_period_route.json（189 信号，v2-T13 官方 HQ 口径，DISPLAY-7 切换）回放历史 buy 信号，叠加 DB 实盘最新价对照展示。"""
+    """信号复盘：读回放产物 data/_exp_cycle_replay_fullpool_2026.json（376 信号，v2-T13 全池 3 年口径，含手套/武器箱/挂件/冷门枪，2026-08-21 由官方 HQ 189 口径切换）回放历史 buy 信号，叠加 DB 实盘最新价对照展示。"""
     import json as _J
     from pathlib import Path as _P
-    p = _P(__file__).resolve().parent.parent / 'data' / '_exp_cycle_replay_period_route.json'
+    p = _P(__file__).resolve().parent.parent / 'data' / '_exp_cycle_replay_fullpool_2026.json'
     if not p.exists():
         return {"found": False}
     data = _J.loads(p.read_text(encoding='utf-8'))
@@ -1739,7 +1739,7 @@ async def api_signals_replay():
     return {"found": True, "signals": signals,
             "meta": {"count": len(signals),
                      "engine": "v2-T13",
-                     "caliber": "官方 HQ 口径",
+                     "caliber": "全池 3 年口径（原官方 HQ 189 口径 2026-08-21 已切换）",
                      "frozen_note": "旧 317 基线已冻结为 HIST-FULL 存证（item_backtest_full_2025.json），不在复盘页主数据源",
                      "generated": data.get("generated"),
                      "range": (min(_dates), max(_dates)) if _dates else None}}
