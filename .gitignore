@@ -86,3 +86,9 @@ cs-skin-market/data/backups/
 
 # Runtime UI screenshot artifact
 discover-before.png
+
+# Agent/workbuddy internal memory (NEVER commit to public repo - contains project red-lines/notes)
+.workbuddy/
+
+# Ops recovery backups (2026-08-20) - 95M operational restore points, not source
+cs-skin-market/data/_ops_recovery_*/
