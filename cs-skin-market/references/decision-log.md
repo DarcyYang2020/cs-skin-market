@@ -2028,3 +2028,17 @@
 - **验证**：`py_compile` 三脚本 OK；p0/p1 `--limit 2` dry-run 均 2/2 OK（API 正常）。
 - **顺带收益**：p0 的 D2 卖侧列（lowest_sell/sell_count=buff_sell_price/buff_sell_num）随 `--apply` 落 bid_history 当日行——接入后卖侧数据开始累积（此前全 NULL，R1 组9 spread 曾用 price−buy_price 派生，待卖侧累积后可换 lowest_sell−buy_price）。
 - **状态**：**D7 供给策略闭环；18:00 每日采集起 raw.db 三表开始累积行数，验收①③ 随采集复查闭合（次日/近期复查）。**
+
+## DP. Wave2 研究卡 R2–R5 预注册判据交付 + R2 落地（2026-08-27 02:15，②交付 / PM 冻结 R2 / ②执行 R2）
+
+- **R2–R5 预注册判据交付（4 文档，对应 roadmap v82 卡内"②须交付"清单）**：
+  - R2 `references/r2-factor-registry-prereg-2026-08-27.md`：13 字段 schema 终稿（dtype/必填/枚举）+ 生命周期状态机（候选→生产→证伪，证伪保留）+ 衔接接口（config/数据层/③审计）+ 存储落法（JSON 事实源+md 视图）+ 首批入库规则；
+  - R3 `references/r3-family-isolation-prereg-2026-08-27.md`：6 族独立族开回放+完整四关，每族通过线（north_star 口径、val 段不显著即证伪硬判据）、差异化三表（信号重叠/收益相关/时期覆盖）、组合测试增益线（禁优化器）、管线补强 4 处全用；
+  - R4 `references/r4-mining-workflow-prereg-2026-08-27.md`：10 步挖掘流程启动清单（每步交付物+准入 gate）、4 处补强落点、与生命周期台账/J-2 衔接、预注册模板；
+  - R5 `references/r5-emotion-v0-prereg-2026-08-27.md`：v0 情绪分定义（恐慌分主+供给/动量调节，固定权重）、增量 IC 硬判据（≥0.02 候选）、仅加分/过滤不进主干、oos_guard 守院、v1 扩展须重新预注册。
+- **R2 落地（②执行，PM 冻结 R2 判据——自主模式，非独立人类可复核）**：
+  - `data/factor_registry.json`：21 因子入库（R1 评估卡 quality 字段），schema 校验通过，状态分布 候选 3（sc7/sc30/s7_ratio 条件IC）/ 证伪 15 / 存档 3（mchg 系列）；
+  - `references/factor-registry.md`：人工视图（生成脚本 `references/gen_factor_registry_view.py`）；
+  - 入库脚本 `references/init_factor_registry.py`（确定性、幂等、自带 schema 校验）；R1 口语化 category/role 归一化到 8 类/4 角色枚举（映射表在脚本内留痕）。
+- **重要口径（防误读）**：registry 状态 = 新管线准入状态；**引擎现状因子（pct/z/chg30/sc30/vol30/mchg30）为历史累积（v2-T13 规则融合，未逐个走新管线），registry 证伪/存档 ≠ 引擎立即移除**——引擎因子取舍由 R3 策略隔离评估裁决（这正是 R3 的意义）。
+- **状态**：R2 判据冻结 + 落地完成（待③审计复核 registry 口径，§7.1 待审计项）；R3/R4/R5 判据已交付待 PM 冻结（自主模式下可解冻执行 R3/R5）。
