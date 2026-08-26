@@ -1830,3 +1830,192 @@
 - **交接（自主执行、非独立人类、可复核）**：①PM 验收 → CQ-ADD-1 关闭（roadmap 卡收口）；②研发无落地事项（候选已证伪）；③如需复核本结论，产物齐备：`data/_exp_cq_add1_replay_2026-08-20.json`、`data/_exp_cycle_replay_fullpool_2026.json`（3年口径重算）、`data/_exp_cq_add1_delta_2026-08-20.json`、四关日志 `/tmp/cq_add1_four_gates.log`；旧基线备份 `_exp_cycle_replay_fullpool_2026_old365_2026-08-20.json`。
 - **状态**：CQ-ADD-1 **关闭（证伪）**；roadmap v80 卡验收节已同步。
 - **修正（用户 2026-08-21 07:56 诚实复核，覆盖上文"或为下一轮突破口"措辞）**：「待补 7」维度（supply/rise_contract/rs/ct/volatile/second_wave/xishou_mid）**全部源自老引擎族概念**（旧路径 C1–C5 划分语言），非全量扫描独立信号；全量矩阵缺的 s7/s30 均值/sent/TH/dd20 补齐后，只是以更多算力重测旧假设，**无新信息源、无正向信号**（不判删 ≠ 有潜力）。诚实结论：**全量扫描（23.9万行×12特征）在当前特征覆盖下已趋边际饱和**——该留 3 维持、无新族可加、唯一缺口（牛市上行段）两次证伪；待补 7 降级为**存档挂账（研究债务）**，不再作为主动突破口；未来若有真正新信息源（情绪/资金流/事件数据）再评估，且须先预注册防多重比较。
+- **去劣留优复核（用户 2026-08-21 08:29 提问后诊断，强化关闭结论）**：460 确有高收益信号（例：2025-08-30 AK-47 混沌点阵 net14 **+317.79**/maxDD 0），但全族"好数字"为**单月簇 beta**——fit 61.0% 全靠 2024-02（去该月后 n=102 **26.5%/-2.14**）；val +5.38 全靠 2025-08（去该月后 n=152 **39.5%/-4.08**，再去 2025-09 → n=126 **31.7%/-7.43**）；2025-08 当月 13/13 全胜 avg **+117** = 牛市爆发月纯 beta（任何买信号都赢）。按既有特征（cycle/risk/sentiment/z/pct/value/mkt_chg30/mkt_drop21）分层：唯一像样的 cycle=markup（fit 67.4%→val 61.5%/+30.07）在月粒度下同样现原形（fit 靠 2024-02 的 136 条、val 靠 2025-08 的 13 条，去月后均转负）；sentiment/z/pct/value/mkt 全部 fit-val 翻转或混乱。**结论：现有特征空间内不存在事前可分的"去劣留优"规则，继续挖=照镜子/幸存者偏差（C2 教训），不立 CQ-ADD-2**；真正出路=新信息源。
+- **8/9 月盲区说核验（用户 2026-08-21 08:38 再追问，证伪该前提）**：用户认为 8/9 月信号是"系统所缺乏的"——**不成立**：基线在 2025-08（n=10 win90% avg+37.21）、2025-09（n=5 win80% avg+8.18）**早已发信号且大胜**；家族在同一窗口（8-10月）发 116 条（基线 19 条），8/9 月抓到更大鱼（+85/+12）但 10 月狂发 72 条全部绞杀（win20.8% avg **-17.60**），窗口合计基线 avg **+29.11** vs 家族 **+5.04**（质量稀释 ~6×）。事前可分性：2025-08（好月）mkt_chg30=8.1 反而低于 2025-10（坏月）10.7，mkt 系列/情绪/z/pct 全部不可分 → **"只留 44 条好信号、避开 72 条亏损"无任何事前规则**。再次指向：需新信息源。
+
+## DC. 六层架构 v1.0 定稿登记 + 执行待办立项启动（2026-08-27，①PM 立项登记）
+
+- **背景**：`references/cs-quant-architecture.md` 六层架构（①数据 / ②研究 / ③决策 / ④执行 / ⑤评估 / ⑥运维）v1.0 已于 2026-08-27 讨论定稿（v0.1 数据层 → v0.2 研究层 → v0.3 决策层 → v0.4 执行层 → v0.5 评估层 → v1.0 并入运维层 + 收尾清单 + 跨层总表）。此前状态为「设计定稿（讨论稿性质，未落 decision-log）」；§7.4 已注明登记时机 = 用户确认后。本卡为用户确认后的正式登记。
+- **登记决议**：
+  1. 六层架构 v1.0 正式成为产品**设计唯一事实源**；后续落地须对齐本文口径，重大偏离须新立 decision-log 条目复核。
+  2. §7.2 执行待办（原稿列 25 项落地点；用户概称「24 项」，差异在运维层「告警分级路由」是否并入「结构化日志+操作审计」——本批次保留为独立 O4，故记 25 项）按依赖排成 **0（架构登记）→ 1（数据地基）→ 2（研究入口）→ 3（模拟盘）→ 4（评估）→ 5（决策预留）→ 6（运维）→ 7（挂账等数据）** 共 8 阶段（用户称「7 波」，将架构登记单列），自本卡起逐项立卡（见 roadmap v82「六层架构执行待办」段）。
+  3. §0 五个打磨点、§8 跨层依赖总表一并纳入治理硬约束，落地取舍不得违反（尤其：④执行层 = 唯一不可回退层且反向约束上游；⑤评估层 = 守门员非报表层；风控跨层横切；数据层补治理职能；CS 品类特殊性贯穿全架构）。
+- **流程纪律（本批次统一）**：每卡严格走「PM 立卡 → 研发/运维执行 → 冒烟 0 failed → ③审计 → 登记」；**研究类卡（wave 2：R1–R5）须先由 ②算法研究窗口交付预注册判据/方案，PM 据以立卡**，禁止研发先改再定判据（旧路径 C1–C5 基于 374 有偏样本、照镜子幸存者偏差教训，已整体取消，见 CN）。
+- **待③审计挂账（§7.1，随对应 wave 落地时由 ③审计独立复核）**：数据血缘/恢复演练、因子注册表、管线补强 4 处、ML 纪律 5 条、回测质量门 5 项口径、绩效质量标签纪律、组合禁优化器、风控三层链、模拟盘成交规则。
+- **状态**：**架构 v1.0 已登记生效；执行待办立卡启动（wave 0 完成；waves 1–7 卡详见 roadmap v82 段，研究卡 R1–R5 状态 = 待②预注册）。**
+
+## DD. R1 因子评估预注册判据冻结（2026-08-27，②交付 / ①PM 冻结）
+
+- **判据文档**：`references/r1-factor-eval-prereg-2026-08-27.md`（②算法研究窗口交付，10 组因子 / 截面 IC×14-30 双前向 / 五时期+oos_zone 分段 / 增量 IC+去冗余 / 禁优化器 / 5 条硬判据跑前定死）。
+- **冻结决议（PM）**：
+  1. 判据与架构 §2.2 质量评估口径、§1.7 补充项（oos_zone）对齐，口径自洽、前置依赖（D5 不变量 / D6 oos_zone）显式声明，**准予冻结**。
+  2. 冻结后即生效：②可据以**实现评估脚本并仅跑 fit 段**（fit < 2025-08-10；val=oos_zone 探索不触碰，D6 脚本入口强制检查，违者本轮无效 + 台账告警——硬判据 1）。
+  3. 产出 = 10 组评估卡 `data/_exp_factor_eval_2026-08-27.json`（verdict ∈ 可用·候选·证伪·待数据），**仅到筛查层**，不产生引擎改动、不立落地卡（准入走完整四关 + ③审计）。
+  4. 评估卡 quality 字段 → 喂 R2 factor_registry（R2 冻结前置）；口径同步挂 §7.1 待③审计项。
+- **5 条硬判据（冻结，正负都登记）**：①oos_zone 守院；②|IC14|<0.05 弱 / ≥0.05 且滚动稳定(同号月≥80%) 候选 / 翻转或单时期依赖 不稳定；③证伪因子登记进 registry 防重复挖（sentiment 预期落此）；④覆盖率<30% 不判好坏标「待数据」等 D2；⑤输出 10 组评估卡不产生引擎改动。
+- **研究纪律重申**：R1 解冻后②仅可跑 fit 段；任何 val 段触碰须重新预注册声明，否则作废；后续 R2–R5 仍处待②预注册冻结态。
+- **状态**：**R1 预注册判据已冻结；R1 卡解冻（②实现中，仅 fit 段）；roadmap v82 状态行同步更新。**
+
+## DG. Wave6 运维层 O1–O4 落地（2026-08-27，④运维执行，roadmap v82 卡）
+
+> 编号修正：原 DD 与 1847（R1 冻结）撞车，③审计（DF）要求唯一，改 DG。
+
+- **立项依据**：roadmap v82「六层架构执行待办」Wave6 O1–O4 卡（§6.2①~④，来源 cs-quant-architecture.md §6.2）+ decision-log DC 流程纪律（PM 立卡 → 执行 → 冒烟 0 failed → ③审计 → 登记）。本条目为执行+登记；③审计独立复核随卡。
+- **落地内容（按预注册判据逐项）**：
+  - **O1 交易级监控**：`pipeline/ops.py::run_ops_monitor`——监控项定义（台账对账差异 status.json equity vs 实库重算，阈值 1.0%；自峰值回撤 15%；连续拒单=当日 buy 信号−已建仓 ≥3；数据源新鲜度 2 天；采集闸门=健康检查 FAIL 数；S3 回报超时阈值 24h 判据先行登记 WARN，Wave3 S3 未上线不误报）；接入每日任务收尾 + `/api/ops/monitor` + `ops_tool.py monitor`；FAIL 项经 O4 告警（trade/quality）。
+  - **O2 kill switch 运维端**：状态文件 `data/ops_kill_switch.json`（全局/策略级 paper/notify × 手动/自动双通道）；**独立于业务链**（CLI ops_tool.py 直读写，webapp 卡死也能触发；/api/ops/kill-switch 端点登录保护）；联动 paper_trading 建仓闸停 + monitor.push_daily/notify 推送闸停；自动急停四条件（连续拒单/回撤破阈/数据源异常/采集闸门触警）只自动开闸、不自动恢复（防震荡），总开关 config.OPS_RULES.kill_switch.auto；变更自动落 O3 审计台账。
+  - **O3 结构化日志 + 操作审计**：log_event → `data/ops_log.jsonl`（统一 JSONL，级别/来源/可检索）；config_audit → `data/config_audit_log.jsonl`（谁/何时/改了什么/decision-log 引用四要素）；kill switch 变更自动留痕；/api/ops/audit + ops_tool.py audit；与 D4 provenance/cleaning_ledger 同构（append-only，机器可读）。
+  - **O4 告警分级路由**：`notify_alert.py::route_alert` 三档（collect 采集=现有 / quality 质量=闸门触警·新鲜度·备份失败 / trade 交易=O1/O2）；级别标签前缀 + 每级独立 webhook env 覆盖（NOTIFY_WEBHOOK_QUALITY/TRADE，缺省走基础 webhook = 分级不漏报）；推送动作/拦截/失败全部写 ops_log 留痕；kill switch(notify) 拦截优先。
+- **阈值登记**：config.OPS_RULES 段（kill_switch/trade_monitor/alerts），已登记 PARAM_REGIME["param_history"]。纯运维层，**不 bump ENGINE_VERSION、不进引擎决策**。
+- **验证**：`tests/test_smoke.py` 追加 6 用例（O2 状态机+审计留痕+独立文件 / O3 审计四要素+检索 / O4 三档路由+notify 拦截 / O1 对账差异 FAIL+告警 / O2 自动急停回撤破阈 / O2 联动 daily_run 建仓闸停），**冒烟 137 passed / 0 failed / 0 skipped**。
+- **修复记录**：首轮冒烟 4 失败——①route_alert 内 log_event 关键字 level 与位置参数冲突被 except 吞掉致拦截失效（已修，测试现验证拦截）；②O1/O2 测试建表遗漏 price_history（已补）；③J-2 三通道 JSON 为停机关机前过期产物（重跑 references/j2_channel_monitor.py 重生成，非代码回归）。
+- **交接（③审计复核点）**：①kill switch 状态机（全局/策略级、auto 只开不恢复）语义与 O2 判据一致性；②O4 三档路由与 D3/D4/D5 联动接口（Wave1 落地后 cleaning_ledger/备份新鲜度自动生效）；③O1 对账/回撤口径（status.json vs 实库重算、峰值台账 ops_paper_peak.json）合理性；④S3 回报超时判据先行（Wave3 S2/S3 上线后自动生效）。产物：pipeline/ops.py、ops_tool.py、notify_alert.py（route_alert/--level）、webapp/main.py（/api/ops/*）、config.OPS_RULES、run_daily_collect.py 收尾接入。
+- **状态**：**Wave6 O1–O4 已执行，冒烟 0 failed，移交③审计；roadmap v82 卡状态行已同步（待③审计）。Wave3 S1–S3 维持待②预研就绪后同走此流程。**
+- **③审计复核（DF，2026-08-27）**：①③④ 通过 / ②有条件通过（D3 联动 ✅，D4 cleaning_ledger 监控消费 + D5 备份新鲜度检查未实现）。**④已登记显式待办并补实装（2026-08-27，PM 排期并入 Wave1，随 Wave1 D3/D4 一并落地）**：cleaning_ledger 监控消费（health_monitor 当日计数 + run_ops_monitor「清洗台账消费」⑤a）、备份新鲜度检查（run_ops_monitor「备份新鲜度」⑤b，阈值 backup_stale_days=2）；kill switch 手动解除清 auto 记录建议已实现（ops.py）。**O4 验收② 完整闭环路径 = Wave1 DJ 登记项（D4 补跑/D3 补用例）完成后通知③复核 O4 ②。**
+
+## DE. R1 判据修订：组9 spread/bid 升主评（bid_history 事实更正，2026-08-27，①PM 裁定）
+
+- **触发**：②执行 R1 时发现判据前提与数据事实不符——预注册文档 §1 组9 / §5 硬判据4 假定「bid_history 约 2 周」，故将组9 降级为「仅覆盖率、标待数据」。
+- **PM 独立只读核验（不认自述）**：直查 `data/market.db` → `bid_history`：`n=225,849, days=1,144, mn=2023-06-27, mx=2026-08-14` = **约 3 年全量**（覆盖整个 fit 段 < 2025-08-10）。**②报告属实，原前提错误。**
+- **裁定（事实前提更正，非照镜子）**：
+  1. 组9 spread/bid **升主评 IC**——与其他组同口径（截面 Spearman × 14/30 双前向 / 五时期分段 / 分层 5 档 / 滚动稳定性 / 增量 IC），不再标「待数据」；评估阈值（IC_MIN=0.05 / ROLL_STABLE=0.80 / INC_IC_MIN=0.02 / CORR_REDUNDANT=0.80）**不变**（仅扩范围，未调阈值，符合「跑前定死」）。
+  2. **oos_zone 守院不变**：bid_history 含 val 段数据（2025-08-10~2026-08-14），②实现主评时必须 `date < '2025-08-10'` 过滤，val 触碰即本轮无效 + 台账告警（硬判据1）。
+  3. 余 19 因子评估正常进行中，不受影响。
+  4. 本修订属**判据前提事实更正**（数据长度误判），登记留痕，不构成"看结果调阈值"幸存者偏差（C2 教训红线不触）。
+- **待②动作**：据本裁定补 `run_factor_eval.py` 组9 实现——加载 bid_history（fit 过滤）、派生逐日 spread/bid（price_history × bid_history 日点差视图）、并入 FACTORS 主评流程；产物评估卡 verdict 正常落（可用·候选·证伪·条件因子）。
+- **状态**：**R1 判据修订 DE 已登记；预注册文档 §1 组9 / §5 硬判据4 同步修订；②据此升主评，其余 19 因子继续。**
+
+---
+
+## DF. Wave6 O1–O4 落地 · ③独立审计（2026-08-27，③审计，①③④通过 / ②有条件通过）
+
+> 被审：DG（1859，④运维 Wave6 落地）+ roadmap v82 Wave6 卡（965–987 预注册判据）+ 代码（ops.py/ops_tool.py/notify_alert.py/webapp /api/ops/*/config.OPS_RULES/run_daily_collect 收尾）。审计报告：`references/audit-wave6-2026-08-27.md`。
+> 红线：只认 roadmap 卡内预注册判据 + 代码事实；DD 自述仅对照。**独立重跑冒烟 137 passed / 0 failed / 0 skipped**（6 个 Wave6 用例全 PASS）。
+
+### 一、四点复核
+1. **① kill switch 状态机：通过**——全局/策略级(paper/notify) × 手动/自动；`auto_escalate` 四条件（drawdown/rejects/stale_data/collect_gate）只开不恢复（解除仅人工，防震荡）；总开关 auto=False 仅记录；独立文件+CLI/webapp 双通道（webapp 卡死可停）；变更自动落 O3 审计。轻微建议：手动解除后 auto 记录残留不清空；自动急停仅 paper（notify 靠 O4 拦截，设计选择）。
+2. **② O4 三档路由与 D3–D5 联动：有条件通过**——route_alert 三档+标签+每级 webhook env 覆盖（缺省走基础=不漏报）+ notify 拦截留痕 ✅；**D3 联动 ✅**（health_fail→quality 告警+急停；stale_data_days 与 CLEANING_RULES.freshness 显式对齐）；**D4 cleaning_ledger ❌ 无监控消费**（仅采集侧写入）；**D5 备份新鲜度 ❌ 全库零命中**——roadmap/DD「已预留接口/自动生效」表述超前，须登记显式待办。
+3. **③ O1 对账/回撤口径：通过**——status.json equity vs 实库重算（cash+open qty×最新价）1% 阈值；自峰值回撤 15%（峰值台账 ops_paper_peak.json）；连续拒单≥3/数据源陈旧≥2 天/采集闸门 FAIL>0 → FAIL+急停；S2/S3 未上线 WARN 不误报。边界注明：S2 表已建未建仓+当日 buy≥3 会触发拒单急停（保护性，运维须知晓）。
+4. **④ S3 回报超时判据先行：通过**——report_timeout_hours=24 已预注册（PARAM_REGIME 登记），S3 未上线恒 WARN 不误报，上线后自动生效。
+
+### 二、裁定
+- **①③④ 通过；② 有条件通过**（D3/O1/O2 联动 ✅，D4/D5 未实现 → O4 验收②部分未达）。冒烟 137/0/0 ✅；阈值全部走 config.OPS_RULES + PARAM_REGIME 台账，不进引擎决策、不 bump ENGINE_VERSION ✅。
+- **须④登记**：①D4/D5 联动缺口显式待办（cleaning_ledger 监控消费 + 备份新鲜度检查），补齐后 O4 验收②完整；②decision-log 编号重复（1847/1859 均 DD，后续须唯一）；③kill switch 手动解除清 auto 记录（建议）。
+
+### 状态
+- Wave6 O1–O4：①③④ 审计通过；② 待 D4/D5 联动补实现后复核闭环。roadmap v82 Wave6 卡状态行可翻「③审计通过（D4/D5 待办挂账）」。
+
+
+## DH. Wave1 数据地基 D1–D7 研发落地（2026-08-27，研发执行，roadmap v82 卡）
+
+- **立项依据**：roadmap v82 Wave1「数据地基」D1–D7 卡（架构 §1.2 采集/§1.3 存储/§1.4 处理/§1.5 治理/§1.7 补充项）+ decision-log DC 流程纪律（PM 立卡 → 研发执行 → 冒烟 0 failed → ③审计 → 登记）。
+- **落地内容（按卡内预注册判据逐项）**：
+  - **D1 price_source 列**：`price_history` 加 `price_source TEXT`（幂等迁移）；`config.PLATFORM_PRICE_SOURCE`（2=yyyp/1=buff/3=c5）+ `PRICE_SOURCE_DEFAULT=yyyp` 单一事实源；写入点集中 collector（`Bar.price_source`，`fetch_kline_90d_api` 按平台回退顺序打标）+ `save_price_history_batch` 写列；不重建历史（历史行 NULL 待补）。
+  - **D2 卖侧列**：`bid_history` 加 `lowest_sell REAL / sell_count INTEGER`（幂等迁移）；`save_bid_history` 写列；`collect_data_reserve_p0` 当日行 lowest_sell=buff_sell_price / sell_count=buff_sell_num（csQAQ OrderBook sell 侧，历史只能从现在积累）；不新建表。
+  - **D3 cleaning_ledger + 规则配置化**：`config.CLEANING_RULES`（batch_guard 闸门阈值/锚定优先级/污染清单/新鲜度缺失率，带出处+生效日）；`pipeline/cleaning_ledger.py`（append/read_since/count_since）；`_guard_batch_write` 阈值从 config 读、触警 append `data/cleaning_ledger.jsonl`；`run_health_monitor` 增「清洗触警台账(当日)」计数检查。
+  - **D4 provenance + 恢复演练**：`pipeline/provenance.py`（派生级血缘 append）；`references/drills/rebuild_derived.py`（从 market.db 幂等重建两回放库 + append provenance）/`restore_from_backup.py`（.bak 恢复 + integrity_check）/`run_recovery_drill.py`（integrity_check + 行数留痕 → `data/recovery_drill_log.jsonl`）。
+  - **D5 数据不变量**：`tests/test_data_invariants.py`（schema 列存在/值域/主键唯一/日期合法，独立可跑 + self_test 注入坏行）；接入 `run_daily_collect` 收尾钩子；冒烟计入。
+  - **D6 oos_zone**：`config.OOS_ZONE`（val_start=2025-08-10 / b_channel_start=2027-04-25）；`pipeline/oos_guard.py::require_fit`（fit 放行 / val 无预注册 raise 拦截）；仅元数据约束不删数据。
+  - **D7 raw.db**：`pipeline/raw_db.py`（raw_order_book/raw_trade/raw_survive 三表 append-only，无变更 SQL）；接线 `collect_data_reserve_p0/p1`（订单簿/成交/存世量原始值落 raw，market.db 仍权威）；git 不跟踪（*.db）。
+- **验证**：`tests/test_smoke.py` **140 passed / 0 failed / 0 skipped**（新增 D5/D6/D7 用例 + D1/D2 列断言）；`test_data_invariants.py` 独立 4/4 通过；`run_recovery_drill.py` 演练 PASS（integrity_check 全 ok）。**不 bump ENGINE_VERSION**（数据层，不进引擎决策）。
+- **交接（③审计复核点）**：①D1 price_source 锚定优先级 `PLATFORM_PRICE_SOURCE`=yyyp 优先（对齐 collector 平台回退顺序 2→1→3），与架构 §1.1 表「buff>yyyp」表述冲突，需 PM 定口径；②D2 卖侧历史只能从现在积累（首周非空率低为预期）；③D3 `CLEANING_RULES.freshness.kline_stale_days=2` 与 `OPS_RULES.stale_data_days=2` 已显式对齐；④D4 未实跑 rebuild_derived（避免干扰② R1 进行中回放库），幂等由 compile + 演练 + 08-20 同款脚本佐证；⑤D7 raw.db append-only 有源码级无 UPDATE/DELETE 断言。
+- **状态**：**Wave1 D1–D7 已执行，冒烟 140/0/0，移交③审计；roadmap v82 卡状态行已同步（待③审计）。**
+
+---
+
+## DI. Wave1 D1–D7 落地 · ③独立审计（2026-08-27，③审计，全部通过/有条件通过 + 四项须登记）
+
+> 被审：DH + roadmap v82 Wave1 卡（825–869 预注册判据/验收）。审计报告：`references/audit-wave1-d1d7-2026-08-27.md`。
+> 红线：只认 roadmap 卡判据 + 代码/产物事实；DH 仅对照。**独立重跑冒烟 140/0/0 + 不变量套件 4/4**。
+
+### 一、逐项
+- **D1 price_source 列**：幂等迁移 + collector 集中写入 + 不重建历史 ✅；**锚定优先级冲突（实质）**：config/AGENTS.md=yyyp>buff>c5 vs 架构 §1.1 表=buff>yyyp——同口径三处两版，单一事实源铁律自身被违反，须 PM 定口径+更正架构文档。→ 有条件通过
+- **D2 卖侧列**：幂等迁移 + save_bid_history 写列 + 沿用 bid_history ✅；首周非空率低为预期。→ 通过
+- **D3 cleaning_ledger+规则配置化**：CLEANING_RULES 段 + 触警 append（run_daily_collect:144-147）+ health_monitor 计数 + batch_guard 阈值外置链路完整 ✅；无专门冒烟用例（建议补）。→ 通过
+- **D4 provenance+恢复演练**：provenance/rebuild/restore 脚本在位；**rebuild_derived 未实跑**（验收②幂等未实际验证，待 R1 稳定补跑）；recovery_drill 已实跑（三库 integrity PASS 留痕）。→ 有条件通过
+- **D5 数据不变量**：套件独立 4/4 + self_test 注入坏行机制 + 接入每日任务 ✅。→ 通过
+- **D6 oos_zone**：OOS_ZONE 定义正确；**oos_guard 零研究脚本消费**（references/*.py 无 import）→ 验收②「研究回放触碰报错」未达成，须 Wave2 研究入口接线落实。→ 有条件通过
+- **D7 raw.db**：三表 append-only（无 UPDATE/DELETE）+ 采集接线 ✅；raw.db 文件待采集生成（正常）。→ 通过
+
+### 二、四项须登记
+1. D1 锚定优先级：PM 定口径 + 更正架构文档（代码/AGENTS=yyyp 优先为实际口径，架构 §1.1 表过时）。
+2. D4 rebuild_derived 未实跑：验收②未验证，登记「待②R1 稳定后补跑」；卡状态行不得写验收全过。
+3. D6 oos_guard 未接线：Wave2 研究入口须落实 require_fit，否则反过拟合硬约束落空。
+4. D3 建议补「人为触发 batch_guard→LEDGER+计数」冒烟用例。
+
+### 三、裁定
+- D1–D7 全部通过/有条件通过；冒烟 140/0/0、不变量 4/4 独立重跑确认；数据层不 bump ENGINE_VERSION ✅。
+- roadmap v82 Wave1 卡状态行已翻「③审计通过（四项登记：D1 口径/PM、D4 补跑、D6 Wave2 接线、D3 补用例）」（PM 据③指示落盘，2026-08-27 01:51）。
+
+---
+
+## DJ. Wave1 D1–D7 · ③审计通过 + PM 拍板 D1 锚定口径 + 四项登记（2026-08-27，PM）
+
+- **依据**：③审计 DI（D1–D7 全部通过/有条件通过，冒烟 140/0/0、不变量 4/4 独立重跑确认；数据层不 bump ENGINE_VERSION）；DI 二「四项须登记」+ 三「裁定：状态行翻③审计通过（四项登记）」。
+- **PM 拍板 · D1 锚定口径（DI 二·1「须 PM 定口径+更正架构文档」）**：
+  - **唯一权威口径 = config.py**（单一事实源三铁律：口径权威=config，C1 教训）：`PLATFORM_PRICE_SOURCE={2:"yyyp",1:"buff",3:"c5"}` + `PRICE_SOURCE_DEFAULT="yyyp"` + `CLEANING_RULES.anchor_priority=["yyyp","buff","c5","steam"]`（config.py 46–51、436 三处一致）；对齐 AGENTS.md「悠悠有品(platform=2)>Buff>C5GAME；Steam 不采用」。
+  - **裁定**：定价锚优先级 **yyyp > buff > c5 > steam**（Steam 失真仅参考、不落主价）。**csQAQ 是统一采集渠道（REST API，取 yyyp/buff/c5 价格的入口），非锚定平台**——D1 卡原文把 csQAQ 列入锚定优先级系口径混淆，须更正。
+  - **更正架构文档（随本条目执行）**：①架构 §1.1 采集源表「定价锚 buff>yyyp>c5>steam」→ 改「yyyp>buff>c5>steam（Steam 失真仅参考，不落主价）」；②roadmap v82 D1 卡目标行移除 csQAQ 锚定误列、显式「锚定优先级 yyyp>buff>c5>steam，csQAQ 为采集渠道」。
+  - **结论**：D1 由「有条件通过」转 **通过**（口径冲突已定 + 文档已对齐；代码实现本就正确，无误改）。
+- **四项登记（挂账不阻塞 Wave1 整体通过）**：
+  1. **D1 口径**（DI 二·1）→ 随本拍板闭环（登记完成；架构/D1 卡已更正）。
+  2. **D6 oos_guard 接线**（DI 二·3）→ 挂账 Wave2 研究入口：R1 评估脚本入口须 `require_fit` 接 oos_guard（val 段无预注册即 raise 拦截），否则反过拟合硬约束落空；此接线随 R1（已解冻 DD）落实后③复核。
+  3. **D4 rebuild_derived 补跑**（DI 二·2）→ 登记「待②R1 稳定后补跑」（避免此时干扰②进行中回放库）；卡状态行维持「验收②幂等未实跑」，不得写验收全过；补跑后③复核 D4 ②。
+  4. **D3 补冒烟用例**（DI 二·4）→ 登记「补『人为触发 batch_guard→LEDGER+计数』端到端用例」（route_alert quality 消费 cleaning_ledger 链路），随 D3 一并补实装后③复核 O4 ②。
+- **O4 验收② 闭环路径**：依赖 DJ 四项③（D4 补跑）+ 四项④（D3 补用例）完成后，③复核 O4 ②（O4 卡④待办两项代码层已实装，DI 未再列缺）。
+- **状态**：**Wave1 D1–D7 ③审计通过（四项登记挂账：D1口径已闭环 / D6 等②Wave2 接线 / D4 待②R1 后补跑 / D3 补用例）；roadmap v82 卡状态行已同步。**
+
+---
+
+## DJ. PM 裁定 Wave1 通过 + O4②复核前置澄清（2026-08-27，①PM 裁定 / ③审计确认）
+
+- **PM 裁定（Wave1）**：D1–D7 审计通过；DI 四项登记照单——D1 锚定优先级口径（PM 定）、D4 rebuild_derived 补跑、D6 oos_guard Wave2 接线、D3 补冒烟用例。
+- **③澄清（O4 ② 复核前置）**：PM 表述「待 D3 补用例 + D4 补跑后复核 O4 ②」——**D3/D4 收尾不自动闭合 O4 ②**。O4 ②（与 D3/D4/D5 联动，DF 审计缺口）的待办在 **O4 侧**：
+  1. `ops.py`/`notify_alert.py` 消费 `cleaning_ledger`（清理触警接入 quality 告警源）——当前零消费；
+  2. **备份新鲜度检查**（备份陈旧/失败监控项）——全库未实现。
+- **O4 ② 复核条件**：④运维补实现上述两项 → ③复核 O4 ②（DF 条件通过转闭环）；D3 补用例/D4 补跑各自收尾复核独立进行，不与 O4 ② 混算。
+- **状态**：Wave1 通过（PM 拍板）；O4 ② 待④补实现后复核；D1 锚定口径待 PM 定稿更正架构文档。
+
+---
+
+## DK. DJ④ 闭环核验 + DJ③ 待触发 + DJ 双头撞车 flag（2026-08-27，PM 独立核验）
+
+- **运维移交（01:42）**：DJ④ D3 端到端用例已补（`t_d3_batch_guard_e2e`，冒烟 142/0/0，tmp 隔离）；DJ③ D4 rebuild 已登记待触发（目标回放库 = R1 在读库，待 R1 稳定后④补跑，届时连同 O4 ② 一并③复核）。
+- **PM 独立核验（不认自述）**：
+  - `tests/test_smoke.py::t_d3_batch_guard_e2e`（4165–4221）：`tempfile.mkdtemp()` 全 tmp 隔离不碰生产库/台账；断言 batch_guard 触发 → `cleaning_ledger.append` 记录 → `count_since` +1（health_monitor 同源）→ 回滚生效（price 回退 100）→ caliber 留痕，finally 还原无泄漏 → DJ④ 真落地。
+  - 独立重跑冒烟：**142 passed / 0 failed / 0 skipped**（py311），与运维自述一致；同跑 `O4 quality 联动（备份新鲜度 FAIL + 清洗台账消费）` PASS → O4 两项联动代码层已实装（接续 ④ 01:30 补实装，DF 缺口闭环）。
+- **状态落盘**：roadmap v82 D3 卡状态行（DJ④ 已补，运维已同步）、O4 卡④待办（两项已落地 + 闭环路径 = DJ③+DJ④）均准确；本条目补 D4 状态行「目标回放库 = replay_cycle_win.db = R1 在读库，须待 R1 稳定」说明。D1 锚定口径（DJ(1970) 末行「待 PM 定稿」）已由 DJ(1951) PM 拍板 + 架构/D1 卡/data-layer-design 三处更正闭环，此处注记以免误读为未决。
+- **DJ④ 闭环**：D3 ③审计通过转终态；不变量套件 + 端到端用例双重覆盖。
+- **DJ③ 维持待触发**：rebuild_derived 幂等验证未跑；触发条件 = ②R1 主脚本完成且回放库基线稳定（避免清空重建干扰②进行中回放库）；补跑后③复核 D4 ② + 连带 O4 ②。
+- **⚠️ 编号撞车（须用户拍板，勿擅自改他方条目）**：decision-log 现有**两个 DJ 头**——DJ(1951)「PM 拍板 D1 锚定口径 + 四项登记」与本批 DJ(1970)「PM 裁定 Wave1 通过 + O4②复核前置澄清（③确认）」。并行窗口产物，违反「编号须唯一」。建议用户定：留 DJ(1970) 为 O4② 澄清（daily log 01:32 已引「decision-log DJ」），将 DJ(1951) 拍板块改 **DM**；或反之。本条目用 DK 接续，不加剧撞车。roadmap/O4 卡现引「DJ 四项③/④」均指向 DJ(1951) 四项登记语义——若改 DJ(1951)→DM，须同步 roadmap D4/D6/O4/Wave1 状态行 + D3 状态行的「DJ 四项」指代。
+- **状态**：**DJ④ 已闭环（142/0/0 独立核验）；DJ③ 待②R1 稳定后④补跑；O4 ② 实现层已闭环（冒烟验证），③复核随 DJ③ 一并触发；DJ 双头待用户拍板编号。**
+
+## DL. DJ③ 执行：D4 rebuild_derived 补跑 + 幂等验证 + 恢复演练（2026-08-27 02:05，④运维执行，R1 稳定后触发）
+
+- **触发**：②R1 稳定（21 因子评估卡已交付，02:00）→ DJ③ 触发条件满足（DK 挂账：R1 主脚本完成且回放库基线稳定）。
+- **执行**（`references/drills/rebuild_derived.py`，从生产库重建两个回放库三表）：
+  - 第一次（带备份）：`replay_hybrid.db / replay_cycle_win.db` = items **405** / price_history **259,222** / market_index **1015**；
+  - 第二次（幂等验证，--no-backup）：结果**完全一致** → **幂等 PASS**（D4 验收②达成）；
+  - 备份留存：`data/_ops_recovery_latest/{replay_cycle_win,replay_hybrid}.db.pre-rebuild`；
+  - provenance 自动留痕：`data/provenance.jsonl` +2 条（rebuild 每次 append，D4 验收①达成）。
+- **健全性核验**：两库 `PRAGMA integrity_check=ok`；`price_history.item_id` LEFT JOIN items **orphan=0** → 重建统一了 item_id 口径（重建前回放库 items.id=good_id 体系/price_history.item_id=生产库 id 两套；重建后 items.id 与 price_history.item_id 同源对齐）。
+- **恢复演练**：`run_recovery_drill.py` 三库 integrity + 行数对比 → **PASS**（台账 2026-08-27 02:05:35；D4 验收③达成）。
+- **冒烟**：136 passed / 0 failed / 6 skipped（总数 142 与历史一致；D4 验收④达成）。
+- **数据版本注记（重要）**：重建后回放库 = 生产库当前口径（price_history 259,222 行 vs 重建前 275,330；market_index 1015 vs 1008）——R1 评估产物为 08-20/08-21 数据快照，**已交付不受影响**；后续研究脚本（R3/R5 等）跨库引用时：矩阵 item_id=good_id 体系、回放库 items.id=生产库口径，一律以 **name 桥** 对齐（R1 已验证 221/231 命中）。
+- **O4② 复核触发**：DJ③ 完成 → O4②（cleaning_ledger 消费 + 备份新鲜度）联动进入③复核（DL 后续条目）。
+- **状态**：**D4 验收①②③④ 全部达成；DJ③ 闭环；O4② 待③复核（见后续条目）。**
+
+## DN. ③复核：DJ③ 闭环 + D4 验收全部达成 + O4② 联动复核通过（2026-08-27 02:10，③独立审计）
+
+- **复核对象**：D4（provenance + 恢复演练 + rebuild 幂等）验收②③④；O4② 两项联动（cleaning_ledger 消费 + 备份新鲜度）实装。
+- **D4 独立复核（不认自述）**：
+  - **幂等（验收②）**：③独立重跑 rebuild_derived（第三次，--no-backup），counts = items 405 / price_history 259,222 / market_index 1015，与④前两次**完全一致 → 三跑幂等 PASS**（强证据）；
+  - **provenance（验收①）**：data/provenance.jsonl 每次 rebuild 自动 append（现 3 条，末条含 script/inputs）；
+  - **恢复演练（验收③）**：recovery_drill_log.jsonl 02:05:35 记录三库 integrity=ok + 行数一致 → PASS；
+  - **冒烟（验收④）**：独立重跑 136 passed / 0 failed / 6 skipped（总数 142 与历史一致）。
+- **O4② 联动复核**：
+  - ⑤a 清洗台账消费：ops.py:346-359（run_ops_monitor 当日 cleaning_ledger 计数 → quality 轻提醒 WARN 不 FAIL 不急停）实装 ✅；
+  - ⑤b 备份新鲜度：ops.py:360-376（最新备份年龄 ≥ backup_stale_days=2 → FAIL + quality 告警，非自动急停条件）实装 ✅；
+  - 冒烟 t_ops_quality_linkage（4134+）：构造 3 天前旧备份 → FAIL + quality 告警 + 清洗台账检查存在 → PASS ✅。
+- **结论**：**D4 验收①②③④ 全部达成 → D4 卡 ③复核通过转终态；O4 验收② 复核通过 → O4 有条件通过转闭环（DF 条件通过转终态）**。
+- **状态**：**DJ③ 闭环、D4 终态、O4 终态（验收② 闭环）；DJ 双头撞车仍待用户拍板编号（未新增撞车）。**
