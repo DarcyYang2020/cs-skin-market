@@ -2019,3 +2019,12 @@
   - 冒烟 t_ops_quality_linkage（4134+）：构造 3 天前旧备份 → FAIL + quality 告警 + 清洗台账检查存在 → PASS ✅。
 - **结论**：**D4 验收①②③④ 全部达成 → D4 卡 ③复核通过转终态；O4 验收② 复核通过 → O4 有条件通过转闭环（DF 条件通过转终态）**。
 - **状态**：**DJ③ 闭环、D4 终态、O4 终态（验收② 闭环）；DJ 双头撞车仍待用户拍板编号（未新增撞车）。**
+
+## DO. PM 拍板 D7 raw.db 供给策略「接每日」+ ④接入每日采集链（2026-08-27 02:10，PM 裁定 / ④执行）
+
+- **背景**（③复查 DI 发现）：D7 raw.db 写入路径代码就位（collect_data_reserve_p0.py/p1.py 的 D7 段→raw_order_book/raw_trade/raw_survive），但 P0/P1 默认 dry-run、需手动 --apply，未接入 run_daily_collect/计划任务 → 每日采集不写 raw.db，三表持续 0 行。
+- **PM 裁定**：**接每日采集链（选项①）**。理由：①raw.db 是架构 §1.3「高价值数据独立 append-only」治理设计，空转 = 设计未落地；②原始数据价值 = 从现在连续积累，手动周期断档不可补（历史只能积累一次）；③订单簿/成交/存世量是执行层可成交性 + 研究层新因子（spread/bid 全历史）的数据基础；④raw 写入「失败不阻断加工层」代码已保证（p0:250/p1:214），风险可控。
+- **④落地**：`run_daily_collect.py` 新增 `_run_data_reserve()`——浏览器任务（K线等）之后、健康监控之前，每日执行：p0 `--apply`（订单簿/成交全量 → raw_order_book/raw_trade）+ p1 `--apply --scope watchlist`（存世量 → raw_survive）；subprocess 调 sys.executable，超时 2400s，异常仅 log 不中断主采集。
+- **验证**：`py_compile` 三脚本 OK；p0/p1 `--limit 2` dry-run 均 2/2 OK（API 正常）。
+- **顺带收益**：p0 的 D2 卖侧列（lowest_sell/sell_count=buff_sell_price/buff_sell_num）随 `--apply` 落 bid_history 当日行——接入后卖侧数据开始累积（此前全 NULL，R1 组9 spread 曾用 price−buy_price 派生，待卖侧累积后可换 lowest_sell−buy_price）。
+- **状态**：**D7 供给策略闭环；18:00 每日采集起 raw.db 三表开始累积行数，验收①③ 随采集复查闭合（次日/近期复查）。**

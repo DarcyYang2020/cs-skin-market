@@ -214,11 +214,40 @@ def collect_one(conn, item_row, apply: bool, date: str):
         return 0, f"buy_num:{err}"
     fund = parse_fundamental(item_id, good_id, name, info)
     bid_rows = aggregate_bid(item_id, good_id, name, buy_price, buy_num)
+    # D2（2026-08-27）：卖侧盘口 lowest_sell=buff_sell_price / sell_count=buff_sell_num 为当前快照，
+    # 仅落当日行（历史卖侧只能从现在积累，宜早）；来源 = csQAQ /info/good 已解析 OrderBook sell 侧。
+    for _row in bid_rows:
+        if _row["date"] == date:
+            _row["lowest_sell"] = fund.get("buff_sell_price")
+            _row["sell_count"] = fund.get("buff_sell_num")
     if apply:
         db.save_item_fundamental_snapshot(conn, date, fund)
         for row in bid_rows:
             db.save_bid_history(conn, row["date"], row)
         conn.commit()
+        # D7（2026-08-27）：订单簿/成交原始值 append-only 落 raw.db（market.db 仍权威；失败不阻断）
+        try:
+            from pipeline import raw_db
+            _rconn = raw_db.get_raw_conn()
+            try:
+                _ts = datetime.now(TZ_BJ).strftime("%Y-%m-%d %H:%M:%S")
+                raw_db.append_raw(_rconn, "raw_order_book", {
+                    "ts": _ts, "date": date, "good_id": good_id, "item_name": name,
+                    "lowest_sell": fund.get("buff_sell_price"),
+                    "highest_buy": fund.get("buff_buy_price"),
+                    "sell_count": fund.get("buff_sell_num"),
+                    "buy_count": fund.get("buff_buy_num"),
+                })
+                raw_db.append_raw(_rconn, "raw_trade", {
+                    "ts": _ts, "date": date, "good_id": good_id, "item_name": name,
+                    "turnover_number": fund.get("turnover_number"),
+                    "turnover_avg_price": fund.get("turnover_avg_price"),
+                })
+                _rconn.commit()
+            finally:
+                _rconn.close()
+        except Exception:
+            pass  # raw 落库失败不阻断加工层
     return len(bid_rows), None
 
 

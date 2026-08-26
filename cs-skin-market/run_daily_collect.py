@@ -109,6 +109,8 @@ def _guard_batch_write(day: str):
     """
     import json as _json
     from pipeline import db as _db
+    from pipeline import config as _cfg
+    from pipeline import cleaning_ledger as _cl
     if os.environ.get("CS_DATA_BATCH_GUARD", "1") not in ("1", "true", "True", "yes"):
         return {"guarded": False, "note": "guard disabled"}
     conn = _db.get_conn()
@@ -124,10 +126,11 @@ def _guard_batch_write(day: str):
         n = len(rows)
         if n < 10:
             return {"guarded": False, "note": f"batch too small n={n}"}
-        pj = [r["item_id"] for r in rows if r["p0"] and abs(r["p1"] / r["p0"] - 1) > 0.20]
-        sj = [r["item_id"] for r in rows if r["s0"] and r["s1"] is not None and r["s0"] > 0 and abs(r["s1"] / r["s0"] - 1) > 0.50]
-        trig_p = len(pj) >= 3 and len(pj) / n >= 0.03
-        trig_s = len(sj) >= 5 and len(sj) / n >= 0.05
+        _bg = _cfg.CLEANING_RULES["batch_guard"]
+        pj = [r["item_id"] for r in rows if r["p0"] and abs(r["p1"] / r["p0"] - 1) > _bg["price_jump_pct"]]
+        sj = [r["item_id"] for r in rows if r["s0"] and r["s1"] is not None and r["s0"] > 0 and abs(r["s1"] / r["s0"] - 1) > _bg["sale_change_pct"]]
+        trig_p = len(pj) >= _bg["price_trigger_n"] and len(pj) / n >= _bg["price_trigger_ratio"]
+        trig_s = len(sj) >= _bg["sale_trigger_n"] and len(sj) / n >= _bg["sale_trigger_ratio"]
         if not (trig_p or trig_s):
             return {"guarded": False, "n": n, "price_jump": len(pj), "sale_jump": len(sj)}
         # 触发：回滚异常品当日行至 prev 值
@@ -138,6 +141,10 @@ def _guard_batch_write(day: str):
                              (r["p0"], r["s0"], r["item_id"], day))
                 roll.append(r["item_id"])
         conn.commit()
+        _cl.append("batch_guard", item=None,
+                   value={"n": n, "price_jump": len(pj), "sale_jump": len(sj)},
+                   action="rollback",
+                   detail=f"跨品跳变占比超阈，回滚 {len(roll)} 品至上一交易日值（prev={prev}）")
         _rec = {"ts": datetime.now(TZ_BJ).strftime("%Y-%m-%d %H:%M:%S"),
                 "kind": "batch_guard_rollback", "label": day,
                 "detail": f"跨品跳变占比超阈（n={n} 价跳变{len(pj)} 在售量异常{len(sj)}，prev={prev}），判定 csQAQ 数据源失真，回滚异常品至上一交易日值"}
@@ -314,6 +321,30 @@ async def collect_monitor_rank(top_n: int = 50) -> int:
     log(f"大户集中度快照: {ok}/{len(items)} 品, 累计 {total} 行 ({today})")
     return total
 
+def _run_data_reserve():
+    """D7（2026-08-27，PM 拍板接每日采集链）：数据储备 p0/p1 落 raw.db。
+
+    订单簿/成交原始值（p0 全量）+ 存世量原始值（p1 watchlist）append-only 入 raw.db
+    （加工层 market.db 仍权威）；raw 落库失败不阻断主采集（脚本内已 try 兜底）。
+    同步 HTTP 脚本（无 Playwright），放浏览器任务之后独立执行。
+    """
+    import subprocess
+    root = os.path.dirname(os.path.abspath(__file__))
+    py = sys.executable
+    tasks = [
+        ("collect_data_reserve_p0.py", ["--apply"]),
+        ("collect_data_reserve_p1.py", ["--apply", "--scope", "watchlist"]),
+    ]
+    for script, args in tasks:
+        try:
+            r = subprocess.run([py, os.path.join(root, script)] + args,
+                               capture_output=True, text=True, timeout=2400, cwd=root)
+            _tail = ((r.stdout or "").strip().splitlines() or [""])[-1]
+            log(f"D7 数据储备 {script} exit={r.returncode} | {_tail}")
+        except Exception as e:
+            log(f"D7 数据储备 {script} 异常（不中断采集）: {type(e).__name__}: {str(e)[:100]}")
+
+
 def main():
     import argparse
     ap = argparse.ArgumentParser(description="每日自动采集")
@@ -369,6 +400,12 @@ def main():
         asyncio.run(_playwright_tasks())
     except Exception as e:
         log(f"浏览器采集任务异常: {e}")
+    # ---- D7 raw.db 每日供给（2026-08-27，PM 拍板接每日采集链）----
+    # 订单簿/成交（p0 全量）+ 存世量（p1 watchlist）append-only 落 raw.db；失败仅记录不中断主流程。
+    try:
+        _run_data_reserve()
+    except Exception as e:
+        log(f"D7 数据储备任务异常（不中断采集）: {e}")
     # ---- 数据源健康监控 (A1, 2026-08-05) ----
     # 采集收尾自动体检：复用 run_health_monitor（写 health_checks 表，退出码 0/2）。
     # 失败仅记录，不中断采集主流程。
@@ -381,6 +418,22 @@ def main():
         log(f"数据健康: status={res['status']} FAIL={res['fail_count']}（已写入 health_checks）")
     except Exception as e:
         log(f"数据健康检查异常（不中断采集）: {e}")
+    # D5 数据不变量（2026-08-27）：采集后跑 schema/值域/唯一/日期不变量，失败仅告警不中断
+    try:
+        import importlib.util as _ilu
+        _di_spec = _ilu.spec_from_file_location(
+            "test_data_invariants",
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "tests", "test_data_invariants.py"))
+        _di = _ilu.module_from_spec(_di_spec)
+        _di_spec.loader.exec_module(_di)
+        _di_rows = _di.run_checks()
+        _di_fail = [n for n, ok, _ in _di_rows if not ok]
+        if _di_fail:
+            log(f"数据不变量 FAIL: {_di_fail}")
+        else:
+            log("数据不变量: 全通过")
+    except Exception as e:
+        log(f"数据不变量检查异常（不中断采集）: {e}")
     # 池维护台账 (F-3.2, 2026-08-08): 每日采集收尾写一行，260 品完整链路留痕
     try:
         from pipeline import db as _db
@@ -504,6 +557,19 @@ def main():
             f"总收益 {_paper['status']['total_return_pct']}%")
     except Exception as e:
         log(f"模拟盘执行异常（不中断采集）: {e}")
+    # Wave6 O1/O2/O4（2026-08-27，roadmap v82 运维卡）：交易级监控 + 自动急停 + 告警分级路由。
+    # 失败仅记录不中断采集；告警经 O4 三档路由（trade/quality）推送，kill switch 闸停时仅留痕。
+    try:
+        from pipeline.ops import run_ops_monitor as _ops_run
+        from notify_alert import route_alert as _ops_route
+        _ops_res = _ops_run(health_fail=(_health or {}).get("fail_count", 0))
+        log(f"运维监控: status={_ops_res['status']} FAIL={_ops_res['fail_count']} "
+            f"auto_killed={_ops_res.get('auto_killed') or '无'}")
+        for _al in _ops_res.get("alerts", []):
+            _r = _ops_route(level=_al["level"], title=_al["title"], text=_al["text"])
+            log(f"运维告警[{_al['level']}]: pushed={_r.get('pushed')} reason={_r.get('reason', 'ok')}")
+    except Exception as e:
+        log(f"运维监控异常（不中断采集）: {e}")
     # M1 监控模式 (2026-08-08): 自选品异动事件生成 + 日报 (纯提醒层, 只读引擎输出, 不触碰引擎参数)
     # 2026-08-08 采集提前至 18:00: 收尾仅生成事件+日报, 推送由独立任务 run_night_push.py 在 21:30 执行
     try:

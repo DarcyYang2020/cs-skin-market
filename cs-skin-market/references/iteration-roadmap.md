@@ -867,7 +867,7 @@
 - **目标**：高价值数据（订单簿/成交/存世量）独立 raw.db，append-only；价格历史不建 raw。落 §1.3 分层。
 - **预注册判据（§1.3）**：①新建 raw.db（SQLite，独立文件，git 不跟踪）；②订单簿/成交/存世量写入 raw（加工层 market.db 仍权威）；③append-only（无 UPDATE/DELETE 路径）；④备份策略 = 双副本。
 - **验收标准**：①raw.db 创建且写入路径存在；②确认无 UPDATE/DELETE 脚本触碰 raw；③加工层读取 raw 派生正常；④冒烟 0 failed。
-- **依赖**：D2（卖侧盘口进 raw 候选）。**负责**：④运维。**状态**：✅ ③审计通过（2026-08-27，DI；**复查项：③要求「今日采集后复查三表写入路径」——④核对发现写入路径代码就位（collect_data_reserve_p0.py:234/241→raw_order_book/raw_trade、p1.py:205→raw_survive，经 pipeline/raw_db.py append_raw），但 P0/P1 默认 dry-run、需手动 --apply，**未接入 run_daily_collect/计划任务** → 每日采集不会写 raw.db，三表将持续 0 行。**数据供给策略待 PM 决策**（接每日 / 保持手动周期 / 抽 raw 段单接），决策后④落地并复查三表**）。
+- **依赖**：D2（卖侧盘口进 raw 候选）。**负责**：④运维。**状态**：✅ ③审计通过 + **供给策略已拍板并接入（2026-08-27 02:10，PM 裁定「接每日采集链」+ ④落地，decision-log DO）**：`run_daily_collect.py` 新增 `_run_data_reserve()`（浏览器任务后、健康监控前）每日调 p0 --apply（订单簿/成交全量→raw_order_book/raw_trade）+ p1 --apply --scope watchlist（存世量→raw_survive），raw 失败不阻断主采集；p0/p1 已小规模 dry-run 验证（2/2 OK）；**18:00 起每日采集后 raw.db 三表将累积行数**，验收①③ 随采集复查闭合。
 
 ### Wave 2 · 研究入口（owner：②算法研究窗口；前置：Wave1 D1/D5/D6）
 

@@ -196,6 +196,22 @@ def collect_survive(conn, r, apply: bool, date: str):
     if apply:
         for row in rows:
             db.save_survive_history(conn, row["date"], row)
+        # D7（2026-08-27）：存世量原始值 append-only 落 raw.db（market.db 仍权威；失败不阻断）
+        try:
+            from pipeline import raw_db
+            _rconn = raw_db.get_raw_conn()
+            try:
+                for row in rows:
+                    raw_db.append_raw(_rconn, "raw_survive", {
+                        "ts": datetime.now(TZ_BJ).strftime("%Y-%m-%d %H:%M:%S"),
+                        "date": row["date"], "good_id": r["good_id"], "item_name": r["name"],
+                        "statistic": row.get("statistic"),
+                    })
+                _rconn.commit()
+            finally:
+                _rconn.close()
+        except Exception:
+            pass  # raw 落库失败不阻断加工层
     return len(rows), None
 
 
