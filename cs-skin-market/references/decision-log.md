@@ -9,8 +9,8 @@
 **背景**：2026-08-27 并发多窗口写档，已发生 4 次编号撞车（EB→EE、EZ 双号、FA 撞号、FH 双号），③/④均建议 PM 归口编号治理。
 
 **占号簿（追加新条目前必查）**：
-- 已用编号至 **GW**（2026-08-27 22:46）：`FA FB FC FD FE FF FG FH FI GI GJ GK GL GM GN GO GP GQ GR GS GT GU GV GW`
-- 当前指针：**GX**（下一个新条目用 GX，随后 GY/GZ...）
+- 已用编号至 **GY**（2026-08-27 22:51）：`FA FB FC FD FE FF FG FH FI GI GJ GK GL GM GN GO GP GQ GR GS GT GU GV GW GX GY`
+- 当前指针：**GZ**（下一个新条目用 GZ，随后 HA/HB...）
 
 **规则**：
 1. 落条目前先查本段占号簿确认下一个可用编号；占号 = 在本段「当前指针」先行更新后再写正文（并发窗口同理，先占号者得）；
@@ -2961,3 +2961,35 @@
 - 若仍异常：完整 errmsg 报回（此时可排除密钥值，转入钉钉侧/双安全设置排查）。
 
 - **状态**：配置已写入并复验；**待④实发终验**。
+
+## GX. S3 钉钉全链闭环：终验 errcode=0 送达成功（2026-08-27 22:51，④运维执行）
+
+> 依据：PM 通知（decision-log GW：secret=SEC417e…f2a3a + access_token 371f37…b28f51 配对正确，备份已留）→ ④终验。
+
+- **终验执行**：`send('CS 配置验证')` → **HTTP 200 且未抛异常**（send 内部 errcode≠0 会 raise）；**铁证直读**：独立重算加签直发 → `HTTP 200 | errcode: 0 | errmsg: ok` → **送达成功**。
+- **S3 全链闭环三齐**：①代码侧 FG（告警标题强制含「CS」加固）✅ ②配置侧关键词「CS」✅ ③配置侧加签正确密钥（SEC417e…f2a3a 与 access_token 371f37…b28f51 配对）✅。
+- **挂账恢复**：GT/GU/GV（此前 310000 签名不匹配排查链）→ **全部闭环**；GN/GO（关键词配置/签名不匹配）→ 闭环。
+- **终态**：**S3 钉钉真实送达 = ✅ 全链闭环**；`CS_Health_Alert`（22:00 notify_alert --monitor）告警链路可正常送达。DU② S3 webhook 环境验证挂账 → **可闭环**（③复核点）。
+
+## GY. S3 全链闭环确认 + .env.bak 泄露风险处置 + 收尾清单（2026-08-27 22:51，PM）
+
+### 一、S3 全链闭环（复核 GX ✅）
+- ④终验铁证：独立重算加签直发 → `HTTP 200 | errcode: 0 | errmsg: ok` → **送达成功**；
+- 三齐：代码侧 FG（标题强制含 CS）✅ + 关键词 CS ✅ + 加签正确密钥（SEC417e…f2a3a 配对 371f37…b28f51）✅；
+- GT/GU/GV/GN/GO 挂账全部闭环；DU② webhook 环境验证挂账可闭环（③复核点）。
+
+### 二、P0 安全处置（.env.bak 泄露风险）
+- 22:46 PM 写 .env 时生成的备份 `cs-skin-market/.env.bak-20260827-224645` **含明文 NOTIFY_WEBHOOK_SECRET**，且 .gitignore 仅覆盖 `.env`/`.env.local`（未覆盖 .env.bak*）→ 存在被 `git add` 入库泄露风险；
+- **已处置**：立即删除该备份（无残留）；`.gitignore` 新增 `.env.bak*` / `.env.backup*` 规则防未来；`.env` 本体在忽略列表（git check-ignore 通过）；
+- 教训：含凭据文件备份须即时删除或纳入 gitignore，严禁入库。
+
+### 三、收尾清单（诚实登记，PM 视角）
+**待办（需窗口动作）**：
+1. **②/③研究产物未提交入库**：`run_emotion_v1a_eval.py`、`data/_exp_emotion_v1a_2026-08-27.json`（②）+ `_audit_v1a_recompute.py`、`data/_audit_v1a_recompute_2026-08-27.json`、`audit-w7-1-v1a-2026-08-27.md`（③）——working tree `??`，归②/③提交归档；
+2. **W7-2 ③审计复核未做**：GI 移交「由③独立复核」（④环境缺 pytest 冒烟），③仅审了 v1a（GJ）未出 W7-2 复核条目——待③；
+3. **decision-log DU 段（2161-2175）旧口径未同步**：仍含「steamdt=悠悠/S1→W7-2 关联」，与 GM（steamdt=独立站、与 S1 无关）冲突——待更正（非阻断）；
+4. **roadmap 未提交改动（M）**：由相应窗口归档。
+
+**挂账（正常，无需动作）**：O1 回报超时观察（paper_orders/fills=0）/ 联网冒烟限流复跑 / R5 文案 cosmetic / v1b+v1c 数据门控 / W7-2 单品二期（FD）/ X1 低优先 / W7-4 挂钟 ~2027-04-25 / S1 续登自动化（~09-05 已建）。
+
+- **状态**：S3 全链闭环 ✅；P0 安全已处置 ✅；4 项待办登记（归各窗口）；挂账项正常。

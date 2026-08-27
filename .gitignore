@@ -30,6 +30,8 @@ data/_debug_*
 # Environment
 .env
 .env.local
+.env.bak*
+.env.backup*
 
 # Node (if any)
 node_modules/
