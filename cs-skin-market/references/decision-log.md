@@ -2437,3 +2437,61 @@
 - **S3 送达复核闭环（DU② 转闭环）**；**Wave4 EC 修复复核闭环（E1 全项通过、E4 两处修复）**——EB（Wave4 审计）有条件通过项全部落地。
 - 工作树剩余 5 个 ops 运行时文件（gitignore 级）+ 运行态 data 文件 + 交接简报非交付物，不提交（研发声明，核验一致）。
 - **状态**：S3 闭环 + Wave4 E1–E4 全通过（ED）；E1 ③审计修复闭环；编号撞车登记待 PM/研发处置。
+
+## EF. W7-1 内生情绪 v1 · 预研准备（2026-08-27，②研究，PM 指令「W7-1 预研准备」）
+
+> 背景：R5（v0 内生情绪）verdict=无增量证伪成立（DY，③审计 DZ 通过）；v1 = v0 升级版补盘口因子。本条目 = 预研准备（**不立执行卡、数据未够**），等 W7-2 steamdt 积累够（3-6 月）后由②交付预注册判据再立卡。产物：`references/w7-1-emotion-v1-preresearch-2026-08-27.md`。
+
+### 一、v1 因子组成（草案，非冻结）
+- **bid**（bid_history 已采未用=富矿）+ **spread**（price×bid 派生不新采）+ **turnover**（item_fundamental_snapshot 已采）+ **steamdt 成交额**（W7-2 新采，数据前置）；
+- v1 合成形式草案：`emo_v1 = clip(emo_v0 + w3·bid_norm + w4·spread_norm + w5·turnover_norm + w6·steamdt_norm, 0, 100)`——权重/合成形式须在正式预注册判据冻结（本稿不冻结参数）。
+
+### 二、D2/D7 数据可用性（2026-08-27 只读实测，fit 段 = <2025-08-10）
+| 数据 | 行数/天数 | fit 段 | 非空率 | 可否回测 |
+|---|---|---|---|---|
+| bid_history（buy_price_max） | 231,816 / 1,157 天 | 151,474 / 774 天（2023-07 起每月全量） | buy_price_max 100% | ✅ 可（R1 组9 已评：bid IC14=−0.011 弱/无效、spread IC14=−0.097 不稳定，覆盖 86.9%） |
+| lowest_sell/sell_count（D2 卖侧） | 207 行非空 | 无 | — | ❌ 暂不可回测（08-27 随 p0 --apply 起采，前向积累） |
+| bid_observations（B-5 周度） | 7 行 / 4 天 | 无 | — | ❌ 不可（仅交叉验证参考） |
+| item_fundamental_snapshot（turnover_number） | 409 行 / 仅 2 天（08-13/08-27） | 无 | turnover 100%（但无历史序列） | ❌ 不可（需 ≥3 月每日积累） |
+| steamdt 成交额 | 未采（W7-2 挂账） | — | — | ❌ 等 W7-2 积累 3-6 月 |
+
+### 三、方法论骨架（§3，对齐 R1-R5 同款）
+- 三轮：v1a（bid/spread 存量可跑）→ v1b（+turnover 需积累）→ v1c（+steamdt 等 W7-2）；
+- 评估流程 = 预注册判据（合成定义+固定权重+fit 段 rank 归一化）→ **增量 IC 硬判据 ≥0.02 且滚动同号月 ≥80%**（R5 同口径）→ 候选则族开回放 + 完整四关（A2 发射复算/组合级/前后半段/置换，R3 同款）→ ③审计；
+- 边界 = 仅加分/过滤（不进打分主干、不改族触发）；oos_zone 守院（require_fit D6，val 仅复验触碰）；候选来源声明 = 独立扫描新增维度（bid/spread/turnover 未进引擎，**不照镜子 C2**）；
+- 关键预期（诚实登记）：R1 组9 已证 bid/spread 单因子弱/无效，R5 已证 v0 合成无增量——**v1 大概率延续无增量，仍按流程验证一次（正负都登记）**。
+
+### 四、状态
+- **预研准备完成（EF）**：数据核验 + 方法论骨架落盘；W7-1 维持挂账（等数据）；触发条件 = ①v1a 存量评估可随时启动（待 PM 立卡）②turnover ≥3 月 ③W7-2 steamdt 积累够 → ②交付 v1 正式判据 → PM 冻结 → 执行。
+
+## EG. W7-1 预研交付确认 + W7-2 steamdt 探针就位（2026-08-27，④运维回话，PM 核验）
+
+> 来源：运维转发回话 + working tree 探针脚本核验。PM 交叉验证：与 EF（② W7-1 预研准备）结论逐字自洽，属交叉验证通过，无状态滞后。
+
+### 一、W7-1 预研交付（运维数据探针，与 EF 一致）
+- bid_history 唯一现成可回测盘口富矿：1,157 天全量 / fit 774 天（<2025-08-10），buy_price_max 100% 非空（EF §2.1 实测一致）；
+- turnover（item_fundamental_snapshot）仅 2 天快照（08-13/08-27），不可回测（EF §2.3 一致）；
+- steamdt 成交额未采（W7-2 前置，EF §2.5 一致）；
+- v1 方法论骨架（§3 三轮 v1a/v1b/v1c + 预注册→增量IC→四关→③审计）已备齐，维持挂账等数据；
+- **结论：W7-1 预研 = ✅ 完成（数据探针 + 方法论骨架，交叉验证一致）；v1a（bid/spread 存量）随时可启动，待 PM 立卡。**
+
+### 二、W7-2 steamdt 可行性探针（运维新产物，working tree 未提交）
+- 产物：`references/steamdt_probe1~13.py` + `references/yyyp_probe_steamdt.py`/`yyyp_probe_steamdt2.py`（共 15 个只读探针）；
+- 红线核验：grep 确认仅 `print`/API 盘点/字段捕获，**无 INSERT/CREATE/upsert/to_csv/market.db 写入** → 合规（decision-log 2161「不得即采即落主分析」守院通过）；
+- 状态：steamdt 未采、未定采；探针就位 = W7-2 可行性预研已自驱启动，待 PM 正式立卡后走合规积累 3-6 月。
+
+### 三、PM 待拍板（非阻断）
+1. **v1a（bid/spread 存量）是否立卡**：②先交付 v1a 正式预注册判据 → PM 冻结 → ②执行（数据已够，随时可跑）；
+2. **W7-2 是否正式立卡启动合规积累 3-6 月**（探针已就位，S1 账号有效至 ~09-05）。
+
+## EY. W7-2 steamdt 成交额组件 · 采集可行性预研完成（2026-08-27 21:10，④运维执行，PM 指令）
+
+> 报告：`references/steamdt-feasibility-2026-08-27.md`；探针：`references/steamdt_probe1~17.py`；字段存证：`data/_exp_w7_2_steamdt_probe.json`。只读预研，未落库、未动生产、未接引擎。
+
+- **关键澄清**：steamdt ≠ 悠悠有品。`youpin898.com/steamdt` 实测 404；数据源为独立第三方站 **steamdt.com**（金华新果科技），公开市场级数据，与任务字段完全吻合。
+- **① 连通性与字段**：站内 GET API 零鉴权可采——`/api/index/statistics/v1/summary`（大盘指数/成交额 turnover/成交量 tradeNum/新增额 addValuation/新增量 addNum + 环比 + 当日逐小时指数 + 存世量/持有者数）、`/api/index/players/v1/statistics`（在线人数 + 逐小时 + 历史）、`/api/index/item-block/v1/summary`（三级板块指数全量）、`/api/index/skin-folder/v1/hot`（收藏夹板块）。单品页（`/cs2/{hash}`）标注「10分钟级更新」，POST API（item/sale-wear-detail/type-trend K线/change）**受 errorCode=108 环境风控**（fetch 复现被拦，仅页面原生交互成功）→ 单品级二期走页面自动化/WS 通道。
+- **② 历史深度**：大盘当日逐小时（25 点）+ 页面内多周期 K 线；**无公开批量全历史接口，回测能力弱，价值在从现在积累**（与 W7-2 3-6 月合规累积口径契合）。
+- **③ 采集方案（蓄水池，不接引擎）**：raw.db 新表 `raw_steamdt_market` + `raw_steamdt_blocks`；每日 1 次挂 18:00 每日链（GET 零鉴权，urllib 即可，负载 <10s）；单品级暂缓（108 风控）。合规：公开市场级数据、无账号、不即采即落主分析，积累 3-6 月后再评（W7-1 v1 复用）。
+- **结论**：市场级 ✅ 可采（建议 PM 立项蓄水池采集）；单品级 ⚠️ 有条件（二期）；历史深度有限。**本窗口不落地代码（归研发），仅出预研结论**。
+- **待 PM 拍板**：①数据源确认 steamdt.com（非悠悠有品）；②是否立项蓄水池采集（raw.db 两表每日 1 次）；③单品级二期是否深挖（WS jwt 通道）。
+- **状态**：W7-2 预研完成，roadmap 条目已同步；探针/存证可复核（③审计可只读复查）。
