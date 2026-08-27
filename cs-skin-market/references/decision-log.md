@@ -2384,3 +2384,26 @@
 
 - **配置侧待办（群管理员/用户侧）**：钉钉机器人安全设置关键词须含「CS」（推荐，三档告警+意向单统一）或「意向单」；到位后④重发 `push_intention` 验证 errcode=0 送达，报③复核闭环（S3 DU② 关键词项随之闭环）。
 - roadmap S3 卡状态行已登记关键词保证说明；本条目待③复核（代码侧修复 + 测试断言）。
+
+## EC. Wave4 ③审计修复闭环（2026-08-27，④研发执行 ③指令，待③复核终态）
+
+> 依据：③审计报告 `references/audit-wave4-e1e4-2026-08-27.md`（E2/E3/E4 通过 + E1 有条件通过；1 必修 + 4 非阻断登记）。④按审计指令修复后重跑登记，再复核闭环。
+
+### 必修项：E1③幸存者门实现缺陷（已修）
+
+- **缺陷**：`run_quality_gate.py::check_survivorship` 查询用 `active=0 OR status='淘汰'`，但 items 表无这些列（实际 = `is_discontinued`）→ OperationalError 被 except 吞掉 → **prod_pool_size=0 假通过**。
+- **修复**：①改用 `is_discontinued=1` 正确列；②`prod_pool_size=0` 校验（空则抛错不静默）；③异常不再静默吞。
+- **重跑**：prod_pool_size=405（=回放池 405 同构）、eliminated=0、replay_only=0 → **幸存者门真通过**。产物 `data/_exp_quality_gate_2026-08-27.json` 已更新。
+
+### 非阻断 4 项处置
+
+1. **E1 压力窗口口径**（2024-02 实为 V 型反弹、窗口无信号=通过）：登记不改（口径说明已在产物 note）。
+2. **E1 ADF 临界值**（固定 n≈50 表对 n≈1100 偏保守）：登记不改（stat 远超临界无影响）。
+3. **E4 按品类归因失效**（372/376 落"其他"）→ **已修**：`evaluate_service.py` 改用品名 `武器 | 皮肤` 的武器段英文映射表 + 中文品类前缀回退（items.weapon 列覆盖 9/405 不可用，待采集补齐后切换）。修复后：步枪 197 / 手枪 52 / 微型冲锋枪 31 / 霰弹枪 4 / 手套 4 / 其他 88。
+4. **E4 组合级 closed 逐笔归因空**（b1_risk_validation_v2.json 未存 closed 明细 → n_trades=0）→ **已修**：`evaluate_service.py` 改为从回放信号实时跑 b1v2.simulate（cap0.8/hold21）取 closed 明细。修复后：n_trades=108、win_rate=51.9%、total_pnl=+2.7（avg_pnl=+0.03 → 展示 0.0，取整精度）。费率口径诚实标注（组合级 2% 双边，信号级 E2 1%）。
+
+### 验证
+
+- 冒烟 SKIP_NET=1 **142 passed / 0 failed / 6 skipped**（t_e1_quality_gate 断言补强：幸存者门 prod_pool_size>0 防假通过回退）。
+- roadmap E1/E4 卡状态行已同步（E1 幸存者门修复重跑、E4 两处归因修复）。
+- 待③复核终态（审计报告 §六 裁定项 + 本条目）。

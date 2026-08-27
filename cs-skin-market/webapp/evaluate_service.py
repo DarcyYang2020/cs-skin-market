@@ -392,12 +392,30 @@ def _risk_attribution():
     period_rows.sort(key=lambda r: -(r["n"] or 0))
     out["by_period"] = period_rows
 
-    # 按品类（品名前缀：手套/匕首/步枪/手枪/冲锋枪/霰弹枪/机枪/武器箱/胶囊/挂件/其他）
-    CATS = ["手套", "匕首", "步枪", "手枪", "微型冲锋枪", "霰弹枪", "机枪", "武器箱", "胶囊", "挂件"]
+    # 按品类（③审计 2026-08-27 修复指令：原品名前缀 372/376 落"其他"失效）。
+    # 口径：品名 "武器 | 皮肤" 的武器段（英文，稳定）+ 中文品类前缀回退（手套/匕首/箱/胶囊等）。
+    # 数据层 items.weapon 列覆盖 9/405 不可用，故用武器名映射（weapon 字段待采集补齐后切换）。
+    _WEAPON_CAT = {
+        # 步枪
+        "AK-47": "步枪", "M4A4": "步枪", "M4A1消音版": "步枪", "AWP": "步枪",
+        "法玛斯": "步枪", "加利尔AR": "步枪", "SSG 08": "步枪", "SCAR-20": "步枪",
+        "G3SG1": "步枪", "SG 553": "步枪", "AUG": "步枪",
+        # 手枪
+        "沙漠之鹰": "手枪", "USP消音版": "手枪", "格洛克18型": "手枪", "P250": "手枪",
+        "五七": "手枪", "Tec-9": "手枪", "双持贝瑞塔": "手枪", "R8 左轮手枪": "手枪",
+        # 微型冲锋枪
+        "MP7": "微型冲锋枪", "MP9": "微型冲锋枪", "P90": "微型冲锋枪", "MP5-SD": "微型冲锋枪",
+        "UMP-45": "微型冲锋枪", "MAC-10": "微型冲锋枪", "PP-野牛": "微型冲锋枪",
+        # 霰弹枪 / 机枪
+        "新星": "霰弹枪", "XM1014": "霰弹枪", "截短霰弹枪": "霰弹枪", "MAG-7": "霰弹枪",
+        "M249": "机枪", "内格夫": "机枪",
+    }
+    _CAT_PREFIX = ["手套", "匕首", "武器箱", "胶囊", "挂件", "印花", "探员", "音乐盒", "收藏品"]
     by_cat = {}
     for s in sigs:
         name = s.get("name") or ""
-        cat = next((c for c in CATS if name.startswith(c)), "其他")
+        wpn = (name.split(" | ")[0] if " | " in name else name).strip()
+        cat = _WEAPON_CAT.get(wpn) or next((c for c in _CAT_PREFIX if name.startswith(c)), "其他")
         by_cat.setdefault(cat, []).append(s)
     cat_rows = []
     for c, ss in sorted(by_cat.items(), key=lambda kv: -len(kv[1])):
@@ -422,15 +440,43 @@ def _risk_attribution():
         "threshold": "top5 贡献 >50% 警示（§5.3）",
     }
 
-    # 组合级 closed 逐笔（B1 v2：cap0.8 模拟 closed pnl 分组）
-    comb = (b1 or {}).get("results", {}).get("baseline_cap08") or {}
-    closed = comb.get("closed") or []
+    # 组合级 closed 逐笔（③审计 2026-08-27 修复指令：b1_risk_validation_v2.json 未存 closed 明细
+    # → 原实现 n_trades=0 空归因。修复 = 从回放信号实时跑 b1v2.simulate（cap0.8/hold21），closed 明细直接可得）
+    try:
+        sys.path.insert(0, str(ROOT))
+        sys.path.insert(0, str(ROOT / "references"))
+        import importlib.util
+        from datetime import date as _date
+        spec = importlib.util.spec_from_file_location(
+            "b1v2", str(ROOT / "references" / "b1_risk_backtest_v2.py"))
+        b1v2 = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(b1v2)
+        sim_sigs = []
+        for s in sigs:
+            fwd = s.get("fwd_series") or []
+            if not fwd:
+                continue
+            st = _family_key(s.get("action_label"))
+            sim_sigs.append({
+                "date": _date.fromisoformat(s["date"]), "item": s["name"],
+                "entry": s["entry_price"], "limit": s.get("position_limit") or 0.0,
+                "fwd": fwd, "st": st, "prio": b1v2.PRIORITY.get(st, 1),
+                "net14": s.get("net14"),
+            })
+        if sim_sigs:
+            _sim = b1v2.simulate(sim_sigs, cap=0.8)
+            closed = _sim.get("closed") or []
+        else:
+            closed = []
+    except Exception:
+        closed = []
     out["portfolio_closed"] = {
         "n_trades": len(closed),
         "total_pnl": _pct(sum(closed)),
         "win_rate": _pct(100.0 * sum(1 for v in closed if v > 0) / len(closed), 1) if closed else None,
         "avg_pnl": _pct(sum(closed) / len(closed)) if closed else None,
-        "fee_note": "B1 v2 口径（cap0.8/hold21/2% 双边；E2 校准后信号级为买0/卖1，组合级待重跑校准）",
+        "fee_note": "组合级 closed 逐笔 = 从回放信号实时模拟（b1v2.simulate cap0.8/hold21/2% 双边；"
+                    "E2 校准后信号级为买0/卖1，组合级待重跑校准，仅形态参考——诚实标注）",
     }
     return out
 

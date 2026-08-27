@@ -4425,7 +4425,7 @@ def t_e2_fee_calibration():
 check('E2 费率校准产物 + sync 同步 FEE-CAL', t_e2_fee_calibration)
 
 def t_e1_quality_gate():
-    """E1 质量门：产物存在 + 5 项状态齐全 + ①平稳性通过（收益形式）+ ⑤费率一致性。"""
+    """E1 质量门：产物存在 + 5 项状态齐全 + ①平稳性通过（收益形式）+ ③幸存者门基准非空 + ⑤费率一致性。"""
     import io
     import json
     from pathlib import Path
@@ -4442,10 +4442,14 @@ def t_e1_quality_gate():
     assert st['verdict'].startswith('通过'), st['verdict']
     # 平稳性验证对象 = 收益序列（比率形式），且验证了多序列
     assert len(st.get('series') or {}) >= 5, st.get('verdict')
+    # ③幸存者门（③审计 2026-08-27 修复指令）：prod_pool_size 必须非空（基准空=假通过），淘汰品可列出
+    sv = gates['3_survivorship']
+    assert sv['verdict'].startswith('通过'), sv['verdict']
+    assert (sv.get('prod_pool_size') or 0) > 0, f'幸存者门生产池基准为空（假通过）: {sv}'
     cost = gates['5_cost_realism']
     assert cost['verdict'] == '通过', cost
     assert cost.get('config_roundtrip_pct') == 1.0, cost
-check('E1 质量门 5 项产物 + 平稳性/费率通过', t_e1_quality_gate)
+check('E1 质量门 5 项产物 + 平稳性/幸存者基准/费率通过', t_e1_quality_gate)
 
 def t_evaluate_route():
     """E3/E4：/evaluate 页可达（登录后 HTML）+ /api/evaluate/data 三层数据正确 + 质量标签绑定。"""

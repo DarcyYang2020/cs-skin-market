@@ -238,7 +238,13 @@ def audit_feature_leak():
 # ============================================================
 
 def check_survivorship():
-    """③ 幸存者偏差核查：回放池 vs 当前活跃池/淘汰记录。"""
+    """③ 幸存者偏差核查：回放池 vs 当前活跃池/淘汰记录。
+
+    ③审计（audit-wave4-e1e4-2026-08-27.md）修复指令（2026-08-27）：
+    - 原实现用 `active=0 OR status='淘汰'`，但 items 表无这些列（实际 = is_discontinued），
+      OperationalError 被 except 吞掉 → 生产池基准空（prod_pool_size=0）→ 假通过。
+    - 修复：①改用 is_discontinued=1 正确列；②校验基准非空（为空则 FAIL 不静默）；③异常不再静默吞。
+    """
     import sqlite3
     conn = sqlite3.connect(os.environ["CS_MODEL_DB"])
     conn.row_factory = sqlite3.Row
@@ -246,16 +252,20 @@ def check_survivorship():
         "SELECT DISTINCT name FROM items").fetchall()}
     conn.close()
 
-    # 生产池淘汰记录（pool_maintenance_log 不直接含淘汰品名；以 items.active=0 / watchlist 记录为准）
+    # 生产池淘汰记录：is_discontinued=1（items 表实际列，2026-08-27 ③审计定位）
     prod_conn = sqlite3.connect(ROOT / "data" / "market.db")
     prod_conn.row_factory = sqlite3.Row
     try:
+        cols = [r[1] for r in prod_conn.execute("PRAGMA table_info(items)").fetchall()]
+        if "is_discontinued" not in cols:
+            raise RuntimeError("items 表缺少 is_discontinued 列（存活者核查基准失效）")
         inactive = {r["name"] for r in prod_conn.execute(
-            "SELECT name FROM items WHERE active=0 OR status='淘汰'").fetchall()}
+            "SELECT name FROM items WHERE is_discontinued=1").fetchall()}
         all_prod = {r["name"] for r in prod_conn.execute("SELECT name FROM items").fetchall()}
-    except Exception:
-        inactive, all_prod = set(), set()
-    prod_conn.close()
+    finally:
+        prod_conn.close()
+    if not all_prod:
+        raise RuntimeError("生产池基准为空（items 表无数据？），幸存者核查不可信")
 
     replay_only = sorted(replay_items - all_prod)          # 回放池有、生产无（历史淘汰/停更候选）
     eliminated = sorted(replay_items & inactive)           # 明确标记淘汰
@@ -265,8 +275,9 @@ def check_survivorship():
         "replay_pool_size": len(replay_items),
         "prod_pool_size": len(all_prod),
         "eliminated_in_replay": eliminated,
-        "replay_only_but_unknown": replay_only[:30],
-        "note": "回放库 items vs 生产库 items 比对；eliminated=生产标记淘汰/停更的回放品（幸存者偏差来源）；"
+        "replay_only_but_unknown": replay_only,
+        "note": "回放库 items vs 生产库 items 比对（is_discontinued=1 标记淘汰/停更）；"
+                "prod_pool_size=0 视为核查不可信（抛错不静默，③审计 2026-08-27 修复指令）。"
                 "replay_only_but_unknown=回放有而生产无（可能为历史池成员/已清理），须人工核验。",
     }
 
