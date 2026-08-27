@@ -1,0 +1,260 @@
+{
+ "meta": {
+  "card": "W7-1 v1a 内生情绪（v0+bid+spread）评估（roadmap v82）",
+  "prereg": "references/w7-1-v1a-emotion-prereg-2026-08-27.md",
+  "script": "references/run_emotion_v1a_eval.py",
+  "split_oos": "2025-08-10",
+  "fit_rows": 156418,
+  "val_rows": 83408,
+  "v1a_formula": "clip(emo_v0 + 0.5*bid_norm + 0.5*spread_norm, 0, 100)",
+  "v0_formula": "clip(恐慌分 + 0.5*sc30_norm - 0.5*chg7_norm, 0, 100)（R5 冻结）",
+  "weights_fixed": {
+   "w1": 0.5,
+   "w2": 0.5,
+   "w3": 0.5,
+   "w4": 0.5,
+   "note": "固定值禁优化（判据 §1）"
+  },
+  "norm_def": "bid_norm/spread_norm/sc30_norm/chg7_norm = 逐日截面百分位 rank（0-100），fit/val 同规则",
+  "core_factors": [
+   "pct",
+   "z",
+   "chg30",
+   "sc30",
+   "vol30",
+   "mchg30"
+  ],
+  "thresholds": {
+   "inc_ic_min": 0.02,
+   "roll_stable": 0.8,
+   "verdict_rule": "判据A且判据B均过 -> 候选"
+  },
+  "oos_zone": "探索仅 fit 段（require_fit D6）；val 仅预注册 §5 声明增量 IC 复验触碰",
+  "matrix": "_exp_fullscan_features_2026-08-20.json",
+  "matrix_db": "data/replay_cycle_win.db（与 R1/R5 同源）",
+  "bid_source": "生产库 bid_history.buy_price_max（good_id 桥，全量含 val 仅复验）",
+  "fwd_label_cost": "fwd14/fwd30 已扣 2% 双边成本",
+  "engine": "v2-T13（只读，未改动）",
+  "runtime_sec": 12.0
+ },
+ "components_ic": {
+  "sentiment": {
+   "name": "恐慌分(approx_sentiment)",
+   "coverage_fit": 0.9744,
+   "IC14": {
+    "n": 700,
+    "mean": 0.1579,
+    "std": 0.1543,
+    "t": 27.088,
+    "pos_ratio": 0.88
+   },
+   "IC30": {
+    "n": 700,
+    "mean": 0.1164,
+    "std": 0.1461,
+    "t": 21.08,
+    "pos_ratio": 0.8
+   },
+   "rolling_stability": {
+    "months": 24,
+    "same_sign_ratio": 0.9167
+   }
+  },
+  "sc30": {
+   "name": "供给30日变化",
+   "coverage_fit": 0.9976,
+   "IC14": {
+    "n": 712,
+    "mean": 0.0215,
+    "std": 0.1238,
+    "t": 4.644,
+    "pos_ratio": 0.5787
+   },
+   "IC30": {
+    "n": 712,
+    "mean": 0.0004,
+    "std": 0.1185,
+    "t": 0.097,
+    "pos_ratio": 0.4846
+   },
+   "rolling_stability": {
+    "months": 25,
+    "same_sign_ratio": 0.64
+   }
+  },
+  "chg7": {
+   "name": "价格7日动量",
+   "coverage_fit": 1.0,
+   "IC14": {
+    "n": 712,
+    "mean": -0.1457,
+    "std": 0.1469,
+    "t": -26.473,
+    "pos_ratio": 0.118
+   },
+   "IC30": {
+    "n": 712,
+    "mean": -0.1085,
+    "std": 0.1435,
+    "t": -20.163,
+    "pos_ratio": 0.2079
+   },
+   "rolling_stability": {
+    "months": 25,
+    "same_sign_ratio": 0.08
+   }
+  },
+  "bid": {
+   "name": "bid(最高买价)",
+   "coverage_fit": 0.8693,
+   "IC14": {
+    "n": 711,
+    "mean": 0.0101,
+    "std": 0.2434,
+    "t": 1.108,
+    "pos_ratio": 0.5302
+   },
+   "IC30": {
+    "n": 711,
+    "mean": 0.0108,
+    "std": 0.2579,
+    "t": 1.117,
+    "pos_ratio": 0.481
+   },
+   "rolling_stability": {
+    "months": 25,
+    "same_sign_ratio": 0.48
+   }
+  },
+  "spread": {
+   "name": "spread(卖价-最高买价)",
+   "coverage_fit": 0.8693,
+   "IC14": {
+    "n": 711,
+    "mean": -0.0628,
+    "std": 0.158,
+    "t": -10.604,
+    "pos_ratio": 0.391
+   },
+   "IC30": {
+    "n": 711,
+    "mean": -0.0499,
+    "std": 0.1706,
+    "t": -7.801,
+    "pos_ratio": 0.4402
+   },
+   "rolling_stability": {
+    "months": 25,
+    "same_sign_ratio": 0.36
+   }
+  }
+ },
+ "emo_v0": {
+  "coverage_fit": 0.972,
+  "IC14": {
+   "n": 700,
+   "mean": 0.1264,
+   "std": 0.1486,
+   "t": 22.505,
+   "pos_ratio": 0.8371
+  },
+  "rolling_stability": {
+   "months": 24,
+   "same_sign_ratio": 0.9167
+  }
+ },
+ "emo_v1a": {
+  "coverage_fit": 0.8523,
+  "IC14": {
+   "n": 699,
+   "mean": 0.1019,
+   "std": 0.1532,
+   "t": 17.589,
+   "pos_ratio": 0.7711
+  },
+  "IC30": {
+   "n": 699,
+   "mean": 0.0768,
+   "std": 0.1648,
+   "t": 12.329,
+   "pos_ratio": 0.6538
+  },
+  "rolling_stability": {
+   "months": 24,
+   "same_sign_ratio": 0.8333
+  },
+  "IC14_by_period": {
+   "P恐慌深跌": {
+    "n": 1,
+    "mean": 0.0702,
+    "std": 0.0,
+    "t": 0.0,
+    "pos_ratio": 1.0
+   },
+   "S1牛市上行": {
+    "n": 221,
+    "mean": 0.0847,
+    "std": 0.1722,
+    "t": 7.308,
+    "pos_ratio": 0.7104
+   },
+   "S2牛市回调": {
+    "n": 118,
+    "mean": 0.0449,
+    "std": 0.1779,
+    "t": 2.742,
+    "pos_ratio": 0.6695
+   },
+   "S3弱市阴跌": {
+    "n": 40,
+    "mean": 0.1463,
+    "std": 0.1253,
+    "t": 7.387,
+    "pos_ratio": 0.825
+   },
+   "S4弱市反弹": {
+    "n": 71,
+    "mean": 0.0978,
+    "std": 0.0899,
+    "t": 9.164,
+    "pos_ratio": 0.8451
+   }
+  },
+  "inc_ic_A_fit": {
+   "n": 373,
+   "mean": 0.0034,
+   "std": 0.0673,
+   "t": 0.967,
+   "pos_ratio": 0.5416
+  },
+  "inc_ic_A_rolling": {
+   "months": 16,
+   "same_sign_ratio": 0.5
+  },
+  "inc_ic_B_fit": {
+   "n": 409,
+   "mean": 0.0107,
+   "std": 0.0716,
+   "t": 3.021,
+   "pos_ratio": 0.5355
+  },
+  "val_recheck_A": {
+   "n": 327,
+   "mean": -0.0052,
+   "std": 0.0757,
+   "t": -1.253,
+   "pos_ratio": 0.4557
+  },
+  "val_recheck_B": {
+   "n": 338,
+   "mean": -0.003,
+   "std": 0.0693,
+   "t": -0.793,
+   "pos_ratio": 0.4763
+  },
+  "verdict": "无增量",
+  "verdict_note": "判据A 增量IC=0.0034（阈值0.02）/同号月 0.5（阈值0.80）或判据B(相对v0)增量IC=0.0107（阈值0.02）未过 -> v1a 无增量/证伪登记"
+ },
+ "verdict": "无增量",
+ "note": "仅筛查层：verdict=候选 交 PM 评估是否立'情绪守卫 v1a'落地卡（§4 四关+③审计+研发落地）；无增量/证伪 登记 registry 防重复挖。不进打分主干、不改族触发、不碰引擎。"
+}
