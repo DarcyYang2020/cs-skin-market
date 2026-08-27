@@ -378,9 +378,19 @@ def run_ops_monitor(db_path=None, status_path=None, data_dir=None, health_fail=0
             else:
                 checks.append({"name": "备份新鲜度", "level": "PASS", "detail": f"最新备份距今 {_age} 天"})
 
-        # ---- ⑥ S3 闭环监控（意向单/回报，Wave3 未上线 → WARN 登记，判据先行）----
-        checks.append({"name": "S3 闭环监控", "level": "WARN",
-                       "detail": f"意向单/回报未上线（Wave3 S3 待②预研就绪）；回报超时阈值已配置 = {rules.get('report_timeout_hours', 24)}h，数据就绪后自动生效"})
+        # ---- ⑥ S3 闭环监控（意向单/回报，2026-08-27 S3 落地后读 paper_orders）----
+        try:
+            from pipeline.paper_trading import unreported_orders as _uo
+            _unrep = _uo(conn, timeout_hours=rules.get("report_timeout_hours", 24))
+            if _unrep:
+                checks.append({"name": "S3 回报超时", "level": "WARN",
+                               "detail": f"{len(_unrep)} 笔意向单未回报超时（> {rules.get('report_timeout_hours', 24)}h，首笔: {_unrep[0]['item_name']}）"})
+            else:
+                checks.append({"name": "S3 回报超时", "level": "PASS",
+                               "detail": "无未回报超时意向单"})
+        except Exception as e:
+            checks.append({"name": "S3 回报超时", "level": "WARN",
+                           "detail": f"paper_orders 未回报检查异常（S3 表未就绪则忽略）: {e}"})
 
     finally:
         conn.close()

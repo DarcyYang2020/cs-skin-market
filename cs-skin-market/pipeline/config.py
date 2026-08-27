@@ -484,6 +484,12 @@ OPS_RULES = {
     },
 }
 
+# ---- Wave3 S2 模拟盘交易域（roadmap v82 卡，2026-08-27）----
+# 模拟成交费率 §4.3/E2 对齐：买 0 费 / 卖 1% 费（2026-08-26 费率发现：实际买0%/卖1% vs 回测假设 2%）。
+# paper_sync_real_inventory：与真实库存可选同步（S2 判据③，默认关）。
+PAPER_FEES = {"buy_pct": 0.0, "sell_pct": 1.0}
+PAPER_SYNC_REAL_INVENTORY = False
+
 # ---- DISPLAY-2 单品短期期望（纯展示，2026-08-18，③审计#2 通过有条件落地）----
 # 纯展示信号，不进决策、不 bump ENGINE_VERSION。查表 = walk-forward train（SPLIT 前）拟合、版本化。
 # 机制：时期×时点先验（层次收缩 k=20）+ 分时期单品特性（仅 P/S1/S2；S3/S4 只用先验）。

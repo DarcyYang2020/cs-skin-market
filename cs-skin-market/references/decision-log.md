@@ -2080,3 +2080,15 @@
   1. **工作树未提交改动（约 653 行 Wave6 相关）**：git status 显示 AGENTS.md/PROJECT_STRUCTURE/notify_alert/collector_csqaq/config/db/monitor/paper_trading/decision-log/requirements/deploy_cs_skin_market.sh 等 M + ops_tool/cleaning_ledger/oos_guard/ops/provenance/raw_db/r1–r5 预注册与脚本/三份审计文档 Untracked——**归属与提交时机待用户拍板**（PM 红线：不擅 commit 生产/研究改动）。
   2. **DJ 双头编号已归口**（PM 建议 Option B：DJ(1951) 保留为权威条目、DJ(1970)→DM 作 O4② 澄清），编号唯一已修复，从悬置项移除。
 - **状态**：**R3/R5 判据冻结（DR）；②可开跑 6 族隔离评估（R3）+ v0 情绪评估（R5）；Wave1/Wave2/Wave6 闭环已据决策日志对齐；悬置两项待用户决策。**
+
+
+## DS. Wave3 模拟盘 S1–S3 研发落地（2026-08-27，研发执行，roadmap v82 卡）
+
+- **立项依据**：roadmap v82 Wave3 S1–S3（架构 §4.2 意向单闭环 / §4.3 模拟成交规则 / §4.4 悠悠补充数据 / §4.5 交易域台账）+ decision-log DC 流程纪律。
+- **落地内容（按卡内预注册判据逐项）**：
+  - **S1 悠悠有品采集可行性预研**：Playwright headless 4 轮探针（references/yyyp_probe_*.py）→ 报告 `references/yyyp-feasibility-2026-08-27.md`。结论：**在售列表可采**（`pc-api.youpin898.com/api/homepage/pc/commodity/page`，无需登录，分页 totalElements≈11354，字段 id/commodityName/commodityHashName/iconUrl…）；**求购/成交未实证**（用户级 API 全返 84101 登录墙 + 详情路由 `/goods/{id}` 404）；反爬信号 `deviceW2` 设备指纹。仅预研不落库、不动生产。
+  - **S2 模拟盘台账 + 交易域表**：新增 `paper_orders` / `paper_fills` 表（orders/fills/positions/cash 四域齐）；模拟成交规则 §4.3（买=底价在售 0 费 / 卖=必须有货 1% 费 / 多数量按底价=信号价口径）；费率 config.PAPER_FEES 买0/卖1 与 E2 对齐；不自动下单；与真实库存可选同步（PAPER_SYNC_REAL_INVENTORY 默认关）。**顺带修复既有 bug**：`settle_exits` 现金回补公式 `qty×(px/entry)×(1−费)` 多除一个 entry（少回补），改为 `qty×px×(1−费)`——S2 新用例暴露（旧用例只断言数量未断言现金而漏网）。
+  - **S3 钉钉通知闭环**：`create_intention`（意向单 status='intention'）+ `intention_card`（品/方向/数量/参考价/理由/期望/风控标签 7 字段）+ `push_intention`（复用 `notify_alert.route_alert` level=trade，kill switch notify 自动拦截）+ `report_fill` 回报入口（buy 建仓 / sell 平仓减仓，费率买0/卖1，重复回报拒、卖出无货拒单）+ `unreported_orders` 未回报超时（接线 O1：ops.py ⑥「S3 回报超时」检查，paper_orders 未回报 >24h → WARN）。
+- **验证**：`tests/test_smoke.py` **144 passed / 0 failed / 0 skipped**（新增 S2 交易域用例 + S3 闭环用例）。S1 探针只读不落库。**不 bump ENGINE_VERSION**。
+- **交接（③审计复核点）**：①S1 求购/成交需「悠悠有品登录账号」方可继续验证（挂账，等用户拍板）；②S2 现金 bug 修复改变未来平仓现金回补（历史 paper_trades 记录不变，前向生效）；③S3 钉钉 dry_run 已验证卡片格式与路由，真实送达需生产 webhook 环境验证；④O1「S3 回报超时」在自动镜像模式恒 PASS（意向单即时 filled），手动回报模式生效。
+- **状态**：**Wave3 S1–S3 已执行，冒烟 144/0/0，移交③审计；roadmap v82 卡状态行已同步（待③审计）。**

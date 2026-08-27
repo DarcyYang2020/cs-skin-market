@@ -1265,6 +1265,93 @@ def t_paper_trading():
     m.close()
 check('模拟盘 v2: schema+建仓+供给扩张全止损闭环', t_paper_trading)
 
+def t_paper_s2():
+    """S2（2026-08-27）：交易域 orders/fills 落库 + 费率买0/卖1（§4.3/E2）+ 卖出无货拒单。"""
+    import sqlite3 as _sq
+    from pipeline import paper_trading as _pt
+    from pipeline import config as _cfg
+    m = _sq.connect(":memory:")
+    m.row_factory = _sq.Row
+    _pt.ensure_schema(m)
+    tables = [r[0] for r in m.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()]
+    for t in ("paper_orders", "paper_fills", "paper_positions", "paper_account"):
+        assert t in tables, f'缺交易域表 {t}'
+    assert _cfg.PAPER_FEES["buy_pct"] == 0.0 and _cfg.PAPER_FEES["sell_pct"] == 1.0, _cfg.PAPER_FEES
+    # 建仓：buy 成交 0 费
+    pid = _pt.open_position(m, item_id=1, item_name="AK", family="rise_accum",
+                            action_label="🟢 吸筹型上涨", signal_date="2026-08-01",
+                            entry_price=100.0, limit_pct=0.05, sentiment_score=50)
+    assert pid is not None
+    fills = m.execute("SELECT * FROM paper_fills WHERE direction='buy'").fetchall()
+    assert len(fills) == 1 and fills[0]["fee"] == 0.0, fills
+    orders = m.execute("SELECT * FROM paper_orders WHERE direction='buy'").fetchall()
+    assert len(orders) == 1 and orders[0]["status"] == "filled", orders
+    cash = m.execute("SELECT cash FROM paper_account WHERE id=1").fetchone()["cash"]
+    assert abs(cash - 950000.0) < 0.01, cash  # 1000000 - 50000（买 0 费）
+    # 卖出：止盈出场（neutral take=15%，需 +20% 触发）→ sell fill 1% 费
+    closed = _pt.settle_exits(m, {1: 120.0}, {1: 2.0})
+    assert len(closed) == 1 and closed[0]["reason"] == "止盈", closed
+    sf = m.execute("SELECT * FROM paper_fills WHERE direction='sell'").fetchall()
+    assert len(sf) == 1 and sf[0]["price"] == 120.0 and abs(sf[0]["fee"] - 600.0) < 0.01, sf
+    cash2 = m.execute("SELECT cash FROM paper_account WHERE id=1").fetchone()["cash"]
+    assert abs(cash2 - 1009400.0) < 0.01, cash2  # 950000 + 500×120×0.99
+    # 卖出无货拒单
+    rj = _pt.sell_guard(m, 999, 1)
+    assert rj["status"] == "rejected", rj
+    rj_orders = m.execute("SELECT * FROM paper_orders WHERE status='rejected'").fetchall()
+    assert len(rj_orders) == 1 and rj_orders[0]["reason"] == "卖出无货拒单", rj_orders
+    m.close()
+check('S2 交易域: orders/fills + 费率买0卖1 + 无货拒单', t_paper_s2)
+
+def t_paper_s3():
+    """S3（2026-08-27）：意向单结构 + 钉钉卡片 + 回报入口（buy 建仓/重复回报拒/卖出无货拒单）+ 未回报超时。"""
+    import sqlite3 as _sq
+    import datetime as _dt
+    from pipeline import paper_trading as _pt
+    m = _sq.connect(":memory:")
+    m.row_factory = _sq.Row
+    _pt.ensure_schema(m)
+    cols = [r[1] for r in m.execute("PRAGMA table_info(paper_orders)").fetchall()]
+    assert "expectancy" in cols and "risk_tag" in cols, cols
+    # 意向单（buy）
+    oid = _pt.create_intention(m, item_id=1, item_name="AK", family="rise_accum", direction="buy",
+                               qty=50, ref_price=100.0, reason="测试意向",
+                               expectancy="avg14=+5%", risk_tag="limit=0.05")
+    o = m.execute("SELECT * FROM paper_orders WHERE id=?", (oid,)).fetchone()
+    assert o is not None and o["status"] == "intention"
+    # 钉钉卡片（dry_run 不 HTTP）
+    r = _pt.push_intention(m, oid, dry_run=True)
+    assert r.get("pushed") is True and r.get("dry_run") is True, r
+    card = _pt.intention_card(o)
+    for k in ("品：AK", "方向：买入", "参考价", "期望：avg14", "风控标签"):
+        assert k in card, card
+    # 回报：buy 成交 → 持仓 + fill + 现金扣减（买 0 费）
+    rr = _pt.report_fill(m, oid, 102.0)
+    assert rr["status"] == "ok" and rr["direction"] == "buy", rr
+    pos = m.execute("SELECT * FROM paper_positions WHERE item_id=1 AND closed=0").fetchone()
+    assert pos is not None and pos["qty"] == 50 and pos["entry_price"] == 102.0, pos
+    fills = m.execute("SELECT * FROM paper_fills WHERE direction='buy'").fetchall()
+    assert len(fills) == 1 and fills[0]["price"] == 102.0 and fills[0]["fee"] == 0.0, fills
+    cash = m.execute("SELECT cash FROM paper_account WHERE id=1").fetchone()["cash"]
+    assert abs(cash - (1000000 - 50 * 102.0)) < 0.01, cash
+    # 重复回报被拒（单已 filled）
+    rr2 = _pt.report_fill(m, oid, 103.0)
+    assert rr2["status"] == "rejected", rr2
+    # 卖出意向单 → 无货拒单（item 999 无持仓）
+    oid2 = _pt.create_intention(m, item_id=999, item_name="XX", family="base", direction="sell",
+                                qty=1, ref_price=50.0, reason="测试卖出")
+    rr3 = _pt.report_fill(m, oid2, 50.0)
+    assert rr3["status"] == "rejected" and rr3["reason"] == "卖出无货/持仓不足", rr3
+    # 未回报超时：手工插入超时 intention → unreported_orders 检出
+    m.execute("INSERT INTO paper_orders (order_date, item_id, item_name, family, direction, qty, ref_price, reason, status, created_at) "
+              "VALUES ('2026-08-20', 2, 'STALE', 'base', 'buy', 1, 10.0, 'stale', 'intention', ?)",
+              ((_dt.datetime.now() - _dt.timedelta(hours=48)).strftime("%Y-%m-%d %H:%M:%S"),))
+    m.commit()
+    stale = _pt.unreported_orders(m, timeout_hours=24)
+    assert len(stale) == 1 and stale[0]["item_name"] == "STALE", stale
+    m.close()
+check('S3 闭环: 意向单+钉钉卡片+回报+无货拒单+超时提示', t_paper_s3)
+
 def t_a2_emission():
     """A2 第五件套（2026-08-16）发射分布复算契约：
     xishou_mid（200 信号产物）与 rise_accum（202 信号产物）发射侧均须 FAILED——复现引擎级拒绝，

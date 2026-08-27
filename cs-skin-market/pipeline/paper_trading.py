@@ -16,10 +16,12 @@ import os
 from datetime import datetime
 
 from . import db
+from .config import PAPER_FEES
 
 _LOG = logging.getLogger(__name__)
 
-COST_PCT = 2.0
+# S2（2026-08-27）§4.3/E2 费率对齐：买 0 费 / 卖 1%（原 COST_PCT=2.0 单边口径废止；实际费率以 config.PAPER_FEES 为准）
+COST_PCT = PAPER_FEES["sell_pct"]  # 兼容别名：卖出费率 %
 DEFAULT_HOLD = 21
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 STATUS_PATH = os.path.join(_ROOT, "data", "paper_trading_status.json")
@@ -48,6 +50,27 @@ def ensure_schema(conn):
         position_id INTEGER, item_name TEXT, family TEXT,
         entry_price REAL, exit_price REAL, net_pct REAL, hold_days INTEGER,
         exit_reason TEXT, closed_at TEXT DEFAULT (datetime('now','localtime')))""")
+    # S2（2026-08-27）交易域：意向单 + 成交（orders/fills）
+    conn.execute("""CREATE TABLE IF NOT EXISTS paper_orders (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        order_date TEXT NOT NULL, item_id INTEGER, item_name TEXT, family TEXT,
+        direction TEXT NOT NULL, qty REAL, ref_price REAL, reason TEXT,
+        expectancy TEXT, risk_tag TEXT,
+        status TEXT DEFAULT 'filled', created_at TEXT DEFAULT (datetime('now','localtime')))""")
+    try:
+        _pcols = [r[1] for r in conn.execute("PRAGMA table_info(paper_orders)").fetchall()]
+        if "expectancy" not in _pcols:
+            conn.execute("ALTER TABLE paper_orders ADD COLUMN expectancy TEXT")
+        if "risk_tag" not in _pcols:
+            conn.execute("ALTER TABLE paper_orders ADD COLUMN risk_tag TEXT")
+    except Exception:
+        pass  # 列已存在/锁定冲突时跳过
+    conn.execute("""CREATE TABLE IF NOT EXISTS paper_fills (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        fill_date TEXT NOT NULL, order_id INTEGER, position_id INTEGER,
+        item_id INTEGER, item_name TEXT, direction TEXT NOT NULL,
+        price REAL, qty REAL, fee REAL DEFAULT 0, gross REAL, net REAL,
+        created_at TEXT DEFAULT (datetime('now','localtime')))""")
     conn.execute("""CREATE TABLE IF NOT EXISTS paper_baseline (
         date TEXT PRIMARY KEY, equity REAL)""")
     try:
@@ -64,6 +87,45 @@ def _account(conn):
     conn.execute("INSERT INTO paper_account (id, cash, initial) VALUES (1, 1000000, 1000000)")
     conn.commit()
     return 1000000.0, 1000000.0
+
+
+def _record_order(conn, *, order_date, item_id, item_name, family, direction, qty,
+                  ref_price, reason, status="filled", expectancy=None, risk_tag=None):
+    """S2/S3 交易域：落一条意向单（paper_orders，含期望/风控标签）。返回 order id。"""
+    cur = conn.execute(
+        "INSERT INTO paper_orders (order_date, item_id, item_name, family, direction, qty, ref_price, reason, expectancy, risk_tag, status) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+        (order_date, item_id, item_name, family, direction, qty, ref_price, reason,
+         expectancy, risk_tag, status))
+    return cur.lastrowid
+
+
+def _record_fill(conn, *, fill_date, order_id, position_id, item_id, item_name, direction,
+                 qty, price, fee_pct, reason):
+    """S2 交易域：落一条成交（paper_fills），fee = gross × fee_pct%。返回 fill id。"""
+    gross = round(qty * price, 2)
+    fee = round(gross * fee_pct / 100, 2)
+    net = round(gross - fee, 2)
+    cur = conn.execute(
+        "INSERT INTO paper_fills (fill_date, order_id, position_id, item_id, item_name, direction, price, qty, fee, gross, net) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+        (fill_date, order_id, position_id, item_id, item_name, direction, price, qty, fee, gross, net))
+    return cur.lastrowid
+
+
+def sell_guard(conn, item_id, qty):
+    """S2 卖出无货拒单（§4.3）：无持仓或持仓不足 → 拒单并落 rejected order。返回 dict。"""
+    p = conn.execute("SELECT * FROM paper_positions WHERE item_id=? AND closed=0",
+                     (item_id,)).fetchone()
+    if not p or (p["qty"] or 0) < qty:
+        _record_order(conn, order_date=datetime.now().strftime("%Y-%m-%d"), item_id=item_id,
+                      item_name=p["item_name"] if p else str(item_id),
+                      family=p["family"] if p else "",
+                      direction="sell", qty=qty, ref_price=0.0,
+                      reason="卖出无货拒单", status="rejected")
+        conn.commit()
+        return {"status": "rejected", "reason": "无货/持仓不足"}
+    return {"status": "ok", "position_id": p["id"]}
 
 
 def _atr_pct(conn, item_id, days=14):
@@ -99,15 +161,28 @@ def open_position(conn, *, item_id, item_name, family, action_label, signal_date
     if cash < cost or entry_price <= 0:
         return None
     stop_pct, take_pct = _bands_for(sentiment_score, conn, item_id)
+    qty = cost / entry_price
     cur = conn.execute(
         "INSERT INTO paper_positions (item_id, item_name, family, action_label, signal_date, "
         "entry_price, limit_pct, qty, stop_pct, take_pct, hold_days, sc30_open) "
         "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
         (item_id, item_name, family, action_label, signal_date, entry_price,
-         limit_pct, cost / entry_price, stop_pct, take_pct, hold_days or DEFAULT_HOLD, sc30))
+         limit_pct, qty, stop_pct, take_pct, hold_days or DEFAULT_HOLD, sc30))
+    pid = cur.lastrowid
+    # S2/S3（2026-08-27）：交易域落单 + 成交（买 0 费，§4.3/E2 对齐；多数量按底价=信号价口径）
+    from .config import ITEM_EXPECTANCY_STATS, display_key_for_label as _dk
+    _exp = ITEM_EXPECTANCY_STATS.get(_dk(action_label), {}).get("avg14")
+    _oid = _record_order(conn, order_date=signal_date, item_id=item_id, item_name=item_name,
+                         family=family, direction="buy", qty=qty, ref_price=entry_price,
+                         reason=action_label, status="filled",
+                         expectancy=(f"avg14={_exp}%" if _exp is not None else None),
+                         risk_tag=f"limit={limit_pct}")
+    _record_fill(conn, fill_date=signal_date, order_id=_oid, position_id=pid, item_id=item_id,
+                 item_name=item_name, direction="buy", qty=qty, price=entry_price,
+                 fee_pct=PAPER_FEES["buy_pct"], reason=action_label)
     conn.execute("UPDATE paper_account SET cash=cash-? WHERE id=1", (cost,))
     conn.commit()
-    return cur.lastrowid
+    return pid
 
 
 def settle_exits(conn, prices_now, sc30_now):
@@ -134,14 +209,28 @@ def settle_exits(conn, prices_now, sc30_now):
             reason = "到期"
         if not reason:
             continue
-        net = (ret - COST_PCT / 100) * 100
+        # S2（2026-08-27）：卖出必须有货（无货/数量不足 → 拒单落账）
+        if not p["qty"] or p["qty"] <= 0:
+            _record_order(conn, order_date=today, item_id=p["item_id"], item_name=p["item_name"],
+                          family=p["family"], direction="sell", qty=p["qty"] or 0,
+                          ref_price=px, reason="卖出无货拒单", status="rejected")
+            continue
+        _sell_fee = PAPER_FEES["sell_pct"]
+        _oid = _record_order(conn, order_date=today, item_id=p["item_id"], item_name=p["item_name"],
+                             family=p["family"], direction="sell", qty=p["qty"], ref_price=px,
+                             reason=reason, status="filled")
+        _record_fill(conn, fill_date=today, order_id=_oid, position_id=p["id"],
+                     item_id=p["item_id"], item_name=p["item_name"], direction="sell",
+                     qty=p["qty"], price=px, fee_pct=_sell_fee, reason=reason)
+        net = (ret - _sell_fee / 100) * 100
         conn.execute("INSERT INTO paper_trades (position_id, item_name, family, entry_price, "
                      "exit_price, net_pct, hold_days, exit_reason) VALUES (?,?,?,?,?,?,?,?)",
                      (p["id"], p["item_name"], p["family"], p["entry_price"], px,
                       round(net, 2), held, reason))
         conn.execute("UPDATE paper_positions SET closed=1 WHERE id=?", (p["id"],))
+        # 修复既有 bug（2026-08-27 S2 暴露）：现金回补应为 qty×px×(1-费)，原式 qty×(px/entry)×(1-费) 多除 entry 导致少回补
         conn.execute("UPDATE paper_account SET cash=cash+? WHERE id=1",
-                     (p["qty"] * (px / p["entry_price"]) * (1 - COST_PCT / 100),))
+                     (p["qty"] * px * (1 - _sell_fee / 100),))
         out.append({"item": p["item_name"], "family": p["family"], "reason": reason,
                     "net_pct": round(net, 2), "held": held})
     conn.commit()
@@ -311,3 +400,116 @@ def daily_run():
         return {"opened": opened, "closed": closed, "status": st}
     finally:
         conn.close()
+
+
+# ================= S3 · 意向单 → 钉钉 → 回报闭环（roadmap v82 Wave3 S3，2026-08-27）=================
+# 设计：意向单（status='intention'）生成后推钉钉；用户人工执行/回报 → report_fill 落 S2 台账。
+# 与自动镜像（open_position 即时 filled）并存；kill switch(notify) 拦截由 notify_alert.route_alert 处理（O2）。
+
+
+def create_intention(conn, *, item_id, item_name, family, direction, qty, ref_price,
+                     reason, expectancy=None, risk_tag=None):
+    """S3 意向单（§4.2）：生成未成交意向单（status='intention'），供钉钉推送 + 用户回报。返回 order id。"""
+    cur = _record_order(conn, order_date=datetime.now().strftime("%Y-%m-%d"),
+                        item_id=item_id, item_name=item_name, family=family,
+                        direction=direction, qty=qty, ref_price=ref_price, reason=reason,
+                        status="intention", expectancy=expectancy, risk_tag=risk_tag)
+    conn.commit()
+    return cur
+
+
+def intention_card(o):
+    """S3 钉钉卡片文本（§4.2 意向单结构：品/方向/数量/参考价/理由/期望/风控标签）。"""
+    d = "买入" if o["direction"] == "buy" else "卖出"
+    return ("【模拟盘意向单】\n"
+            f"品：{o['item_name']}\n"
+            f"方向：{d} ｜ 数量：{float(o['qty'] or 0):.2f}\n"
+            f"参考价：¥{float(o['ref_price'] or 0):.2f}\n"
+            f"理由：{o['reason'] or '—'}\n"
+            f"期望：{o['expectancy'] or '—'}\n"
+            f"风控标签：{o['risk_tag'] or '—'}")
+
+
+def push_intention(conn, order_id, dry_run=False):
+    """S3 意向单推钉钉（复用 notify_alert.route_alert，level=trade；kill switch(notify) 拦截自动处理）。"""
+    from notify_alert import route_alert
+    o = conn.execute("SELECT * FROM paper_orders WHERE id=?", (order_id,)).fetchone()
+    if not o:
+        return {"pushed": False, "reason": "no_order"}
+    res = route_alert("trade", f"模拟盘意向单 #{o['id']}", intention_card(o), dry_run=dry_run)
+    res["order_id"] = o["id"]
+    return res
+
+
+def report_fill(conn, order_id, actual_price, actual_qty=None):
+    """S3 回报入口（§4.2）：用户回填实际成交 → 落 fill + 更新持仓/现金（费率 买0/卖1）。
+
+    仅对 status='intention' 单生效；buy → 新建持仓（现金扣减 qty×价）；sell → 平仓/减仓（现金回补 qty×价×(1−卖费)，无货拒单）。
+    返回 {status, order_id, direction, price, qty} 或 {status:'rejected', reason}。
+    """
+    o = conn.execute("SELECT * FROM paper_orders WHERE id=?", (order_id,)).fetchone()
+    if not o or o["status"] != "intention" or not actual_price or actual_price <= 0:
+        return {"status": "rejected", "reason": "非意向单或价格非法"}
+    _account(conn)  # 确保账户行存在（意向单路径不自动建账户）
+    qty = float(actual_qty if actual_qty else (o["qty"] or 0))
+    if qty <= 0:
+        return {"status": "rejected", "reason": "qty<=0"}
+    today = datetime.now().strftime("%Y-%m-%d")
+    if o["direction"] == "buy":
+        cur = conn.execute(
+            "INSERT INTO paper_positions (item_id, item_name, family, action_label, signal_date, "
+            "entry_price, limit_pct, qty, hold_days, sc30_open) VALUES (?,?,?,?,?,?,0,?,21,NULL)",
+            (o["item_id"], o["item_name"], o["family"], o["reason"], today, actual_price, qty))
+        pid = cur.lastrowid
+        conn.execute("UPDATE paper_account SET cash=cash-? WHERE id=1", (round(qty * actual_price, 2),))
+        _record_fill(conn, fill_date=today, order_id=o["id"], position_id=pid, item_id=o["item_id"],
+                     item_name=o["item_name"], direction="buy", qty=qty, price=actual_price,
+                     fee_pct=PAPER_FEES["buy_pct"], reason=o["reason"])
+    else:
+        p = conn.execute("SELECT * FROM paper_positions WHERE item_id=? AND closed=0",
+                         (o["item_id"],)).fetchone()
+        if not p or (p["qty"] or 0) < qty:
+            _record_order(conn, order_date=today, item_id=o["item_id"], item_name=o["item_name"],
+                          family=o["family"], direction="sell", qty=qty, ref_price=actual_price,
+                          reason="卖出无货拒单", status="rejected")
+            conn.commit()
+            return {"status": "rejected", "reason": "卖出无货/持仓不足"}
+        pid = p["id"]
+        gross = round(qty * actual_price, 2)
+        fee = round(gross * PAPER_FEES["sell_pct"] / 100, 2)
+        _record_fill(conn, fill_date=today, order_id=o["id"], position_id=pid, item_id=o["item_id"],
+                     item_name=o["item_name"], direction="sell", qty=qty, price=actual_price,
+                     fee_pct=PAPER_FEES["sell_pct"], reason=o["reason"])
+        conn.execute("UPDATE paper_account SET cash=cash+? WHERE id=1", (gross - fee,))
+        remain = (p["qty"] or 0) - qty
+        if remain <= 0.0001:
+            conn.execute("UPDATE paper_positions SET closed=1 WHERE id=?", (pid,))
+            ret = actual_price / p["entry_price"] - 1 if p["entry_price"] else 0.0
+            net = (ret - PAPER_FEES["sell_pct"] / 100) * 100
+            conn.execute("INSERT INTO paper_trades (position_id, item_name, family, entry_price, "
+                         "exit_price, net_pct, hold_days, exit_reason) VALUES (?,?,?,?,?,?,?,?)",
+                         (pid, p["item_name"], p["family"], p["entry_price"], actual_price,
+                          round(net, 2), 0, "用户回报卖出"))
+        else:
+            conn.execute("UPDATE paper_positions SET qty=? WHERE id=?", (remain, pid))
+    conn.execute("UPDATE paper_orders SET status='filled' WHERE id=?", (o["id"],))
+    conn.commit()
+    return {"status": "ok", "order_id": o["id"], "direction": o["direction"],
+            "price": actual_price, "qty": qty}
+
+
+def unreported_orders(conn, timeout_hours=None):
+    """S3 未回报超时提示（衔接 O1）：status='intention' 且距今超阈值 的意向单列表。"""
+    from datetime import timedelta
+    thr = timeout_hours if timeout_hours is not None else 24
+    rows = conn.execute("SELECT * FROM paper_orders WHERE status='intention'").fetchall()
+    out = []
+    now = datetime.now()
+    for o in rows:
+        try:
+            created = datetime.strptime((o["created_at"] or "")[:19], "%Y-%m-%d %H:%M:%S")
+        except Exception:
+            continue
+        if (now - created) > timedelta(hours=thr):
+            out.append(o)
+    return out
