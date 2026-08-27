@@ -363,6 +363,24 @@ def _run_steamdt_reserve():
         log(f"W7-2 steamdt 储备异常（不中断采集）: {type(e).__name__}: {str(e)[:100]}")
 
 
+def _run_exec2_watch():
+    """EXEC-2 自动盯盘 · 方案 A（2026-08-27，decision-log HC，PM 立项）：18:00 采集收尾后活跃池重算。
+
+    新 buy 走 S3 意向单钉钉推送（复用 exec2_auto_watch.py --scope active）；
+    幂等（同品同日不重复推，对齐 M2）；失败仅 log 不中断主采集。
+    """
+    import subprocess
+    root = os.path.dirname(os.path.abspath(__file__))
+    py = sys.executable
+    try:
+        r = subprocess.run([py, os.path.join(root, "exec2_auto_watch.py"), "--scope", "active"],
+                           capture_output=True, text=True, timeout=2400, cwd=root)
+        _tail = ((r.stdout or "").strip().splitlines() or [""])[-1]
+        log(f"EXEC-2 自动盯盘(A) {r.returncode} | {_tail}")
+    except Exception as e:
+        log(f"EXEC-2 自动盯盘异常（不中断采集）: {type(e).__name__}: {str(e)[:100]}")
+
+
 def main():
     import argparse
     ap = argparse.ArgumentParser(description="每日自动采集")
@@ -430,6 +448,12 @@ def main():
         _run_steamdt_reserve()
     except Exception as e:
         log(f"W7-2 steamdt 储备任务异常（不中断采集）: {e}")
+    # ---- EXEC-2 自动盯盘 · 方案 A（2026-08-27，decision-log HC，PM 立项）----
+    # 18:00 采集收尾后活跃池融合决策重算，新 buy 走 S3 意向单钉钉推送（幂等）；失败仅记录不中断。
+    try:
+        _run_exec2_watch()
+    except Exception as e:
+        log(f"EXEC-2 自动盯盘任务异常（不中断采集）: {e}")
     # ---- 数据源健康监控 (A1, 2026-08-05) ----
     # 采集收尾自动体检：复用 run_health_monitor（写 health_checks 表，退出码 0/2）。
     # 失败仅记录，不中断采集主流程。

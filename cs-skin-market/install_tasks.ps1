@@ -16,3 +16,7 @@ $collectCmd = '"' + $python + '" "' + $base + '\run_daily_collect.py"'
 $nightCmd   = '"' + $python + '" "' + $base + '\run_night_push.py"'
 schtasks /Create /TN "CS_Skin_DailyCollect" /TR $collectCmd /SC DAILY /ST 18:00 /F
 schtasks /Create /TN "CS_Skin_NightPush" /TR $nightCmd /SC DAILY /ST 21:30 /F
+# 2026-08-27 EXEC-2 自动盯盘 · 方案 B（decision-log HC）：每 2h 自选+持仓增量刷新+重算+推送（新 buy S3 钉钉）
+$exec2Cmd = '"' + $python + '" "' + $base + '\exec2_auto_watch.py" --scope watchlist'
+schtasks /Create /TN "CS_Skin_Exec2Watch" /TR $exec2Cmd /SC HOURLY /MO 2 /F
+Write-Host "Tasks installed: CS_Skin_Exec2Watch (每2小时, EXEC-2 自动盯盘 watchlist)"

@@ -4594,6 +4594,53 @@ def t_evaluate_route():
     assert len((d.get('fee_calibration') or {}).get('table') or []) == 4
 check('E3/E4 /evaluate 页 + 三层数据 + 质量标签 + 净值曲线', t_evaluate_route)
 
+print('[EXEC-2 自动盯盘链]')
+def t_exec2_scope_idempotent():
+    """EXEC-2（decision-log HC）：①范围 SQL 仅自选+持仓+活跃池 ②幂等 key 对齐 M2 ③buy→意图单→推送链路（mock）。"""
+    import io as _io
+    import json as _json
+    from unittest import mock
+    import sqlite3 as _sq
+    import exec2_auto_watch as _e2
+    from pipeline import db as _db
+
+    # ① 范围（真实 DB）：watchlist 仅自选+持仓；active 含活跃池
+    w = _e2.scope_rows("watchlist")
+    a = _e2.scope_rows("active")
+    assert all(r["in_watchlist"] == 1 or r["holding"] == 1 for r in w), "watchlist 范围超出自选+持仓"
+    assert len(w) > 0 and len(a) >= len(w), (len(w), len(a))
+
+    # ② 幂等 key（对齐 M2）：mark 后 already_pushed=True；不同日不同品不受影响
+    d = "2099-01-01"
+    _e2.mark_pushed(424242, d, {"ts": "t", "order_id": 1})
+    assert _e2.already_pushed(424242, d) is True
+    assert _e2.already_pushed(424242, "2099-01-02") is False
+    assert _e2.already_pushed(424243, d) is False
+    conn = _db.get_conn()
+    try:
+        conn.execute("DELETE FROM settings WHERE key=?", ("exec2_push_%s_424242" % d,))
+        conn.commit()
+    finally:
+        conn.close()
+
+    # ③ buy → create_intention → push_intention（mock route_alert，链路完整；conn 注入临时库不污染生产）
+    m = _sq.connect(":memory:")
+    m.row_factory = _sq.Row
+    from pipeline import paper_trading as _pt
+    _pt.ensure_schema(m)
+    res = {"id": 777, "name": "EXEC2-冒烟品", "price_rmb": 50.0, "position_limit": 0.10,
+           "fusion_decision": {"action": "buy", "action_label": "🟢 深值·大盘企稳·分批建仓", "position_limit": 0.10}}
+    with mock.patch("notify_alert.route_alert",
+                    return_value={"pushed": True, "dry_run": True, "title": "CS【交易】模拟盘意向单 #1"}):
+        with mock.patch.object(_e2, "already_pushed", return_value=False):
+            r = _e2.push_buy_signal(res, "2099-01-01", dry_run=True, conn=m)
+    assert r and r.get("pushed"), r
+    # 意图单已落库（S3 台账）
+    n = m.execute("SELECT COUNT(*) FROM paper_orders WHERE item_name='EXEC2-冒烟品'").fetchone()[0]
+    assert n == 1, f'意图单应 1 条，实际 {n}'
+    m.close()
+check('EXEC-2 范围/幂等/推送链路', t_exec2_scope_idempotent)
+
 print(f'=== Results: {passed} passed, {failed} failed, {skipped} skipped ===')
 if failures:
     print()

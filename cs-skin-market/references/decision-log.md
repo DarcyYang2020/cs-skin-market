@@ -3084,3 +3084,33 @@
 - **④研发落地**（新脚本 + 挂接 run_daily_collect 18:00 链 + 独立 2h 定时任务）→ 冒烟 → ③审计复核 → 观察。
 
 - **状态**：**PM 立项（HC）**，交④研发执行；验收标准冻结；带话就绪。
+
+## HD. EXEC-2 自动盯盘链落地（2026-08-27，④研发执行，PM 立项 HC，待③审计复核）
+
+> 依据：decision-log HC（PM 立项，验收 4 条冻结）。链路缺口：18:00 采集后→21:30（及日间）无自动信号重算 → 新 buy 无法及时推送。本条目 = 方案 A + 方案 B 双轨落地。
+
+### 交付物
+
+1. **`exec2_auto_watch.py`**（根目录，独立 CLI）：`--scope active|watchlist` + `--dry-run`；复用 `scan_tasks._scan_item`（增量，KLINE_FRESH_BATCH 复用窗口，force_refresh=False）重算融合决策 → 新 buy 走 `create_intention`+`push_intention`（S3 闭环：CS 前缀+加签）；stdout 末行 RESULT；退出码 0/非0。
+2. **方案 A 挂接**（run_daily_collect.py）：`_run_exec2_watch()` 挂 `_run_steamdt_reserve()` 之后（18:00 采集收尾、健康检查前）——活跃池全量重算（`--scope active`），失败仅 log 不中断。
+3. **方案 B 定时**（install_tasks.ps1）：新增 `CS_Skin_Exec2Watch` 计划任务——每 2 小时 `--scope watchlist`（自选+持仓增量刷新）。
+4. **幂等（验收②，对齐 M2）**：settings key `exec2_push_{date}_{item_id}` 存 JSON——同品同日不重复推；mark 在推送成功后。
+
+### 验收核验（HC 四条）
+
+1. **时效 ≤2h**：方案 A=18:00 收尾即推（采集后立即）；方案 B=每 2h 定时——最坏空窗 ≤2h ✅
+2. **去重幂等**：settings key（M2 同款），实测 mark 后 already_pushed=True、异日异品不受影响 ✅
+3. **范围**：watchlist=自选+持仓（in_watchlist=1 OR holding=1）；active=活跃池口径（notes 无剔除标记）；不扩全池 ✅
+4. **冒烟**：新增 `t_exec2_scope_idempotent`（范围/幂等/推送链路 mock 全过），**完整冒烟 152 passed / 0 failed / 0 skipped** ✅
+
+### 实测
+
+- dry-run watchlist（117 品）：66s 跑完，errors=0（当前弱市无新 buy，链路正常）；RESULT 末行格式正确。
+- buy→意图单→推送链路（mock route_alert）：意图单落库 + `CS【交易】` 标题 ✅（真实扫描无 buy 时不触发推送）。
+- 红线：不碰引擎参数、不 bump ENGINE_VERSION、复用现有引擎 ✅。
+
+### 移交
+
+- ④运维：install_tasks.ps1 重装后 2h 任务生效；18:00 链下次采集自动跑方案 A。
+- ③审计复核：验收 4 条 + 幂等 key/范围 SQL/推送链路。
+- 观察：推送消息进模拟盘台账（paper_orders status=intention），用户回报走 S3 闭环。
