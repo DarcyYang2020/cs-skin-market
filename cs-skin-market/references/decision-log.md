@@ -9,8 +9,8 @@
 **背景**：2026-08-27 并发多窗口写档，已发生 4 次编号撞车（EB→EE、EZ 双号、FA 撞号、FH 双号），③/④均建议 PM 归口编号治理。
 
 **占号簿（追加新条目前必查）**：
-- 已用编号至 **GY**（2026-08-27 22:51）：`FA FB FC FD FE FF FG FH FI GI GJ GK GL GM GN GO GP GQ GR GS GT GU GV GW GX GY`
-- 当前指针：**GZ**（下一个新条目用 GZ，随后 HA/HB...）
+- 已用编号至 **GZ**（2026-08-27 22:54）：`FA FB FC FD FE FF FG FH FI GI GJ GK GL GM GN GO GP GQ GR GS GT GU GV GW GX GY GZ`
+- 当前指针：**HA**（下一个新条目用 HA，随后 HB/HC...）
 
 **规则**：
 1. 落条目前先查本段占号簿确认下一个可用编号；占号 = 在本段「当前指针」先行更新后再写正文（并发窗口同理，先占号者得）；
@@ -2176,6 +2176,11 @@
 - **② S3 钉钉真实送达 —— 挂账待生产 webhook 环境验证**：dry_run 已验证卡片格式/路由（③确认），真实送达需生产 webhook 凭证到位后④运维实跑一次确认；验证后③复核闭环（不阻塞 S3 通过）。
 - **③ O1 回报超时两模式 —— 挂账待实际运行确认**：自动镜像模式恒 PASS（即时 filled）、手动回报模式已接线 ops.py⑥（24h WARN）——③确认代码层生效，待模拟盘实际运行（出单→用户回报/超时）观察日志确认阈值触发无误报；观察期随每日运行自然闭环。
 - **roadmap v82 Wave3 卡状态行已翻「③审计通过（DT）」**；S1 账号拍板、S3 webhook、O1 运行确认三项登记挂账（非缺口），不阻塞 Wave3 整体通过。
+
+> ⚠️ **2026-08-27 GM/GY 更正注记（历史正文保留原样）**：
+> 1. **steamdt ≠ 悠悠有品**：EY 实测数据源为独立第三方站 **steamdt.com**（youpin898.com/steamdt=404），与 S1 账号**无关**（GM 红线：steamdt 与 CSQAQ 大盘严格隔离）；本段「走 W7-2 steamdt/求购成交」的 S1 关联表述为 08-27 早期口径，已作废。
+> 2. **S1 已登录**：用户 08-26 登录并勾选 10 天免登（~09-05 到期），D2 盘口采集已激活（raw.db 订单簿/成交首写 503 行），非「默认不开」；续登提醒自动化已建。
+> 3. S3（②）已由 GX 全链闭环（errcode=0）；O1（③）观察期随模拟盘出单自然打开。
 - **状态**：**Wave3 S1–S3 ③审计通过（DT）闭环；3 项环境验证登记挂账（DU），待条件触发后各自闭环。**
 
 ---
@@ -2993,3 +2998,20 @@
 **挂账（正常，无需动作）**：O1 回报超时观察（paper_orders/fills=0）/ 联网冒烟限流复跑 / R5 文案 cosmetic / v1b+v1c 数据门控 / W7-2 单品二期（FD）/ X1 低优先 / W7-4 挂钟 ~2027-04-25 / S1 续登自动化（~09-05 已建）。
 
 - **状态**：S3 全链闭环 ✅；P0 安全已处置 ✅；4 项待办登记（归各窗口）；挂账项正常。
+
+## GZ. 收尾待办打包带话 + DU 段口径更正（2026-08-27 22:54，PM）
+
+### 一、DU 段旧口径已更正（PM 直接处理）
+- decision-log DU（2169-2178）追加 GM/GY 更正注记：①steamdt=独立站 steamdt.com 与 S1 无关（EY 实测 youpin898.com/steamdt=404）；②S1 已登录（08-26 免登 ~09-05，D2 盘口已激活），非「默认不开」；③S3 已闭环（GX errcode=0）。历史正文保留原样。
+
+### 二、打包带话（3 项 → 3 窗口）
+**📨 给②研究**：提交 v1a 研究产物——`references/run_emotion_v1a_eval.py` + `data/_exp_emotion_v1a_2026-08-27.json`（working tree `??` 未提交，归②归档）。
+
+**📨 给③审计**：
+1. 提交 v1a 审计产物——`references/_audit_v1a_recompute.py` + `data/_audit_v1a_recompute_2026-08-27.json` + `references/audit-w7-1-v1a-2026-08-27.md`（working tree `??` 未提交，归③归档）；
+2. **补 W7-2 蓄水池审计复核**（GI 移交）：④环境缺 pytest 未跑冒烟，需③独立复核 raw_steamdt_market/raw_steamdt_blocks 表结构 + UNIQUE 幂等 + append-only 断言 + 首跑数据（market 1 行/blocks 20 行），出复核结论登记。
+
+**📨 给④（研发/运维）**：提交 roadmap 未提交改动（`M iteration-roadmap.md`，谁改的谁归档）。
+
+### 三、状态
+- DU 更正完成 ✅；3 窗口带话就绪；待窗口回执后逐项销账。
