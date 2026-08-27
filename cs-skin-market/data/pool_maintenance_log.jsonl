@@ -65,3 +65,4 @@
 {"type": "discover", "task_id": "discover_1787213634", "note": "completed", "candidates": 173, "ok": 159, "error": 0, "skipped": 14, "market_th": 35, "pool_size_now": 387, "ts": "2026-08-20 18:31:33"}
 {"type": "discover", "task_id": "discover_1787236458", "note": "completed", "candidates": 183, "ok": 164, "error": 0, "skipped": 19, "market_th": 35, "pool_size_now": 402, "ts": "2026-08-20 22:35:43"}
 {"type": "daily", "date": "2026-08-27", "pool_size": 403, "active_pool": 207, "pruned": 37, "kline_ok": 207, "kline_fail_count": 0, "kline_fail_names": [], "new_items_today": 0, "health": "fail", "health_fail": 1, "ts": "2026-08-27 18:32:59"}
+{"type": "daily", "date": "2026-08-27", "pool_size": 403, "active_pool": 207, "pruned": 37, "kline_ok": 207, "kline_fail_count": 0, "kline_fail_names": [], "new_items_today": 0, "health": "pass", "health_fail": 0, "ts": "2026-08-27 20:07:25"}
