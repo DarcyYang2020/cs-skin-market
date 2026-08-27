@@ -69,6 +69,67 @@ def t_schema_version():
         conn.close()
 check('schema_version 表记录当前版本', t_schema_version)
 
+print('[D5 数据不变量]')
+def t_data_invariants():
+    import importlib.util
+    _spec = importlib.util.spec_from_file_location(
+        "test_data_invariants", os.path.join(TEST_DIR, "test_data_invariants.py"))
+    _m = importlib.util.module_from_spec(_spec)
+    _spec.loader.exec_module(_m)
+    assert _m.self_test() is True, '不变量套件自检失败（应捕获注入坏行）'
+    # 生产库 schema 列存在（D1 price_source / D2 sell 侧）
+    from pipeline import db as _db
+    _c = _db.get_conn()
+    try:
+        _cols = [r[1] for r in _c.execute("PRAGMA table_info(price_history)").fetchall()]
+        assert 'price_source' in _cols, 'price_history 缺 price_source 列（D1）'
+        _bcols = [r[1] for r in _c.execute("PRAGMA table_info(bid_history)").fetchall()]
+        assert 'lowest_sell' in _bcols and 'sell_count' in _bcols, 'bid_history 缺卖侧列（D2）'
+    finally:
+        _c.close()
+check('D5 数据不变量自检 + D1/D2 列存在', t_data_invariants)
+
+print('[D6 oos_zone]')
+def t_oos_zone():
+    from pipeline import oos_guard, config
+    assert config.OOS_ZONE["val_start"] == "2025-08-10", 'val_start 漂移'
+    assert config.OOS_ZONE["b_channel_start"] == "2027-04-25", 'B 通道窗口漂移'
+    assert oos_guard.require_fit("2025-01-01") == "2025-01-01"
+    assert oos_guard.require_fit("2026-01-01", prereg="DD") == "2026-01-01"
+    try:
+        oos_guard.require_fit("2026-01-01")
+        raise AssertionError('val 段无预注册未拦截')
+    except RuntimeError:
+        pass
+    assert oos_guard.in_oos_zone("2025-08-10") is True
+    assert oos_guard.in_oos_zone("2025-08-09") is False
+check('D6 oos_zone 守卫（fit 放行 / val 无预注册拦截）', t_oos_zone)
+
+print('[D7 raw.db]')
+def t_raw_db():
+    import re
+    from pipeline import raw_db
+    _src = open(os.path.join(os.path.dirname(TEST_DIR), 'pipeline', 'raw_db.py'), encoding='utf-8').read()
+    assert not re.search(r'\b(DELETE FROM|UPDATE)\s+', _src), 'raw_db.py 含变更 SQL（D7 append-only 违例）'
+    # 创建 + append 写入 + 计数
+    import tempfile
+    _orig = raw_db.RAW_DB_PATH
+    d = tempfile.mkdtemp()
+    try:
+        raw_db.RAW_DB_PATH = os.path.join(d, 'raw.db')
+        conn = raw_db.get_raw_conn()
+        raw_db.append_raw(conn, 'raw_order_book', {
+            'ts': '2026-08-27 00:00:00', 'date': '2026-08-27', 'good_id': 1,
+            'item_name': '测试品', 'lowest_sell': 1.0, 'highest_buy': 0.9,
+            'sell_count': 3, 'buy_count': 2})
+        conn.commit()
+        n = conn.execute("SELECT COUNT(*) FROM raw_order_book").fetchone()[0]
+        assert n == 1, f'raw_order_book 应 1 行，实际 {n}'
+        conn.close()
+    finally:
+        raw_db.RAW_DB_PATH = _orig
+check('D7 raw.db append-only（无变更 SQL + 写入）', t_raw_db)
+
 print('[API: Market Index]')
 def t_idx():
     from pipeline import collector

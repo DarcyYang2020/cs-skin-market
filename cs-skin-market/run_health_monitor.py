@@ -37,6 +37,14 @@ def run_monitor(db_path=None, check_date=None):
     from run_data_health import run_checks
     rows = run_checks(db_path)
     checks = [{"name": n, "level": lv, "detail": dt} for n, lv, dt in rows]
+    # D3（2026-08-27）：清洗台账当日触警计数进健康检查（纯统计，不判 FAIL）
+    try:
+        from pipeline.cleaning_ledger import count_since
+        _cl_today = count_since(check_date)
+        checks.append({"name": "清洗触警台账(当日)", "level": "PASS",
+                       "detail": f"cleaning_ledger 当日 {_cl_today} 条"})
+    except Exception:
+        pass
     n_fail = sum(1 for _, lv, _ in rows if lv == "FAIL")
     status = "fail" if n_fail else "pass"
 

@@ -16,7 +16,7 @@ import time
 from datetime import datetime, timedelta
 
 
-from .config import DB_PATH, DATA_DIR, TZ_BJ
+from .config import DB_PATH, DATA_DIR, TZ_BJ, PRICE_SOURCE_DEFAULT
 
 
 SCHEMA_VERSION = 4  # v58 P1：新增 survive_history / series_snapshot 研究层表
@@ -280,6 +280,14 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         _cols = [r[1] for r in conn.execute("PRAGMA table_info(price_history)").fetchall()]
         if "in_sale_count" not in _cols:
             conn.execute("ALTER TABLE price_history ADD COLUMN in_sale_count INTEGER")
+    except sqlite3.OperationalError:
+        pass  # 列已存在/锁定冲突时跳过
+
+    # 迁移：price_history 增加 price_source 列（幂等，D1，2026-08-27）
+    try:
+        _cols = [r[1] for r in conn.execute("PRAGMA table_info(price_history)").fetchall()]
+        if "price_source" not in _cols:
+            conn.execute("ALTER TABLE price_history ADD COLUMN price_source TEXT")
     except sqlite3.OperationalError:
         pass  # 列已存在/锁定冲突时跳过
 
@@ -619,10 +627,22 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         buy_num_max REAL,
         buy_num_mean REAL,
         point_count INTEGER,
+        lowest_sell REAL,
+        sell_count INTEGER,
         created_at TEXT DEFAULT (datetime('now','localtime')),
         UNIQUE(date, good_id))""")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_bid_history_date ON bid_history(date)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_bid_history_good ON bid_history(good_id)")
+
+    # 迁移：bid_history 补卖侧列 lowest_sell/sell_count（幂等，D2，2026-08-27）
+    try:
+        _bcols = [r[1] for r in conn.execute("PRAGMA table_info(bid_history)").fetchall()]
+        if "lowest_sell" not in _bcols:
+            conn.execute("ALTER TABLE bid_history ADD COLUMN lowest_sell REAL")
+        if "sell_count" not in _bcols:
+            conn.execute("ALTER TABLE bid_history ADD COLUMN sell_count INTEGER")
+    except sqlite3.OperationalError:
+        pass  # 列已存在/锁定冲突时跳过
 
     # v58 P1（2026-08-13）：存世量历史 / 系列面板，研究层独立表。
     # 同样不设 item_id 外键/级联；good_id / series_id 为稳定键。
@@ -785,17 +805,19 @@ def save_price_history_batch(conn, item_id, daily_bars, mode="incremental", coll
     today = datetime.now(TZ_BJ).date().isoformat()
 
     def _vals(bar):
+        _src = getattr(bar, "price_source", None) or PRICE_SOURCE_DEFAULT
         return (item_id, bar.date, round(bar.close, 2),
                 int(bar.volume) if bar.volume else 0,
                 int(bar.survive) if bar.survive else 0,
-                int(bar.in_sale_count) if getattr(bar, "in_sale_count", 0) else 0)
+                int(bar.in_sale_count) if getattr(bar, "in_sale_count", 0) else 0,
+                _src)
 
     if mode == "force":
         for bar in daily_bars:
             if not bar.date or not bar.close or bar.close <= 0:
                 continue
             conn.execute(
-                "INSERT OR REPLACE INTO price_history (item_id, date, price_rmb, volume_day, volume_total, in_sale_count) VALUES (?,?,?,?,?,?)",
+                "INSERT OR REPLACE INTO price_history (item_id, date, price_rmb, volume_day, volume_total, in_sale_count, price_source) VALUES (?,?,?,?,?,?,?)",
                 _vals(bar))
             n_ins += 1
             log.append(("insert", bar.date, round(bar.close, 2)))
@@ -809,7 +831,7 @@ def save_price_history_batch(conn, item_id, daily_bars, mode="incremental", coll
             continue
         if bar.date > max_date:
             conn.execute(
-                "INSERT OR REPLACE INTO price_history (item_id, date, price_rmb, volume_day, volume_total, in_sale_count) VALUES (?,?,?,?,?,?)",
+                "INSERT OR REPLACE INTO price_history (item_id, date, price_rmb, volume_day, volume_total, in_sale_count, price_source) VALUES (?,?,?,?,?,?,?)",
                 _vals(bar))
             n_ins += 1
             log.append(("insert", bar.date, round(bar.close, 2)))
@@ -818,13 +840,15 @@ def save_price_history_batch(conn, item_id, daily_bars, mode="incremental", coll
             # collect_time 传入时同步刷新 created_at（F-3.19，2026-08-11）
             if collect_time:
                 conn.execute(
-                    "UPDATE price_history SET price_rmb=?, in_sale_count=?, created_at=? WHERE item_id=? AND date=?",
+                    "UPDATE price_history SET price_rmb=?, in_sale_count=?, price_source=?, created_at=? WHERE item_id=? AND date=?",
                     (round(bar.close, 2), int(bar.in_sale_count) if getattr(bar, "in_sale_count", 0) else 0,
+                     getattr(bar, "price_source", None) or PRICE_SOURCE_DEFAULT,
                      collect_time, item_id, bar.date))
             else:
                 conn.execute(
-                    "UPDATE price_history SET price_rmb=?, in_sale_count=? WHERE item_id=? AND date=?",
+                    "UPDATE price_history SET price_rmb=?, in_sale_count=?, price_source=? WHERE item_id=? AND date=?",
                     (round(bar.close, 2), int(bar.in_sale_count) if getattr(bar, "in_sale_count", 0) else 0,
+                     getattr(bar, "price_source", None) or PRICE_SOURCE_DEFAULT,
                      item_id, bar.date))
             n_upd += 1
             log.append(("update", bar.date, round(bar.close, 2)))
@@ -1288,13 +1312,15 @@ def save_bid_history(conn, date, row):
         """INSERT OR REPLACE INTO bid_history
            (date, item_id, good_id, item_name, source, platform,
             buy_price_last, buy_price_min, buy_price_max, buy_price_mean,
-            buy_num_last, buy_num_min, buy_num_max, buy_num_mean, point_count)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            buy_num_last, buy_num_min, buy_num_max, buy_num_mean, point_count,
+            lowest_sell, sell_count)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (date, row.get("item_id"), row.get("good_id"), row.get("item_name"),
          row.get("source", "csqaq_direct"), row.get("platform", 2),
          row.get("buy_price_last"), row.get("buy_price_min"), row.get("buy_price_max"),
          row.get("buy_price_mean"), row.get("buy_num_last"), row.get("buy_num_min"),
-         row.get("buy_num_max"), row.get("buy_num_mean"), row.get("point_count")))
+         row.get("buy_num_max"), row.get("buy_num_mean"), row.get("point_count"),
+         row.get("lowest_sell"), row.get("sell_count")))
 
 def save_survive_history(conn, date, row):
     """P1 研究层：单品存世量历史点（info/good/statistic 直连）。

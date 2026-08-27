@@ -8,7 +8,7 @@ import logging
 from datetime import datetime
 from typing import Optional
 
-from .config import TZ_BJ, CSQAQ_BASE, API_TOKEN
+from .config import TZ_BJ, CSQAQ_BASE, API_TOKEN, PLATFORM_PRICE_SOURCE
 _csq_log = logging.getLogger(__name__)
 CSQAQ_WEB = "https://csqaq.com"
 
@@ -75,7 +75,7 @@ class ItemData:
         self.order_book: Optional[dict] = None
         self.kline_90d: list = []
 
-def _chart_to_daily_ohlc(cd: dict) -> list:
+def _chart_to_daily_ohlc(cd: dict, source: str = "yyyp") -> list:
     """Aggregate 10-min chart data into daily OHLCV bars.
     Returns list of Bar objects with close, high, low, volume, in_sale_count.
     """
@@ -100,6 +100,7 @@ def _chart_to_daily_ohlc(cd: dict) -> list:
             self.survive = survive
             self._in_sale_raw = in_sale_raw
             self.in_sale_missing = in_sale_missing
+            self.price_source = source  # D1：价格来源平台（yyyp/buff/c5）
 
     def _parse_sale(idx):
         if idx >= len(num_arr) or num_arr[idx] in (None, ""):
@@ -198,7 +199,8 @@ def fetch_kline_90d_api(good_id: int, platforms=(2, 1, 3), timeout: int = 25):
     for platform in platforms:
         data, reason = _fetch_chart_api(good_id, platform, timeout=timeout)
         if data:
-            return _chart_to_daily_ohlc(data), _chart_to_raw(data)
+            _src = PLATFORM_PRICE_SOURCE.get(platform, "yyyp")
+            return _chart_to_daily_ohlc(data, source=_src), _chart_to_raw(data)
         if reason and reason.startswith("HTTP 401"):
             break
         if reason and reason.startswith("HTTP 429"):

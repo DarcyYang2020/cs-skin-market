@@ -43,6 +43,13 @@ CSQAQ_BASE = "https://api.csqaq.com/api/v1"
 API_TOKEN = os.environ.get("CSQAQ_API_TOKEN", "").strip()
 API_RATE_LIMIT = 1.1  # seconds between calls (1 req/sec)
 
+# ---- D1 价格来源锚定（roadmap v82 Wave1 D1，2026-08-27）----
+# price_history.price_source 记录每条价格的实际来源平台，落地「单一事实源三铁律」之口径溯源。
+# 优先级：悠悠有品(yyyp) > Buff > C5GAME（Steam 失真仅参考，不落主价）。
+# 写入点集中在 collector（Bar.price_source）；save_price_history_batch 缺省回退 PRICE_SOURCE_DEFAULT。
+PLATFORM_PRICE_SOURCE = {2: "yyyp", 1: "buff", 3: "c5"}
+PRICE_SOURCE_DEFAULT = "yyyp"
+
 # ---- Four-factor model weights ----
 
 
@@ -375,6 +382,7 @@ PARAM_REGIME = {
         "rs_accum / ct_accum 长持族候选（2026-08-17 落地(2) 预注册，默认关 CS_ENGINE_RS_ACCUM / CS_ENGINE_CT_ACCUM=1 开）：rs_accum=RS30(单品30d−大盘30d)>10+pct>40+supply_change_30d≤5（P4：60d +39.8/180d +117.6，互补子集独立成立），priority 32/limit 0.05/hold 180；ct_accum=mchg30<0+单品chg30>+5+pct>40+supply_change_30d≤5（P11-Fa：60d +60.4/180d +92.1，警示 F1 事件占比 50.8%），priority 31/limit 0.05/hold 180。落地判据=发射口径三关（组合级+前后半段+置换）+ 独特性护栏（逆市 fixture 不吞信号），见 decision-log 条目",
         "rs_ct_cooldown_cap 补漏战役（2026-08-17 预注册）：针对 D/C/RS/CT 共同根因（高频重发+cap 置换，第四次确认）的第一次预注册修复——rs/ct 族级 30 天重发冷却（_cooldown_hit 同 prio）+ 长持容量预算 LEG_CAP=0.3（exit_sim 口径，rs/ct 合并仓位上限）；判据=发射口径三关 + 独特性护栏，正负都登记，不过则不得调参重试",
         "v2-T13（2026-08-16，大盘时期路由默认开）：CS_ENGINE_PERIOD_ROUTE 默认 1（=0 关闭对照）；官方 HQ 回放产物 233→189 信号（移除 44 条时期错配坏信号 + 去重链解锁 1 条）。probe 口径（load_signals+b1v2 cap0.8 full curve）base +367.67%/−19.99% → routed +397.02%/−14.09%（+29.35pp/回撤改善 5.90pp）；前后半段 front +9.77pp/back +4.44pp 双正；置换检验随机移除同规模 dTotal 中位 −41.40pp（p=0.000）、dMaxDD p90 +4.75（p=0.035）→ 选择性闸门非「少买=少亏」。",
+        "Wave6 O1–O4 运维层参数（2026-08-27，roadmap v82 卡 + decision-log DC / Wave6 落地条目）：OPS_RULES 段——kill_switch（auto 总开关/scopes）、trade_monitor（对账差异 1.0%/回报超时 24h 待 S3/连续拒单 3/回撤 15%/数据源陈旧 2 天/备份新鲜度 2 天）、alerts（采集/质量/交易三档路由 + 每级 webhook 覆盖 env）。纯运维层，不进引擎决策、不 bump ENGINE_VERSION。",
 
     ],
     "monitors": [
@@ -416,6 +424,64 @@ J2_THRESHOLDS = {
     "family_c14_month": 60.0, # 族级月度 14d 胜率阈值(%)
     "family_c30_month": 50.0, # 族级月度 30d 胜率阈值(%)
     "family_c14_2m": 70.0,    # 族级连续 2 月 14d 胜率阈值(%)
+}
+
+# ---- Wave1 D3 清洗规则配置化（roadmap v82 卡 / decision-log，2026-08-27）----
+# 清洗规则单一事实源；改阈值须同步登记 decision-log 并重跑冒烟。
+# 键 = 规则名；每规则带 threshold（阈值）/source（出处）/effective（生效日）。
+# 触警落 data/cleaning_ledger.jsonl（见 pipeline/cleaning_ledger.py）。
+CLEANING_RULES = {
+    "source": "roadmap v82 Wave1 D3（架构 §1.4 规则配置化）",
+    "effective_date": "2026-08-27",
+    "anchor_priority": ["yyyp", "buff", "c5", "steam"],  # 定价锚优先级（与 collector 平台回退顺序一致；Steam 失真仅参考）
+    "pollution_list": ["AK-47 | 流金王朝", "挂件 | 丁烷拍档"],  # 研究池污染剔除清单
+    "batch_guard": {
+        "price_jump_pct": 0.20,      # 价格跳变 >20% 判异常（8/10 故障事件后基线）
+        "sale_change_pct": 0.50,     # 在售量变化 >50% 判异常
+        "price_trigger_n": 3,        # 价格异常品数下限
+        "price_trigger_ratio": 0.03, # 价格异常占比阈值
+        "sale_trigger_n": 5,         # 在售量异常品数下限
+        "sale_trigger_ratio": 0.05,  # 在售量异常占比阈值
+    },
+    "freshness": {
+        "kline_stale_days": 2,       # 最新 K 线距今 >=N 天判数据源异常（对齐 OPS_RULES.stale_data_days）
+        "missing_rate_warn": 0.05,   # 缺失率告警阈值（K线/在售量覆盖）
+    },
+}
+
+# ---- Wave1 D6 样本外封存 oos_zone（roadmap v82 卡 / decision-log，2026-08-27）----
+# 验证段（>= val_start）与 B 通道窗口（>= b_channel_start）为「禁区」，
+# 研究准入前不得窥探/调参（反过拟合硬落地，架构 §1.7①）。
+# 仅加元数据约束，不删除任何数据；对采集层无影响。守卫入口见 pipeline/oos_guard.py。
+OOS_ZONE = {
+    "val_start": "2025-08-10",       # 验证段起点（walk-forward 切点；探索只许 fit 段 = 此日期之前）
+    "b_channel_start": "2027-04-25", # B 通道真 OOS 复验窗口起点（约 260 天样本积累）
+    "source": "roadmap v82 Wave1 D6（架构 §1.7①）",
+    "effective_date": "2026-08-27",
+}
+
+# ---- Wave6 运维层规则（O1–O4，2026-08-27，出处 = roadmap v82 卡 / decision-log DC / Wave6 落地条目）----
+# O1 交易级监控阈值 / O2 kill switch 行为 / O4 告警三档路由（采集→质量→交易）。
+# 改阈值须同步登记 PARAM_REGIME["param_history"] 并重跑冒烟（pipeline/ops.py 运行时从本字典读取，禁止硬编码）。
+OPS_RULES = {
+    "kill_switch": {
+        "auto": True,                    # 自动急停总开关（False = 运维整体关闭自动急停，仅记录）
+        "scopes": ["global", "paper", "notify"],  # paper=模拟盘出单/建仓；notify=钉钉通知
+    },
+    "trade_monitor": {
+        "reconcile_diff_pct": 1.0,       # O1 台账对账差异阈值(%)：status.json equity vs 实库重算
+        "report_timeout_hours": 24,      # O1 回报超时阈值(h)：S3 意向单/回报未上线（Wave3 待②预研），判据先行
+        "max_rejects": 3,                # O1 连续拒单阈值(日)：当日 buy 信号 − 已建仓 ≥ 该值 → FAIL + 自动急停(paper)
+        "max_drawdown_pct": 15.0,        # O1 回撤破阈(自峰值%)：≥ 该值 → FAIL + 自动急停(paper)
+        "stale_data_days": 2,            # O1 数据源异常：最新 K 线距今 ≥ 该天数 → FAIL + 自动急停(paper)
+        "backup_stale_days": 2,          # O4 备份新鲜度（2026-08-27 Wave1 并入）：最新备份距今 ≥ 该天数 → FAIL + quality 告警（非急停条件；每日 23:30 备份口径）
+    },
+    "alerts": {
+        "levels": ["collect", "quality", "trade"],  # 采集 → 质量 → 交易（O4 三档）
+        "tags": {"collect": "采集", "quality": "质量", "trade": "交易"},
+        # 每级 webhook 覆盖环境变量（空 = 走基础 NOTIFY_WEBHOOK_URL；配了独立 env 则覆盖；分级不漏报）
+        "webhook_env": {"collect": "", "quality": "NOTIFY_WEBHOOK_QUALITY", "trade": "NOTIFY_WEBHOOK_TRADE"},
+    },
 }
 
 # ---- DISPLAY-2 单品短期期望（纯展示，2026-08-18，③审计#2 通过有条件落地）----
