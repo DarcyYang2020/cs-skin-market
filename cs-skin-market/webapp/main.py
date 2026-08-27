@@ -1754,6 +1754,48 @@ async def page_checkup(request: Request):
     })
 
 
+# ---- HG-G2 EXEC-2 扫描进度页（decision-log HG，2026-08-28；source=auto，独立页不依赖发起页）----
+@app.get("/exec2", response_class=HTMLResponse)
+async def page_exec2_progress(request: Request):
+    """EXEC-2 自动盯盘进度（只读最近任务：阶段/current/total/失败数/ETA/完成/冷却/降级）。"""
+    response = templates.TemplateResponse(request, "exec2.html", {"active_page": "exec2"})
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    return response
+
+
+@app.get("/api/exec2/progress")
+async def api_exec2_progress():
+    """EXEC-2 进度数据（读 data/exec2_progress.json + G1 冷却/降级状态）。"""
+    from exec2_auto_watch import (_progress_file, cooldown_remaining_sec, degraded_daily,
+                                  failed_ledger_today, G1_FAIL_THRESHOLD, G1_COOLDOWN_MIN, G1_MAX_ROUNDS)
+    import json as _J
+    from pipeline import db as _db
+    prog = {}
+    fp = _progress_file()
+    if fp.exists():
+        try:
+            prog = _J.loads(fp.read_text(encoding="utf-8"))
+        except Exception:
+            prog = {}
+    _conn = _db.get_conn()
+    try:
+        rounds = int(_db.get_setting(_conn, "exec2_fail_rounds", "0") or 0)
+    finally:
+        _conn.close()
+    return JSONResponse({
+        "progress": prog,
+        "gate": {
+            "cooldown_remaining_sec": cooldown_remaining_sec(),
+            "cooldown_min": G1_COOLDOWN_MIN,
+            "fail_rounds": rounds,
+            "max_rounds": G1_MAX_ROUNDS,
+            "degraded_daily": degraded_daily(),
+            "fail_threshold": G1_FAIL_THRESHOLD,
+        },
+        "failed_ledger_today": failed_ledger_today()[-20:],
+    })
+
+
 @app.get("/replay", response_class=HTMLResponse)
 async def page_replay(request: Request):
     """\u4fe1\u53f7\u590d\u76d8\uff1a\u5386\u53f2 buy \u4fe1\u53f7\u7684 14d/30d \u8868\u73b0\u56de\u653e\u3002"""

@@ -4648,6 +4648,105 @@ def t_exec2_scope_idempotent():
     assert 'args.scope == "watchlist"' in _src_e2, "大盘刷新应仅在 watchlist 范围触发"
 check('EXEC-2 范围/幂等/推送链路', t_exec2_scope_idempotent)
 
+def t_exec2_g1_guardrail():
+    """HG-G1 csQAQ 风控护栏：冷却触发/不无限重试/失败台账/连败降级。"""
+    import exec2_auto_watch as _e2
+    from pipeline import db as _db
+    conn = _db.get_conn()
+    try:
+        conn.execute("DELETE FROM settings WHERE key LIKE 'exec2_%'")
+        conn.commit()
+    finally:
+        conn.close()
+    try:
+        # ① 未冷却时放行
+        ok, reason = _e2.should_run()
+        assert ok, reason
+        # ② 触发冷却 → 冷却期内拒绝（不无限重试）
+        _e2.enter_cooldown("测试触发")
+        ok, reason = _e2.should_run()
+        assert not ok and "冷却中" in reason, reason
+        # ③ 失败台账记录 + 读取
+        _e2.record_failed("测试品A", "scan_fail")
+        _e2.record_failed("测试品B", "resolve_fail")
+        ledger = _e2.failed_ledger_today()
+        assert len(ledger) >= 2 and any(f["name"] == "测试品A" for f in ledger), ledger
+        # ④ 连败降级：3 轮后 degraded_daily=True
+        conn = _db.get_conn()
+        try:
+            conn.execute("DELETE FROM settings WHERE key='exec2_cooldown_until'")
+            conn.execute("UPDATE settings SET value='3' WHERE key='exec2_fail_rounds'")
+            conn.commit()
+        finally:
+            conn.close()
+        assert _e2.degraded_daily() is True
+        ok, reason = _e2.should_run()
+        assert not ok and "降级每日一次" in reason, reason
+        # ⑤ 整轮成功清零连败
+        conn = _db.get_conn()
+        try:
+            conn.execute("DELETE FROM settings WHERE key='exec2_cooldown_until'")
+            conn.execute("UPDATE settings SET value='3' WHERE key='exec2_fail_rounds'")
+            conn.commit()
+        finally:
+            conn.close()
+        _e2.reset_fail_rounds()
+        assert _e2.degraded_daily() is False
+    finally:
+        conn = _db.get_conn()
+        try:
+            conn.execute("DELETE FROM settings WHERE key LIKE 'exec2_%'")
+            conn.commit()
+        finally:
+            conn.close()
+check('HG-G1 风控护栏（冷却/不无限重试/台账/降级）', t_exec2_g1_guardrail)
+
+def t_exec2_g2_progress():
+    """HG-G2 进度可见性：进度落盘(source=auto) + /exec2 页 + API（阶段/失败数/冷却状态）。"""
+    import exec2_auto_watch as _e2
+    from pipeline import db as _db
+    _e2.write_progress("测试阶段", 5, 10, failed=1, started="t", note="pushed=0")
+    import json as _J
+    from pathlib import Path as _P
+    fp = _e2._progress_file()
+    assert fp.exists(), "进度文件未落盘"
+    d = _J.loads(fp.read_text(encoding="utf-8"))
+    assert d.get("source") == "auto" and d.get("stage") == "测试阶段", d
+    assert d.get("current") == 5 and d.get("total") == 10 and d.get("failed") == 1, d
+    # 冷却状态函数
+    from pipeline import db as _db2
+    conn = _db2.get_conn()
+    try:
+        conn.execute("DELETE FROM settings WHERE key LIKE 'exec2_%'")
+        conn.commit()
+    finally:
+        conn.close()
+    try:
+        _e2.enter_cooldown("测试")
+        assert _e2.cooldown_remaining_sec() > 0
+    finally:
+        conn = _db2.get_conn()
+        try:
+            conn.execute("DELETE FROM settings WHERE key LIKE 'exec2_%'")
+            conn.commit()
+        finally:
+            conn.close()
+    # 页面/API
+    from fastapi.testclient import TestClient
+    from webapp import main as wm
+    import os as _os
+    _os.environ["CS_MARKET_PASSWORD"] = "smoke-test-pass"
+    client = TestClient(wm.app)
+    r = client.post('/login', data={"password": "smoke-test-pass"}, follow_redirects=False)
+    assert r.status_code == 302, r.text[:200]
+    r = client.get('/exec2')
+    assert r.status_code == 200 and 'EXEC-2' in r.text, r.status_code
+    r = client.get('/api/exec2/progress')
+    assert r.status_code == 200, r.status_code
+    d2 = r.json()
+    assert 'progress' in d2 and 'gate' in d2 and 'failed_ledger_today' in d2, list(d2.keys())
+check('HG-G2 进度可见性（落盘 source=auto + /exec2 页 + API）', t_exec2_g2_progress)
+
 print(f'=== Results: {passed} passed, {failed} failed, {skipped} skipped ===')
 if failures:
     print()

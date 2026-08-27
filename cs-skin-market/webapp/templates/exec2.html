@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}CS-Market EXEC-2 盯盘进度{% endblock %}
+{% block content %}
+<div style="padding:16px 0;">
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px;">
+    <h2 style="margin:0;font-size:20px;">🛰 EXEC-2 自动盯盘进度</h2>
+    <span id="exec2-meta" style="font-size:12px;color:var(--text-muted);">加载中…</span>
+    <button class="btn btn-sm btn-outline" onclick="loadExec2()" style="margin-left:auto;"><span id="exec2-spinner" class="htmx-indicator">⏳</span> 🔄 刷新</button>
+  </div>
+  <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px;">
+    自动任务（source=auto，18:00 链 + 每 2h 定时）实时进度；G1 风控护栏（冷却/降级）与失败台账同页展示。
+  </div>
+
+  <!-- G1 护栏状态 -->
+  <div id="exec2-gate" class="card" style="padding:12px 14px;margin-bottom:14px;"></div>
+
+  <!-- 最近任务进度 -->
+  <div class="card" style="padding:14px;margin-bottom:14px;">
+    <div style="font-size:14px;font-weight:700;margin-bottom:10px;">最近任务</div>
+    <div id="exec2-progress"></div>
+  </div>
+
+  <!-- 失败台账 -->
+  <div class="card" style="padding:14px;">
+    <div style="font-size:14px;font-weight:700;margin-bottom:10px;">今日失败台账（下轮补扫）</div>
+    <div id="exec2-failed" style="font-size:12px;max-height:260px;overflow-y:auto;"></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function _spinShow(id) { var el = document.getElementById(id); if (el) el.style.display = 'inline'; }
+function _spinHide(id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; }
+
+function loadExec2() {
+  _spinShow("exec2-spinner");
+  fetch("/api/exec2/progress")
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    _spinHide("exec2-spinner");
+    var metaEl = document.getElementById('exec2-meta');
+    var p = d.progress || {};
+    if (metaEl) metaEl.textContent = (p.updated ? '更新 ' + p.updated + ' · ' : '') + 'source=' + (p.source || '--') + (p.scope ? '' : '');
+    renderGate(d.gate || {});
+    renderProgress(p);
+    renderFailed(d.failed_ledger_today || []);
+  })
+  .catch(function() { _spinHide("exec2-spinner"); });
+}
+
+function renderGate(g) {
+  var el = document.getElementById('exec2-gate');
+  if (!g) { el.innerHTML = '<span style="color:var(--text-muted);font-size:13px;">G1 状态未知</span>'; return; }
+  var items = [];
+  var coolMin = Math.ceil((g.cooldown_remaining_sec || 0) / 60);
+  if (g.cooldown_remaining_sec > 0) {
+    items.push('<div><span style="color:var(--red);font-weight:700;">⏸ G1 冷却中：剩余 ' + coolMin + 'min</span>（连续失败≥' + g.fail_threshold + ' 触发，防 csQAQ 封号）</div>');
+  } else {
+    items.push('<div><span style="color:var(--green);font-weight:700;">G1 正常</span>（触发线：连续失败≥' + g.fail_threshold + ' · 冷却 ' + g.cooldown_min + 'min）</div>');
+  }
+  if (g.degraded_daily) {
+    items.push('<div><span style="color:var(--red);font-weight:700;">⚠️ 已降级每日一次</span>（连败 ' + g.max_rounds + ' 轮达上限，明日 18:00 链重试）</div>');
+  } else if ((g.fail_rounds || 0) > 0) {
+    items.push('<div>连败轮次：' + g.fail_rounds + '/' + g.max_rounds + '</div>');
+  }
+  items.push('<div style="font-size:11px;color:var(--text-muted);">失败台账：今日 ' + (window._exec2FailedCount || 0) + ' 品（下轮自动补扫）</div>');
+  el.innerHTML = items.join('');
+}
+
+function renderProgress(p) {
+  var el = document.getElementById('exec2-progress');
+  if (!p || !p.stage) { el.innerHTML = '<span style="color:var(--text-muted);font-size:13px;">暂无任务记录（等待 18:00 链或 2h 定时任务）</span>'; return; }
+  var total = p.total || 0, cur = p.current || 0;
+  var pct = total ? Math.round(cur / total * 100) : 0;
+  var stage = p.done ? '✅ 完成' : (p.stage === 'G1 冷却' ? '⏸ ' + p.stage : '🔄 ' + p.stage);
+  var html = '<div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:10px;">'
+    + '<div><span style="color:var(--text-muted);">阶段</span> <b>' + stage + '</b></div>'
+    + '<div><span style="color:var(--text-muted);">进度</span> <b>' + cur + '/' + total + '（' + pct + '%）</b></div>'
+    + '<div><span style="color:var(--text-muted);">失败</span> <b style="color:' + (p.failed > 0 ? 'var(--red)' : 'var(--green)') + ';">' + (p.failed || 0) + '</b></div>'
+    + '<div><span style="color:var(--text-muted);">备注</span> <b>' + (p.note || '--') + '</b></div>'
+    + '</div>';
+  if (!p.done) {
+    html += '<div style="height:10px;background:var(--border);border-radius:5px;overflow:hidden;">'
+      + '<div style="height:100%;width:' + pct + '%;background:var(--blue);transition:width .5s;"></div></div>';
+  }
+  html += '<div style="font-size:11px;color:var(--text-muted);margin-top:6px;">启动 ' + (p.started || '--') + '</div>';
+  el.innerHTML = html;
+}
+
+function renderFailed(failed) {
+  window._exec2FailedCount = failed.length;
+  var el = document.getElementById('exec2-failed');
+  if (!failed.length) { el.innerHTML = '<span style="color:var(--text-muted);">今日无失败品</span>'; return; }
+  el.innerHTML = failed.map(function(f) {
+    return '<div style="display:flex;justify-content:space-between;gap:12px;padding:3px 0;border-bottom:1px solid var(--border);">'
+      + '<span>' + (f.name || '') + '</span>'
+      + '<span style="color:var(--text-muted);font-size:11px;">' + (f.reason || '') + ' · ' + (f.ts || '') + '</span></div>';
+  }).join('');
+}
+loadExec2();
+setInterval(loadExec2, 15000);  // 15s 自动刷新
+</script>
+{% endblock %}

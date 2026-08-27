@@ -3194,3 +3194,32 @@
 - 均为增量补强（非重复立卡），沿用 EXEC-2 已验收底座（HE）。
 
 - **状态**：**PM 追卡（HG）**，交④研发执行。
+
+## HH. EXEC-2 增量追卡落地 · G1 csQAQ 风控护栏 + G2 扫描进度可见性（2026-08-28，④研发执行，PM 追卡 HG，待③审计）
+
+> 依据：decision-log HG（PM 追卡，两卡合并排期）。缺口核验：护栏（失败仅计数无暂停/告警/冷却）与进度（import 未调用、无进度页/通知）均属实。
+
+### G1 · csQAQ 风控护栏（验收①-④全过）
+
+- **触发**：连续失败 ≥10（`G1_FAIL_THRESHOLD`）→ `enter_cooldown`：暂停 + O4 quality 告警（route_alert）+ 冷却 45min（settings `exec2_cooldown_until`，规格 30-60min 取中）。
+- **不无限重试**：入口 `should_run()` 门——冷却期内/降级态直接跳过（RESULT mode=SKIP），防 csQAQ 封号。
+- **失败台账**：`record_failed` → settings `exec2_failed_{date}`（品名/原因/时间），`failed_ledger_today` 供补扫（下轮同范围自动在轮）。
+- **连败降级**：`exec2_fail_rounds` 累计，≥3 轮 → `degraded_daily()`=True 降级每日一次（明日 18:00 链重试）；整轮 0 失败 `reset_fail_rounds` 清零恢复。
+
+### G2 · 扫描进度可见性（验收①-③全过）
+
+- **进度落盘**：`write_progress` → `data/exec2_progress.json`（source=auto + 阶段/current/total/失败数/started/updated/done/note），扫描中每 10 品更新（含 ETA）。
+- **独立进度页**：`GET /exec2`（AUTH-1 保护）+ `GET /api/exec2/progress`（进度 + G1 gate 冷却/降级 + 失败台账 20 条）；模板 exec2.html（15s 自动刷新）；base.html 导航「盯盘进度」。
+- **完成/卡住通知**：任务完成（非 dry-run）→ O4 quality 通知（`notify_complete`）；`check_stuck` 卡住检测接口预留（webapp 轮询接入点）。
+- 进度粒度：阶段（启动/大盘刷新/扫描/完成/G1 冷却）+ 失败数 + current/total + ETA。
+
+### 验证
+
+- 冒烟新增 2 用例（G1 护栏：冷却/不无限重试/台账/降级/清零；G2 进度：落盘 source=auto + /exec2 页 + API gate），**完整冒烟 154 passed / 0 failed / 0 skipped** ✅。
+- API 实测：/exec2 页 200 + /api/exec2/progress 200（stage/source/gate 完整）。
+- 红线：不 bump ENGINE_VERSION、不碰引擎参数（纯 exec2 脚本 + webapp 只读视图）✅。
+
+### 移交
+
+- ③审计复核：G1 护栏触发/冷却/降级语义 + G2 进度落盘/页面/通知。
+- ④运维：无需改计划任务（护栏/进度均脚本内）；/exec2 页随 webapp 重启生效。

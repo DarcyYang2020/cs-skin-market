@@ -18,7 +18,7 @@ cs-skin-market/
 ├── collect_data_reserve_p0.py # P0 数据储备采集（活跃池基本面+求购日聚合，研究层，默认 dry-run）
 ├── collect_data_reserve_p1.py # P1 数据储备采集（存世量+系列面板+大户Top20，研究层，默认 dry-run）
 ├── collect_steamdt_reserve.py # W7-2 steamdt 蓄水池采集（市场级指数/成交/在线/板块 → raw.db，默认 APPLY，决策 EY+EZ）
-├── exec2_auto_watch.py        # EXEC-2 自动盯盘链（活跃池/自选+持仓融合决策重算 + 新 buy S3 推送，幂等；决策 HC）
+├── exec2_auto_watch.py        # EXEC-2 自动盯盘链（活跃池/自选+持仓融合决策重算 + 新 buy S3 推送，幂等；决策 HC；HG 增量：G1 csQAQ 风控护栏 + G2 进度 source=auto）
 ├── notify_alert.py            # 告警/监控推送（钉钉 webhook，.env NOTIFY_WEBHOOK_URL 配置；O4 三档路由 --level）
 ├── ops_tool.py                # 运维 CLI（Wave6 O1-O4：kill switch / 审计 / 告警 / 交易监控，独立于 webapp）
 ├── install_tasks.ps1          # Windows 计划任务安装（每日采集/备份/告警）
