@@ -9,8 +9,8 @@
 **背景**：2026-08-27 并发多窗口写档，已发生 4 次编号撞车（EB→EE、EZ 双号、FA 撞号、FH 双号），③/④均建议 PM 归口编号治理。
 
 **占号簿（追加新条目前必查）**：
-- 已用编号至 **GP**（2026-08-27 22:15）：`FA FB FC FD FE FF FG FH FI GI GJ GK GL GM GN GO GP`
-- 当前指针：**GQ**（下一个新条目用 GQ，随后 GR/GS...）
+- 已用编号至 **GQ**（2026-08-27 22:20）：`FA FB FC FD FE FF FG FH FI GI GJ GK GL GM GN GO GP GQ`
+- 当前指针：**GR**（下一个新条目用 GR，随后 GS/GT...）
 
 **规则**：
 1. 落条目前先查本段占号簿确认下一个可用编号；占号 = 在本段「当前指针」先行更新后再写正文（并发窗口同理，先占号者得）；
@@ -2838,3 +2838,23 @@
 - .env 凭据由用户/PM 维护，窗口不擅改（GO 同口径）；密钥属敏感凭据，建议用户直接本地更新，勿贴入群聊/文档。
 
 - **状态**：待用户核对加签密钥（A 更新 SEC / B 清空 secret）→ ④重发验证 `send('CS 配置验证')` 期望 errcode=0 → **S3 全链闭环登记（代码侧 + 关键词 + 加签）**。
+
+## GQ. S3 加签密钥复核 · 算法核验通过 + 引导重核 SEC（2026-08-27 22:20，PM）
+
+> 用户确认：机器人**加签已开启且密钥早已配置**（.env NOTIFY_WEBHOOK_SECRET 非空，长度 67 格式正确）。但④重发仍 310000 签名不匹配（GO）。
+
+### 一、加签算法核验（PM 只读，逐行对照钉钉官方规范）
+- `notify_alert.py:119-132 sign_webhook_url`：`timestamp=round(time.time()*1000)`（毫秒 Unix 时间戳）→ `string_to_sign = f"{timestamp}\n{secret}"`（官方：timestamp+"\n"+密钥）→ `hmac.new(secret, string_to_sign, sha256)`（HmacSHA256，key=secret）→ `base64.b64encode` + `quote_plus`（Base64 + urlEncode）→ `&timestamp=...&sign=...` 拼 URL ✅
+- **结论：实现与钉钉官方加签算法逐字一致，代码无问题**（G-2 冒烟覆盖 URL 格式 ✅）——310000 签名不匹配 ⇒ **.env 的 secret 值 ≠ 机器人「加签」当前密钥**。
+
+### 二、可能根因（排查顺序）
+1. 当初复制 SEC 时遗漏/多字符（尾随空格、漏 `SEC` 前缀）；
+2. 钉钉机器人**曾重置加签密钥**（页面重新生成过，.env 里是旧值）；
+3. .env 的 secret 属于另一个机器人/webhook。
+
+### 三、引导用户（最快闭环路径）
+- 打开钉钉 → 群机器人 → 安全设置 → **加签**：完整复制当前 SEC 密钥（SEC+64 位十六进制，共 67 字符）；
+- 与 `cs-skin-market/.env` 的 `NOTIFY_WEBHOOK_SECRET=` **逐字符比对**（大小写敏感）；
+- 最稳妥：**从页面重新完整复制 SEC 覆盖更新 .env**（用户本地直接改，或提供密钥由 PM 写入后④重发验证）。
+
+- **状态**：算法侧 ✅ 无问题；待用户重核/更新 SEC → ④重发验证 `send('CS 配置验证')` errcode=0 → **S3 全链闭环（代码侧 + 关键词 + 加签）**。
