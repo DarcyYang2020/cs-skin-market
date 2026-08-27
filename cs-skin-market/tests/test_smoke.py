@@ -1325,6 +1325,8 @@ def t_paper_s3():
     card = _pt.intention_card(o)
     for k in ("品：AK", "方向：买入", "参考价", "期望：avg14", "风控标签"):
         assert k in card, card
+    # S3 关键词保证（2026-08-27）：卡片首行带 CS 前缀（钉钉机器人关键词校验，防 310000 拒收）
+    assert card.startswith("【CS 模拟盘意向单】"), card
     # 回报：buy 成交 → 持仓 + fill + 现金扣减（买 0 费）
     rr = _pt.report_fill(m, oid, 102.0)
     assert rr["status"] == "ok" and rr["direction"] == "buy", rr
@@ -4163,15 +4165,15 @@ def t_ops_audit():
 check('O3 配置变更审计台账（四要素+检索）', t_ops_audit)
 
 def t_ops_route_alert():
-    """O4 告警分级路由：三档标签正确；kill switch(notify) 拦截不推送。"""
+    """O4 告警分级路由：三档标签正确 + CS 关键词前缀（310000 拒收防护）；kill switch(notify) 拦截不推送。"""
     import tempfile
     from notify_alert import route_alert
     from pipeline import ops as _ops
-    # dry_run 三档标签
+    # dry_run 三档标签 + S3 关键词保证（2026-08-27）：标题带 CS 前缀（钉钉机器人关键词校验）
     for lv, tag in (('collect', '采集'), ('quality', '质量'), ('trade', '交易')):
         r = route_alert(lv, '冒烟', '不真实推送', dry_run=True)
         assert r['pushed'] and r['tag'] == tag, r
-        assert r['title'].startswith(f'【{tag}】'), r
+        assert r['title'].startswith(f'CS【{tag}】'), r
     # 非法级别拒绝
     try:
         route_alert('bogus', 'x', 'y', dry_run=True)

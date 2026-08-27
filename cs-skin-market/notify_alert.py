@@ -71,7 +71,10 @@ def route_alert(level="collect", title="", text="", dry_run=False, data_dir=None
     if level not in levels:
         raise ValueError(f"告警级别必须为 {levels}，收到 {level!r}")
     tag = tags.get(level, level)
-    title = f"【{tag}】{title}" if title else title
+    # S3 关键词保证（2026-08-27）：钉钉自定义机器人安全设置按关键词校验（否则 310000 拒收）。
+    # O4 三档告警统一加「CS」前缀（与 monitor_mode「CS 监控 …」格式一致），
+    # 用户侧机器人关键词须含「CS」（或「意向单」）方能送达——见决策日志登记。
+    title = f"CS【{tag}】{title}" if title else title
 
     # O2 联动：kill switch 闸停通知时，只留痕不推送
     try:

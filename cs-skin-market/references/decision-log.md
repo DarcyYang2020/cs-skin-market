@@ -2338,3 +2338,49 @@
 
 - 冒烟 **148 passed / 0 failed / 0 skipped**（原 144 + Wave4 新增 4 用例：E2 config / E2 calibration+sync / E1 质量门 / E3+E4 evaluate 路由+三层+质量标签+净值曲线）。
 - roadmap v82 Wave4 四卡状态行 → 已执行（待③审计）；本条目待③审计复核（判据口径 + 产物）。
+
+## EB. Wave4 E1–E4 · ③独立审计（2026-08-27，③审计，E2/E3/E4 通过 + E1 有条件通过 1 项必修）
+
+> 被审：EA + `run_quality_gate.py` + `_exp_quality_gate_2026-08-27.json` + E2 校准产物 + `evaluate_service.py`/`evaluate.html`。审计报告：`references/audit-wave4-e1e4-2026-08-27.md`。
+> 红线：只认 roadmap v82 Wave4 卡判据/验收 + 产物事实；EA 仅对照。独立复核：ADF/KPSS 复现、SQL 直查比对基准、压力窗口走势、evaluate_payload 实跑、独立冒烟。
+
+### 一、核验
+
+- **E2 通过**：费率等价性成立——net=fwd−roundtrip 平移 1.0pp（delta_avg14 全 +1.00pp 一致）、信号判定不依赖 net（T 日判定逻辑）、质量门⑤ 376/376 mismatch=0；5 品真重跑 0 不一致（EA 声明，逻辑可复核）。
+- **E3 通过**：evaluate_payload 实跑三层全到位；信号级族期望（31.7/19.2/10.3）、策略级（win14 77.1/avg14 20.3）、因子级 21 卡+registry（证伪15/候选3/存档3）均与源产物一致；费率口径诚实标注。
+- **E4 通过**：净值曲线 64 点/月度 27 行/分布/集中度 23.3% 准确；2 处归因缺陷登记（非阻断）：①按品类 372/376 落"其他"（前缀匹配不适配 CS 品名格式）②组合级 closed 逐笔 n_trades=0（b1 产物未存 closed 明细）。
+- **E1 有条件通过**：①平稳性 13/13 独立复现一致（ADF/KPSS 实现与标准一致，临界值 0.347/0.463/0.739 正确）②无泄露通过（静态声明+扫描，登记观察）④压力三窗口 avg14 全正（2025-10 回落 −17.7%/peakDD −58% 真实、2024-02 崩盘+反弹复合段、2026-02~04 断档）⑤成本 376/376 一致。
+- **E1③幸存者门实现缺陷（必修）**：查询列名 `active/status` 不存在于 market.db items（实际为 is_discontinued）→ `OperationalError` 被 except 吞掉 → 生产池基准空（prod_pool_size=0）→ eliminated=空**假通过**。正确口径（is_discontinued=1）验证：淘汰品 0、生产池 405=回放池 405 同构 → 结论实为通过。**须修复**（改列名 + 校验基准非空 + 异常不静默）→ 重跑登记 → ③复核闭环。
+- **冒烟**：独立重跑 147/1/0（1 failed=suggest API 429 间歇限流，环境因素非回归）；SKIP_NET=1 复跑 142/0/0/6skip——非网络用例全过，Wave4 4 新用例全 PASS。
+
+### 二、登记
+
+- 必修 1 项：E1③幸存者门实现修复（列名 + 基准非空校验 + 异常不静默）。
+- 非阻断 4 项：①E4 按品类归因失效（weapon 字段映射修复建议）②E4 closed 逐笔归因空（b1 产物补存 closed 明细或移除该展示）③E1 压力"无信号=通过"口径 + 2024-02 窗口标签（崩盘+反弹复合段）④E1 无泄露=静态声明 + ADF 临界值固定 n≈50 表（保守方向）。
+
+### 三、裁定
+
+- **E2/E3/E4 通过；E1 有条件通过**（①②④⑤真通过、③结论正确但实现须修复）→ 修复后③复核闭环。
+- 零引擎决策改动、不 bump ENGINE_VERSION ✅；审计未替研发改代码到通过。
+- **状态**：Wave4 评估层 ③审计收口（EB）；E1③修复动作归④研发，完成后通知③复核。
+
+## EB. S3 关键词保证 · 代码侧修复（2026-08-27，④研发执行，待③复核）
+
+> 根因（PM 定位）：`notify_alert.py:74` route_alert 标题仅加【交易】标签无 CS 前缀 + `paper_trading.intention_card` 格式缺 CS 前缀 → 钉钉自定义机器人安全设置关键词校验（310000 拒收）不匹配。归 O4 运维层代码改动，**不 bump 引擎**。
+
+### 修复内容（方案 b 代码侧，PM 优先；方案 a 配置侧一并挂账）
+
+- `notify_alert.py::route_alert`：标题统一加 CS 前缀 `CS【{tag}】{title}`（与 monitor_mode「CS 监控 …」格式一致；O4 三档 collect/quality/trade 同根因一并覆盖）。
+- `pipeline/paper_trading.py::intention_card`：首行 `【模拟盘意向单】` → `【CS 模拟盘意向单】`。
+- `push_intention` 走 route_alert(trade) 自动继承 CS 前缀，全链路覆盖。
+- 测试同步：`t_ops_route_alert` 断言改 `CS【{tag}】` 前缀；`t_paper_s3` 断言卡片首行 `【CS 模拟盘意向单】`；`t_notify_send_errcode`（310000 守卫）维持。
+
+### 验证
+
+- 冒烟：SKIP_NET=1 **142 passed / 0 failed / 6 skipped**（S3/O4/errcode 用例全 PASS）；完整跑 145/3（3 失败均为 csQAQ 429 限流网络用例，非本改动相关）。
+- **④实发 push_intention 验证**（临时库构造意向单，真实推送）：代码侧确认生效（dry-run 标题 `CS【交易】S3关键词验证`、卡片首行 `【CS 模拟盘意向单】`），但**钉钉仍返回 310000 关键词不匹配**——机器人安全设置当前关键词不含「CS」亦不含「意向单」，属**配置侧未就绪**（方案 a）。
+
+### 挂账与流向
+
+- **配置侧待办（群管理员/用户侧）**：钉钉机器人安全设置关键词须含「CS」（推荐，三档告警+意向单统一）或「意向单」；到位后④重发 `push_intention` 验证 errcode=0 送达，报③复核闭环（S3 DU② 关键词项随之闭环）。
+- roadmap S3 卡状态行已登记关键词保证说明；本条目待③复核（代码侧修复 + 测试断言）。

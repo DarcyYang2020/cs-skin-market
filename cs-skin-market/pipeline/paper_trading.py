@@ -419,9 +419,13 @@ def create_intention(conn, *, item_id, item_name, family, direction, qty, ref_pr
 
 
 def intention_card(o):
-    """S3 钉钉卡片文本（§4.2 意向单结构：品/方向/数量/参考价/理由/期望/风控标签）。"""
+    """S3 钉钉卡片文本（§4.2 意向单结构：品/方向/数量/参考价/理由/期望/风控标签）。
+
+    S3 关键词保证（2026-08-27）：首行加「CS」前缀，与 notify_alert.route_alert 统一——
+    钉钉机器人安全设置按关键词校验（310000 拒收防护），关键词须含「CS」或「意向单」。
+    """
     d = "买入" if o["direction"] == "buy" else "卖出"
-    return ("【模拟盘意向单】\n"
+    return ("【CS 模拟盘意向单】\n"
             f"品：{o['item_name']}\n"
             f"方向：{d} ｜ 数量：{float(o['qty'] or 0):.2f}\n"
             f"参考价：¥{float(o['ref_price'] or 0):.2f}\n"
