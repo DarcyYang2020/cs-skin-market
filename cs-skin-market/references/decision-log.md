@@ -2651,3 +2651,43 @@
 - 不改引擎、不改业务逻辑、不碰 market.db；改代码归④研发执行，落地后③审计轻量复核。
 
 - **状态**：**PM 立项（FG）**，交④研发执行；可与此前 W7-2 落库脚本催办合并排期（均归研发、均不阻塞主线）。
+
+## FH. W7-2 落库脚本交付核验 + v1a 待③审计状态确认（2026-08-27 21:45，PM 核验）
+
+### 一、②W7-1 v1a 收口确认
+- ②回话与 FF 自洽：verdict=无增量，R5+v1a 合并口径登记防重复挖；不触发四关；W7-1 本轮收口，挂账待 v1b（+turnover ≥3 月）/v1c（+steamdt，W7-2 积累够）数据到位后重新预注册 ✅（无状态滞后）；
+- **③审计进行中**：`references/_audit_v1a_recompute.py` 已就位，等待③审计结论（②提醒留意）。
+
+### 二、研发交付 W7-2 落库脚本 · PM 合规核验放行
+- **交付物**：`collect_steamdt_reserve.py` + `pipeline/raw_db.py` 新增 raw_steamdt_market/raw_steamdt_blocks 两表（+39 行）+ tests 新增 `t_w72_steamdt_schema`（表存在/UNIQUE 约束/append-only 断言）；
+- **PM 只读核验（红线）**：不进引擎、不 bump ENGINE_VERSION、不碰 market.db（脚本声明 + grep 无引擎引用）✅；append-only 经 `raw_db.append_raw`（D7 同构）✅；幂等 UNIQUE(date)/(date,level,block_name) 冲突自然忽略 ✅；stdout 末行 RESULT ✅；
+- **结论：合规，符合 `w7-2-collect-contract-2026-08-27.md` 契约 → W7-2 阻塞解除，④可接入 18:00 链首跑验证**；
+- 附注：working tree 中研发交付物未提交（raw_db.py/test_smoke/roadmap + collect_steamdt_reserve.py），由研发自行归档。
+
+### 三、FG 加固状态
+- **未执行**：`notify_alert.py` 无改动（test_smoke 新增为 W7-2 验收测试，非 FG 断言）；FG 仍在④研发待办（可与此前 W7-2 合并排期）。
+
+- **状态**：W7-2 阻塞解除（研发→④接入）；v1a 等③审计；FG 待研发执行。
+
+## FH. W7-2 steamdt 蓄水池落库脚本交付（2026-08-27，④研发交付，待④运维接入 + ③审计）
+
+> 依据：决策 EY（预研）+ EZ（PM 拍板立项）+ 契约 `references/w7-2-collect-contract-2026-08-27.md`（④运维挂接规格）。落库代码归研发交付 → ④运维接入 18:00 链 → ③审计复核 → 3-6 月积累观察。
+
+### 交付物
+
+1. **`pipeline/raw_db.py`**：_SCHEMA 新增 `raw_steamdt_market`（date UNIQUE，16 字段对齐契约/E 存证）+ `raw_steamdt_blocks`（UNIQUE(date,level,block_name)，6 字段）。append-only 机制统一（t_raw_db 的"无 UPDATE/DELETE"源码断言天然覆盖新表）。
+2. **`collect_steamdt_reserve.py`**（根目录，与 collect_data_reserve_p0 同级同风格）：三个 steamdt GET 端点（summary/players/item-block，零鉴权 urllib，单次 <10s）→ 解析落 raw.db。默认 **APPLY**（契约明确，与 p0 默认 dry-run 相反）；`--dry-run` 仅解析。stdout 末行 `RESULT mode=... market=1 blocks=N`；退出码 0/非0。
+
+### 验证（实测）
+
+- **dry-run**：market 16 字段 / blocks 20 行（hot+level1~3 × defaultList，对齐契约验收"blocks≥20"）✅
+- **APPLY 首跑**：raw_steamdt_market=1 行（date 2026-08-27，broad_market_index 831.13/turnover 3485万/survive 11.1亿/online 121万/update_time 21:40:10 全字段落库）；blocks=20 行（4 级）✅
+- **幂等**：重复运行 → "幂等跳过：date 已存在"，market 恒 1 / blocks 恒 20，退出码 0（首版用 INSERT 撞 UNIQUE 抛 IntegrityError，已修=脚本层当日存在性守卫）✅
+- **冒烟**：新增 2 用例（表+幂等约束+append-only 断言 / dry-run 解析+RESULT 末行+退出码），**150 passed / 0 failed / 0 skipped** ✅
+- **红线**：不进引擎、不 bump ENGINE_VERSION、不碰 market.db、仅公开市场级数据 ✅
+
+### 移交
+
+- ④运维：按契约 `_run_steamdt_reserve()` 接入 `_run_data_reserve()` 之后（18:00 每日链，健康检查前），首跑验证。
+- ③审计：验收 4 点（表存在+幂等约束 / append-only 断言 / dry-run 或首跑 market=1/blocks≥20 / 不 bump 引擎）。
+- 积累 3-6 月后由②评估（W7-1 v1c 届时复用）；不即采即落主分析（合规红线 decision-log 2161）。
