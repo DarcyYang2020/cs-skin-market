@@ -2525,3 +2525,53 @@
 - 4 项批准，转各窗口：v1a 带话② / 蓄水池带话④研发+④运维 / 单品二期挂账④运维 / 数据源确认已闭环（无动作）。
 - 待数据门控：v1b（≥3 月 turnover）、v1c（W7-2 3-6 月）。
 - roadmap / next-round-plan §4 已同步。
+
+## FA. W7-1 v1a（v0+bid+spread）· 预注册判据交付（2026-08-27，②研究，PM 拍板正式立卡后交付）
+
+> 依据：PM 拍板「W7-1 v1a 正式立卡」（接 EZ W7 全立批准）；预研 EF 数据核验（bid_history fit 774 天全量可回测、spread 86.9% 覆盖可回测、R1 组9 单因子弱/无效）。产物：`references/w7-1-v1a-emotion-prereg-2026-08-27.md`。
+
+### 判据要点（待 PM 冻结，冻结后②执行）
+- **v1a 合成（固定权重禁优化）**：`emo_v1a = clip(emo_v0 + 0.5·bid_norm + 0.5·spread_norm, 0, 100)`；emo_v0 = R5 冻结定义（w1=w2=0.5）；bid_norm/spread_norm = fit 段逐日截面 rank（0-100，R5 同规则）；权重 w1=w2=w3=w4=0.5 固定（权重变化=新预注册）。
+- **增量 IC 硬判据（双口径）**：
+  - 判据 A（对齐 R5 可比）：对核心因子集（pct/z/chg30/sc30/vol30/mchg30）截面回归残差 → 增量 IC ≥0.02 且滚动同号月 ≥80% → 候选；
+  - 判据 B（v1a 特有·相对 v0 净增量）：对核心因子集 + emo_v0 联合回归残差 → 增量 IC ≥0.02——回答"bid/spread 是否在 v0 之上还有新信息"（v0 已证无增量，防"只有 v0 贡献"假翻盘）；
+  - **verdict：A 且 B 均过 → 候选；任一不过 → 无增量/证伪登记**（正负都登记）。
+- **族开回放与四关（仅候选触发）**：族开回放（v1a 守卫注入，全池 3 年回放）+ 完整四关（A2 发射复算 / 组合级 b1 / 前后半段切点 2025-08-10 / 置换 n_iter=500 seed=42，north_star 口径，R3 同款）+ 差异化三表 + 组合增益线。
+- **边界**：仅守卫/加分（不进打分主干、不改族触发、不改 position_limit）；候选来源=bid/spread 未进引擎=独立扫描新增维度（不照镜子 C2）；v1b(+turnover)/v1c(+steamdt) 数据到位后重新预注册。
+- **oos_zone 守院**：探索仅 fit 段（require_fit D6）；val 仅预注册声明验证动作（增量 IC val 复验 + 四关 2/3/4）触碰；触碰探索=作废+台账告警。
+- **产物**：`data/_exp_emotion_v1a_2026-08-27.json`（组件 IC + 合成定义 + 增量 IC 双口径报告 + verdict）；候选则追加四关产物。
+- **状态**：**预注册判据交付（FA），待 PM 冻结**；冻结后②执行 v1a 评估（仅 fit 段探索，val 仅复验触碰）。
+
+## FB. W7-2 steamdt 蓄水池采集立项（2026-08-27 21:3x，PM 拍板 / ④运维接收）
+
+- **PM 拍板**：W7-2 蓄水池采集正式立项。数据源确认 = **steamdt.com 独立站**（非悠悠有品）；落库代码归**研发**、调度接入归**④运维**。
+- **落库方案**：`data/raw.db` 新表 `raw_steamdt_market`（date, ts, broad_market_index, diff_yesterday_ratio, add_num, add_valuation, trade_num, turnover, add_num_ratio, add_amount_ratio, trade_volume_ratio, trade_amount_ratio, survive_num, holders_num, online_count, month_avg_online, update_time）+ `raw_steamdt_blocks`（date, ts, level, block_name, index, rise_fall_rate, rise_fall_diff）；append-only 蓄水池，不接引擎。
+- **频率/挂接**：每日 1 次，挂 18:00 每日链（对齐 `_run_data_reserve` 模式：subprocess + timeout 2400s + 失败仅 log 不中断主采集）；GET 零鉴权，urllib 即可，负载 <10s。
+- **合规红线（decision-log 2161）**：积累 3-6 月再评，不得即采即落主分析；仅采公开市场级数据，不涉账号/交易明细，不 bump ENGINE_VERSION。
+- **分工**：研发交付落库脚本（collect_steamdt_reserve.py 或同款，含建表 + 幂等 + append-only 断言）→ ④运维接入 18:00 链 → ③审计复核 → 积累观察。
+- **状态**：PM 已拍板立项；**待研发交付落库脚本后运维挂接**（探针/字段存证已在 EY 条目）。
+
+## FC. PM 冻结 W7-1 v1a 预注册判据（2026-08-27 21:33，①PM 冻结）
+
+> 核验 FA 判据文档 `references/w7-1-v1a-emotion-prereg-2026-08-27.md`：四要素齐备、无越红线，**冻结通过**。
+
+### 判据四要素核验（PM 逐项）
+1. **固定权重合成（禁优化）**：`emo_v1a = clip(emo_v0 + 0.5·bid_norm + 0.5·spread_norm, 0, 100)`；emo_v0=R5 冻结定义（w1=w2=0.5）；w1=w2=w3=w4=0.5 固定，权重变化=新预注册 ✅；
+2. **增量 IC 双口径硬判据**：判据 A（核心因子集 pct/z/chg30/sc30/vol30/mchg30 正交化残差 → 增量 IC≥0.02 且滚动同号月≥80%，对齐 R5）；判据 B（核心因子集+emo_v0 联合正交化残差 → 增量 IC≥0.02，回答"bid/spread 是否在 v0 之上还有新信息"，防"仅 v0 贡献"假翻盘）✅；
+3. **候选触发四关方案**：族开回放（v1a 守卫注入，全池 3 年 replay_cycle_win.db）+ A2 发射复算/组合级 b1/前后半段（切点 2025-08-10）/置换（n_iter=500 seed=42），R3 同款 north_star 口径 + 差异化三表 + 组合增益线 ✅；
+4. **oos_zone 守院**：探索仅 fit 段（require_fit D6）；val 仅预注册声明验证动作触碰（增量 IC val 复验 + 四关 2/3/4）；触碰探索=作废+台账告警 ✅。
+
+### PM 冻结裁定
+- **v1a 判据冻结，②可执行**：探索仅 fit 段；产物 `data/_exp_emotion_v1a_2026-08-27.json`（组件 IC 表 + 合成定义 + 增量 IC 双口径报告 + val 复验 + verdict）；候选则追加四关产物；
+- **verdict 规则冻结**：判据 A 且 B 均过 → 候选；任一不过 → 无增量/证伪登记（正负都登记）；
+- **边界冻结**：仅守卫/加分（不进打分主干、不改族触发、不改 position_limit）；候选来源=bid/spread 未进引擎=独立扫描新增维度（不照镜子 C2）；v1b(+turnover)/v1c(+steamdt) 数据到位后重新预注册（本判据不含）；
+- **诚实预期（已登记）**：R1 组9 单组件弱/无效 + R5 v0 无增量，合成大概率仍无增量，但非线性交互按流程验证一次（正负都登记）；
+- **③审计**：执行产物按判据 §7 验收交③独立审计；判据本身可只读复核（FA 模式）；
+- **状态**：**v1a 判据已冻结（FC），②执行中**。
+
+## FA. W7-2 单品级二期（WS jwt 通道）原则批准 + 挂账（2026-08-27 21:35，PM 原则批准 / ④运维登记）
+
+- **PM 原则批准**：W7-2 单品级二期深挖（WS jwt 通道，`/api/common/v1/ws/jwt/anonymous` 方向）**原则批准**，但受 108 环境风控暂缓，**挂账为二期深探项**。
+- **启动条件**：待市场级蓄水池（raw_steamdt_market/blocks，EZ 立项）稳定运行后再启动；单品级 10min 数据届时可评估 WS 通道可行性（预研期 fetch 复现被 108 拦截、仅页面原生交互成功，WS jwt 为候选路径）。
+- **边界**：二期深探仍守合规红线（decision-log 2161：积累 3-6 月再评、不即采即落主分析）；不阻塞市场级蓄水池先行。
+- **状态**：挂账二期；市场级蓄水池稳定后④运维提示 PM 启动评估。
