@@ -6,7 +6,9 @@
 
 双轨（方案 A + B，均本脚本，--scope 区分）：
   - 方案 A（兜底，18:00 采集收尾挂接）：--scope active —— 活跃池全量重算；
-  - 方案 B（覆盖空窗，独立 2h 定时任务）：--scope watchlist —— 自选+持仓增量刷新。
+  - 方案 B（覆盖空窗，独立 2h 定时任务）：--scope watchlist —— 先刷大盘指数（HC 修订段，
+    2026-08-28 ②修订版采纳：collect_market_index 复用 run_daily_collect，大盘随 2h 链更新）
+    → 再自选+持仓增量刷新+重算+推送。
 复用：scan_tasks._scan_item（增量，KLINE_FRESH_BATCH 复用窗口）+ paper_trading.create_intention/push_intention（S3）；
 红线：不碰引擎参数、不 bump ENGINE_VERSION；推送幂等对齐 M2（settings key，同品同日不重复推）。
 
@@ -144,6 +146,18 @@ async def main_async(args):
     date = _today()
     mode = "DRY-RUN" if args.dry_run else "APPLY"
     _log(f"EXEC-2 {mode} scope={args.scope} items={len(rows)} date={date}")
+
+    # HC 修订段（2026-08-28，②修订版采纳）：方案 B 每 2h 先刷大盘指数再跑 watchlist——
+    # 大盘指数是融合决策输入（market_th/周期），2h 链期间 18:00 采集已过、指数须保持新鲜。
+    # 复用 run_daily_collect.collect_market_index（单请求 upsert，run_daily_collect.py:58 同款）；
+    # 失败不阻断（回退旧指数，扫描仍执行），dry-run 亦执行（保持与 APPLY 同链路验证）。
+    if args.scope == "watchlist":
+        try:
+            import run_daily_collect as _rdc
+            _ok = await asyncio.to_thread(_rdc.collect_market_index)
+            _log(f"大盘指数刷新: {'OK' if _ok else 'FAIL（回退旧指数，扫描继续）'}")
+        except Exception as exc:
+            _log(f"大盘指数刷新异常（不阻断扫描）: {type(exc).__name__}: {str(exc)[:80]}")
 
     idx = await asyncio.to_thread(fetch_market_index)
     if idx is None or idx.value == 0:

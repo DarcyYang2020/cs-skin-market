@@ -3121,3 +3121,26 @@
 - 观察：推送消息进模拟盘台账（paper_orders status=intention），用户回报走 S3 闭环。
 
 > ⚠️ **修订注记（HD 落地 = 原版验收；大盘刷新为增量待补）**：研发落地时 HC 尚为原版（方案 B 无大盘刷新）；②修订版（23:57）补「方案 B 每 2h **先刷大盘指数**（collect_market_index，单请求）→ 再增量刷新+重算+推送」，PM 已核验采纳（时期路由 state_bucket/守卫1 依赖大盘，batch_scan:60-69）。**HD 交付物缺此步骤 → 增量挂账**：待研发在 exec2_auto_watch watchlist 入口前补调 collect_market_index（或计划任务链加一步），补完冒烟 → ③审计按修订版验收（含「大盘随 2h 链更新」「范围=大盘+自选+持仓+活跃池」）。
+
+## HE. EXEC-2 HC 修订段落地 · 方案 B 大盘指数随 2h 链更新（2026-08-28，④研发执行，待③按修订版验收）
+
+> 依据：PM 通知（decision-log HC 修订段 + HD 修订注记）——②修订版采纳：方案 B 每 2h 先刷大盘指数再执行 watchlist。修订点：大盘指数是融合决策输入（market_th/周期），2h 链期间 18:00 采集已过，指数须保持新鲜。
+
+### 修订内容
+
+- `exec2_auto_watch.py`：`--scope watchlist` 入口前补调 `run_daily_collect.collect_market_index()`（复用 run_daily_collect.py:58 单请求 upsert：fetch_market_index → market_index 表当日 upsert）→ 再执行自选+持仓增量刷新+重算+推送。
+  - 失败不阻断（回退旧指数，扫描仍执行）；dry-run 亦执行（保持与 APPLY 同链路验证）。
+  - 方案 A（active，18:00 收尾）不重复刷（采集链已含大盘）。
+- `tests/test_smoke.py`：t_exec2 补断言——①run_daily_collect.collect_market_index 存在（HC 修订依赖）②exec2_auto_watch.py 源码含 `_rdc.collect_market_index` 调用 ③仅 watchlist 范围触发（`args.scope == "watchlist"` 判定）。
+
+### 验证
+
+- **完整冒烟 152 passed / 0 failed / 0 skipped** ✅（t_exec2 修订断言 PASS）。
+- **dry-run 实测**：`大盘指数: 1509.57 (+0.0%) mood=恐惧 → 刷新 OK → EXEC-2 watchlist 117 品 64s errors=0` —— 大盘先刷、watchlist 后跑，链路顺序正确 ✅。
+- 附带：J-2 冒烟失败（B 通道 value_days 20 vs 21）为 08-27 跨天缓存过期（j2_channel_status.json 昨日生成），重跑 j2_channel_monitor.py 刷新（value_days=21/generated=2026-08-28）后全绿——非本次改动相关。
+- 红线：不碰引擎参数、不 bump ENGINE_VERSION ✅。
+
+### 移交
+
+- ③审计按修订版验收：含「大盘随 2h 链更新」「范围=大盘+自选+持仓+活跃池」。
+- ④运维：install_tasks.ps1 重装后 2h 任务自动带大盘刷新（脚本内已含，无需改任务命令）。

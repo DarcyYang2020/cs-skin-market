@@ -4639,6 +4639,13 @@ def t_exec2_scope_idempotent():
     n = m.execute("SELECT COUNT(*) FROM paper_orders WHERE item_name='EXEC2-冒烟品'").fetchone()[0]
     assert n == 1, f'意图单应 1 条，实际 {n}'
     m.close()
+
+    # ④ HC 修订段（2026-08-28）：方案 B watchlist 入口前刷大盘指数（collect_market_index 复用 run_daily_collect）
+    import run_daily_collect as _rdc
+    assert hasattr(_rdc, "collect_market_index"), "run_daily_collect.collect_market_index 缺失（HC 修订依赖）"
+    _src_e2 = open(os.path.join(os.path.dirname(TEST_DIR), 'exec2_auto_watch.py'), encoding='utf-8').read()
+    assert "_rdc.collect_market_index" in _src_e2, "exec2_auto_watch.py watchlist 入口未补大盘指数刷新（HC 修订段）"
+    assert 'args.scope == "watchlist"' in _src_e2, "大盘刷新应仅在 watchlist 范围触发"
 check('EXEC-2 范围/幂等/推送链路', t_exec2_scope_idempotent)
 
 print(f'=== Results: {passed} passed, {failed} failed, {skipped} skipped ===')
