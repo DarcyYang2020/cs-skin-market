@@ -3235,6 +3235,48 @@ def t_notify_send_errcode():
         assert send("t", "x", "http://fake") == 200
 check('M2 send() dingtalk errcode guard', t_notify_send_errcode)
 
+def t_fg_alert_title_cs():
+    """FG 告警标题加固（2026-08-27，decision-log FG）：send() 底层唯一出口强制标题含 CS。
+    ①不含 CS 自动补 `CS ` 前缀；②已含 CS 幂等不重复加；③route_alert 三档标题恒含 CS。"""
+    import json as _J
+    from unittest import mock
+    from notify_alert import send, route_alert
+
+    class FakeResp:
+        def __init__(self, body, status=200):
+            self.status = status
+            self._body = body.encode("utf-8")
+        def read(self):
+            return self._body
+        def __enter__(self):
+            return self
+        def __exit__(self, *a):
+            return False
+
+    captured = {}
+
+    def _fake_urlopen(req, timeout=10):
+        captured["body"] = _J.loads(req.data.decode("utf-8"))
+        return FakeResp('{"errcode":0,"errmsg":"ok"}')
+
+    with mock.patch("urllib.request.urlopen", side_effect=_fake_urlopen):
+        # ① 不含 CS → 自动补 `CS ` 前缀
+        send("告警标题", "内容", "http://fake")
+        assert captured["body"]["text"]["content"].startswith("CS 告警标题"), captured["body"]
+        # ② 已含 CS（route_alert 显式 CS【tag】）→ 幂等不重复加
+        send("CS【交易】已有前缀", "内容", "http://fake")
+        assert captured["body"]["text"]["content"].startswith("CS【交易】已有前缀"), captured["body"]
+        assert "CS CS" not in captured["body"]["text"]["content"], "重复前缀（应幂等）"
+        # ③ monitor 风格「CS 监控…」→ 幂等
+        send("CS 监控 health FAIL", "内容", "http://fake")
+        assert captured["body"]["text"]["content"].startswith("CS 监控 health FAIL"), captured["body"]
+        assert "CS CS" not in captured["body"]["text"]["content"], "重复前缀（应幂等）"
+    # ④ route_alert 三档 dry-run 标题均含 CS（FG 验收②）
+    for lv in ("collect", "quality", "trade"):
+        r = route_alert(lv, "告警", "内容", dry_run=True)
+        assert "CS" in r.get("title", ""), (lv, r.get("title"))
+check('FG send() 强制标题含 CS（自动补前缀 + 幂等 + 三档覆盖）', t_fg_alert_title_cs)
+
 def t_snapshot_bid_cols():
     """快照持久化求购(bid/spread)字段：数据储备，供后续版本迭代验证求购因子（决策零改动）。"""
     from pipeline import db

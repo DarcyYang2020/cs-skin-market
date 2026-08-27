@@ -133,6 +133,10 @@ def sign_webhook_url(url, secret):
 
 
 def send(title, text, url, timeout=10):
+    # FG 告警标题加固（2026-08-27，decision-log FG，PM 立项防回归）：
+    # 底层唯一出口强制保障标题含「CS」——不含则自动加 `CS ` 前缀（幂等：已含跳过，
+    # route_alert 显式 CS【tag】与 monitor_mode「CS 监控…」不受影响）；errcode 校验维持现状。
+    title = title if "CS" in (title or "") else f"CS {title}"
     url = sign_webhook_url(url, load_webhook_secret())  # G-2（2026-08-10）钉钉加签（可选）
     payload = json.dumps({
         "msgtype": "text",
