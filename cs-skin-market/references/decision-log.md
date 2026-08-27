@@ -2464,25 +2464,29 @@
 ### 四、状态
 - **预研准备完成（EF）**：数据核验 + 方法论骨架落盘；W7-1 维持挂账（等数据）；触发条件 = ①v1a 存量评估可随时启动（待 PM 立卡）②turnover ≥3 月 ③W7-2 steamdt 积累够 → ②交付 v1 正式判据 → PM 冻结 → 执行。
 
-## EG. W7-1 预研交付确认 + W7-2 steamdt 探针就位（2026-08-27，④运维回话，PM 核验）
+## EG. 上轮 W7-1 回话归因更正 + W7-2 进展同步（2026-08-27，PM 核验）
 
-> 来源：运维转发回话 + working tree 探针脚本核验。PM 交叉验证：与 EF（② W7-1 预研准备）结论逐字自洽，属交叉验证通过，无状态滞后。
+> 更正：上轮转发「运维：W7-1 预研交付完毕」实为 **②研究窗口提交**（即 EF 那篇 `w7-1-emotion-v1-preresearch-2026-08-27.md`）；运维窗口未参与 W7-1。本条目修正 EG 原归因笔误，并将真实 W7-2 进展（④运维 EY）并入。
 
-### 一、W7-1 预研交付（运维数据探针，与 EF 一致）
-- bid_history 唯一现成可回测盘口富矿：1,157 天全量 / fit 774 天（<2025-08-10），buy_price_max 100% 非空（EF §2.1 实测一致）；
-- turnover（item_fundamental_snapshot）仅 2 天快照（08-13/08-27），不可回测（EF §2.3 一致）；
-- steamdt 成交额未采（W7-2 前置，EF §2.5 一致）；
-- v1 方法论骨架（§3 三轮 v1a/v1b/v1c + 预注册→增量IC→四关→③审计）已备齐，维持挂账等数据；
-- **结论：W7-1 预研 = ✅ 完成（数据探针 + 方法论骨架，交叉验证一致）；v1a（bid/spread 存量）随时可启动，待 PM 立卡。**
+### 一、W7-1 预研交付（实为②，与 EF 一致）
+- bid_history 唯一现成可回测盘口富矿：1,157 天全量 / fit 774 天（<2025-08-10），buy_price_max 100% 非空；
+- turnover（item_fundamental_snapshot）仅 2 天快照（08-13/08-27），不可回测；
+- steamdt 成交额未采（W7-2 前置）；
+- v1 方法论骨架（三轮 v1a/v1b/v1c + 预注册→增量IC→四关→③审计）已备齐；
+- **结论：W7-1 预研 = ✅ 完成（②交付，与 EF 一致）；v1a（bid/spread 存量）随时可启动，待 PM 立卡。**
 
-### 二、W7-2 steamdt 可行性探针（运维新产物，working tree 未提交）
-- 产物：`references/steamdt_probe1~13.py` + `references/yyyp_probe_steamdt.py`/`yyyp_probe_steamdt2.py`（共 15 个只读探针）；
-- 红线核验：grep 确认仅 `print`/API 盘点/字段捕获，**无 INSERT/CREATE/upsert/to_csv/market.db 写入** → 合规（decision-log 2161「不得即采即落主分析」守院通过）；
-- 状态：steamdt 未采、未定采；探针就位 = W7-2 可行性预研已自驱启动，待 PM 正式立卡后走合规积累 3-6 月。
+### 二、W7-2 steamdt 可行性预研（④运维，decision-log EY，已完成预研）
+- **数据源关键澄清**：**steamdt = 独立站 steamdt.com（金华新果科技），非悠悠有品**；`youpin898.com/steamdt` 实测 404 → **W7-2 不依赖 S1 账号**。
+- 市场级 GET API 零鉴权可采（大盘指数/成交额/成交量/新增额/新增量/在线人数/三级板块指数）；单品级 10min 受 108 风控（二期 WS/页面自动化）；历史深度=当日小时级+页面 K 线，无批量全历史（回测弱、价值在积累，契合 3-6 月合规累积）。
+- 蓄水池方案 = raw.db 两表（raw_steamdt_market/raw_steamdt_blocks）每日 1 次挂 18:00 链；本窗口不落地代码（归研发），仅出预研结论。
+- 红线核验：探针（steamdt_probe1~17.py + yyyp_probe_steamdt*.py）均只读，无 INSERT/CREATE/upsert/to_csv/market.db 写入 → 合规（decision-log 2161「不得即采即落主分析」）。
+- 详件：report `references/steamdt-feasibility-2026-08-27.md`；字段存证 `data/_exp_w7_2_steamdt_probe.json`；roadmap W7-2（998 行）已同步。
 
-### 三、PM 待拍板（非阻断）
-1. **v1a（bid/spread 存量）是否立卡**：②先交付 v1a 正式预注册判据 → PM 冻结 → ②执行（数据已够，随时可跑）；
-2. **W7-2 是否正式立卡启动合规积累 3-6 月**（探针已就位，S1 账号有效至 ~09-05）。
+### 三、PM 待拍板（运维 EY 三项 + 既有 v1a，非阻断）
+1. **v1a（bid/spread 存量）立卡**：②先交付 v1a 正式预注册判据 → PM 冻结 → ②执行（数据已够）；
+2. **W7-2 ①数据源确认** steamdt.com（非悠悠有品）；
+3. **W7-2 ②蓄水池采集立项**（raw.db 两表每日 1 次）；
+4. **W7-2 ③单品级二期是否深挖**（WS jwt 通道，108 风控暂缓）。
 
 ## EY. W7-2 steamdt 成交额组件 · 采集可行性预研完成（2026-08-27 21:10，④运维执行，PM 指令）
 
