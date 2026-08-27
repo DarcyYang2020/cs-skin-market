@@ -38,6 +38,81 @@ def load_webhook_secret():
     return ""
 
 
+def _level_webhook(level):
+    """O4 告警分级路由：每级可选独立 webhook（env 覆盖），缺省走基础 NOTIFY_WEBHOOK_URL。
+
+    路由规则在 config.OPS_RULES["alerts"]（单一事实源）。
+    """
+    try:
+        from pipeline.config import OPS_RULES
+        env_name = OPS_RULES["alerts"]["webhook_env"].get(level, "")
+    except Exception:
+        env_name = ""
+    if env_name and os.environ.get(env_name, "").strip():
+        return os.environ[env_name].strip()
+    return load_webhook_url()
+
+
+def route_alert(level="collect", title="", text="", dry_run=False, data_dir=None):
+    """O4 告警三档路由：采集 collect → 质量 quality → 交易 trade，到钉钉（复用加签基建）。
+
+    - 推送前检查 kill switch(notify)：拦截仍留痕 ops_log（分级不漏报的审计面）；
+    - 未配置 webhook → 返回 no_webhook（非阻断），仍写 ops_log 留痕；
+    - dry_run=True 不发起 HTTP（供冒烟/调试）；data_dir 覆盖状态文件目录（测试/多环境）。
+    返回: {"pushed": bool, "reason": str, "level": str, "tag": str, ...}
+    """
+    try:
+        from pipeline.config import OPS_RULES
+        levels = OPS_RULES["alerts"]["levels"]
+        tags = OPS_RULES["alerts"]["tags"]
+    except Exception:
+        levels = ["collect", "quality", "trade"]
+        tags = {"collect": "采集", "quality": "质量", "trade": "交易"}
+    if level not in levels:
+        raise ValueError(f"告警级别必须为 {levels}，收到 {level!r}")
+    tag = tags.get(level, level)
+    title = f"【{tag}】{title}" if title else title
+
+    # O2 联动：kill switch 闸停通知时，只留痕不推送
+    try:
+        from pipeline import ops as _ops
+        if _ops.is_blocked("notify", data_dir):
+            _ops.log_event("warn", "alert_route", f"kill switch 拦停通知 level={level}: {title}",
+                           alert_level=level, title=title, data_dir=data_dir)
+            return {"pushed": False, "reason": "kill_switch_notify", "level": level, "tag": tag}
+    except Exception:
+        pass
+
+    url = _level_webhook(level)
+    if not url:
+        try:
+            from pipeline import ops as _ops
+            _ops.log_event("info", "alert_route", f"webhook 未配置，跳过 level={level}: {title}",
+                           alert_level=level, title=title, data_dir=data_dir)
+        except Exception:
+            pass
+        return {"pushed": False, "reason": "no_webhook", "level": level, "tag": tag}
+    if dry_run:
+        return {"pushed": True, "dry_run": True, "level": level, "tag": tag, "title": title, "url": url.split("?")[0]}
+    try:
+        status = send(title, text, url)
+        try:
+            from pipeline import ops as _ops
+            _ops.log_event("info", "alert_route", f"推送成功 level={level}: {title}", alert_level=level, status=status, data_dir=data_dir)
+        except Exception:
+            pass
+        return {"pushed": True, "level": level, "tag": tag, "status": status}
+    except Exception as exc:
+        try:
+            from pipeline import ops as _ops
+            _ops.log_event("error", "alert_route", f"推送失败 level={level}: {title}: {exc}",
+                           alert_level=level, title=title, data_dir=data_dir)
+        except Exception:
+            pass
+        print(f"notify: push failed: {exc}", file=sys.stderr)
+        return {"pushed": False, "reason": f"push_failed: {exc}", "level": level, "tag": tag}
+
+
 def sign_webhook_url(url, secret):
     """DingTalk 加签：timestamp + HMAC-SHA256(secret) + base64 -> url 参数。
 
@@ -94,6 +169,14 @@ def _push(title, text):
         print("notify: NOTIFY_WEBHOOK_URL not configured, skipped (add to .env for alerts)")
         return 0
     try:
+        from pipeline import ops as _ops
+        if _ops.is_blocked("notify"):
+            print("notify: kill switch 闸停通知（notify scope），跳过推送")
+            _ops.log_event("warn", "alert_route", f"kill switch 拦停通知: {title}", title=title)
+            return 0
+    except Exception:
+        pass
+    try:
         status = send(title, text, url)
         print(f"notify: pushed HTTP {status}")
         return 0
@@ -108,5 +191,14 @@ if __name__ == "__main__":
     ap.add_argument("--title", default="CS 监控 alert")
     ap.add_argument("--text", default="")
     ap.add_argument("--monitor", action="store_true", help="run health monitor and push on FAIL")
+    ap.add_argument("--level", default="collect", choices=["collect", "quality", "trade"],
+                    help="O4 告警三档路由级别（默认 collect=采集）")
+    ap.add_argument("--dry-run", action="store_true", help="不发起 HTTP，仅打印路由结果（调试/冒烟）")
     args = ap.parse_args()
-    sys.exit(monitor_mode() if args.monitor else _push(args.title, args.text))
+    if args.monitor:
+        sys.exit(monitor_mode())
+    if args.dry_run:
+        _r = route_alert(args.level, args.title, args.text, dry_run=True)
+        print(json.dumps(_r, ensure_ascii=False, indent=2))
+        sys.exit(0)
+    sys.exit(_push(args.title, args.text))

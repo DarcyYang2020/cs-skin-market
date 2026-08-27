@@ -308,6 +308,13 @@ def push_daily(summary, events, slot="night"):
     url = load_webhook_url()
     if not url:
         return {"pushed": False, "reason": "no_webhook"}
+    # O2（2026-08-27）kill switch 联动：notify 闸停 → 跳过推送（已推送幂等键不写，恢复后可重推）
+    try:
+        from pipeline.ops import is_blocked as _ops_blocked
+        if _ops_blocked("notify"):
+            return {"pushed": False, "reason": "kill_switch_notify"}
+    except Exception:
+        pass
     title, text = _build_push_text(summary, events, slot)
     try:
         send(title, text, url)

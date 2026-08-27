@@ -1533,6 +1533,58 @@ async def api_paper_status():
     except Exception as _e:
         return {"ok": False, "error": str(_e)[:200]}
 
+# ---- Wave6 运维端点（O1–O4，2026-08-27，登录保护由 AUTH-1 中间件自动生效；CLI 等价入口 ops_tool.py）----
+@app.get("/api/ops/kill-switch")
+async def api_ops_kill_switch():
+    """O2 kill switch 状态（全局/策略级 × 手动/自动双通道）。"""
+    from pipeline.ops import kill_switch_state
+    return {"ok": True, "state": kill_switch_state()}
+
+
+@app.post("/api/ops/kill-switch")
+async def api_ops_kill_switch_set(request: Request):
+    """O2 kill switch 设置：{scope: global|paper|notify, blocked, reason, decision_log_ref}。
+
+    变更自动落 O3 审计台账（含 decision-log 引用）；reason 必填。
+    """
+    from pipeline.ops import set_kill_switch
+    body = {}
+    try:
+        body = await request.json()
+    except Exception:
+        try:
+            body = {k: v for k, v in (await request.form()).items()}
+        except Exception:
+            pass
+    scope = str(body.get("scope") or "").strip()
+    if scope not in ("global", "paper", "notify"):
+        return JSONResponse({"ok": False, "error": f"scope 必须为 global/paper/notify，收到 {scope!r}"}, status_code=400)
+    blocked = str(body.get("blocked", "1")).lower() in ("1", "true", "on", "yes")
+    reason = str(body.get("reason") or "").strip()
+    if not reason:
+        return JSONResponse({"ok": False, "error": "reason 必填（审计留痕）"}, status_code=400)
+    ref = str(body.get("decision_log_ref") or "").strip() or None
+    st = set_kill_switch(scope, blocked, by="webapp", reason=reason, decision_log_ref=ref)
+    return {"ok": True, "state": st}
+
+
+@app.get("/api/ops/audit")
+async def api_ops_audit(limit: int = Query(default=50)):
+    """O3 操作审计台账查询（新→旧）。"""
+    from pipeline.ops import list_audit
+    return {"ok": True, "rows": list_audit(limit=max(1, min(limit, 200)))}
+
+
+@app.get("/api/ops/monitor")
+async def api_ops_monitor():
+    """O1 交易级监控（实时只读）：对账差异/回撤/连续拒单/数据源新鲜度/采集闸门。"""
+    from pipeline.ops import run_ops_monitor
+    try:
+        res = run_ops_monitor()
+        return {"ok": True, **res}
+    except Exception as _e:
+        return {"ok": False, "error": str(_e)[:200]}
+
 @app.post("/api/watchlist/batch-scan-selected")
 async def api_watchlist_batch_scan_selected(request: Request):
     body = await request.json()

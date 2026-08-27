@@ -4029,6 +4029,263 @@ def t_saved_report_expectancy():
             conn.close()
 check('2026-08-12 期望徽章抽离: 快照保留状态桶+trace、外部卡可用', t_saved_report_expectancy)
 
+print('[Wave6 运维层 O1-O4]')
+def t_ops_kill_switch():
+    """O2 kill switch：默认全开 → 策略级/全局闸停 → 独立文件 + 审计台账留痕。"""
+    import tempfile, os
+    from pipeline import ops as _ops
+    d = tempfile.mkdtemp()
+    # 默认不拦截
+    assert _ops.is_blocked('paper', d) is False
+    assert _ops.is_blocked('notify', d) is False
+    # 策略级闸停 paper
+    st = _ops.set_kill_switch('paper', True, by='smoke', reason='冒烟测试', decision_log_ref='Wave6-O2', data_dir=d)
+    assert st['strategies']['paper'] is True
+    assert _ops.is_blocked('paper', d) is True
+    assert _ops.is_blocked('notify', d) is False
+    # 全局闸停拦截所有
+    _ops.set_kill_switch('global', True, by='smoke', reason='全局急停', data_dir=d)
+    assert _ops.is_blocked('notify', d) is True
+    # 独立文件存在（CLI/webapp 卡死也可读写）
+    assert os.path.exists(os.path.join(d, 'ops_kill_switch.json'))
+    # 审计留痕（含 decision-log 引用）
+    rows = _ops.list_audit(data_dir=d)
+    assert any(r['key'] == 'kill_switch.paper' and r['decision_log_ref'] == 'Wave6-O2' for r in rows), rows
+    # 非法 scope 拒绝
+    try:
+        _ops.set_kill_switch('bogus', True, by='x', reason='x', data_dir=d)
+        raise AssertionError('bogus scope 应拒绝')
+    except ValueError:
+        pass
+check('O2 kill switch 状态机+审计留痕+独立文件', t_ops_kill_switch)
+
+def t_ops_audit():
+    """O3 操作审计：who/何时/改了什么/decision-log 引用 四要素齐全，可检索。"""
+    import tempfile
+    from pipeline import ops as _ops
+    d = tempfile.mkdtemp()
+    rec = _ops.config_audit('smoke', 'threshold.abc', 1.0, 2.0, 'DL-WAVE6', note='阈值调整', data_dir=d)
+    assert rec['who'] == 'smoke' and rec['key'] == 'threshold.abc'
+    assert rec['old'] == 1.0 and rec['new'] == 2.0
+    assert rec['decision_log_ref'] == 'DL-WAVE6'
+    rows = _ops.list_audit(key='threshold.abc', data_dir=d)
+    assert len(rows) == 1 and rows[0]['note'] == '阈值调整'
+    # 无文件时返回空
+    d2 = tempfile.mkdtemp()
+    assert _ops.list_audit(data_dir=d2) == []
+check('O3 配置变更审计台账（四要素+检索）', t_ops_audit)
+
+def t_ops_route_alert():
+    """O4 告警分级路由：三档标签正确；kill switch(notify) 拦截不推送。"""
+    import tempfile
+    from notify_alert import route_alert
+    from pipeline import ops as _ops
+    # dry_run 三档标签
+    for lv, tag in (('collect', '采集'), ('quality', '质量'), ('trade', '交易')):
+        r = route_alert(lv, '冒烟', '不真实推送', dry_run=True)
+        assert r['pushed'] and r['tag'] == tag, r
+        assert r['title'].startswith(f'【{tag}】'), r
+    # 非法级别拒绝
+    try:
+        route_alert('bogus', 'x', 'y', dry_run=True)
+        raise AssertionError('bogus level 应拒绝')
+    except ValueError:
+        pass
+    # kill switch notify 闸停 → 拦截且不发起 HTTP
+    d = tempfile.mkdtemp()
+    _ops.set_kill_switch('notify', True, by='smoke', reason='通知暂停', data_dir=d)
+    r = route_alert('trade', '闸停测试', '不应推送', data_dir=d)
+    assert r['pushed'] is False and r['reason'] == 'kill_switch_notify', r
+check('O4 告警三档路由+kill switch(notify)拦截', t_ops_route_alert)
+
+def t_ops_monitor():
+    """O1 交易级监控：台账对账差异触发 FAIL + trade 告警；峰值台账/新鲜度正常。"""
+    import sqlite3, tempfile, os, json
+    from datetime import date
+    from pipeline import ops as _ops
+    from pipeline import paper_trading as _pt
+    d = tempfile.mkdtemp()
+    db = os.path.join(d, 'm.db')
+    conn = sqlite3.connect(db); conn.row_factory = sqlite3.Row
+    _pt.ensure_schema(conn)
+    conn.execute("CREATE TABLE price_history (item_id INTEGER, date TEXT, price_rmb REAL, in_sale_count REAL)")
+    conn.execute("INSERT INTO paper_account (id, cash, initial) VALUES (1, 1000000, 1000000)")
+    conn.execute("INSERT INTO price_history (item_id, date, price_rmb, in_sale_count) VALUES (1, ?, 1000, 10)",
+                 (date.today().isoformat(),))
+    conn.execute("INSERT INTO paper_positions (item_id, item_name, family, action_label, signal_date, entry_price, limit_pct, qty, stop_pct, take_pct, hold_days, sc30_open, closed) "
+                 "VALUES (1, '测试品', 'base', 'X', ?, 1000, 0.1, 100, -0.1, 0.1, 21, 5, 0)", (date.today().isoformat(),))
+    conn.commit()
+    sp = os.path.join(d, 'status.json')
+    json.dump({'equity': 1100000.0}, open(sp, 'w', encoding='utf-8'))
+    # 正常：差异 0 → PASS
+    res = _ops.run_ops_monitor(db_path=db, status_path=sp, data_dir=d)
+    rep = next(c for c in res['checks'] if c['name'] == '模拟盘台账对账')
+    assert rep['level'] == 'PASS', res['checks']
+    assert res['status'] == 'pass', res['status']
+    # 人为制造对账差异（status equity 虚高）→ FAIL + trade 告警
+    json.dump({'equity': 1120000.0}, open(sp, 'w', encoding='utf-8'))
+    res2 = _ops.run_ops_monitor(db_path=db, status_path=sp, data_dir=d)
+    rep2 = next(c for c in res2['checks'] if c['name'] == '模拟盘台账对账')
+    assert rep2['level'] == 'FAIL', res2['checks']
+    assert res2['fail_count'] >= 1
+    assert any(a['level'] == 'trade' for a in res2['alerts']), res2['alerts']
+check('O1 交易级监控（对账差异 FAIL+告警）', t_ops_monitor)
+
+def t_ops_quality_linkage():
+    """O4 quality 联动（Wave1 并入，补齐 O4 验收②）：备份新鲜度 FAIL + quality 告警；清洗台账消费检查存在。"""
+    import sqlite3, tempfile, os, json, time
+    from datetime import date
+    from pipeline import ops as _ops
+    from pipeline import paper_trading as _pt
+    d = tempfile.mkdtemp()
+    db = os.path.join(d, 'm.db')
+    conn = sqlite3.connect(db); conn.row_factory = sqlite3.Row
+    _pt.ensure_schema(conn)
+    conn.execute("CREATE TABLE price_history (item_id INTEGER, date TEXT, price_rmb REAL, in_sale_count REAL)")
+    conn.execute("INSERT INTO paper_account (id, cash, initial) VALUES (1, 1000000, 1000000)")
+    conn.execute("INSERT INTO price_history (item_id, date, price_rmb, in_sale_count) VALUES (1, ?, 1000, 10)",
+                 (date.today().isoformat(),))
+    conn.commit()
+    sp = os.path.join(d, 'status.json')
+    json.dump({'equity': 1000000.0}, open(sp, 'w', encoding='utf-8'))
+    # 备份目录 + 3 天前旧备份 → FAIL + quality 告警（备份非自动急停条件）
+    bd = os.path.join(d, 'backup'); os.makedirs(bd, exist_ok=True)
+    old = os.path.join(bd, 'market_20260801_000000.db')
+    open(old, 'w').close()
+    os.utime(old, (time.time() - 3 * 86400, time.time() - 3 * 86400))
+    res = _ops.run_ops_monitor(db_path=db, status_path=sp, data_dir=d)
+    bk = next(c for c in res['checks'] if c['name'] == '备份新鲜度')
+    assert bk['level'] == 'FAIL', res['checks']
+    assert any(a['level'] == 'quality' and '备份' in a['title'] for a in res['alerts']), res['alerts']
+    assert res['auto_killed'] == [], f'备份非自动急停条件: {res["auto_killed"]}'
+    # 清洗台账消费检查存在（生产台账当日 0 条 → PASS）
+    assert any(c['name'] == '清洗台账消费' for c in res['checks']), res['checks']
+check('O4 quality 联动（备份新鲜度 FAIL + 清洗台账消费）', t_ops_quality_linkage)
+
+def t_d3_batch_guard_e2e():
+    """DJ④ D3 端到端（2026-08-27）：人为触发 batch_guard → cleaning_ledger 记录 + count_since 计数 +1 + 回滚生效。
+
+    链路 = run_daily_collect._guard_batch_write（读 config 阈值 → 跨品跳变检测 → 回滚 →
+    cleaning_ledger.append → run_health_monitor 同源 count_since 计数）。全部 tmp 隔离，不碰生产库/台账。
+    """
+    import sqlite3, tempfile, os, json
+    from datetime import date, timedelta
+    import pipeline.db as _db_mod
+    from pipeline import cleaning_ledger as _cl_mod
+    import run_daily_collect as _rdc
+    _orig_conn, _orig_append, _orig_path, _orig_join = _db_mod.get_conn, _cl_mod.append, _cl_mod.LEDGER_PATH, os.path.join
+    d = tempfile.mkdtemp()
+    db, ledger, caliber = os.path.join(d, 't.db'), os.path.join(d, 'cleaning_ledger.jsonl'), os.path.join(d, 'caliber_override_log.jsonl')
+    c = sqlite3.connect(db); c.row_factory = sqlite3.Row
+    c.execute("CREATE TABLE price_history (item_id INTEGER, date TEXT, price_rmb REAL, in_sale_count REAL)")
+    prev = (date.today() - timedelta(days=1)).isoformat()
+    today = date.today().isoformat()
+    for i in range(20):
+        c.execute("INSERT INTO price_history (item_id, date, price_rmb, in_sale_count) VALUES (?,?,?,?)",
+                  (i, prev, 100.0, 100.0))
+    for i in range(20):
+        px = 200.0 if i < 15 else 100.0   # 15/20 品价格翻倍（跳变 100% >> 20% 阈值，占比 75% >> 3%）
+        c.execute("INSERT INTO price_history (item_id, date, price_rmb, in_sale_count) VALUES (?,?,?,?)",
+                  (i, today, px, 100.0))
+    c.commit()
+    def _fake_conn():
+        cc = sqlite3.connect(db); cc.row_factory = sqlite3.Row; return cc
+    def _fake_join(*a):
+        p = _orig_join(*a)
+        return caliber if p.endswith('caliber_override_log.jsonl') else p
+    def _fake_append(rule, item=None, value=None, action=None, detail="", ts=None):
+        rec = {"ts": ts or today + " 00:00:00", "rule": rule, "item": item,
+               "value": value, "action": action, "detail": detail}
+        with open(ledger, "a", encoding="utf-8") as f:
+            f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+        return rec
+    _db_mod.get_conn = _fake_conn
+    _cl_mod.append = _fake_append
+    _cl_mod.LEDGER_PATH = ledger
+    os.path.join = _fake_join
+    try:
+        assert _cl_mod.count_since(today) == 0, '前置台账应为空'
+        res = _rdc._guard_batch_write(today)
+        assert res.get('guarded') is True, res
+        assert len(res.get('rolled_back', [])) >= 15, res
+        assert _cl_mod.count_since(today) == 1, 'batch_guard 触发后台账计数应 +1（health_monitor 同源）'
+        row = c.execute("SELECT price_rmb FROM price_history WHERE item_id=0 AND date=?", (today,)).fetchone()
+        assert abs(row[0] - 100.0) < 1e-6, f'回滚未生效: {row[0]}'
+        assert os.path.exists(caliber), 'caliber 台账未留痕'
+    finally:
+        _db_mod.get_conn = _orig_conn
+        _cl_mod.append = _orig_append
+        _cl_mod.LEDGER_PATH = _orig_path
+        os.path.join = _orig_join
+        c.close()
+check('DJ④ D3 端到端：batch_guard 触发→LEDGER 记录→计数+1→回滚', t_d3_batch_guard_e2e)
+
+def t_ops_auto_kill():
+    """O2 自动急停：回撤破阈 → auto:drawdown 闸停 paper + 审计留痕 + 不自动恢复。"""
+    import sqlite3, tempfile, os, json
+    from datetime import date
+    from pipeline import ops as _ops
+    from pipeline import paper_trading as _pt
+    d = tempfile.mkdtemp()
+    db = os.path.join(d, 'm.db')
+    conn = sqlite3.connect(db); conn.row_factory = sqlite3.Row
+    _pt.ensure_schema(conn)
+    conn.execute("CREATE TABLE price_history (item_id INTEGER, date TEXT, price_rmb REAL, in_sale_count REAL)")
+    conn.execute("INSERT INTO paper_account (id, cash, initial) VALUES (1, 400000, 1000000)")
+    conn.execute("INSERT INTO price_history (item_id, date, price_rmb, in_sale_count) VALUES (1, ?, 1000, 10)",
+                 (date.today().isoformat(),))
+    conn.commit()
+    sp = os.path.join(d, 'status.json')
+    json.dump({'equity': 400000.0}, open(sp, 'w', encoding='utf-8'))
+    # 预置峰值 600000 → 回撤 33% ≥ 15% → 自动急停
+    json.dump({'peak': 600000.0, 'ts': 't'}, open(os.path.join(d, 'ops_paper_peak.json'), 'w', encoding='utf-8'))
+    res = _ops.run_ops_monitor(db_path=db, status_path=sp, data_dir=d)
+    assert 'drawdown' in res['auto_killed'], res['auto_killed']
+    assert _ops.is_blocked('paper', d) is True
+    # 审计留痕：kill_switch.paper new=True（by=auto:drawdown）
+    rows = _ops.list_audit(data_dir=d)
+    assert any(r['key'] == 'kill_switch.paper' and r['new'] is True and str(r['who']).startswith('auto:') for r in rows), rows
+    # ③审计建议（DF）：手动解除 → auto 记录清空 + 解除闸停
+    _ops.set_kill_switch('paper', False, by='smoke', reason='人工解除', data_dir=d)
+    assert _ops.is_blocked('paper', d) is False
+    assert _ops.kill_switch_state(data_dir=d)['auto'] == {}, _ops.kill_switch_state(data_dir=d)
+check('O2 自动急停（回撤破阈→auto 闸停+审计）', t_ops_auto_kill)
+
+def t_ops_paper_gate():
+    """O2 联动：kill switch(paper) 闸停时 daily_run 不建仓（出场/估值照常，不抛异常）。"""
+    import sqlite3, tempfile, os
+    from datetime import date
+    import pipeline.ops as _ops_mod
+    from pipeline import paper_trading as _pt
+    _orig_blocked, _orig_conn, _orig_status = _ops_mod.is_blocked, _pt.db.get_conn, _pt.STATUS_PATH
+    d = tempfile.mkdtemp()
+    db = os.path.join(d, 't.db')
+    c = sqlite3.connect(db); c.row_factory = sqlite3.Row
+    _pt.ensure_schema(c)
+    c.execute("CREATE TABLE signal_tracking (id INTEGER PRIMARY KEY AUTOINCREMENT, signal_date TEXT, action TEXT, "
+              "item_id INTEGER, item_name TEXT, action_label TEXT, position_limit REAL, sentiment REAL, sc30 REAL, entry_price REAL)")
+    c.execute("CREATE TABLE price_history (item_id INTEGER, date TEXT, price_rmb REAL, in_sale_count REAL)")
+    c.execute("CREATE TABLE items (id INTEGER PRIMARY KEY, good_id INTEGER)")
+    c.execute("INSERT INTO signal_tracking (signal_date, action, item_id, item_name, action_label, position_limit, sentiment, sc30, entry_price) "
+              "VALUES (?, 'buy', 1, '测试品', 'X', 0.1, 50, 5, 100)", (date.today().isoformat(),))
+    c.commit()
+    def _fake_conn():
+        cc = sqlite3.connect(db); cc.row_factory = sqlite3.Row; return cc
+    _ops_mod.is_blocked = lambda scope: scope == 'paper'
+    _pt.db.get_conn = _fake_conn
+    _pt.STATUS_PATH = os.path.join(d, 'status.json')
+    try:
+        res = _pt.daily_run()
+        assert res['opened'] == 0, res
+        n = c.execute("SELECT COUNT(*) FROM paper_positions").fetchone()[0]
+        assert n == 0, f'kill switch 闸停后不应建仓，实际 {n}'
+    finally:
+        _ops_mod.is_blocked = _orig_blocked
+        _pt.db.get_conn = _orig_conn
+        _pt.STATUS_PATH = _orig_status
+        c.close()
+check('O2 联动: kill switch(paper) 闸停 daily_run 建仓', t_ops_paper_gate)
+
 print(f'=== Results: {passed} passed, {failed} failed, {skipped} skipped ===')
 if failures:
     print()

@@ -284,20 +284,25 @@ def daily_run():
         mirrored = {r["item_name"] + r["signal_date"] + r["action_label"]
                     for r in conn.execute("SELECT item_name, signal_date, action_label FROM paper_positions")}
         opened = 0
-        for s in rows:
-            key = s["item_name"] + s["signal_date"] + (s["action_label"] or "")
-            if key in mirrored:
-                continue
-            pid = open_position(
-                conn, item_id=s["item_id"], item_name=s["item_name"],
-                family=family_key_for_label(s["action_label"] or ""),
-                action_label=s["action_label"] or "",
-                signal_date=s["signal_date"], entry_price=s["entry_price"],
-                limit_pct=s["position_limit"] or 0.10,
-                sentiment_score=s["sentiment"] if s["sentiment"] is not None else 50,
-                sc30=s["sc30"])
-            if pid:
-                opened += 1
+        # O2（2026-08-27）kill switch 联动：paper 闸停 → 暂停出单/建仓（出场与估值照常，不中断采集）
+        from . import ops as _ops
+        if _ops.is_blocked("paper"):
+            _LOG.warning("kill switch 已拦停模拟盘建仓（paper scope），仅执行出场/估值")
+        else:
+            for s in rows:
+                key = s["item_name"] + s["signal_date"] + (s["action_label"] or "")
+                if key in mirrored:
+                    continue
+                pid = open_position(
+                    conn, item_id=s["item_id"], item_name=s["item_name"],
+                    family=family_key_for_label(s["action_label"] or ""),
+                    action_label=s["action_label"] or "",
+                    signal_date=s["signal_date"], entry_price=s["entry_price"],
+                    limit_pct=s["position_limit"] or 0.10,
+                    sentiment_score=s["sentiment"] if s["sentiment"] is not None else 50,
+                    sc30=s["sc30"])
+                if pid:
+                    opened += 1
         _baseline_update(conn)
         st = status(conn)
         with open(STATUS_PATH, "w", encoding="utf-8") as f:
