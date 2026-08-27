@@ -1967,14 +1967,14 @@
 
 ---
 
-## DJ. PM 裁定 Wave1 通过 + O4②复核前置澄清（2026-08-27，①PM 裁定 / ③审计确认）
+## DM. PM 裁定 Wave1 通过 + O4②复核前置澄清（2026-08-27，①PM 裁定 / ③审计确认；原 DJ(1970)，PM 归口改号）
 
 - **PM 裁定（Wave1）**：D1–D7 审计通过；DI 四项登记照单——D1 锚定优先级口径（PM 定）、D4 rebuild_derived 补跑、D6 oos_guard Wave2 接线、D3 补冒烟用例。
 - **③澄清（O4 ② 复核前置）**：PM 表述「待 D3 补用例 + D4 补跑后复核 O4 ②」——**D3/D4 收尾不自动闭合 O4 ②**。O4 ②（与 D3/D4/D5 联动，DF 审计缺口）的待办在 **O4 侧**：
   1. `ops.py`/`notify_alert.py` 消费 `cleaning_ledger`（清理触警接入 quality 告警源）——当前零消费；
   2. **备份新鲜度检查**（备份陈旧/失败监控项）——全库未实现。
 - **O4 ② 复核条件**：④运维补实现上述两项 → ③复核 O4 ②（DF 条件通过转闭环）；D3 补用例/D4 补跑各自收尾复核独立进行，不与 O4 ② 混算。
-- **状态**：Wave1 通过（PM 拍板）；O4 ② 待④补实现后复核；D1 锚定口径待 PM 定稿更正架构文档。
+- **状态**：Wave1 通过（PM 拍板，四项登记见 DJ 条目）；O4 ② 待④补实现后复核（后续 DJ③ 触发 + DN ③复核通过已闭环）；D1 锚定口径已由 DJ(1951) 拍板 + 三处文档更正闭环（见 DJ 条目），本条目仅作 O4② 复核前置澄清。
 
 ---
 
@@ -1984,11 +1984,11 @@
 - **PM 独立核验（不认自述）**：
   - `tests/test_smoke.py::t_d3_batch_guard_e2e`（4165–4221）：`tempfile.mkdtemp()` 全 tmp 隔离不碰生产库/台账；断言 batch_guard 触发 → `cleaning_ledger.append` 记录 → `count_since` +1（health_monitor 同源）→ 回滚生效（price 回退 100）→ caliber 留痕，finally 还原无泄漏 → DJ④ 真落地。
   - 独立重跑冒烟：**142 passed / 0 failed / 0 skipped**（py311），与运维自述一致；同跑 `O4 quality 联动（备份新鲜度 FAIL + 清洗台账消费）` PASS → O4 两项联动代码层已实装（接续 ④ 01:30 补实装，DF 缺口闭环）。
-- **状态落盘**：roadmap v82 D3 卡状态行（DJ④ 已补，运维已同步）、O4 卡④待办（两项已落地 + 闭环路径 = DJ③+DJ④）均准确；本条目补 D4 状态行「目标回放库 = replay_cycle_win.db = R1 在读库，须待 R1 稳定」说明。D1 锚定口径（DJ(1970) 末行「待 PM 定稿」）已由 DJ(1951) PM 拍板 + 架构/D1 卡/data-layer-design 三处更正闭环，此处注记以免误读为未决。
+- **状态落盘**：roadmap v82 D3 卡状态行（DJ④ 已补，运维已同步）、O4 卡④待办（两项已落地 + 闭环路径 = DJ③+DJ④）均准确；本条目补 D4 状态行「目标回放库 = replay_cycle_win.db = R1 在读库，须待 R1 稳定」说明。D1 锚定口径（DM 末行「待 PM 定稿」，原 DJ(1970)）已由 DJ(1951) PM 拍板 + 架构/D1 卡/data-layer-design 三处更正闭环，此处注记以免误读为未决。
 - **DJ④ 闭环**：D3 ③审计通过转终态；不变量套件 + 端到端用例双重覆盖。
 - **DJ③ 维持待触发**：rebuild_derived 幂等验证未跑；触发条件 = ②R1 主脚本完成且回放库基线稳定（避免清空重建干扰②进行中回放库）；补跑后③复核 D4 ② + 连带 O4 ②。
-- **⚠️ 编号撞车（须用户拍板，勿擅自改他方条目）**：decision-log 现有**两个 DJ 头**——DJ(1951)「PM 拍板 D1 锚定口径 + 四项登记」与本批 DJ(1970)「PM 裁定 Wave1 通过 + O4②复核前置澄清（③确认）」。并行窗口产物，违反「编号须唯一」。建议用户定：留 DJ(1970) 为 O4② 澄清（daily log 01:32 已引「decision-log DJ」），将 DJ(1951) 拍板块改 **DM**；或反之。本条目用 DK 接续，不加剧撞车。roadmap/O4 卡现引「DJ 四项③/④」均指向 DJ(1951) 四项登记语义——若改 DJ(1951)→DM，须同步 roadmap D4/D6/O4/Wave1 状态行 + D3 状态行的「DJ 四项」指代。
-- **状态**：**DJ④ 已闭环（142/0/0 独立核验）；DJ③ 待②R1 稳定后④补跑；O4 ② 实现层已闭环（冒烟验证），③复核随 DJ③ 一并触发；DJ 双头待用户拍板编号。**
+- **编号归口（PM 裁定，用户授权「按你建议来」）**：采用低 churn 方案——**保留 DJ(1951) 为 D1 口径+四项登记权威条目，将 DJ(1970) 改号 DM**（本条目）。理由：roadmap v82 所有「DJ 三项/四项」交叉引用均指向 DJ(1951) 语义，保留 DJ 零 churn；DJ(1970) 仅被 daily log 01:32 与 DK/DR 少量引用，改 DM 影响最小。编号唯一已修复，无新增撞车。
+- **状态**：**DJ④ 已闭环（142/0/0 独立核验）；DJ③ 待②R1 稳定后④补跑；O4 ② 实现层已闭环（冒烟验证），③复核随 DJ③ 一并触发；DJ 双头已归口（DJ(1951) 保留、DJ(1970)→DM），编号唯一已修复。**
 
 ## DL. DJ③ 执行：D4 rebuild_derived 补跑 + 幂等验证 + 恢复演练（2026-08-27 02:05，④运维执行，R1 稳定后触发）
 
@@ -2018,7 +2018,7 @@
   - ⑤b 备份新鲜度：ops.py:360-376（最新备份年龄 ≥ backup_stale_days=2 → FAIL + quality 告警，非自动急停条件）实装 ✅；
   - 冒烟 t_ops_quality_linkage（4134+）：构造 3 天前旧备份 → FAIL + quality 告警 + 清洗台账检查存在 → PASS ✅。
 - **结论**：**D4 验收①②③④ 全部达成 → D4 卡 ③复核通过转终态；O4 验收② 复核通过 → O4 有条件通过转闭环（DF 条件通过转终态）**。
-- **状态**：**DJ③ 闭环、D4 终态、O4 终态（验收② 闭环）；DJ 双头撞车仍待用户拍板编号（未新增撞车）。**
+- **状态**：**DJ③ 闭环、D4 终态、O4 终态（验收② 闭环）；DJ 双头已归口（PM 建议 Option B：DJ(1951) 保留、DJ(1970)→DM），编号唯一已修复。**
 
 ## DO. PM 拍板 D7 raw.db 供给策略「接每日」+ ④接入每日采集链（2026-08-27 02:10，PM 裁定 / ④执行）
 
@@ -2042,3 +2042,41 @@
   - 入库脚本 `references/init_factor_registry.py`（确定性、幂等、自带 schema 校验）；R1 口语化 category/role 归一化到 8 类/4 角色枚举（映射表在脚本内留痕）。
 - **重要口径（防误读）**：registry 状态 = 新管线准入状态；**引擎现状因子（pct/z/chg30/sc30/vol30/mchg30）为历史累积（v2-T13 规则融合，未逐个走新管线），registry 证伪/存档 ≠ 引擎立即移除**——引擎因子取舍由 R3 策略隔离评估裁决（这正是 R3 的意义）。
 - **状态**：R2 判据冻结 + 落地完成（待③审计复核 registry 口径，§7.1 待审计项）；R3/R4/R5 判据已交付待 PM 冻结（自主模式下可解冻执行 R3/R5）。
+
+---
+
+## DQ. R2 factor_registry 口径 · ③独立复核（2026-08-27，③审计，通过 + 2 项非阻断收尾）
+
+> 被审：DP + `data/factor_registry.json` + `init_factor_registry.py` + `factor-registry.md`。审计报告：`references/audit-r2-registry-2026-08-27.md`。
+> 红线：只认 R2 预注册判据（§1 schema/§2 状态机/§5 映射/§6 验收）+ 产物事实；DP 仅对照。独立重算 + R1 卡交叉验证。
+
+### 一、核验（通过）
+- **结构**：21 因子、id 无重复、13 字段完整、必填 9 字段无缺失、status/role/category 枚举全合法、quality⇒tested_at；状态分布 证伪15/候选3/存档3 ✅
+- **状态映射（R1 卡独立交叉验证）**：候选（条件IC）→候选（sc7/sc30/s7_ratio cond_ic 正）；候选·无增量→证伪（sentiment 增量 IC −0.0008<0.02 已解释）；不稳定/弱·无效→证伪（spread/bid）；条件因子→存档（mchg7/21/30 截面 IC 无定义）——逐条正确 ✅
+- **关键口径**：引擎在用因子（pct/z/chg30/vol30/sc30/mchg30）status=证伪/候选/存档 但 in_engine 保留现状标注——「registry 证伪 ≠ 引擎移除」数据层成立 ✅；role/category 归一化留痕 ✅；md 视图 22 行 ✅；config 因子全部有 registry 条目 ✅
+
+### 二、非阻断收尾（登记，不阻断 R2 生效）
+1. `references/validate_factor_registry.py` 独立脚本缺失（§6 验收①承诺；校验内嵌 init.validate()，功能覆盖）——补建或修订预注册说明。
+2. 证伪/候选+in_engine 非空 6 条建议统一加「引擎现状遗留，取舍待 R3 策略隔离评估裁决」防误读标注（registry 头部 meta 或 cs_note）。
+
+### 三、裁定
+- **R2 registry 口径复核通过**；R3/R4/R5 不在本次范围，按各自卡流程。无生产改动、不 bump ENGINE_VERSION ✅。
+
+---
+
+## DR. PM 冻结 R3/R5 预注册判据 + Wave1/Wave2/Wave6 闭环同步（2026-08-27 09:46，PM 独立核验）
+
+- **进度同步核验（不认自述，独立读产物/审计文档）**：
+  - **Wave1 D1–D7 全闭环**：D4 rebuild_derived 三跑幂等（provenance.jsonl 3 条 append + recovery_drill_log PASS，DL 执行 + DN ③独立重跑第三次一致 → 三跑幂等 PASS）+ D6 oos_guard 已由 R1 接 `require_fit`（DP）+ D3 补端到端用例（DJ④ 142/0/0）+ D7 raw.db 接每日采集链（DO，18:00 起累积）；D1 锚定口径定稿 yyyp>buff>c5（DJ/③确认）。
+  - **Wave2**：R1 完成（21 因子评估卡 `data/_exp_factor_eval_2026-08-27.json`，cards=21，verdict=候选条件IC 3 / 候选·无增量 1 / 条件因子 3 / 不稳定 9 / 弱无效 5；**无新候选**，供给 sc7/sc30/s7_ratio 条件IC 唯一正信号，oos_zone 守院 val 未触碰）；R2 落地（`data/factor_registry.json` 21 因子：候选 3/证伪 15/存档 3，DQ ③复核通过）；R4 挖掘清单交付完成（DP）。
+  - **Wave6 O1–O4 全终态**：O4② 两项联动（cleaning_ledger 消费 + 备份新鲜度）实装，DN ③复核通过 → O4 有条件通过转终态（DF 闭环）。
+  - **D7 raw.db** 供给策略闭环（DO）。
+- **PM 冻结 R3/R5（核心动作）**：
+  - **R3 判据冻结**（`references/r3-family-isolation-prereg-2026-08-27.md`）：6 族独立族开回放 + 完整四关（A2 发射复算含置换 n_iter=500 seed=42 / 组合级 b1 / 前后半段切点 2025-08-10 / 置换检验）通过线（north_star 口径、val 段不显著即证伪硬判据）+ 差异化三表（信号重叠/收益相关矩阵/时期覆盖）+ 组合增益线（禁优化器）——与架构 §2.4/§2.6 对齐、oos_zone 守院（require_fit 接线 D6）、候选来源声明（现有生产族非新注入）、正负登记齐备 → **准予冻结**。②据以开跑 6 族隔离评估（产物 `data/_exp_family_isolation_2026-08-27.json`，仅产出评估结论不改引擎）。
+  - **R5 判据冻结**（`references/r5-emotion-v0-prereg-2026-08-27.md`）：v0 情绪分（恐慌分主 + 供给/动量调节，固定权重 w1=w2=0.5 禁权重优化）+ 增量 IC 硬判据（≥0.02 候选否则证伪/无增量）+ 仅加分/过滤不进主干 + oos_guard 守院（D6）+ v1 扩展须重注册——与架构 §2.5/§1.2 对齐、R1 组件 IC 证据在先 → **准予冻结**。②据以执行 v0 情绪评估（产物 `data/_exp_emotion_v0_2026-08-27.json`）。
+  - **冻结后红线**：R3/R5 仍属「研究窗口自主模式」——②可解冻执行，但**判据跑前定死、禁看结果调阈值（C2 照镜子教训）、oos_zone 守院、产出仅评估卡不立落地卡**。
+- **roadmap v82 状态同步**：R1 → 完成（21 因子卡，待③审计口径复核 §7.1）；R3/R5 → 判据冻结·②可开跑；Wave1 D1–D7 / Wave6 O1–O4 状态行已终态（DL/DN/DO/DP/DQ 对齐）。
+- **悬置项（备忘，非本次动作）**：
+  1. **工作树未提交改动（约 653 行 Wave6 相关）**：git status 显示 AGENTS.md/PROJECT_STRUCTURE/notify_alert/collector_csqaq/config/db/monitor/paper_trading/decision-log/requirements/deploy_cs_skin_market.sh 等 M + ops_tool/cleaning_ledger/oos_guard/ops/provenance/raw_db/r1–r5 预注册与脚本/三份审计文档 Untracked——**归属与提交时机待用户拍板**（PM 红线：不擅 commit 生产/研究改动）。
+  2. **DJ 双头编号已归口**（PM 建议 Option B：DJ(1951) 保留为权威条目、DJ(1970)→DM 作 O4② 澄清），编号唯一已修复，从悬置项移除。
+- **状态**：**R3/R5 判据冻结（DR）；②可开跑 6 族隔离评估（R3）+ v0 情绪评估（R5）；Wave1/Wave2/Wave6 闭环已据决策日志对齐；悬置两项待用户决策。**

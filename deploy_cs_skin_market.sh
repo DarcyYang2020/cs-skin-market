@@ -9,13 +9,16 @@
 #       以便公网 IP 可访问。
 set -euo pipefail
 
-REPO="https://github.com/DarcyYang2020/cs-skin-market.git"
-APP_DIR="/opt/cs-skin-market"
+# 注意：本仓库实际结构是 cs-model（根目录）内含 cs-skin-market/（应用目录）。
+# GitHub 在部分国内地域直连不可达，部署改用 ghproxy 镜像代理；如网络可直连 GitHub 可改回原地址。
+REPO="https://ghproxy.net/https://github.com/DarcyYang2020/cs-skin-market.git"
+# 原地址（直连）: https://github.com/DarcyYang2020/cs-skin-market.git
+APP_DIR="/opt/cs-skin-market/cs-skin-market"   # 应用子目录（仓库根为 cs-model）
 PORT=8000
 
-# 每日采集时间（与 Windows 计划任务 CS_Skin_DailyCollect 对齐，默认 18:00）
-# 注意：Lighthouse 实例默认时区多为 UTC。若需"北京时间 18:00"，UTC 服务器应填 10:00。
-COLLECT_HOUR=18
+# 每日采集时间：与 Windows 计划任务 CS_Skin_DailyCollect 对齐。
+# 原 Windows 任务为「北京时间 18:00」；Lighthouse 实例默认 UTC，故填 10:00（UTC）= 北京时间 18:00。
+COLLECT_HOUR=10
 COLLECT_MIN=00
 
 echo "==> [1/6] 安装系统依赖（python3-venv + Playwright 运行库）"
@@ -32,10 +35,10 @@ apt-get install -y python3-venv python3-dev build-essential \
   libxrandr2 libgbm1 libasound2t64 libpango-1.0-0 libcairo2 fonts-liberation
 
 echo "==> [2/6] 拉取代码"
-if [ -d "$APP_DIR/.git" ]; then
-  git -C "$APP_DIR" pull --ff-only
+if [ -d "$(dirname "$APP_DIR")/.git" ]; then
+  git -C "$(dirname "$APP_DIR")" pull --ff-only
 else
-  git clone "$REPO" "$APP_DIR"
+  git clone "$REPO" "$(dirname "$APP_DIR")"
 fi
 cd "$APP_DIR"
 
@@ -65,9 +68,27 @@ if [ -z "${CS_MARKET_PASSWORD:-}" ]; then
 else
   # 不回显密码；.env 权限收紧 600，避免其他用户读取
   SESS_SECRET="${CS_MARKET_SESSION_SECRET:-$(python -c 'import secrets;print(secrets.token_hex(32))')}"
-  printf 'CS_MARKET_PASSWORD=%s\nCS_MARKET_SESSION_SECRET=%s\n' "$CS_MARKET_PASSWORD" "$SESS_SECRET" > "$SECRET_FILE"
+  {
+    printf 'CS_MARKET_PASSWORD=%s\n' "$CS_MARKET_PASSWORD"
+    printf 'CS_MARKET_SESSION_SECRET=%s\n' "$SESS_SECRET"
+    # csQAQ 直连 API 令牌：采集/大盘刷新必备。缺失时 _api_call 在发请求前即报错，
+    # IP 白名单形同虚设（2026-08-21 线上事故：只加了 IP 白名单、未注入 token → 大盘获取失败）。
+    if [ -n "${CSQAQ_API_TOKEN:-}" ]; then
+      printf 'CSQAQ_API_TOKEN=%s\n' "$CSQAQ_API_TOKEN"
+    else
+      echo "    ⚠️ 未传入 CSQAQ_API_TOKEN：采集/大盘刷新将失败（IP 白名单无效）。" >&2
+      echo "    处置：CSQAQ_API_TOKEN='你的token' bash $0 重跑，或登录服务器手动补到 $SECRET_FILE 后 systemctl restart cs-skin-market。" >&2
+    fi
+    # 可选：通知 webhook（钉钉/飞书等），未传则不写
+    if [ -n "${NOTIFY_WEBHOOK_URL:-}" ]; then
+      printf 'NOTIFY_WEBHOOK_URL=%s\n' "$NOTIFY_WEBHOOK_URL"
+    fi
+    if [ -n "${NOTIFY_WEBHOOK_SECRET:-}" ]; then
+      printf 'NOTIFY_WEBHOOK_SECRET=%s\n' "$NOTIFY_WEBHOOK_SECRET"
+    fi
+  } > "$SECRET_FILE"
   chmod 600 "$SECRET_FILE"; chown root:root "$SECRET_FILE"
-  echo "    ✅ 已写入 $SECRET_FILE（权限 600；请妥善保存 CS_MARKET_PASSWORD，会话密钥已生成）"
+  echo "    ✅ 已写入 $SECRET_FILE（权限 600；CSQAQ_API_TOKEN=$([ -n "${CSQAQ_API_TOKEN:-}" ] && echo 已注入 || echo 缺失)）"
 fi
 
 echo "==> [4/6] 写生产启动器（绑定 0.0.0.0，不改仓库代码）"

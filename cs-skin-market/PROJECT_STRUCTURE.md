@@ -2,7 +2,7 @@
 
 > 本文档为项目文件结构唯一事实源（AGENTS.md/SKILL.md 不再维护重复文件树）。
 
-> 最后更新: 2026-08-15（工程卫生收口：单一文件树 + 产物归口 + 术语表）
+> 最后更新: 2026-08-27（Wave6 运维层落地：ops.py / ops_tool.py / OPS_RULES）
 
 ## 目录结构
 
@@ -17,7 +17,8 @@ cs-skin-market/
 ├── backup_db.py               # SQLite online backup（每日，保留 14 份）
 ├── collect_data_reserve_p0.py # P0 数据储备采集（活跃池基本面+求购日聚合，研究层，默认 dry-run）
 ├── collect_data_reserve_p1.py # P1 数据储备采集（存世量+系列面板+大户Top20，研究层，默认 dry-run）
-├── notify_alert.py            # 告警/监控推送（钉钉 webhook，.env NOTIFY_WEBHOOK_URL 配置）
+├── notify_alert.py            # 告警/监控推送（钉钉 webhook，.env NOTIFY_WEBHOOK_URL 配置；O4 三档路由 --level）
+├── ops_tool.py                # 运维 CLI（Wave6 O1-O4：kill switch / 审计 / 告警 / 交易监控，独立于 webapp）
 ├── install_tasks.ps1          # Windows 计划任务安装（每日采集/备份/告警）
 ├── install_hooks.ps1          # pre-commit hook 安装
 ├── deploy_server.ps1          # 服务部署脚本
@@ -71,7 +72,8 @@ cs-skin-market/
 | `item_categories.py` | 品类识别（M-6，discover 无磨损品类进发现榜） |
 | `market_period.py` | 大盘五时期生产持久化（market_state_daily.json，纯计算/持久化） |
 | `market_signal.py` | 大盘自身信号 + 风险仪表（A/D 模块，引擎无关） |
-| `paper_trading.py` | 模拟盘 v2（生产镜像，buy 自动建仓/到期/止盈止损/供给扩张全止损） |
+| `paper_trading.py` | 模拟盘 v2（生产镜像，buy 自动建仓/到期/止盈止损/供给扩张全止损；建仓受 O2 kill switch 闸控） |
+| `ops.py` | 运维层核心（Wave6 O1-O4：kill switch 双通道 / 操作审计 config_audit / 结构化日志 log_event / 交易级监控 run_ops_monitor；阈值在 config.OPS_RULES） |
 | `pool_log.py` | 池维护台账（F-3.2，追加写 pool_maintenance_log.jsonl） |
 
 ### 回测/研究公共
@@ -158,6 +160,7 @@ cs-skin-market/
 | `j2_channel_status.json` / `refit_pipeline_report.json` / `portfolio_backtest.json` 等 | 研究产物 |
 | `backup/` | 每日 DB 备份（保留 14 份，gitignore） |
 | `pool_maintenance_log.jsonl` | 池维护台账（daily/prune/discover 三类，F-3.2） |
+| `ops_kill_switch.json` / `config_audit_log.jsonl` / `ops_log.jsonl` / `ops_paper_peak.json` / `ops_monitor_latest.json` | Wave6 运维层运行时状态/审计/结构化日志/峰值台账（append-only，gitignore 级运行时产物） |
 | `scan_history/` / `scan_progress_*.json` / `batch_scan_latest.json` | 批量扫描归档/进度/缓存（gitignore） |
 
 
@@ -180,7 +183,8 @@ health_checks（数据健康）/ signal_tracking（生产信号跟踪）/ `backt
 
 - 每日 18:00 定时采集：python `run_daily_collect.py`（Windows 计划任务 CS_Skin_DailyCollect；12:00 午间/21:30 晚间推送、22:00 健康告警、23:30 备份）
 - 每日 23:30 DB 备份：python `backup_db.py`（保留 14 份）
-- 健康告警：python `notify_alert.py` --monitor（钉钉 webhook）
+- 健康告警：python `notify_alert.py` --monitor（钉钉 webhook；O4 三档路由 --level collect/quality/trade）
+- 运维操作：python `ops_tool.py`（kill-switch on/off/status、audit、monitor、alert；webapp 端点 /api/ops/* 等价，登录保护）
 - pre-commit：`install_hooks.ps1` → git commit 自动跑 test_smoke
 - 本地/CI 冒烟：python `tests/test_smoke.py`（CI 设 CS_MODEL_SKIP_NET=1 跳网络用例）
 - 完整调度与维护口径见 `references/data-layer.md`

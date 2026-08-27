@@ -314,6 +314,7 @@ monitor_events / positions / executions / signal_tracking / analysis_results / h
 
 - **数据库自动备份**：`python backup_db.py`（SQLite online backup API → `data/backup/market_YYYYMMDD_HHMMSS.db`，默认保留 14 份）；计划任务 `CS_DB_Backup` 每日 23:30。
 - **健康告警**：`python notify_alert.py --monitor`（健康检查 FAIL 时推送）；`.env` 配 `NOTIFY_WEBHOOK_URL`（钉钉机器人）后生效，未配置则静默；计划任务 `CS_Health_Alert` 每日 22:00（采集落库后告警）。
+- **Wave6 运维层（2026-08-27，roadmap v82 O1-O4，详见 decision-log DD）**：kill switch（`ops_tool.py kill-switch on|off <global|paper|notify> --reason ...` 或 `/api/ops/kill-switch`，状态 `data/ops_kill_switch.json`，自动急停只开不恢复）；操作审计（`ops_tool.py audit`，台账 `data/config_audit_log.jsonl`）；告警三档路由（`notify_alert.py --level collect|quality|trade`）；交易级监控（`ops_tool.py monitor`，对账/回撤/拒单/新鲜度/闸门）。阈值在 `config.OPS_RULES`，改动须登记 PARAM_REGIME 并重跑冒烟。
 - **计划任务安装**：`powershell -ExecutionPolicy Bypass -File install_tasks.ps1`（在 cs-skin-market 目录）。任务清单：`CS_Skin_DailyCollect` 每日 18:00 全量采集（2026-08-08 由 21:30 提前；收尾仅生成监控事件+日报不推送）、`CS_Skin_NightPush` 每日 21:30 晚间推送（事件幂等去重，保持 12:00 午间 + 21:30 晚间两时段）、`CS_Skin_NoonMonitor` 每日 12:00 午间轻量、`CS_Health_Alert` 每日 22:00 健康告警。
 - **调度与数据维护总览**：见 `references/data-layer.md`（第 3 节调度表 + 第 4 节更新维护）。
 - **本地 CI（pre-commit hook）**：`powershell -ExecutionPolicy Bypass -File install_hooks.ps1` → 每次 `git commit` 自动跑 `tests/test_smoke.py`，失败则拦截提交。
