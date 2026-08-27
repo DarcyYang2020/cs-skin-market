@@ -1,0 +1,2222 @@
+{
+ "meta": {
+  "card": "R1 因子评估（roadmap v82）",
+  "prereg": "references/r1-factor-eval-prereg-2026-08-27.md",
+  "script": "references/run_factor_eval.py",
+  "split_oos": "2025-08-10",
+  "fit_rows": 156418,
+  "val_rows": 83408,
+  "note_val": "val=oos_zone，未参与任何计算（触碰即作废）",
+  "matrix": "_exp_fullscan_features_2026-08-20.json",
+  "matrix_db": "data/replay_cycle_win.db（items.id 回放库体系，price_history/market_index 同源）",
+  "fwd_label_cost": "fwd14/fwd30 已扣 2% 双边成本（矩阵 COST=2.0，2026-08-20 生成）；E2 费率校准(买0/卖1)后需重评",
+  "engine": "v2-T13（只读，未改动）",
+  "ic_def": "截面 Spearman(因子, fwd14/fwd30)，逐日 IC 均值/滚动/时期分段",
+  "period_def": "state_bucket(chg180, chg30) 五时期（market_context 同款）",
+  "core_factors": [
+   "pct",
+   "z",
+   "chg30",
+   "sc30",
+   "vol30",
+   "mchg30"
+  ],
+  "thresholds": {
+   "ic_min": 0.05,
+   "roll_stable": 0.8,
+   "inc_ic_min": 0.02,
+   "corr_redundant": 0.8,
+   "cov_main": 0.8,
+   "cov_low": 0.3
+  },
+  "runtime_sec": 1034.4,
+  "verdict_refinement": "合并修正：组9 升主评卡替换；sentiment 按判据 §3 增量IC<0.02 降为「候选·无增量」；mchg 截面常数注记；supply 类走条件 IC 线"
+ },
+ "groups": {
+  "组1 pct/z（价值）": [
+   "pct",
+   "z"
+  ],
+  "组3 chg（动量）": [
+   "chg7",
+   "chg30",
+   "chg90"
+  ],
+  "组4 vol（波动）": [
+   "vol7",
+   "vol30"
+  ],
+  "组5/6 sc/s7_ratio（供给，条件IC）": [
+   "sc7",
+   "sc30",
+   "s7_ratio"
+  ],
+  "组7 趋势健康度5维": [
+   "th_persistence",
+   "th_steepness",
+   "th_structure",
+   "th_supply",
+   "th_anomaly"
+  ],
+  "组8 sentiment（情绪，预期证伪）": [
+   "sentiment"
+  ],
+  "组10 mchg（市场环境，regime）": [
+   "mchg7",
+   "mchg21",
+   "mchg30"
+  ],
+  "组9 spread/bid（盘口，仅覆盖率）": [
+   "spread",
+   "bid"
+  ]
+ },
+ "summary": {
+  "组1 pct/z（价值）": [
+   "不稳定",
+   "不稳定"
+  ],
+  "组3 chg（动量）": [
+   "不稳定",
+   "不稳定",
+   "不稳定"
+  ],
+  "组4 vol（波动）": [
+   "不稳定",
+   "弱/无效"
+  ],
+  "组5/6 sc/s7_ratio（供给，条件IC）": [
+   "候选（条件IC）",
+   "候选（条件IC）",
+   "候选（条件IC）"
+  ],
+  "组7 趋势健康度5维": [
+   "弱/无效",
+   "不稳定",
+   "弱/无效",
+   "不稳定",
+   "弱/无效"
+  ],
+  "组8 sentiment（情绪）": [
+   "候选·无增量"
+  ],
+  "组10 mchg（市场环境，regime）": [
+   "条件因子（regime 分段评估，不做单因子主判）",
+   "条件因子（regime 分段评估，不做单因子主判）",
+   "条件因子（regime 分段评估，不做单因子主判）"
+  ],
+  "组9 spread/bid（盘口，升主评 DE）": [
+   "不稳定",
+   "弱/无效"
+  ]
+ },
+ "cards": [
+  {
+   "id": "pct",
+   "name": "pct(90日分位)",
+   "coverage": 1.0,
+   "IC14": {
+    "n": 452,
+    "mean": -0.0807,
+    "std": 0.1782,
+    "t": -9.628,
+    "pos_ratio": 0.2765
+   },
+   "IC30": {
+    "n": 452,
+    "mean": -0.0576,
+    "std": 0.1673,
+    "t": -7.323,
+    "pos_ratio": 0.3606
+   },
+   "IC14_by_period": {
+    "P恐慌深跌": {
+     "n": 1,
+     "mean": 0.1515,
+     "std": 0.0,
+     "t": 0.0,
+     "pos_ratio": 1.0
+    },
+    "S1牛市上行": {
+     "n": 221,
+     "mean": -0.0539,
+     "std": 0.1861,
+     "t": -4.309,
+     "pos_ratio": 0.3394
+    },
+    "S2牛市回调": {
+     "n": 118,
+     "mean": -0.072,
+     "std": 0.1861,
+     "t": -4.2,
+     "pos_ratio": 0.2881
+    },
+    "S3弱市阴跌": {
+     "n": 41,
+     "mean": -0.1244,
+     "std": 0.1368,
+     "t": -5.822,
+     "pos_ratio": 0.1951
+    },
+    "S4弱市反弹": {
+     "n": 71,
+     "mean": -0.1565,
+     "std": 0.1265,
+     "t": -10.423,
+     "pos_ratio": 0.0986
+    }
+   },
+   "rolling_stability": {
+    "months": 16,
+    "same_sign_ratio": 0.1875
+   },
+   "quantile_table": [
+    {
+     "q": 1,
+     "n": 31283,
+     "avg_fwd14": 1.913,
+     "win": 0.4094
+    },
+    {
+     "q": 2,
+     "n": 31283,
+     "avg_fwd14": -0.644,
+     "win": 0.3472
+    },
+    {
+     "q": 3,
+     "n": 31283,
+     "avg_fwd14": 0.616,
+     "win": 0.3765
+    },
+    {
+     "q": 4,
+     "n": 31283,
+     "avg_fwd14": -0.131,
+     "win": 0.3841
+    },
+    {
+     "q": 5,
+     "n": 31286,
+     "avg_fwd14": -1.113,
+     "win": 0.3738
+    }
+   ],
+   "cond_ic": null,
+   "inc_ic": null,
+   "redundant_with": null,
+   "category": "价值",
+   "role": "打分",
+   "single_period_dep": null,
+   "verdict": "不稳定",
+   "tested_at": "2026-08-27"
+  },
+  {
+   "id": "z",
+   "name": "z(90日zscore)",
+   "coverage": 1.0,
+   "IC14": {
+    "n": 452,
+    "mean": -0.0974,
+    "std": 0.18,
+    "t": -11.506,
+    "pos_ratio": 0.2544
+   },
+   "IC30": {
+    "n": 452,
+    "mean": -0.0699,
+    "std": 0.1664,
+    "t": -8.937,
+    "pos_ratio": 0.3341
+   },
+   "IC14_by_period": {
+    "P恐慌深跌": {
+     "n": 1,
+     "mean": 0.1604,
+     "std": 0.0,
+     "t": 0.0,
+     "pos_ratio": 1.0
+    },
+    "S1牛市上行": {
+     "n": 221,
+     "mean": -0.082,
+     "std": 0.197,
+     "t": -6.189,
+     "pos_ratio": 0.2941
+    },
+    "S2牛市回调": {
+     "n": 118,
+     "mean": -0.0767,
+     "std": 0.1698,
+     "t": -4.91,
+     "pos_ratio": 0.2712
+    },
+    "S3弱市阴跌": {
+     "n": 41,
+     "mean": -0.1252,
+     "std": 0.1426,
+     "t": -5.621,
+     "pos_ratio": 0.2439
+    },
+    "S4弱市反弹": {
+     "n": 71,
+     "mean": -0.1672,
+     "std": 0.1342,
+     "t": -10.497,
+     "pos_ratio": 0.0986
+    }
+   },
+   "rolling_stability": {
+    "months": 16,
+    "same_sign_ratio": 0.125
+   },
+   "quantile_table": [
+    {
+     "q": 1,
+     "n": 31283,
+     "avg_fwd14": 1.226,
+     "win": 0.3985
+    },
+    {
+     "q": 2,
+     "n": 31283,
+     "avg_fwd14": 0.665,
+     "win": 0.3712
+    },
+    {
+     "q": 3,
+     "n": 31283,
+     "avg_fwd14": 0.508,
+     "win": 0.3791
+    },
+    {
+     "q": 4,
+     "n": 31283,
+     "avg_fwd14": -0.452,
+     "win": 0.3673
+    },
+    {
+     "q": 5,
+     "n": 31286,
+     "avg_fwd14": -1.306,
+     "win": 0.375
+    }
+   ],
+   "cond_ic": null,
+   "inc_ic": null,
+   "redundant_with": "pct",
+   "category": "价值",
+   "role": "打分",
+   "single_period_dep": null,
+   "verdict": "不稳定",
+   "tested_at": "2026-08-27"
+  },
+  {
+   "id": "chg7",
+   "name": "chg7",
+   "coverage": 1.0,
+   "IC14": {
+    "n": 452,
+    "mean": -0.1301,
+    "std": 0.1665,
+    "t": -16.614,
+    "pos_ratio": 0.1593
+   },
+   "IC30": {
+    "n": 452,
+    "mean": -0.1016,
+    "std": 0.1558,
+    "t": -13.856,
+    "pos_ratio": 0.2212
+   },
+   "IC14_by_period": {
+    "P恐慌深跌": {
+     "n": 1,
+     "mean": -0.2217,
+     "std": 0.0,
+     "t": 0.0,
+     "pos_ratio": 0.0
+    },
+    "S1牛市上行": {
+     "n": 221,
+     "mean": -0.0972,
+     "std": 0.1846,
+     "t": -7.826,
+     "pos_ratio": 0.2534
+    },
+    "S2牛市回调": {
+     "n": 118,
+     "mean": -0.1516,
+     "std": 0.1702,
+     "t": -9.672,
+     "pos_ratio": 0.0932
+    },
+    "S3弱市阴跌": {
+     "n": 41,
+     "mean": -0.1681,
+     "std": 0.1213,
+     "t": -8.873,
+     "pos_ratio": 0.0976
+    },
+    "S4弱市反弹": {
+     "n": 71,
+     "mean": -0.1736,
+     "std": 0.082,
+     "t": -17.837,
+     "pos_ratio": 0.0141
+    }
+   },
+   "rolling_stability": {
+    "months": 16,
+    "same_sign_ratio": 0.125
+   },
+   "quantile_table": [
+    {
+     "q": 1,
+     "n": 31283,
+     "avg_fwd14": 2.01,
+     "win": 0.4438
+    },
+    {
+     "q": 2,
+     "n": 31283,
+     "avg_fwd14": -0.424,
+     "win": 0.3742
+    },
+    {
+     "q": 3,
+     "n": 31283,
+     "avg_fwd14": -0.159,
+     "win": 0.3525
+    },
+    {
+     "q": 4,
+     "n": 31283,
+     "avg_fwd14": 1.056,
+     "win": 0.3768
+    },
+    {
+     "q": 5,
+     "n": 31286,
+     "avg_fwd14": -1.842,
+     "win": 0.3439
+    }
+   ],
+   "cond_ic": null,
+   "inc_ic": {
+    "n": 304,
+    "mean": -0.0351,
+    "std": 0.0956,
+    "t": -6.398,
+    "pos_ratio": 0.3684
+   },
+   "redundant_with": null,
+   "category": "动量",
+   "role": "打分+触发",
+   "single_period_dep": null,
+   "verdict": "不稳定",
+   "tested_at": "2026-08-27"
+  },
+  {
+   "id": "chg30",
+   "name": "chg30",
+   "coverage": 1.0,
+   "IC14": {
+    "n": 452,
+    "mean": -0.1014,
+    "std": 0.1829,
+    "t": -11.782,
+    "pos_ratio": 0.2611
+   },
+   "IC30": {
+    "n": 452,
+    "mean": -0.0694,
+    "std": 0.1736,
+    "t": -8.506,
+    "pos_ratio": 0.3319
+   },
+   "IC14_by_period": {
+    "P恐慌深跌": {
+     "n": 1,
+     "mean": 0.0428,
+     "std": 0.0,
+     "t": 0.0,
+     "pos_ratio": 1.0
+    },
+    "S1牛市上行": {
+     "n": 221,
+     "mean": -0.0809,
+     "std": 0.2026,
+     "t": -5.936,
+     "pos_ratio": 0.362
+    },
+    "S2牛市回调": {
+     "n": 118,
+     "mean": -0.0963,
+     "std": 0.1824,
+     "t": -5.734,
+     "pos_ratio": 0.1949
+    },
+    "S3弱市阴跌": {
+     "n": 41,
+     "mean": -0.1352,
+     "std": 0.1296,
+     "t": -6.677,
+     "pos_ratio": 0.122
+    },
+    "S4弱市反弹": {
+     "n": 71,
+     "mean": -0.1561,
+     "std": 0.1224,
+     "t": -10.745,
+     "pos_ratio": 0.1268
+    }
+   },
+   "rolling_stability": {
+    "months": 16,
+    "same_sign_ratio": 0.25
+   },
+   "quantile_table": [
+    {
+     "q": 1,
+     "n": 31283,
+     "avg_fwd14": 1.998,
+     "win": 0.4062
+    },
+    {
+     "q": 2,
+     "n": 31283,
+     "avg_fwd14": -0.713,
+     "win": 0.3386
+    },
+    {
+     "q": 3,
+     "n": 31283,
+     "avg_fwd14": 0.28,
+     "win": 0.3652
+    },
+    {
+     "q": 4,
+     "n": 31283,
+     "avg_fwd14": 0.286,
+     "win": 0.4087
+    },
+    {
+     "q": 5,
+     "n": 31286,
+     "avg_fwd14": -1.21,
+     "win": 0.3724
+    }
+   ],
+   "cond_ic": null,
+   "inc_ic": null,
+   "redundant_with": null,
+   "category": "动量",
+   "role": "打分+触发",
+   "single_period_dep": null,
+   "verdict": "不稳定",
+   "tested_at": "2026-08-27"
+  },
+  {
+   "id": "chg90",
+   "name": "chg90",
+   "coverage": 0.9986,
+   "IC14": {
+    "n": 452,
+    "mean": -0.0962,
+    "std": 0.1711,
+    "t": -11.957,
+    "pos_ratio": 0.3274
+   },
+   "IC30": {
+    "n": 452,
+    "mean": -0.0971,
+    "std": 0.1591,
+    "t": -12.979,
+    "pos_ratio": 0.2765
+   },
+   "IC14_by_period": {
+    "P恐慌深跌": {
+     "n": 1,
+     "mean": 0.0769,
+     "std": 0.0,
+     "t": 0.0,
+     "pos_ratio": 1.0
+    },
+    "S1牛市上行": {
+     "n": 221,
+     "mean": -0.1088,
+     "std": 0.1792,
+     "t": -9.027,
+     "pos_ratio": 0.3394
+    },
+    "S2牛市回调": {
+     "n": 118,
+     "mean": -0.0583,
+     "std": 0.1775,
+     "t": -3.57,
+     "pos_ratio": 0.3898
+    },
+    "S3弱市阴跌": {
+     "n": 41,
+     "mean": -0.0794,
+     "std": 0.1392,
+     "t": -3.652,
+     "pos_ratio": 0.3171
+    },
+    "S4弱市反弹": {
+     "n": 71,
+     "mean": -0.132,
+     "std": 0.1342,
+     "t": -8.289,
+     "pos_ratio": 0.1831
+    }
+   },
+   "rolling_stability": {
+    "months": 16,
+    "same_sign_ratio": 0.1875
+   },
+   "quantile_table": [
+    {
+     "q": 1,
+     "n": 31239,
+     "avg_fwd14": 2.073,
+     "win": 0.4117
+    },
+    {
+     "q": 2,
+     "n": 31239,
+     "avg_fwd14": 0.163,
+     "win": 0.3701
+    },
+    {
+     "q": 3,
+     "n": 31239,
+     "avg_fwd14": 0.022,
+     "win": 0.3776
+    },
+    {
+     "q": 4,
+     "n": 31239,
+     "avg_fwd14": -0.005,
+     "win": 0.3763
+    },
+    {
+     "q": 5,
+     "n": 31239,
+     "avg_fwd14": -1.636,
+     "win": 0.3534
+    }
+   ],
+   "cond_ic": null,
+   "inc_ic": {
+    "n": 304,
+    "mean": 0.0026,
+    "std": 0.0948,
+    "t": 0.476,
+    "pos_ratio": 0.4605
+   },
+   "redundant_with": null,
+   "category": "动量",
+   "role": "打分+触发",
+   "single_period_dep": null,
+   "verdict": "不稳定",
+   "tested_at": "2026-08-27"
+  },
+  {
+   "id": "vol7",
+   "name": "vol7",
+   "coverage": 1.0,
+   "IC14": {
+    "n": 452,
+    "mean": -0.0697,
+    "std": 0.1929,
+    "t": -7.676,
+    "pos_ratio": 0.3164
+   },
+   "IC30": {
+    "n": 452,
+    "mean": -0.0278,
+    "std": 0.1915,
+    "t": -3.089,
+    "pos_ratio": 0.4513
+   },
+   "IC14_by_period": {
+    "P恐慌深跌": {
+     "n": 1,
+     "mean": 0.1185,
+     "std": 0.0,
+     "t": 0.0,
+     "pos_ratio": 1.0
+    },
+    "S1牛市上行": {
+     "n": 221,
+     "mean": -0.1052,
+     "std": 0.1983,
+     "t": -7.882,
+     "pos_ratio": 0.2805
+    },
+    "S2牛市回调": {
+     "n": 118,
+     "mean": 0.0047,
+     "std": 0.2152,
+     "t": 0.238,
+     "pos_ratio": 0.4153
+    },
+    "S3弱市阴跌": {
+     "n": 41,
+     "mean": -0.0961,
+     "std": 0.1438,
+     "t": -4.28,
+     "pos_ratio": 0.3171
+    },
+    "S4弱市反弹": {
+     "n": 71,
+     "mean": -0.0702,
+     "std": 0.1078,
+     "t": -5.483,
+     "pos_ratio": 0.2535
+    }
+   },
+   "rolling_stability": {
+    "months": 16,
+    "same_sign_ratio": 0.3125
+   },
+   "quantile_table": [
+    {
+     "q": 1,
+     "n": 31283,
+     "avg_fwd14": -0.362,
+     "win": 0.3329
+    },
+    {
+     "q": 2,
+     "n": 31283,
+     "avg_fwd14": -0.385,
+     "win": 0.3759
+    },
+    {
+     "q": 3,
+     "n": 31283,
+     "avg_fwd14": -0.458,
+     "win": 0.3893
+    },
+    {
+     "q": 4,
+     "n": 31283,
+     "avg_fwd14": -0.129,
+     "win": 0.3948
+    },
+    {
+     "q": 5,
+     "n": 31286,
+     "avg_fwd14": 1.975,
+     "win": 0.3982
+    }
+   ],
+   "cond_ic": null,
+   "inc_ic": {
+    "n": 304,
+    "mean": -0.0165,
+    "std": 0.0869,
+    "t": -3.32,
+    "pos_ratio": 0.4145
+   },
+   "redundant_with": null,
+   "category": "波动",
+   "role": "风险调节",
+   "single_period_dep": null,
+   "verdict": "不稳定",
+   "tested_at": "2026-08-27"
+  },
+  {
+   "id": "vol30",
+   "name": "vol30",
+   "coverage": 1.0,
+   "IC14": {
+    "n": 452,
+    "mean": -0.0475,
+    "std": 0.185,
+    "t": -5.456,
+    "pos_ratio": 0.3827
+   },
+   "IC30": {
+    "n": 452,
+    "mean": -0.0183,
+    "std": 0.1868,
+    "t": -2.082,
+    "pos_ratio": 0.4469
+   },
+   "IC14_by_period": {
+    "P恐慌深跌": {
+     "n": 1,
+     "mean": 0.0481,
+     "std": 0.0,
+     "t": 0.0,
+     "pos_ratio": 1.0
+    },
+    "S1牛市上行": {
+     "n": 221,
+     "mean": -0.0733,
+     "std": 0.2008,
+     "t": -5.426,
+     "pos_ratio": 0.3303
+    },
+    "S2牛市回调": {
+     "n": 118,
+     "mean": -0.0044,
+     "std": 0.1928,
+     "t": -0.246,
+     "pos_ratio": 0.4237
+    },
+    "S3弱市阴跌": {
+     "n": 41,
+     "mean": -0.073,
+     "std": 0.1458,
+     "t": -3.206,
+     "pos_ratio": 0.3902
+    },
+    "S4弱市反弹": {
+     "n": 71,
+     "mean": -0.0253,
+     "std": 0.11,
+     "t": -1.938,
+     "pos_ratio": 0.4648
+    }
+   },
+   "rolling_stability": {
+    "months": 16,
+    "same_sign_ratio": 0.375
+   },
+   "quantile_table": [
+    {
+     "q": 1,
+     "n": 31283,
+     "avg_fwd14": -0.246,
+     "win": 0.347
+    },
+    {
+     "q": 2,
+     "n": 31283,
+     "avg_fwd14": -0.761,
+     "win": 0.3764
+    },
+    {
+     "q": 3,
+     "n": 31283,
+     "avg_fwd14": -1.147,
+     "win": 0.3558
+    },
+    {
+     "q": 4,
+     "n": 31283,
+     "avg_fwd14": -0.45,
+     "win": 0.3897
+    },
+    {
+     "q": 5,
+     "n": 31286,
+     "avg_fwd14": 3.245,
+     "win": 0.4221
+    }
+   ],
+   "cond_ic": null,
+   "inc_ic": null,
+   "redundant_with": null,
+   "category": "波动",
+   "role": "风险调节",
+   "single_period_dep": null,
+   "verdict": "弱/无效",
+   "tested_at": "2026-08-27"
+  },
+  {
+   "id": "sc7",
+   "name": "sc7",
+   "coverage": 0.9973,
+   "IC14": {
+    "n": 452,
+    "mean": 0.013,
+    "std": 0.1178,
+    "t": 2.349,
+    "pos_ratio": 0.5243
+   },
+   "IC30": {
+    "n": 452,
+    "mean": 0.0164,
+    "std": 0.1198,
+    "t": 2.915,
+    "pos_ratio": 0.5708
+   },
+   "IC14_by_period": {
+    "P恐慌深跌": {
+     "n": 1,
+     "mean": 0.1457,
+     "std": 0.0,
+     "t": 0.0,
+     "pos_ratio": 1.0
+    },
+    "S1牛市上行": {
+     "n": 221,
+     "mean": 0.021,
+     "std": 0.1283,
+     "t": 2.431,
+     "pos_ratio": 0.5204
+    },
+    "S2牛市回调": {
+     "n": 118,
+     "mean": 0.0026,
+     "std": 0.109,
+     "t": 0.255,
+     "pos_ratio": 0.5
+    },
+    "S3弱市阴跌": {
+     "n": 41,
+     "mean": 0.0063,
+     "std": 0.1155,
+     "t": 0.349,
+     "pos_ratio": 0.5366
+    },
+    "S4弱市反弹": {
+     "n": 71,
+     "mean": 0.0076,
+     "std": 0.0945,
+     "t": 0.677,
+     "pos_ratio": 0.5634
+    }
+   },
+   "rolling_stability": {
+    "months": 16,
+    "same_sign_ratio": 0.5625
+   },
+   "quantile_table": [
+    {
+     "q": 1,
+     "n": 31198,
+     "avg_fwd14": 0.053,
+     "win": 0.3932
+    },
+    {
+     "q": 2,
+     "n": 31198,
+     "avg_fwd14": -0.15,
+     "win": 0.3953
+    },
+    {
+     "q": 3,
+     "n": 31198,
+     "avg_fwd14": -0.233,
+     "win": 0.368
+    },
+    {
+     "q": 4,
+     "n": 31198,
+     "avg_fwd14": 0.545,
+     "win": 0.3582
+    },
+    {
+     "q": 5,
+     "n": 31200,
+     "avg_fwd14": 0.357,
+     "win": 0.3744
+    }
+   ],
+   "cond_ic": {
+    "shrink_sc30": {
+     "n": 452,
+     "mean": 0.0523,
+     "std": 0.1497,
+     "t": 7.433,
+     "pos_ratio": 0.6394
+    },
+    "expand_sc30": {
+     "n": 452,
+     "mean": -0.0317,
+     "std": 0.1342,
+     "t": -5.018,
+     "pos_ratio": 0.354
+    }
+   },
+   "inc_ic": {
+    "n": 304,
+    "mean": -0.0019,
+    "std": 0.073,
+    "t": -0.457,
+    "pos_ratio": 0.5099
+   },
+   "redundant_with": null,
+   "category": "供给",
+   "role": "打分",
+   "single_period_dep": "S1牛市上行",
+   "verdict": "候选（条件IC）",
+   "tested_at": "2026-08-27"
+  },
+  {
+   "id": "sc30",
+   "name": "sc30",
+   "coverage": 0.9976,
+   "IC14": {
+    "n": 452,
+    "mean": 0.0289,
+    "std": 0.1371,
+    "t": 4.485,
+    "pos_ratio": 0.5774
+   },
+   "IC30": {
+    "n": 452,
+    "mean": 0.0142,
+    "std": 0.1276,
+    "t": 2.37,
+    "pos_ratio": 0.5354
+   },
+   "IC14_by_period": {
+    "P恐慌深跌": {
+     "n": 1,
+     "mean": 0.0051,
+     "std": 0.0,
+     "t": 0.0,
+     "pos_ratio": 1.0
+    },
+    "S1牛市上行": {
+     "n": 221,
+     "mean": 0.0241,
+     "std": 0.1552,
+     "t": 2.311,
+     "pos_ratio": 0.5385
+    },
+    "S2牛市回调": {
+     "n": 118,
+     "mean": 0.0138,
+     "std": 0.1314,
+     "t": 1.137,
+     "pos_ratio": 0.5339
+    },
+    "S3弱市阴跌": {
+     "n": 41,
+     "mean": 0.075,
+     "std": 0.095,
+     "t": 5.056,
+     "pos_ratio": 0.8293
+    },
+    "S4弱市反弹": {
+     "n": 71,
+     "mean": 0.0428,
+     "std": 0.0947,
+     "t": 3.811,
+     "pos_ratio": 0.6197
+    }
+   },
+   "rolling_stability": {
+    "months": 16,
+    "same_sign_ratio": 0.6875
+   },
+   "quantile_table": [
+    {
+     "q": 1,
+     "n": 31207,
+     "avg_fwd14": 1.322,
+     "win": 0.4136
+    },
+    {
+     "q": 2,
+     "n": 31207,
+     "avg_fwd14": 0.131,
+     "win": 0.3985
+    },
+    {
+     "q": 3,
+     "n": 31207,
+     "avg_fwd14": -0.292,
+     "win": 0.3658
+    },
+    {
+     "q": 4,
+     "n": 31207,
+     "avg_fwd14": -0.883,
+     "win": 0.3376
+    },
+    {
+     "q": 5,
+     "n": 31210,
+     "avg_fwd14": 0.301,
+     "win": 0.374
+    }
+   ],
+   "cond_ic": {
+    "shrink_sc30": {
+     "n": 452,
+     "mean": 0.072,
+     "std": 0.1504,
+     "t": 10.183,
+     "pos_ratio": 0.6593
+    },
+    "expand_sc30": {
+     "n": 452,
+     "mean": -0.0254,
+     "std": 0.1352,
+     "t": -3.998,
+     "pos_ratio": 0.4093
+    }
+   },
+   "inc_ic": null,
+   "redundant_with": null,
+   "category": "供给",
+   "role": "打分",
+   "single_period_dep": null,
+   "verdict": "候选（条件IC）",
+   "tested_at": "2026-08-27"
+  },
+  {
+   "id": "s7_ratio",
+   "name": "s7_ratio",
+   "coverage": 0.9909,
+   "IC14": {
+    "n": 452,
+    "mean": 0.0464,
+    "std": 0.1455,
+    "t": 6.786,
+    "pos_ratio": 0.5929
+   },
+   "IC30": {
+    "n": 452,
+    "mean": 0.0318,
+    "std": 0.1304,
+    "t": 5.187,
+    "pos_ratio": 0.5774
+   },
+   "IC14_by_period": {
+    "P恐慌深跌": {
+     "n": 1,
+     "mean": -0.1403,
+     "std": 0.0,
+     "t": 0.0,
+     "pos_ratio": 0.0
+    },
+    "S1牛市上行": {
+     "n": 221,
+     "mean": 0.049,
+     "std": 0.166,
+     "t": 4.389,
+     "pos_ratio": 0.5701
+    },
+    "S2牛市回调": {
+     "n": 118,
+     "mean": 0.014,
+     "std": 0.1295,
+     "t": 1.174,
+     "pos_ratio": 0.5169
+    },
+    "S3弱市阴跌": {
+     "n": 41,
+     "mean": 0.0912,
+     "std": 0.1216,
+     "t": 4.804,
+     "pos_ratio": 0.6585
+    },
+    "S4弱市反弹": {
+     "n": 71,
+     "mean": 0.0691,
+     "std": 0.0931,
+     "t": 6.26,
+     "pos_ratio": 0.7606
+    }
+   },
+   "rolling_stability": {
+    "months": 16,
+    "same_sign_ratio": 0.6875
+   },
+   "quantile_table": [
+    {
+     "q": 1,
+     "n": 30998,
+     "avg_fwd14": -0.135,
+     "win": 0.3999
+    },
+    {
+     "q": 2,
+     "n": 30998,
+     "avg_fwd14": 0.182,
+     "win": 0.387
+    },
+    {
+     "q": 3,
+     "n": 30998,
+     "avg_fwd14": 0.67,
+     "win": 0.3632
+    },
+    {
+     "q": 4,
+     "n": 30998,
+     "avg_fwd14": -0.485,
+     "win": 0.3569
+    },
+    {
+     "q": 5,
+     "n": 31002,
+     "avg_fwd14": 0.456,
+     "win": 0.3833
+    }
+   ],
+   "cond_ic": {
+    "shrink_sc30": {
+     "n": 452,
+     "mean": 0.0819,
+     "std": 0.1546,
+     "t": 11.265,
+     "pos_ratio": 0.7102
+    },
+    "expand_sc30": {
+     "n": 452,
+     "mean": 0.0073,
+     "std": 0.1469,
+     "t": 1.062,
+     "pos_ratio": 0.4801
+    }
+   },
+   "inc_ic": {
+    "n": 302,
+    "mean": 0.0099,
+    "std": 0.0684,
+    "t": 2.519,
+    "pos_ratio": 0.5464
+   },
+   "redundant_with": null,
+   "category": "供给",
+   "role": "打分",
+   "single_period_dep": null,
+   "verdict": "候选（条件IC）",
+   "tested_at": "2026-08-27"
+  },
+  {
+   "id": "th_persistence",
+   "name": "趋势健康度·持续性",
+   "coverage": 0.9909,
+   "IC14": {
+    "n": 452,
+    "mean": -0.0399,
+    "std": 0.1581,
+    "t": -5.36,
+    "pos_ratio": 0.4004
+   },
+   "IC30": {
+    "n": 452,
+    "mean": -0.0191,
+    "std": 0.1534,
+    "t": -2.643,
+    "pos_ratio": 0.4801
+   },
+   "IC14_by_period": {
+    "P恐慌深跌": {
+     "n": 1,
+     "mean": 0.1765,
+     "std": 0.0,
+     "t": 0.0,
+     "pos_ratio": 1.0
+    },
+    "S1牛市上行": {
+     "n": 221,
+     "mean": -0.0253,
+     "std": 0.1697,
+     "t": -2.214,
+     "pos_ratio": 0.4751
+    },
+    "S2牛市回调": {
+     "n": 118,
+     "mean": -0.0344,
+     "std": 0.1485,
+     "t": -2.519,
+     "pos_ratio": 0.3136
+    },
+    "S3弱市阴跌": {
+     "n": 41,
+     "mean": -0.0701,
+     "std": 0.1504,
+     "t": -2.986,
+     "pos_ratio": 0.439
+    },
+    "S4弱市反弹": {
+     "n": 71,
+     "mean": -0.0798,
+     "std": 0.1274,
+     "t": -5.279,
+     "pos_ratio": 0.2817
+    }
+   },
+   "rolling_stability": {
+    "months": 16,
+    "same_sign_ratio": 0.3125
+   },
+   "quantile_table": [
+    {
+     "q": 1,
+     "n": 30998,
+     "avg_fwd14": -0.036,
+     "win": 0.3894
+    },
+    {
+     "q": 2,
+     "n": 30998,
+     "avg_fwd14": -0.232,
+     "win": 0.3522
+    },
+    {
+     "q": 3,
+     "n": 30998,
+     "avg_fwd14": 1.39,
+     "win": 0.3752
+    },
+    {
+     "q": 4,
+     "n": 30998,
+     "avg_fwd14": 0.302,
+     "win": 0.3921
+    },
+    {
+     "q": 5,
+     "n": 31002,
+     "avg_fwd14": -0.736,
+     "win": 0.3814
+    }
+   ],
+   "cond_ic": null,
+   "inc_ic": {
+    "n": 302,
+    "mean": -0.0064,
+    "std": 0.0624,
+    "t": -1.791,
+    "pos_ratio": 0.4768
+   },
+   "redundant_with": null,
+   "category": "趋势",
+   "role": "决策触发",
+   "single_period_dep": null,
+   "verdict": "弱/无效",
+   "tested_at": "2026-08-27"
+  },
+  {
+   "id": "th_steepness",
+   "name": "趋势健康度·陡峭度",
+   "coverage": 0.9909,
+   "IC14": {
+    "n": 452,
+    "mean": -0.1128,
+    "std": 0.158,
+    "t": -15.182,
+    "pos_ratio": 0.2235
+   },
+   "IC30": {
+    "n": 452,
+    "mean": -0.0904,
+    "std": 0.1446,
+    "t": -13.288,
+    "pos_ratio": 0.2456
+   },
+   "IC14_by_period": {
+    "P恐慌深跌": {
+     "n": 1,
+     "mean": -0.1227,
+     "std": 0.0,
+     "t": 0.0,
+     "pos_ratio": 0.0
+    },
+    "S1牛市上行": {
+     "n": 221,
+     "mean": -0.0836,
+     "std": 0.1798,
+     "t": -6.911,
+     "pos_ratio": 0.3394
+    },
+    "S2牛市回调": {
+     "n": 118,
+     "mean": -0.1396,
+     "std": 0.1503,
+     "t": -10.089,
+     "pos_ratio": 0.1271
+    },
+    "S3弱市阴跌": {
+     "n": 41,
+     "mean": -0.1341,
+     "std": 0.1172,
+     "t": -7.325,
+     "pos_ratio": 0.1707
+    },
+    "S4弱市反弹": {
+     "n": 71,
+     "mean": -0.147,
+     "std": 0.0871,
+     "t": -14.226,
+     "pos_ratio": 0.0563
+    }
+   },
+   "rolling_stability": {
+    "months": 16,
+    "same_sign_ratio": 0.125
+   },
+   "quantile_table": [
+    {
+     "q": 1,
+     "n": 30998,
+     "avg_fwd14": 1.837,
+     "win": 0.4385
+    },
+    {
+     "q": 2,
+     "n": 30998,
+     "avg_fwd14": -0.125,
+     "win": 0.3839
+    },
+    {
+     "q": 3,
+     "n": 30998,
+     "avg_fwd14": -0.223,
+     "win": 0.342
+    },
+    {
+     "q": 4,
+     "n": 30998,
+     "avg_fwd14": -0.234,
+     "win": 0.3773
+    },
+    {
+     "q": 5,
+     "n": 31002,
+     "avg_fwd14": -0.566,
+     "win": 0.3486
+    }
+   ],
+   "cond_ic": null,
+   "inc_ic": {
+    "n": 302,
+    "mean": -0.0014,
+    "std": 0.0659,
+    "t": -0.366,
+    "pos_ratio": 0.5066
+   },
+   "redundant_with": null,
+   "category": "趋势",
+   "role": "决策触发",
+   "single_period_dep": null,
+   "verdict": "不稳定",
+   "tested_at": "2026-08-27"
+  },
+  {
+   "id": "th_structure",
+   "name": "趋势健康度·结构",
+   "coverage": 0.9909,
+   "IC14": {
+    "n": 452,
+    "mean": -0.0461,
+    "std": 0.1485,
+    "t": -6.596,
+    "pos_ratio": 0.3606
+   },
+   "IC30": {
+    "n": 452,
+    "mean": -0.0291,
+    "std": 0.1416,
+    "t": -4.365,
+    "pos_ratio": 0.427
+   },
+   "IC14_by_period": {
+    "P恐慌深跌": {
+     "n": 1,
+     "mean": 0.1577,
+     "std": 0.0,
+     "t": 0.0,
+     "pos_ratio": 1.0
+    },
+    "S1牛市上行": {
+     "n": 221,
+     "mean": -0.0359,
+     "std": 0.1532,
+     "t": -3.481,
+     "pos_ratio": 0.3891
+    },
+    "S2牛市回调": {
+     "n": 118,
+     "mean": -0.0222,
+     "std": 0.1515,
+     "t": -1.589,
+     "pos_ratio": 0.4068
+    },
+    "S3弱市阴跌": {
+     "n": 41,
+     "mean": -0.0904,
+     "std": 0.1193,
+     "t": -4.851,
+     "pos_ratio": 0.1951
+    },
+    "S4弱市反弹": {
+     "n": 71,
+     "mean": -0.0949,
+     "std": 0.1252,
+     "t": -6.388,
+     "pos_ratio": 0.2817
+    }
+   },
+   "rolling_stability": {
+    "months": 16,
+    "same_sign_ratio": 0.25
+   },
+   "quantile_table": [
+    {
+     "q": 1,
+     "n": 30998,
+     "avg_fwd14": 1.149,
+     "win": 0.3851
+    },
+    {
+     "q": 2,
+     "n": 30998,
+     "avg_fwd14": -0.05,
+     "win": 0.368
+    },
+    {
+     "q": 3,
+     "n": 30998,
+     "avg_fwd14": 0.378,
+     "win": 0.3766
+    },
+    {
+     "q": 4,
+     "n": 30998,
+     "avg_fwd14": -0.267,
+     "win": 0.381
+    },
+    {
+     "q": 5,
+     "n": 31002,
+     "avg_fwd14": -0.522,
+     "win": 0.3796
+    }
+   ],
+   "cond_ic": null,
+   "inc_ic": {
+    "n": 302,
+    "mean": 0.0096,
+    "std": 0.069,
+    "t": 2.417,
+    "pos_ratio": 0.5662
+   },
+   "redundant_with": null,
+   "category": "趋势",
+   "role": "决策触发",
+   "single_period_dep": null,
+   "verdict": "弱/无效",
+   "tested_at": "2026-08-27"
+  },
+  {
+   "id": "th_supply",
+   "name": "趋势健康度·供给",
+   "coverage": 0.9909,
+   "IC14": {
+    "n": 452,
+    "mean": -0.0656,
+    "std": 0.1343,
+    "t": -10.391,
+    "pos_ratio": 0.2854
+   },
+   "IC30": {
+    "n": 452,
+    "mean": -0.0553,
+    "std": 0.1296,
+    "t": -9.075,
+    "pos_ratio": 0.3097
+   },
+   "IC14_by_period": {
+    "P恐慌深跌": {
+     "n": 1,
+     "mean": -0.2225,
+     "std": 0.0,
+     "t": 0.0,
+     "pos_ratio": 0.0
+    },
+    "S1牛市上行": {
+     "n": 221,
+     "mean": -0.0671,
+     "std": 0.1559,
+     "t": -6.392,
+     "pos_ratio": 0.3303
+    },
+    "S2牛市回调": {
+     "n": 118,
+     "mean": -0.0584,
+     "std": 0.116,
+     "t": -5.47,
+     "pos_ratio": 0.2203
+    },
+    "S3弱市阴跌": {
+     "n": 41,
+     "mean": -0.0692,
+     "std": 0.1236,
+     "t": -3.587,
+     "pos_ratio": 0.3415
+    },
+    "S4弱市反弹": {
+     "n": 71,
+     "mean": -0.0689,
+     "std": 0.0862,
+     "t": -6.732,
+     "pos_ratio": 0.2254
+    }
+   },
+   "rolling_stability": {
+    "months": 16,
+    "same_sign_ratio": 0.125
+   },
+   "quantile_table": [
+    {
+     "q": 1,
+     "n": 30998,
+     "avg_fwd14": 1.002,
+     "win": 0.3911
+    },
+    {
+     "q": 2,
+     "n": 30998,
+     "avg_fwd14": 0.391,
+     "win": 0.4155
+    },
+    {
+     "q": 3,
+     "n": 30998,
+     "avg_fwd14": -0.562,
+     "win": 0.3469
+    },
+    {
+     "q": 4,
+     "n": 30998,
+     "avg_fwd14": 0.041,
+     "win": 0.3816
+    },
+    {
+     "q": 5,
+     "n": 31002,
+     "avg_fwd14": -0.183,
+     "win": 0.3553
+    }
+   ],
+   "cond_ic": null,
+   "inc_ic": {
+    "n": 302,
+    "mean": -0.0,
+    "std": 0.0709,
+    "t": -0.012,
+    "pos_ratio": 0.4868
+   },
+   "redundant_with": null,
+   "category": "趋势",
+   "role": "决策触发",
+   "single_period_dep": null,
+   "verdict": "不稳定",
+   "tested_at": "2026-08-27"
+  },
+  {
+   "id": "th_anomaly",
+   "name": "趋势健康度·异常",
+   "coverage": 0.9909,
+   "IC14": {
+    "n": 452,
+    "mean": -0.0103,
+    "std": 0.1557,
+    "t": -1.404,
+    "pos_ratio": 0.5221
+   },
+   "IC30": {
+    "n": 452,
+    "mean": -0.0443,
+    "std": 0.1534,
+    "t": -6.133,
+    "pos_ratio": 0.4071
+   },
+   "IC14_by_period": {
+    "P恐慌深跌": {
+     "n": 1,
+     "mean": -0.2544,
+     "std": 0.0,
+     "t": 0.0,
+     "pos_ratio": 0.0
+    },
+    "S1牛市上行": {
+     "n": 221,
+     "mean": -0.0122,
+     "std": 0.1685,
+     "t": -1.079,
+     "pos_ratio": 0.4977
+    },
+    "S2牛市回调": {
+     "n": 118,
+     "mean": -0.0384,
+     "std": 0.1665,
+     "t": -2.506,
+     "pos_ratio": 0.5254
+    },
+    "S3弱市阴跌": {
+     "n": 41,
+     "mean": 0.0413,
+     "std": 0.1007,
+     "t": 2.624,
+     "pos_ratio": 0.6098
+    },
+    "S4弱市反弹": {
+     "n": 71,
+     "mean": 0.0162,
+     "std": 0.0982,
+     "t": 1.388,
+     "pos_ratio": 0.5493
+    }
+   },
+   "rolling_stability": {
+    "months": 16,
+    "same_sign_ratio": 0.4375
+   },
+   "quantile_table": [
+    {
+     "q": 1,
+     "n": 30998,
+     "avg_fwd14": 2.583,
+     "win": 0.4311
+    },
+    {
+     "q": 2,
+     "n": 30998,
+     "avg_fwd14": -0.662,
+     "win": 0.3805
+    },
+    {
+     "q": 3,
+     "n": 30998,
+     "avg_fwd14": -0.525,
+     "win": 0.3803
+    },
+    {
+     "q": 4,
+     "n": 30998,
+     "avg_fwd14": -0.21,
+     "win": 0.3677
+    },
+    {
+     "q": 5,
+     "n": 31002,
+     "avg_fwd14": -0.497,
+     "win": 0.3308
+    }
+   ],
+   "cond_ic": null,
+   "inc_ic": {
+    "n": 302,
+    "mean": 0.0012,
+    "std": 0.0737,
+    "t": 0.275,
+    "pos_ratio": 0.5
+   },
+   "redundant_with": null,
+   "category": "趋势",
+   "role": "决策触发",
+   "single_period_dep": null,
+   "verdict": "弱/无效",
+   "tested_at": "2026-08-27"
+  },
+  {
+   "id": "sentiment",
+   "name": "sentiment(approx)",
+   "coverage": 0.9909,
+   "IC14": {
+    "n": 452,
+    "mean": 0.1416,
+    "std": 0.1725,
+    "t": 17.452,
+    "pos_ratio": 0.8385
+   },
+   "IC30": {
+    "n": 452,
+    "mean": 0.1114,
+    "std": 0.1578,
+    "t": 15.017,
+    "pos_ratio": 0.7832
+   },
+   "IC14_by_period": {
+    "P恐慌深跌": {
+     "n": 1,
+     "mean": 0.0733,
+     "std": 0.0,
+     "t": 0.0,
+     "pos_ratio": 1.0
+    },
+    "S1牛市上行": {
+     "n": 221,
+     "mean": 0.1188,
+     "std": 0.1947,
+     "t": 9.071,
+     "pos_ratio": 0.7557
+    },
+    "S2牛市回调": {
+     "n": 118,
+     "mean": 0.1317,
+     "std": 0.1735,
+     "t": 8.249,
+     "pos_ratio": 0.8559
+    },
+    "S3弱市阴跌": {
+     "n": 41,
+     "mean": 0.1908,
+     "std": 0.1136,
+     "t": 10.76,
+     "pos_ratio": 0.9756
+    },
+    "S4弱市反弹": {
+     "n": 71,
+     "mean": 0.2016,
+     "std": 0.0847,
+     "t": 20.052,
+     "pos_ratio": 0.9859
+    }
+   },
+   "rolling_stability": {
+    "months": 16,
+    "same_sign_ratio": 0.875
+   },
+   "quantile_table": [
+    {
+     "q": 1,
+     "n": 30998,
+     "avg_fwd14": -1.799,
+     "win": 0.3426
+    },
+    {
+     "q": 2,
+     "n": 30998,
+     "avg_fwd14": 0.082,
+     "win": 0.385
+    },
+    {
+     "q": 3,
+     "n": 30998,
+     "avg_fwd14": -0.174,
+     "win": 0.3537
+    },
+    {
+     "q": 4,
+     "n": 30998,
+     "avg_fwd14": 0.527,
+     "win": 0.3643
+    },
+    {
+     "q": 5,
+     "n": 31002,
+     "avg_fwd14": 2.052,
+     "win": 0.4447
+    }
+   ],
+   "cond_ic": null,
+   "inc_ic": {
+    "n": 302,
+    "mean": -0.0008,
+    "std": 0.068,
+    "t": -0.213,
+    "pos_ratio": 0.4834
+   },
+   "redundant_with": null,
+   "category": "情绪",
+   "role": "加分/过滤",
+   "single_period_dep": null,
+   "verdict": "候选·无增量",
+   "tested_at": "2026-08-27",
+   "verdict_note": "IC 有效且稳定，但增量 IC=-0.0008 < 0.02（判据 §3）——信息与核心因子冗余，无新自由度"
+  },
+  {
+   "id": "mchg7",
+   "name": "mchg7",
+   "coverage": 0.8793,
+   "IC14": {
+    "n": 0
+   },
+   "IC30": {
+    "n": 0
+   },
+   "IC14_by_period": {},
+   "rolling_stability": {
+    "months": 0,
+    "same_sign_ratio": null
+   },
+   "quantile_table": [
+    {
+     "q": 1,
+     "n": 27507,
+     "avg_fwd14": 2.005,
+     "win": 0.4245
+    },
+    {
+     "q": 2,
+     "n": 27507,
+     "avg_fwd14": 0.614,
+     "win": 0.4071
+    },
+    {
+     "q": 3,
+     "n": 27507,
+     "avg_fwd14": 0.259,
+     "win": 0.3846
+    },
+    {
+     "q": 4,
+     "n": 27507,
+     "avg_fwd14": -0.189,
+     "win": 0.3481
+    },
+    {
+     "q": 5,
+     "n": 27507,
+     "avg_fwd14": 0.079,
+     "win": 0.4184
+    }
+   ],
+   "cond_ic": null,
+   "inc_ic": {
+    "n": 304,
+    "mean": -0.0055,
+    "std": 0.0753,
+    "t": -1.273,
+    "pos_ratio": 0.4803
+   },
+   "redundant_with": null,
+   "category": "市场环境",
+   "role": "条件因子",
+   "single_period_dep": null,
+   "verdict": "条件因子（regime 分段评估，不做单因子主判）",
+   "tested_at": "2026-08-27",
+   "verdict_note": "市场因子同截面常数，截面 IC 数学上无定义（{\"n\":0} 为正确结果）；条件因子按 regime 分段评估，不做单因子主判"
+  },
+  {
+   "id": "mchg21",
+   "name": "mchg21",
+   "coverage": 0.8598,
+   "IC14": {
+    "n": 0
+   },
+   "IC30": {
+    "n": 0
+   },
+   "IC14_by_period": {},
+   "rolling_stability": {
+    "months": 0,
+    "same_sign_ratio": null
+   },
+   "quantile_table": [
+    {
+     "q": 1,
+     "n": 26896,
+     "avg_fwd14": 2.55,
+     "win": 0.4634
+    },
+    {
+     "q": 2,
+     "n": 26896,
+     "avg_fwd14": -0.719,
+     "win": 0.3351
+    },
+    {
+     "q": 3,
+     "n": 26896,
+     "avg_fwd14": 0.048,
+     "win": 0.3626
+    },
+    {
+     "q": 4,
+     "n": 26896,
+     "avg_fwd14": 0.104,
+     "win": 0.3966
+    },
+    {
+     "q": 5,
+     "n": 26899,
+     "avg_fwd14": 1.01,
+     "win": 0.4275
+    }
+   ],
+   "cond_ic": null,
+   "inc_ic": {
+    "n": 304,
+    "mean": 0.0002,
+    "std": 0.0759,
+    "t": 0.049,
+    "pos_ratio": 0.5
+   },
+   "redundant_with": null,
+   "category": "市场环境",
+   "role": "条件因子",
+   "single_period_dep": null,
+   "verdict": "条件因子（regime 分段评估，不做单因子主判）",
+   "tested_at": "2026-08-27",
+   "verdict_note": "市场因子同截面常数，截面 IC 数学上无定义（{\"n\":0} 为正确结果）；条件因子按 regime 分段评估，不做单因子主判"
+  },
+  {
+   "id": "mchg30",
+   "name": "mchg30",
+   "coverage": 0.8472,
+   "IC14": {
+    "n": 0
+   },
+   "IC30": {
+    "n": 0
+   },
+   "IC14_by_period": {},
+   "rolling_stability": {
+    "months": 0,
+    "same_sign_ratio": null
+   },
+   "quantile_table": [
+    {
+     "q": 1,
+     "n": 26504,
+     "avg_fwd14": 1.694,
+     "win": 0.3973
+    },
+    {
+     "q": 2,
+     "n": 26504,
+     "avg_fwd14": -0.025,
+     "win": 0.385
+    },
+    {
+     "q": 3,
+     "n": 26504,
+     "avg_fwd14": -0.458,
+     "win": 0.3701
+    },
+    {
+     "q": 4,
+     "n": 26504,
+     "avg_fwd14": 1.067,
+     "win": 0.4183
+    },
+    {
+     "q": 5,
+     "n": 26505,
+     "avg_fwd14": 1.284,
+     "win": 0.437
+    }
+   ],
+   "cond_ic": null,
+   "inc_ic": null,
+   "redundant_with": null,
+   "category": "市场环境",
+   "role": "条件因子",
+   "single_period_dep": null,
+   "verdict": "条件因子（regime 分段评估，不做单因子主判）",
+   "tested_at": "2026-08-27",
+   "verdict_note": "市场因子同截面常数，截面 IC 数学上无定义（{\"n\":0} 为正确结果）；条件因子按 regime 分段评估，不做单因子主判"
+  },
+  {
+   "id": "spread",
+   "name": "spread(卖价-最高买价)",
+   "category": "盘口/流动性",
+   "role": "流动性",
+   "coverage": 0.8693,
+   "IC14": {
+    "n": 451,
+    "mean": -0.0965,
+    "std": 0.1652,
+    "t": -12.402,
+    "pos_ratio": 0.2949
+   },
+   "IC30": {
+    "n": 451,
+    "mean": -0.1007,
+    "std": 0.166,
+    "t": -12.891,
+    "pos_ratio": 0.306
+   },
+   "IC14_by_period": {
+    "P恐慌深跌": {
+     "n": 1,
+     "mean": -0.0709,
+     "std": 0.0,
+     "t": 0.0,
+     "pos_ratio": 0.0
+    },
+    "S1牛市上行": {
+     "n": 221,
+     "mean": -0.0817,
+     "std": 0.1854,
+     "t": -6.553,
+     "pos_ratio": 0.362
+    },
+    "S2牛市回调": {
+     "n": 118,
+     "mean": -0.1554,
+     "std": 0.1414,
+     "t": -11.938,
+     "pos_ratio": 0.1695
+    },
+    "S3弱市阴跌": {
+     "n": 40,
+     "mean": 0.008,
+     "std": 0.128,
+     "t": 0.398,
+     "pos_ratio": 0.575
+    },
+    "S4弱市反弹": {
+     "n": 71,
+     "mean": -0.1038,
+     "std": 0.1062,
+     "t": -8.241,
+     "pos_ratio": 0.1408
+    }
+   },
+   "rolling_stability": {
+    "months": 16,
+    "same_sign_ratio": 0.1875
+   },
+   "quantile_table": [
+    {
+     "q": 1,
+     "n": 27194,
+     "avg_fwd14": 2.508,
+     "win": 0.4167
+    },
+    {
+     "q": 2,
+     "n": 27194,
+     "avg_fwd14": -0.6,
+     "win": 0.3945
+    },
+    {
+     "q": 3,
+     "n": 27194,
+     "avg_fwd14": -0.375,
+     "win": 0.382
+    },
+    {
+     "q": 4,
+     "n": 27194,
+     "avg_fwd14": -0.213,
+     "win": 0.3661
+    },
+    {
+     "q": 5,
+     "n": 27198,
+     "avg_fwd14": -0.832,
+     "win": 0.3206
+    }
+   ],
+   "cond_ic": null,
+   "inc_ic": {
+    "n": 289,
+    "mean": -0.0183,
+    "std": 0.0757,
+    "t": -4.106,
+    "pos_ratio": 0.4083
+   },
+   "redundant_with": null,
+   "verdict": "不稳定",
+   "tested_at": "2026-08-27",
+   "single_period_dep": null
+  },
+  {
+   "id": "bid",
+   "name": "bid(最高买价)",
+   "category": "盘口/流动性",
+   "role": "流动性",
+   "coverage": 0.8693,
+   "IC14": {
+    "n": 451,
+    "mean": -0.0111,
+    "std": 0.2643,
+    "t": -0.894,
+    "pos_ratio": 0.4767
+   },
+   "IC30": {
+    "n": 451,
+    "mean": -0.0277,
+    "std": 0.264,
+    "t": -2.228,
+    "pos_ratio": 0.3947
+   },
+   "IC14_by_period": {
+    "P恐慌深跌": {
+     "n": 1,
+     "mean": -0.003,
+     "std": 0.0,
+     "t": 0.0,
+     "pos_ratio": 0.0
+    },
+    "S1牛市上行": {
+     "n": 221,
+     "mean": 0.0307,
+     "std": 0.2953,
+     "t": 1.548,
+     "pos_ratio": 0.5701
+    },
+    "S2牛市回调": {
+     "n": 118,
+     "mean": -0.0677,
+     "std": 0.2621,
+     "t": -2.806,
+     "pos_ratio": 0.4068
+    },
+    "S3弱市阴跌": {
+     "n": 40,
+     "mean": 0.0034,
+     "std": 0.2033,
+     "t": 0.105,
+     "pos_ratio": 0.475
+    },
+    "S4弱市反弹": {
+     "n": 71,
+     "mean": -0.0557,
+     "std": 0.1481,
+     "t": -3.169,
+     "pos_ratio": 0.3099
+    }
+   },
+   "rolling_stability": {
+    "months": 16,
+    "same_sign_ratio": 0.375
+   },
+   "quantile_table": [
+    {
+     "q": 1,
+     "n": 27194,
+     "avg_fwd14": 1.452,
+     "win": 0.4155
+    },
+    {
+     "q": 2,
+     "n": 27194,
+     "avg_fwd14": -0.324,
+     "win": 0.3785
+    },
+    {
+     "q": 3,
+     "n": 27194,
+     "avg_fwd14": 0.246,
+     "win": 0.3928
+    },
+    {
+     "q": 4,
+     "n": 27194,
+     "avg_fwd14": -0.199,
+     "win": 0.3616
+    },
+    {
+     "q": 5,
+     "n": 27198,
+     "avg_fwd14": -0.687,
+     "win": 0.3315
+    }
+   ],
+   "cond_ic": null,
+   "inc_ic": {
+    "n": 289,
+    "mean": 0.0074,
+    "std": 0.0832,
+    "t": 1.514,
+    "pos_ratio": 0.5225
+   },
+   "redundant_with": null,
+   "verdict": "弱/无效",
+   "tested_at": "2026-08-27",
+   "single_period_dep": null
+  }
+ ]
+}

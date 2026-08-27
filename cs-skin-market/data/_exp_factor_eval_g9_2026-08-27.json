@@ -1,0 +1,225 @@
+{
+ "meta": {
+  "card": "R1 组9 升主评（判据修订 DE，2026-08-27）",
+  "prereg": "references/r1-factor-eval-prereg-2026-08-27.md（DE 修订组9）",
+  "split_oos": "2025-08-10",
+  "fit_rows": 156418,
+  "val_rows": 83408,
+  "note": "bid=bid_history.buy_price_max（生产库）；spread=price_history.price_rmb(回放库)−buy_price_max；bid_history date<SPLIT 过滤守 oos_zone；lowest_sell 全 NULL（D2 未采历史），spread 用卖价-买价派生；阈值沿用主判据",
+  "runtime_sec": 3.7
+ },
+ "cards": [
+  {
+   "id": "bid",
+   "name": "bid(最高买价)",
+   "category": "盘口/流动性",
+   "role": "流动性",
+   "coverage": 0.8693,
+   "IC14": {
+    "n": 451,
+    "mean": -0.0111,
+    "std": 0.2643,
+    "t": -0.894,
+    "pos_ratio": 0.4767
+   },
+   "IC30": {
+    "n": 451,
+    "mean": -0.0277,
+    "std": 0.264,
+    "t": -2.228,
+    "pos_ratio": 0.3947
+   },
+   "IC14_by_period": {
+    "P恐慌深跌": {
+     "n": 1,
+     "mean": -0.003,
+     "std": 0.0,
+     "t": 0.0,
+     "pos_ratio": 0.0
+    },
+    "S1牛市上行": {
+     "n": 221,
+     "mean": 0.0307,
+     "std": 0.2953,
+     "t": 1.548,
+     "pos_ratio": 0.5701
+    },
+    "S2牛市回调": {
+     "n": 118,
+     "mean": -0.0677,
+     "std": 0.2621,
+     "t": -2.806,
+     "pos_ratio": 0.4068
+    },
+    "S3弱市阴跌": {
+     "n": 40,
+     "mean": 0.0034,
+     "std": 0.2033,
+     "t": 0.105,
+     "pos_ratio": 0.475
+    },
+    "S4弱市反弹": {
+     "n": 71,
+     "mean": -0.0557,
+     "std": 0.1481,
+     "t": -3.169,
+     "pos_ratio": 0.3099
+    }
+   },
+   "rolling_stability": {
+    "months": 16,
+    "same_sign_ratio": 0.375
+   },
+   "quantile_table": [
+    {
+     "q": 1,
+     "n": 27194,
+     "avg_fwd14": 1.452,
+     "win": 0.4155
+    },
+    {
+     "q": 2,
+     "n": 27194,
+     "avg_fwd14": -0.324,
+     "win": 0.3785
+    },
+    {
+     "q": 3,
+     "n": 27194,
+     "avg_fwd14": 0.246,
+     "win": 0.3928
+    },
+    {
+     "q": 4,
+     "n": 27194,
+     "avg_fwd14": -0.199,
+     "win": 0.3616
+    },
+    {
+     "q": 5,
+     "n": 27198,
+     "avg_fwd14": -0.687,
+     "win": 0.3315
+    }
+   ],
+   "cond_ic": null,
+   "inc_ic": {
+    "n": 289,
+    "mean": 0.0074,
+    "std": 0.0832,
+    "t": 1.514,
+    "pos_ratio": 0.5225
+   },
+   "redundant_with": null,
+   "verdict": "弱/无效",
+   "tested_at": "2026-08-27",
+   "single_period_dep": null
+  },
+  {
+   "id": "spread",
+   "name": "spread(卖价-最高买价)",
+   "category": "盘口/流动性",
+   "role": "流动性",
+   "coverage": 0.8693,
+   "IC14": {
+    "n": 451,
+    "mean": -0.0965,
+    "std": 0.1652,
+    "t": -12.402,
+    "pos_ratio": 0.2949
+   },
+   "IC30": {
+    "n": 451,
+    "mean": -0.1007,
+    "std": 0.166,
+    "t": -12.891,
+    "pos_ratio": 0.306
+   },
+   "IC14_by_period": {
+    "P恐慌深跌": {
+     "n": 1,
+     "mean": -0.0709,
+     "std": 0.0,
+     "t": 0.0,
+     "pos_ratio": 0.0
+    },
+    "S1牛市上行": {
+     "n": 221,
+     "mean": -0.0817,
+     "std": 0.1854,
+     "t": -6.553,
+     "pos_ratio": 0.362
+    },
+    "S2牛市回调": {
+     "n": 118,
+     "mean": -0.1554,
+     "std": 0.1414,
+     "t": -11.938,
+     "pos_ratio": 0.1695
+    },
+    "S3弱市阴跌": {
+     "n": 40,
+     "mean": 0.008,
+     "std": 0.128,
+     "t": 0.398,
+     "pos_ratio": 0.575
+    },
+    "S4弱市反弹": {
+     "n": 71,
+     "mean": -0.1038,
+     "std": 0.1062,
+     "t": -8.241,
+     "pos_ratio": 0.1408
+    }
+   },
+   "rolling_stability": {
+    "months": 16,
+    "same_sign_ratio": 0.1875
+   },
+   "quantile_table": [
+    {
+     "q": 1,
+     "n": 27194,
+     "avg_fwd14": 2.508,
+     "win": 0.4167
+    },
+    {
+     "q": 2,
+     "n": 27194,
+     "avg_fwd14": -0.6,
+     "win": 0.3945
+    },
+    {
+     "q": 3,
+     "n": 27194,
+     "avg_fwd14": -0.375,
+     "win": 0.382
+    },
+    {
+     "q": 4,
+     "n": 27194,
+     "avg_fwd14": -0.213,
+     "win": 0.3661
+    },
+    {
+     "q": 5,
+     "n": 27198,
+     "avg_fwd14": -0.832,
+     "win": 0.3206
+    }
+   ],
+   "cond_ic": null,
+   "inc_ic": {
+    "n": 289,
+    "mean": -0.0183,
+    "std": 0.0757,
+    "t": -4.106,
+    "pos_ratio": 0.4083
+   },
+   "redundant_with": null,
+   "verdict": "不稳定",
+   "tested_at": "2026-08-27",
+   "single_period_dep": null
+  }
+ ]
+}
