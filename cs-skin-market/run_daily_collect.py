@@ -345,6 +345,24 @@ def _run_data_reserve():
             log(f"D7 数据储备 {script} 异常（不中断采集）: {type(e).__name__}: {str(e)[:100]}")
 
 
+def _run_steamdt_reserve():
+    """W7-2（2026-08-27，decision-log EZ/FB，PM 拍板接每日采集链）：steamdt.com 市场级数据蓄水池。
+
+    每日 1 次落 raw.db（raw_steamdt_market 1 行 + raw_steamdt_blocks 20 行，append-only）；
+    GET 零鉴权 urllib，负载 <10s；失败仅 log 不中断主采集（契约 references/w7-2-collect-contract-2026-08-27.md）。
+    """
+    import subprocess
+    root = os.path.dirname(os.path.abspath(__file__))
+    py = sys.executable
+    try:
+        r = subprocess.run([py, os.path.join(root, "collect_steamdt_reserve.py")],
+                           capture_output=True, text=True, timeout=2400, cwd=root)
+        _tail = ((r.stdout or "").strip().splitlines() or [""])[-1]
+        log(f"W7-2 steamdt 储备 {r.returncode} | {_tail}")
+    except Exception as e:
+        log(f"W7-2 steamdt 储备异常（不中断采集）: {type(e).__name__}: {str(e)[:100]}")
+
+
 def main():
     import argparse
     ap = argparse.ArgumentParser(description="每日自动采集")
@@ -406,6 +424,12 @@ def main():
         _run_data_reserve()
     except Exception as e:
         log(f"D7 数据储备任务异常（不中断采集）: {e}")
+    # ---- W7-2 steamdt 蓄水池（2026-08-27，decision-log EZ/FB，PM 拍板接每日采集链）----
+    # steamdt.com 市场级数据（大盘/成交/新增/在线/板块）每日 1 次落 raw.db；失败仅记录不中断主流程。
+    try:
+        _run_steamdt_reserve()
+    except Exception as e:
+        log(f"W7-2 steamdt 储备任务异常（不中断采集）: {e}")
     # ---- 数据源健康监控 (A1, 2026-08-05) ----
     # 采集收尾自动体检：复用 run_health_monitor（写 health_checks 表，退出码 0/2）。
     # 失败仅记录，不中断采集主流程。

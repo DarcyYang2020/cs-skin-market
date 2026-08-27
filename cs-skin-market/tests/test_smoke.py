@@ -130,6 +130,65 @@ def t_raw_db():
         raw_db.RAW_DB_PATH = _orig
 check('D7 raw.db append-only（无变更 SQL + 写入）', t_raw_db)
 
+print('[W7-2 steamdt 蓄水池]')
+def t_w72_steamdt_schema():
+    """W7-2 验收①：raw_steamdt_market/blocks 表存在 + 幂等约束（UNIQUE date / UNIQUE date,level,block_name）。"""
+    import re
+    import tempfile
+    from pipeline import raw_db
+    # append-only 断言（对齐 D7）：raw_db.py 源码无 UPDATE/DELETE（覆盖新增两表 DDL）
+    _src = open(os.path.join(os.path.dirname(TEST_DIR), 'pipeline', 'raw_db.py'), encoding='utf-8').read()
+    assert not re.search(r'\b(DELETE FROM|UPDATE)\s+', _src), 'raw_db.py 含变更 SQL（W7-2 append-only 违例）'
+    # 建表 + 幂等约束检查（临时库）
+    _orig = raw_db.RAW_DB_PATH
+    d = tempfile.mkdtemp()
+    try:
+        raw_db.RAW_DB_PATH = os.path.join(d, 'raw.db')
+        conn = raw_db.get_raw_conn()
+        # market 表 + date UNIQUE
+        idx = conn.execute("SELECT sql FROM sqlite_master WHERE name='raw_steamdt_market'").fetchone()
+        assert idx and 'UNIQUE' in idx[0] and 'date' in idx[0], f'raw_steamdt_market 缺 date 唯一约束: {idx}'
+        # blocks 表 + (date,level,block_name) UNIQUE
+        idx2 = conn.execute("SELECT sql FROM sqlite_master WHERE name='raw_steamdt_blocks'").fetchone()
+        assert idx2 and 'UNIQUE' in idx2[0] and 'date' in idx2[0] and 'level' in idx2[0] and 'block_name' in idx2[0], \
+            f'raw_steamdt_blocks 缺 (date,level,block_name) 唯一约束: {idx2}'
+        # 字段抽查（对齐契约 DDL）
+        cols = [r[1] for r in conn.execute("PRAGMA table_info(raw_steamdt_market)").fetchall()]
+        for c in ('date', 'broad_market_index', 'turnover', 'survive_num', 'holders_num',
+                  'online_count', 'month_avg_online', 'update_time'):
+            assert c in cols, f'raw_steamdt_market 缺列 {c}'
+        cols_b = [r[1] for r in conn.execute("PRAGMA table_info(raw_steamdt_blocks)").fetchall()]
+        for c in ('date', 'level', 'block_name', 'index_value', 'rise_fall_rate', 'rise_fall_diff'):
+            assert c in cols_b, f'raw_steamdt_blocks 缺列 {c}'
+        conn.close()
+    finally:
+        raw_db.RAW_DB_PATH = _orig
+check('W7-2 表存在 + 幂等约束 + append-only 断言', t_w72_steamdt_schema)
+
+def t_w72_steamdt_script():
+    """W7-2 验收③：脚本 dry-run 解析（market 1 行/blocks≥20 行）+ RESULT 末行格式 + 退出码。"""
+    import subprocess
+    import sys
+    root = os.path.join(os.path.dirname(TEST_DIR))
+    script = os.path.join(root, 'collect_steamdt_reserve.py')
+    assert os.path.exists(script), '缺少 collect_steamdt_reserve.py'
+    src = open(script, encoding='utf-8').read()
+    assert 'raw_steamdt_market' in src and 'raw_steamdt_blocks' in src, '脚本未引用两表'
+    assert '--dry-run' in src, '脚本缺 --dry-run'
+    # dry-run 运行（联网——跳过 SKIP_NET；离线时跳过本用例）
+    if SKIP_NET:
+        return
+    r = subprocess.run([sys.executable, script, '--dry-run'],
+                       capture_output=True, text=True, timeout=120, cwd=root)
+    assert r.returncode == 0, f'dry-run 退出码非 0: {r.returncode} {r.stderr[-300:]}'
+    tail = (r.stdout or '').strip().splitlines()[-1]
+    assert tail.startswith('RESULT mode=DRY-RUN'), f'RESULT 末行缺失: {tail}'
+    assert 'market=1' in tail and 'blocks=' in tail, f'RESULT 缺计数: {tail}'
+    import re as _re
+    m = _re.search(r'blocks=(\d+)', tail)
+    assert m and int(m.group(1)) >= 20, f'blocks 应 ≥20（对齐 item-block 返回）: {tail}'
+check('W7-2 脚本 dry-run 解析 + RESULT 末行 + 退出码', t_w72_steamdt_script, skip=SKIP_NET)
+
 print('[API: Market Index]')
 def t_idx():
     from pipeline import collector

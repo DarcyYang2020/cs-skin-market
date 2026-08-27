@@ -2,7 +2,7 @@
 
 > 本文档为项目文件结构唯一事实源（AGENTS.md/SKILL.md 不再维护重复文件树）。
 
-> 最后更新: 2026-08-27（Wave6 运维层落地：ops.py / ops_tool.py / OPS_RULES）
+> 最后更新: 2026-08-27（Wave6 运维层落地：ops.py / ops_tool.py / OPS_RULES；W7-2 steamdt 蓄水池采集脚本）
 
 ## 目录结构
 
@@ -17,6 +17,7 @@ cs-skin-market/
 ├── backup_db.py               # SQLite online backup（每日，保留 14 份）
 ├── collect_data_reserve_p0.py # P0 数据储备采集（活跃池基本面+求购日聚合，研究层，默认 dry-run）
 ├── collect_data_reserve_p1.py # P1 数据储备采集（存世量+系列面板+大户Top20，研究层，默认 dry-run）
+├── collect_steamdt_reserve.py # W7-2 steamdt 蓄水池采集（市场级指数/成交/在线/板块 → raw.db，默认 APPLY，决策 EY+EZ）
 ├── notify_alert.py            # 告警/监控推送（钉钉 webhook，.env NOTIFY_WEBHOOK_URL 配置；O4 三档路由 --level）
 ├── ops_tool.py                # 运维 CLI（Wave6 O1-O4：kill switch / 审计 / 告警 / 交易监控，独立于 webapp）
 ├── install_tasks.ps1          # Windows 计划任务安装（每日采集/备份/告警）
@@ -169,6 +170,7 @@ cs-skin-market/
 | `_exp_fee_calibration_2026-08-27.json` | Wave4 E2 新旧期望差异表（2% 双边 vs 买0/卖1） |
 | `_exp_quality_gate_2026-08-27.json` | Wave4 E1 回测质量门 5 项状态（v2-T13 全池基线，2026-08-27 全通过） |
 | `scan_history/` / `scan_progress_*.json` / `batch_scan_latest.json` | 批量扫描归档/进度/缓存（gitignore） |
+| `_exp_w7_2_steamdt_probe.json` | W7-2 steamdt.com 市场级数据探针存证（决策 EY，字段对照解析用） |
 
 
 ## 文件/产物归口规则

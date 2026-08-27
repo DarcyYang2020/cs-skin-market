@@ -2691,3 +2691,13 @@
 - ④运维：按契约 `_run_steamdt_reserve()` 接入 `_run_data_reserve()` 之后（18:00 每日链，健康检查前），首跑验证。
 - ③审计：验收 4 点（表存在+幂等约束 / append-only 断言 / dry-run 或首跑 market=1/blocks≥20 / 不 bump 引擎）。
 - 积累 3-6 月后由②评估（W7-1 v1c 届时复用）；不即采即落主分析（合规红线 decision-log 2161）。
+
+## GI. W7-2 蓄水池采集接入 18:00 链 + 首跑落库成功（2026-08-27 21:46，④运维执行；原 GG 号与并写窗口 FH 后新增撞序，改 GI）
+
+> 依据：EZ/FB（PM 拍板立项）+ 契约 `references/w7-2-collect-contract-2026-08-27.md`；研发已交付 `collect_steamdt_reserve.py`（21:43，走 `pipeline.raw_db.append_raw` 白名单 + UNIQUE 幂等 + 显式幂等守卫，比契约更完整）。
+
+- **④接入**：`run_daily_collect.py` 新增 `_run_steamdt_reserve()`，挂接于 `_run_data_reserve()` 之后、健康检查之前（对齐 D7 模式：subprocess + timeout 2400s + 失败仅 log 不中断主采集）；每日 1 次 18:00 链无条件执行。
+- **首跑实测**（21:45，APPLY）：`raw_steamdt_market` 1 行（date=2026-08-27，大盘 831.13 / turnover 34.85M / trade_num 1.41M / add_num 469K / online 1.21M）+ `raw_steamdt_blocks` 20 行（hot 5 + level1/2/3 × 5）；**幂等守卫实测生效**（重复调用自动跳过，UNIQUE 冲突忽略）。
+- **验证**：AST 语法 OK（定义 1 + 挂接 1）；`_SCHEMA` 白名单两表已注册；表实际可查可写；dry-run 对齐契约验收（market=1/blocks=20）。冒烟 pytest 本会话环境缺失（无 pytest 解释器），由③审计独立复核。
+- **合规**：仅公开市场级数据（指数/成交/新增/在线/板块），不进引擎、不 bump ENGINE_VERSION、不碰 market.db；积累 3-6 月后再评（decision-log 2161 红线）。
+- **状态**：**W7-2 蓄水池采集已接入 18:00 链并首跑成功** → 移交③审计复核 → 进入 3-6 月积累观察。单品级二期（FD）仍挂账，市场级稳定后启动。

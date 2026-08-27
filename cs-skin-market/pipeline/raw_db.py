@@ -50,6 +50,45 @@ _SCHEMA = {
             source TEXT DEFAULT 'csqaq_direct',
             platform INTEGER DEFAULT 2
         )""",
+    # W7-2 蓄水池（2026-08-27，decision-log EY+EZ，契约 references/w7-2-collect-contract-2026-08-27.md）：
+    # steamdt.com 市场级数据（独立第三方站，GET 零鉴权），每日 1 行/多行 append-only。
+    # 幂等 = UNIQUE(date) / UNIQUE(date,level,block_name)；合规积累 3-6 月后再评（W7-1 v1c 届时复用）。
+    "raw_steamdt_market": """
+        CREATE TABLE IF NOT EXISTS raw_steamdt_market (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ts TEXT NOT NULL,
+            date TEXT NOT NULL UNIQUE,
+            broad_market_index REAL,
+            diff_yesterday REAL,
+            diff_yesterday_ratio REAL,
+            add_num INTEGER,
+            add_valuation REAL,
+            trade_num INTEGER,
+            turnover REAL,
+            add_num_ratio REAL,
+            add_amount_ratio REAL,
+            trade_volume_ratio REAL,
+            trade_amount_ratio REAL,
+            survive_num INTEGER,
+            holders_num INTEGER,
+            online_count INTEGER,
+            month_avg_online INTEGER,
+            update_time TEXT,
+            source TEXT DEFAULT 'steamdt'
+        )""",
+    "raw_steamdt_blocks": """
+        CREATE TABLE IF NOT EXISTS raw_steamdt_blocks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ts TEXT NOT NULL,
+            date TEXT NOT NULL,
+            level TEXT NOT NULL,
+            block_name TEXT NOT NULL,
+            index_value REAL,
+            rise_fall_rate REAL,
+            rise_fall_diff REAL,
+            source TEXT DEFAULT 'steamdt',
+            UNIQUE(date, level, block_name)
+        )""",
 }
 
 
