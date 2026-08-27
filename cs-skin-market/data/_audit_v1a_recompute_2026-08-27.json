@@ -1,0 +1,391 @@
+{
+ "title": "③审计 W7-1 v1a 独立复算",
+ "checks": {
+  "component_sentiment": {
+   "ok": true,
+   "actual": {
+    "coverage_fit": 0.9744,
+    "IC14": {
+     "n": 700,
+     "mean": 0.1579,
+     "std": 0.1543,
+     "t": 27.088,
+     "pos_ratio": 0.88
+    },
+    "IC30": {
+     "n": 700,
+     "mean": 0.1164,
+     "std": 0.1461,
+     "t": 21.08,
+     "pos_ratio": 0.8
+    },
+    "rolling_stability": {
+     "months": 24,
+     "same_sign_ratio": 0.9167
+    }
+   },
+   "expected": {
+    "name": "恐慌分(approx_sentiment)",
+    "coverage_fit": 0.9744,
+    "IC14": {
+     "n": 700,
+     "mean": 0.1579,
+     "std": 0.1543,
+     "t": 27.088,
+     "pos_ratio": 0.88
+    },
+    "IC30": {
+     "n": 700,
+     "mean": 0.1164,
+     "std": 0.1461,
+     "t": 21.08,
+     "pos_ratio": 0.8
+    },
+    "rolling_stability": {
+     "months": 24,
+     "same_sign_ratio": 0.9167
+    }
+   }
+  },
+  "component_sc30": {
+   "ok": true,
+   "actual": {
+    "coverage_fit": 0.9976,
+    "IC14": {
+     "n": 712,
+     "mean": 0.0215,
+     "std": 0.1238,
+     "t": 4.644,
+     "pos_ratio": 0.5787
+    },
+    "IC30": {
+     "n": 712,
+     "mean": 0.0004,
+     "std": 0.1185,
+     "t": 0.097,
+     "pos_ratio": 0.4846
+    },
+    "rolling_stability": {
+     "months": 25,
+     "same_sign_ratio": 0.64
+    }
+   },
+   "expected": {
+    "name": "供给30日变化",
+    "coverage_fit": 0.9976,
+    "IC14": {
+     "n": 712,
+     "mean": 0.0215,
+     "std": 0.1238,
+     "t": 4.644,
+     "pos_ratio": 0.5787
+    },
+    "IC30": {
+     "n": 712,
+     "mean": 0.0004,
+     "std": 0.1185,
+     "t": 0.097,
+     "pos_ratio": 0.4846
+    },
+    "rolling_stability": {
+     "months": 25,
+     "same_sign_ratio": 0.64
+    }
+   }
+  },
+  "component_chg7": {
+   "ok": true,
+   "actual": {
+    "coverage_fit": 1.0,
+    "IC14": {
+     "n": 712,
+     "mean": -0.1457,
+     "std": 0.1469,
+     "t": -26.473,
+     "pos_ratio": 0.118
+    },
+    "IC30": {
+     "n": 712,
+     "mean": -0.1085,
+     "std": 0.1435,
+     "t": -20.163,
+     "pos_ratio": 0.2079
+    },
+    "rolling_stability": {
+     "months": 25,
+     "same_sign_ratio": 0.08
+    }
+   },
+   "expected": {
+    "name": "价格7日动量",
+    "coverage_fit": 1.0,
+    "IC14": {
+     "n": 712,
+     "mean": -0.1457,
+     "std": 0.1469,
+     "t": -26.473,
+     "pos_ratio": 0.118
+    },
+    "IC30": {
+     "n": 712,
+     "mean": -0.1085,
+     "std": 0.1435,
+     "t": -20.163,
+     "pos_ratio": 0.2079
+    },
+    "rolling_stability": {
+     "months": 25,
+     "same_sign_ratio": 0.08
+    }
+   }
+  },
+  "component_bid": {
+   "ok": true,
+   "actual": {
+    "coverage_fit": 0.8693,
+    "IC14": {
+     "n": 711,
+     "mean": 0.0101,
+     "std": 0.2434,
+     "t": 1.108,
+     "pos_ratio": 0.5302
+    },
+    "IC30": {
+     "n": 711,
+     "mean": 0.0108,
+     "std": 0.2579,
+     "t": 1.117,
+     "pos_ratio": 0.481
+    },
+    "rolling_stability": {
+     "months": 25,
+     "same_sign_ratio": 0.48
+    }
+   },
+   "expected": {
+    "name": "bid(最高买价)",
+    "coverage_fit": 0.8693,
+    "IC14": {
+     "n": 711,
+     "mean": 0.0101,
+     "std": 0.2434,
+     "t": 1.108,
+     "pos_ratio": 0.5302
+    },
+    "IC30": {
+     "n": 711,
+     "mean": 0.0108,
+     "std": 0.2579,
+     "t": 1.117,
+     "pos_ratio": 0.481
+    },
+    "rolling_stability": {
+     "months": 25,
+     "same_sign_ratio": 0.48
+    }
+   }
+  },
+  "component_spread": {
+   "ok": true,
+   "actual": {
+    "coverage_fit": 0.8693,
+    "IC14": {
+     "n": 711,
+     "mean": -0.0628,
+     "std": 0.158,
+     "t": -10.604,
+     "pos_ratio": 0.391
+    },
+    "IC30": {
+     "n": 711,
+     "mean": -0.0499,
+     "std": 0.1706,
+     "t": -7.801,
+     "pos_ratio": 0.4402
+    },
+    "rolling_stability": {
+     "months": 25,
+     "same_sign_ratio": 0.36
+    }
+   },
+   "expected": {
+    "name": "spread(卖价-最高买价)",
+    "coverage_fit": 0.8693,
+    "IC14": {
+     "n": 711,
+     "mean": -0.0628,
+     "std": 0.158,
+     "t": -10.604,
+     "pos_ratio": 0.391
+    },
+    "IC30": {
+     "n": 711,
+     "mean": -0.0499,
+     "std": 0.1706,
+     "t": -7.801,
+     "pos_ratio": 0.4402
+    },
+    "rolling_stability": {
+     "months": 25,
+     "same_sign_ratio": 0.36
+    }
+   }
+  },
+  "emo_v1a_ic": {
+   "ok": true,
+   "actual": {
+    "coverage_fit": 0.8523,
+    "IC14": {
+     "n": 699,
+     "mean": 0.1019,
+     "std": 0.1532,
+     "t": 17.589,
+     "pos_ratio": 0.7711
+    },
+    "IC30": {
+     "n": 699,
+     "mean": 0.0768,
+     "std": 0.1648,
+     "t": 12.329,
+     "pos_ratio": 0.6538
+    },
+    "rolling_stability": {
+     "months": 24,
+     "same_sign_ratio": 0.8333
+    }
+   },
+   "expected": {
+    "coverage_fit": 0.8523,
+    "IC14": {
+     "n": 699,
+     "mean": 0.1019,
+     "std": 0.1532,
+     "t": 17.589,
+     "pos_ratio": 0.7711
+    },
+    "IC30": {
+     "n": 699,
+     "mean": 0.0768,
+     "std": 0.1648,
+     "t": 12.329,
+     "pos_ratio": 0.6538
+    },
+    "rolling_stability": {
+     "months": 24,
+     "same_sign_ratio": 0.8333
+    }
+   }
+  },
+  "emo_v0_ic": {
+   "ok": true,
+   "actual": {
+    "coverage_fit": 0.972,
+    "IC14": {
+     "n": 700,
+     "mean": 0.1264,
+     "std": 0.1486,
+     "t": 22.505,
+     "pos_ratio": 0.8371
+    }
+   },
+   "expected": {
+    "coverage_fit": 0.972,
+    "IC14": {
+     "n": 700,
+     "mean": 0.1264,
+     "std": 0.1486,
+     "t": 22.505,
+     "pos_ratio": 0.8371
+    },
+    "rolling_stability": {
+     "months": 24,
+     "same_sign_ratio": 0.9167
+    }
+   }
+  },
+  "inc_ic_AB": {
+   "ok": true,
+   "actual": {
+    "inc_ic_A_fit": {
+     "n": 373,
+     "mean": 0.0034,
+     "std": 0.0673,
+     "t": 0.967,
+     "pos_ratio": 0.5416
+    },
+    "inc_ic_A_rolling": {
+     "months": 16,
+     "same_sign_ratio": 0.5
+    },
+    "inc_ic_B_fit": {
+     "n": 409,
+     "mean": 0.0107,
+     "std": 0.0716,
+     "t": 3.021,
+     "pos_ratio": 0.5355
+    },
+    "val_recheck_A": {
+     "n": 327,
+     "mean": -0.0052,
+     "std": 0.0757,
+     "t": -1.253,
+     "pos_ratio": 0.4557
+    },
+    "val_recheck_B": {
+     "n": 338,
+     "mean": -0.003,
+     "std": 0.0693,
+     "t": -0.793,
+     "pos_ratio": 0.4763
+    }
+   },
+   "expected": {
+    "inc_ic_A_fit": {
+     "n": 373,
+     "mean": 0.0034,
+     "std": 0.0673,
+     "t": 0.967,
+     "pos_ratio": 0.5416
+    },
+    "inc_ic_A_rolling": {
+     "months": 16,
+     "same_sign_ratio": 0.5
+    },
+    "inc_ic_B_fit": {
+     "n": 409,
+     "mean": 0.0107,
+     "std": 0.0716,
+     "t": 3.021,
+     "pos_ratio": 0.5355
+    },
+    "val_recheck_A": {
+     "n": 327,
+     "mean": -0.0052,
+     "std": 0.0757,
+     "t": -1.253,
+     "pos_ratio": 0.4557
+    },
+    "val_recheck_B": {
+     "n": 338,
+     "mean": -0.003,
+     "std": 0.0693,
+     "t": -0.793,
+     "pos_ratio": 0.4763
+    }
+   }
+  },
+  "verdict": {
+   "ok": true,
+   "actual": "无增量"
+  },
+  "meta_rows": {
+   "ok": true,
+   "actual": {
+    "fit": 156418,
+    "val": 83408,
+    "split": "2025-08-10"
+   }
+  }
+ },
+ "pass": true
+}

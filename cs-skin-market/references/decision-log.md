@@ -3015,3 +3015,26 @@
 
 ### 三、状态
 - DU 更正完成 ✅；3 窗口带话就绪；待窗口回执后逐项销账。
+
+## HA. W7-2 蓄水池 · ③独立复核（2026-08-27，③审计，通过，GI 移交项闭环）
+
+> 被审：GI（④接入首跑）+ `collect_steamdt_reserve.py` + `pipeline/raw_db.py` 两表 + `data/raw.db` 实测。红线：只认 W7-2 契约（`w7-2-collect-contract-2026-08-27.md`）+ 表/数据事实；GI 自述仅对照。独立复核=SQL 直查 + 幂等实证 + 脚本 dry-run + 独立冒烟（补④环境缺 pytest 缺口）。
+
+### 一、核验（全部通过）
+
+| 项 | 核验 |
+|---|---|
+| **表结构** | raw_steamdt_market 20 列（date TEXT NOT NULL **UNIQUE**）；raw_steamdt_blocks 9 列（**UNIQUE(date, level, block_name)**）——与契约 §一 一致 ✅ |
+| **UNIQUE 幂等** | 两表隐式索引（sqlite_autoindex_*）；**真实重复插入实证**：market 同 date → IntegrityError「UNIQUE constraint failed: raw_steamdt_market.date」；blocks 同 (date,level,block_name)（hot/一代手套指数）→ 同样拒绝 ✅；脚本层另加「当日已存在→跳过」守卫（先查后插）双保险 ✅ |
+| **append-only** | raw.db 无触发器（无 UPDATE/DELETE 路径）；写入仅经 raw_db.append_raw 白名单表；契约红线（不进引擎/不 bump/不碰 market.db）✅ |
+| **首跑数据** | market **1 行**（2026-08-27：broad 831.13 / turnover 34,853,559 / online 1,214,189 / survive 1,110,520,575 / holders 29,526,376）；blocks **20 行**（hot 5 + level1 5 + level2 5 + level3 5）——与④记录一致 ✅ |
+| **脚本 dry-run** | `--dry-run` 退出码 0，RESULT 末行 `mode=DRY-RUN date=2026-08-27 market=1 blocks=20` ✅ |
+| **独立冒烟** | SKIP_NET=1 **144 passed / 0 failed / 7 skipped**（非网络用例全过，含 W7-2 用例；7 skip=6 网络+1 网络依赖）——补④环境缺 pytest 的缺口 ✅ |
+| **GM 隔离红线** | 顺带复核：raw_steamdt_* 定义于 raw_db.py（raw.db）、market_index 定义于 db.py（market.db）——不同库不同表、无 steamdt→market_index 桥接 ✅ |
+
+### 二、裁定
+
+- **W7-2 蓄水池复核通过**（GI 移交项闭环）：表结构/UNIQUE 幂等/append-only/首跑数据/冒烟全部核验一致；GM 隔离红线现状满足。
+- **W7-2 进入 3-6 月积累观察期**（market 级）；单品级二期（FD）挂账；积累够后②评估 v1c（届时 v1a 审计登记口径沿用）。
+- 不踩红线：审计只读（SQL 直查 + 模拟插入回滚，未改任何数据）；不 bump ENGINE_VERSION ✅。
+- **状态**：W7-2 ③复核闭环（HA）；③侧无新增待办（v1a 审计产物归档随本条目提交）。
