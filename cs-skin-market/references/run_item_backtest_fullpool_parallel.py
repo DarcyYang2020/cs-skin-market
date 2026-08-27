@@ -60,11 +60,11 @@ def _init_worker(market_ctx):
 
 
 def _worker(args):
-    iid, name, start, end, warmup = args
+    iid, name, start, end, warmup, cost = args
     rib = _G["rib"]
     market_ctx = _G["market_ctx"]
     try:
-        return rib.backtest_item(iid, name, start, end, warmup, market_ctx, cost=0.02)
+        return rib.backtest_item(iid, name, start, end, warmup, market_ctx, cost=cost)
     except Exception as exc:  # 单品异常不阻断整池
         return {"item_id": iid, "name": name, "signals": [], "error": str(exc)}
 
@@ -72,6 +72,11 @@ def _worker(args):
 def main():
     START, END, WARMUP = "2023-11-17", "2026-08-05", 30
     from pipeline.backtest_common import build_market_context
+    # E2（2026-08-27）：费率 config 化——买0/卖1 不对称费率（round-trip = buy+sell，1.0%），
+    # 取代硬编码 cost=0.02（2% 双边）。滑点模型待盘口数据积累后补。
+    # 注意：backtest_roundtrip_cost() 返回百分比（1.0=1%）；backtest_item 的 cost 参数为小数（0.01=1%）。
+    from pipeline.config import backtest_roundtrip_cost
+    cost = backtest_roundtrip_cost() / 100.0
     market_ctx = build_market_context(START, end=END)
     print("market ctx dates:", len(market_ctx), flush=True)
     items = pool_a_items()
@@ -80,7 +85,7 @@ def main():
     n_workers = min(8, max(2, os.cpu_count() or 4))
     print("workers:", n_workers, flush=True)
     t0 = datetime.now()
-    jobs = [(iid, name, START, END, WARMUP) for iid, name in sorted(items.items())]
+    jobs = [(iid, name, START, END, WARMUP, cost) for iid, name in sorted(items.items())]
 
     with mp.Pool(processes=n_workers, initializer=_init_worker, initargs=(market_ctx,)) as pool:
         results = pool.map(_worker, jobs, chunksize=1)
@@ -101,6 +106,8 @@ def main():
                     "pool": "全池除贴纸/角色约234品(DATA-1 3年历史,含手套/武器箱/挂件/冷门枪)",
                     "db": os.environ["CS_MODEL_DB"],
                     "engine": "v2-T13 全池并行回放 (period_route + 去量 v2 引擎)",
+                    "fees": {"buy_pct": 0.0, "sell_pct": 1.0, "roundtrip_pct": cost,
+                             "note": "E2 不对称费率 config 化（pipeline.config.BACKTEST_FEES），原 2% 双边"},
                     "env_switches": switches or None,
                     "n_workers": n_workers},
            "generated": datetime.now().strftime("%Y-%m-%d %H:%M"),

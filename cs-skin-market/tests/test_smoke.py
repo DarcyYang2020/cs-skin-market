@@ -4373,6 +4373,120 @@ def t_ops_paper_gate():
         c.close()
 check('O2 联动: kill switch(paper) 闸停 daily_run 建仓', t_ops_paper_gate)
 
+print('[Wave4 评估层 E1-E4]')
+def t_e2_fee_config():
+    """E2 判据①：费率 config 化（BACKTEST_FEES 买0/卖1），回放脚本从 config 读（不硬编码 0.02）。"""
+    from pipeline import config
+    assert config.BACKTEST_FEES == {"buy_pct": 0.0, "sell_pct": 1.0}, config.BACKTEST_FEES
+    assert config.backtest_roundtrip_cost() == 1.0
+    for fname in ('run_item_backtest_full.py', 'run_item_backtest_fullpool_parallel.py'):
+        src = open(os.path.join(TEST_DIR, '..', 'references', fname), encoding='utf-8').read()
+        assert 'backtest_roundtrip_cost' in src, f'{fname} 未从 config 读费率（E2 判据①）'
+        # 硬编码判定：引擎调用处必须是 cost=cost（来自 config），不允许 cost=0.02 字面量调用
+        assert 'cost=cost' in src or 'cost=cost)' in src, f'{fname} 未把 config 费率传入 backtest_item'
+check('E2 费率 config 化（买0/卖1 + 脚本读 config）', t_e2_fee_config)
+
+def t_e2_fee_calibration():
+    """E2 判据②：校准产物存在 + net = fwd − 1.0（买0/卖1）+ 差异表 + sync 后 config 块。"""
+    import io
+    import json
+    import importlib.util
+    from pathlib import Path
+    from pipeline.config import ITEM_EXPECTANCY_STATS_FEE_CAL, BASELINE_LEDGER
+    base = Path(TEST_DIR).parent
+    p_cal = base / 'data' / '_exp_v2t13_fee_cal_2026-08-27.json'
+    p_diff = base / 'data' / '_exp_fee_calibration_2026-08-27.json'
+    assert p_cal.exists(), '缺少 FEE-CAL 校准产物'
+    assert p_diff.exists(), '缺少 E2 差异表'
+    data = json.load(io.open(p_cal, encoding='utf-8'))
+    sigs = data.get('signals', [])
+    assert len(sigs) >= 300, f'FEE-CAL 信号数异常: {len(sigs)}'
+    # net = fwd − 1.0
+    for s in sigs[:50]:
+        if s.get('fwd14') is not None and s.get('net14') is not None:
+            assert abs(s['net14'] - (s['fwd14'] - 1.0)) < 0.02, (s['date'], s['name'], s['fwd14'], s['net14'])
+    # 差异表 4 行（panic/deep_value/accumulate/ALL）
+    diff = json.load(io.open(p_diff, encoding='utf-8'))
+    assert len(diff['table']) == 4, len(diff['table'])
+    allrow = next(r for r in diff['table'] if r['key'] == 'ALL')
+    assert abs(allrow['delta_avg14'] - 1.0) < 0.01, allrow
+    # sync 后 config 块与回放重算一致（防漂移）
+    assert ITEM_EXPECTANCY_STATS_FEE_CAL, 'FEE-CAL config 块缺失'
+    assert 'FEE-CAL' in BASELINE_LEDGER, 'BASELINE_LEDGER 未注册 FEE-CAL'
+    spec = importlib.util.spec_from_file_location('sync_expectancy_config', base / 'references' / 'sync_expectancy_config.py')
+    mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
+    stats, _total, _comp = mod.compute_display_stats(str(p_cal))
+    for k, v in stats.items():
+        c = ITEM_EXPECTANCY_STATS_FEE_CAL[k]
+        for f in ('n', 'win14', 'avg14', 'win30', 'avg30'):
+            assert c[f] == v[f], (f'FEE-CAL.{k}.{f} drift: config={c[f]} replay={v[f]}')
+check('E2 费率校准产物 + sync 同步 FEE-CAL', t_e2_fee_calibration)
+
+def t_e1_quality_gate():
+    """E1 质量门：产物存在 + 5 项状态齐全 + ①平稳性通过（收益形式）+ ⑤费率一致性。"""
+    import io
+    import json
+    from pathlib import Path
+    base = Path(TEST_DIR).parent
+    p = base / 'data' / '_exp_quality_gate_2026-08-27.json'
+    assert p.exists(), '缺少 E1 质量门产物'
+    qg = json.load(io.open(p, encoding='utf-8'))
+    gates = qg.get('gates') or {}
+    assert len(gates) == 5, list(gates.keys())
+    for k in ('1_stationarity', '2_no_leak', '3_survivorship', '4_stress', '5_cost_realism'):
+        assert k in gates, f'缺质量门 {k}'
+        assert 'verdict' in gates[k], k
+    st = gates['1_stationarity']
+    assert st['verdict'].startswith('通过'), st['verdict']
+    # 平稳性验证对象 = 收益序列（比率形式），且验证了多序列
+    assert len(st.get('series') or {}) >= 5, st.get('verdict')
+    cost = gates['5_cost_realism']
+    assert cost['verdict'] == '通过', cost
+    assert cost.get('config_roundtrip_pct') == 1.0, cost
+check('E1 质量门 5 项产物 + 平稳性/费率通过', t_e1_quality_gate)
+
+def t_evaluate_route():
+    """E3/E4：/evaluate 页可达（登录后 HTML）+ /api/evaluate/data 三层数据正确 + 质量标签绑定。"""
+    import os as _os
+    from fastapi.testclient import TestClient
+    from webapp import main as wm
+    _os.environ["CS_MARKET_PASSWORD"] = "smoke-test-pass"  # 登录延迟读取，测试专用密码
+    client = TestClient(wm.app)
+    # 未登录 → 302 登录门禁（AUTH-1）
+    r = client.get('/evaluate', follow_redirects=False)
+    assert r.status_code == 302 and "/login" in r.headers.get("location", ""), (r.status_code, r.headers.get("location"))
+    # 登录后页面可访问（E3 验收①）
+    r = client.post('/login', data={"password": "smoke-test-pass"}, follow_redirects=False)
+    assert r.status_code == 302, r.text[:200]
+    r = client.get('/evaluate')
+    assert r.status_code == 200, r.status_code
+    assert '评估中心' in r.text, r.text[:200]
+    # 数据 API
+    r = client.get('/api/evaluate/data')
+    assert r.status_code == 200, r.status_code
+    d = r.json()
+    # 三层
+    assert 'signal_layer' in d and 'strategy_layer' in d and 'factor_layer' in d
+    sl = d['signal_layer']
+    assert not sl.get('missing'), sl.get('note')
+    assert len(sl.get('families') or []) >= 3, '族期望不足 3 组'
+    strat = d['strategy_layer']
+    assert strat.get('overall', {}).get('signals', 0) >= 300, strat
+    fac = d['factor_layer']
+    assert (fac.get('factor_eval') or {}).get('cards', 0) == 21, fac
+    # 质量标签绑定
+    assert (d.get('quality_gate') or {}).get('overall') == '通过'
+    # E4：净值曲线 + 归因 + 集中度
+    ec = (strat.get('equity_curve') or {})
+    assert not ec.get('missing'), ec.get('error')
+    assert len(ec.get('points') or []) >= 10, '净值曲线点不足'
+    attr = d.get('risk_attribution') or {}
+    assert len(attr.get('by_family') or []) >= 3, attr
+    assert 'concentration' in attr
+    # E2 差异表绑定
+    assert len((d.get('fee_calibration') or {}).get('table') or []) == 4
+check('E3/E4 /evaluate 页 + 三层数据 + 质量标签 + 净值曲线', t_evaluate_route)
+
 print(f'=== Results: {passed} passed, {failed} failed, {skipped} skipped ===')
 if failures:
     print()

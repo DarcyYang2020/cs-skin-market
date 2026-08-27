@@ -1,0 +1,298 @@
+{% extends "base.html" %}
+{% block title %}CS-Market 评估中心{% endblock %}
+{% block content %}
+<div style="padding:16px 0;">
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px;">
+    <h2 style="margin:0;font-size:20px;">📈 评估中心 /evaluate</h2>
+    <span id="eval-meta" style="font-size:12px;color:var(--text-muted);">加载评估层数据…</span>
+    <button class="btn btn-sm btn-outline" onclick="loadEval()" style="margin-left:auto;"><span id="eval-spinner" class="htmx-indicator">⏳</span> 🔄 刷新</button>
+  </div>
+  <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px;">
+    研究视图（仅评估层展示，不参与决策）。三层：信号级 / 策略族级 / 因子组合级 + 风险归因 + E2 费率校准。质量标签纪律：未过 E1 质量门的数据不展示。
+  </div>
+
+  <!-- 质量门总览 -->
+  <div id="eval-qgate" style="margin-bottom:14px;"></div>
+
+  <!-- 信号级 -->
+  <div class="card" style="padding:14px;margin-bottom:14px;">
+    <div style="font-size:14px;font-weight:700;margin-bottom:10px;">① 信号级 · 族期望 + 最近信号</div>
+    <div id="eval-families" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;"></div>
+    <div class="table-wrap" style="max-height:300px;overflow-y:auto;">
+      <table class="data-table" style="width:100%;font-size:12px;">
+        <thead><tr><th>日期</th><th>品名</th><th>信号</th><th>入场价</th><th>14d</th><th>30d</th><th>仓位</th></tr></thead>
+        <tbody id="eval-recent"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 策略族级 -->
+  <div class="card" style="padding:14px;margin-bottom:14px;">
+    <div style="font-size:14px;font-weight:700;margin-bottom:10px;">② 策略族级 · 组合 + 基准 + 月度 + 分布</div>
+    <div id="eval-overall" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;"></div>
+    <div id="eval-equity" style="margin-bottom:12px;"></div>
+    <div id="eval-benchmark" style="margin-bottom:12px;"></div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:260px;">
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">月度 14d 平均收益</div>
+        <div id="eval-monthly" style="display:flex;gap:4px;align-items:flex-end;height:90px;"></div>
+      </div>
+      <div style="flex:1;min-width:260px;">
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">14d 收益分布</div>
+        <div id="eval-dist" style="display:flex;gap:4px;align-items:flex-end;height:90px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 因子组合级 -->
+  <div class="card" style="padding:14px;margin-bottom:14px;">
+    <div style="font-size:14px;font-weight:700;margin-bottom:10px;">③ 因子组合级 · R1 评估卡 + R2 registry</div>
+    <div id="eval-factor-summary" style="margin-bottom:10px;"></div>
+    <div class="table-wrap" style="max-height:320px;overflow-y:auto;">
+      <table class="data-table" style="width:100%;font-size:12px;">
+        <thead><tr><th>因子</th><th>类别</th><th>判定</th><th>IC14</th><th>滚动稳定%</th><th>备注</th></tr></thead>
+        <tbody id="eval-factor-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 风险归因 + 费率校准 -->
+  <div style="display:flex;gap:14px;flex-wrap:wrap;">
+    <div class="card" style="flex:1;min-width:320px;padding:14px;">
+      <div style="font-size:14px;font-weight:700;margin-bottom:10px;">风险归因（§5.3）</div>
+      <div id="eval-attr"></div>
+    </div>
+    <div class="card" style="flex:1;min-width:320px;padding:14px;">
+      <div style="font-size:14px;font-weight:700;margin-bottom:10px;">E2 费率校准（买0/卖1 vs 旧2%）</div>
+      <div class="table-wrap" style="max-height:280px;overflow-y:auto;">
+        <table class="data-table" style="width:100%;font-size:12px;">
+          <thead><tr><th>键</th><th>n</th><th>旧win14</th><th>新win14</th><th>旧avg14</th><th>新avg14</th><th>Δavg14</th></tr></thead>
+          <tbody id="eval-fee-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function fmtPct(v, suffix) {
+  if (v === null || v === undefined) return '<span class="muted">--</span>';
+  var c = v > 0 ? 'var(--green)' : (v < 0 ? 'var(--red)' : 'var(--text-muted)');
+  return '<span style="color:' + c + ';font-weight:600;">' + (v > 0 ? '+' : '') + v + (suffix || '%') + '</span>';
+}
+function _spinShow(id) { var el = document.getElementById(id); if (el) el.style.display = 'inline'; }
+function _spinHide(id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; }
+function fmtCell(v, suffix) { return fmtPct(v, suffix); }
+
+function renderQGate(qg) {
+  var el = document.getElementById('eval-qgate');
+  if (!qg || qg.missing) { el.innerHTML = '<div class="card" style="padding:10px;color:var(--red);font-size:13px;">⚠️ E1 质量门产物缺失</div>'; return; }
+  var cls = qg.overall === '通过' ? 'var(--green)' : 'var(--red)';
+  var html = '<div class="card" style="padding:10px 14px;display:flex;gap:16px;flex-wrap:wrap;align-items:center;">'
+    + '<div style="font-size:13px;font-weight:700;">E1 质量门 <span style="color:' + cls + ';">' + qg.overall + '</span></div>';
+  Object.keys(qg.gates || {}).forEach(function(k) {
+    var g = qg.gates[k];
+    var c = g.verdict.indexOf('通过') === 0 ? 'var(--green)' : 'var(--red)';
+    html += '<div style="font-size:12px;"><span style="color:var(--text-muted);">' + k + '</span> <span style="color:' + c + ';">' + g.verdict + '</span></div>';
+  });
+  html += '<div style="font-size:11px;color:var(--text-muted);">' + (qg.generated || '') + '</div></div>';
+  el.innerHTML = html;
+}
+
+function renderSignalLayer(sl) {
+  var famEl = document.getElementById('eval-families');
+  if (!sl || sl.missing) { famEl.innerHTML = '<span style="color:var(--text-muted);font-size:13px;">' + (sl && sl.note || '信号级数据缺失') + '</span>'; return; }
+  famEl.innerHTML = (sl.families || []).map(function(f) {
+    return '<div class="card" style="padding:10px 14px;min-width:160px;">'
+      + '<div style="font-size:12px;color:var(--text-muted);">' + f.label + ' (n=' + f.n + ')</div>'
+      + '<div style="font-size:16px;font-weight:700;margin-top:4px;">' + fmtCell(f.avg14, '%') + '</div>'
+      + '<div style="font-size:11px;color:var(--text-muted);">14d胜率 ' + (f.win14 !== null ? f.win14 + '%' : '--') + ' · CI [' + (f.ci14 && f.ci14[0]) + ', ' + (f.ci14 && f.ci14[1]) + ']</div>'
+      + '</div>';
+  }).join('');
+  var rowsEl = document.getElementById('eval-recent');
+  rowsEl.innerHTML = (sl.recent || []).map(function(s) {
+    return '<tr><td>' + (s.date || '') + '</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (s.name || '') + '</td>'
+      + '<td>' + (s.action_label || '') + '</td><td>' + (s.entry_price !== undefined ? '¥' + s.entry_price : '--') + '</td>'
+      + '<td>' + fmtCell(s.net14, '%') + '</td><td>' + fmtCell(s.net30, '%') + '</td><td>' + (s.position_limit || '--') + '</td></tr>';
+  }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:16px;">无信号</td></tr>';
+}
+
+function renderEquity(ec) {
+  var el = document.getElementById('eval-equity');
+  if (!ec || ec.missing) { el.innerHTML = '<span style="color:var(--text-muted);font-size:12px;">净值曲线缺失' + ((ec && ec.error) ? '：' + ec.error : '') + '</span>'; return; }
+  var pts = ec.points || [], mkt = ec.market || [];
+  if (pts.length < 3) { el.innerHTML = '<span style="color:var(--text-muted);font-size:12px;">净值曲线数据不足</span>'; return; }
+  var W = 720, H = 180, PAD = {l: 42, r: 12, t: 12, b: 20};
+  var vals = pts.map(function(p){ return p.strategy; });
+  var mvals = mkt.filter(function(m){ return m.v !== null; }).map(function(m){ return m.v; });
+  var lo = Math.min.apply(null, vals.concat(mvals.length ? mvals : [0]));
+  var hi = Math.max.apply(null, vals.concat(mvals.length ? mvals : [0]));
+  var span = (hi - lo) || 1;
+  function X(i, n) { return PAD.l + (W - PAD.l - PAD.r) * i / (n - 1); }
+  function Y(v) { return PAD.t + (H - PAD.t - PAD.b) * (hi - v) / span; }
+  function line(arr, getV, color) {
+    if (!arr || arr.length < 2) return '';
+    var ptsS = arr.map(function(p, i){ return X(i, arr.length).toFixed(1) + ',' + Y(getV(p)).toFixed(1); }).join(' ');
+    return '<polyline points="' + ptsS + '" fill="none" stroke="' + color + '" stroke-width="1.6" stroke-linejoin="round"/>';
+  }
+  var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;background:transparent;">'
+    + '<line x1="' + PAD.l + '" y1="' + Y(0) + '" x2="' + (W - PAD.r) + '" y2="' + Y(0) + '" stroke="var(--border)" stroke-dasharray="3,3"/>';
+  // 网格线
+  for (var g = 0; g <= 4; g++) {
+    var gv = lo + span * g / 4;
+    var gy = Y(gv);
+    svg += '<line x1="' + PAD.l + '" y1="' + gy + '" x2="' + (W - PAD.r) + '" y2="' + gy + '" stroke="var(--border)" stroke-width="0.5"/>'
+      + '<text x="' + (PAD.l - 4) + '" y="' + (gy + 3) + '" text-anchor="end" font-size="9" fill="var(--text-muted)">' + Math.round(gv) + '%</text>';
+  }
+  svg += line(mkt, function(m){ return m.v; }, 'var(--text-muted)');
+  svg += line(pts, function(p){ return p.strategy; }, 'var(--green)');
+  // 首末日期标注
+  svg += '<text x="' + PAD.l + '" y="' + (H - 4) + '" font-size="9" fill="var(--text-muted)">' + pts[0].d + '</text>'
+    + '<text x="' + (W - PAD.r) + '" y="' + (H - 4) + '" text-anchor="end" font-size="9" fill="var(--text-muted)">' + pts[pts.length - 1].d + '</text>';
+  svg += '</svg>';
+  el.innerHTML = '<div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">净值曲线（绿=策略权益，灰=大盘同期归一化）· 末值 ' + vals[vals.length - 1].toFixed(1) + '%</div>' + svg
+    + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + (ec.note || '') + '</div>';
+}
+
+function renderStrategyLayer(strat) {
+  var ovEl = document.getElementById('eval-overall');
+  if (!strat || strat.missing) { ovEl.innerHTML = '<span style="color:var(--text-muted);font-size:13px;">策略层数据缺失</span>'; return; }
+  var o = strat.overall || {}, p = strat.portfolio || {};
+  ovEl.innerHTML =
+      '<div class="card" style="padding:10px 14px;min-width:140px;"><div style="font-size:12px;color:var(--text-muted);">信号数</div><div style="font-size:16px;font-weight:700;">' + (o.signals || 0) + '</div></div>'
+    + '<div class="card" style="padding:10px 14px;min-width:140px;"><div style="font-size:12px;color:var(--text-muted);">14d胜率</div><div style="font-size:16px;font-weight:700;">' + fmtCell(o.win14, '%') + '</div></div>'
+    + '<div class="card" style="padding:10px 14px;min-width:140px;"><div style="font-size:12px;color:var(--text-muted);">14d均值</div><div style="font-size:16px;font-weight:700;">' + fmtCell(o.avg14, '%') + '</div></div>'
+    + '<div class="card" style="padding:10px 14px;min-width:140px;"><div style="font-size:12px;color:var(--text-muted);">组合总收益</div><div style="font-size:16px;font-weight:700;">' + fmtCell(p.total_return_pct, '%') + '</div></div>'
+    + '<div class="card" style="padding:10px 14px;min-width:140px;"><div style="font-size:12px;color:var(--text-muted);">maxDD</div><div style="font-size:16px;font-weight:700;">' + fmtCell(p.max_drawdown_pct, '%') + '</div></div>'
+    + '<div class="card" style="padding:10px 14px;min-width:140px;"><div style="font-size:12px;color:var(--text-muted);">Calmar</div><div style="font-size:16px;font-weight:700;">' + (p.calmar !== null ? p.calmar : '--') + '</div></div>'
+    + '<div style="font-size:11px;color:var(--text-muted);align-self:center;">' + (p.fee_note || '') + '</div>';
+  var bEl = document.getElementById('eval-benchmark');
+  if ((strat.benchmark || []).length) {
+    bEl.innerHTML = '<table class="data-table" style="width:100%;font-size:12px;"><thead><tr><th>基线</th><th>腿</th><th>总收益</th><th>maxDD</th><th>年化</th></tr></thead><tbody>'
+      + strat.benchmark.map(function(b) {
+        var legs = [['策略', b.strategy], ['池内等权', b.pool_buy_hold], ['大盘', b.market_index]];
+        return legs.map(function(leg) {
+          var m = leg[1] || {};
+          return '<tr><td>' + b.baseline + '</td><td>' + leg[0] + '</td>'
+            + '<td>' + fmtCell(m.total_return_pct, '%') + '</td><td>' + fmtCell(m.max_drawdown_pct, '%') + '</td>'
+            + '<td>' + (m.annualized_pct !== null ? m.annualized_pct + '%' : '--') + '</td></tr>';
+        }).join('');
+      }).join('') + '</tbody></table>'
+      + '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">基准对照口径=benchmark_compare（HIST-FULL/CLEAN-CUR active 窗口）；仅展示参考。</div>';
+  } else { bEl.innerHTML = '<span style="color:var(--text-muted);font-size:12px;">基准对照缺失</span>'; }
+
+  // 月度条形图
+  var mEl = document.getElementById('eval-monthly');
+  var monthly = strat.monthly || [];
+  if (monthly.length) {
+    var maxAbs = Math.max.apply(null, monthly.map(function(m){ return Math.abs(m.avg14 || 0); })) || 1;
+    mEl.innerHTML = monthly.map(function(m) {
+      var h = Math.max(2, Math.round(Math.abs(m.avg14 || 0) / maxAbs * 80));
+      var col = (m.avg14 || 0) >= 0 ? 'var(--green)' : 'var(--red)';
+      return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:90px;">'
+        + '<div style="font-size:10px;color:var(--text-muted);">' + (m.avg14 || 0).toFixed(1) + '</div>'
+        + '<div style="width:70%;height:' + h + 'px;background:' + col + ';border-radius:3px 3px 0 0;"></div>'
+        + '<div style="font-size:9px;color:var(--text-muted);margin-top:2px;">' + m.month.slice(2) + '</div>'
+        + '<div style="font-size:9px;color:var(--text-muted);">n=' + m.n + '</div></div>';
+    }).join('');
+  } else { mEl.innerHTML = '<span style="color:var(--text-muted);font-size:12px;">无月度数据</span>'; }
+
+  // 分布条形图
+  var dEl = document.getElementById('eval-dist');
+  var dist = strat.distribution || [];
+  if (dist.length) {
+    var maxC = Math.max.apply(null, dist.map(function(d){ return d.count; })) || 1;
+    dEl.innerHTML = dist.map(function(d) {
+      var h = Math.max(2, Math.round(d.count / maxC * 80));
+      var col = d.label.indexOf('-') === 0 ? 'var(--red)' : 'var(--green)';
+      return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:90px;">'
+        + '<div style="font-size:9px;color:var(--text-muted);">' + d.count + '</div>'
+        + '<div style="width:70%;height:' + h + 'px;background:' + col + ';border-radius:3px 3px 0 0;"></div>'
+        + '<div style="font-size:9px;color:var(--text-muted);margin-top:2px;text-align:center;">' + d.label + '</div></div>';
+    }).join('');
+  } else { dEl.innerHTML = '<span style="color:var(--text-muted);font-size:12px;">无分布数据</span>'; }
+}
+
+function renderFactorLayer(fac) {
+  var sEl = document.getElementById('eval-factor-summary');
+  if (!fac || fac.missing) { sEl.innerHTML = '<span style="color:var(--text-muted);font-size:13px;">' + (fac && fac.note || '因子层数据缺失') + '</span>'; return; }
+  var fe = fac.factor_eval || {}, reg = fac.registry || {};
+  var statusTxt = Object.keys(fe.status || {}).map(function(k){ return k + ':' + fe.status[k]; }).join(' · ');
+  var regTxt = reg ? 'R2 registry ' + reg.total + ' 因子（' + Object.keys(reg.status || {}).map(function(k){ return k + ':' + reg.status[k]; }).join(' · ') + '）' : '';
+  sEl.innerHTML = '<div style="font-size:12px;color:var(--text-muted);">R1 评估卡 ' + (fe.cards || 0) + ' 因子 · ' + statusTxt + '</div>'
+    + '<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">' + regTxt + '</div>';
+  var body = document.getElementById('eval-factor-body');
+  body.innerHTML = (fac.top || []).map(function(r) {
+    var c = r.verdict.indexOf('候选') === 0 ? 'var(--green)' : (r.verdict.indexOf('证伪') === 0 ? 'var(--red)' : 'var(--text-muted)');
+    return '<tr><td>' + (r.name || r.id || '') + '</td><td>' + (r.category || '') + '</td>'
+      + '<td style="color:' + c + ';">' + (r.verdict || '') + '</td><td>' + fmtCell(r.ic14, '') + '</td>'
+      + '<td>' + (r.roll_stable !== null ? r.roll_stable + '%' : '--') + '</td><td style="color:var(--text-muted);">' + (r.note || '') + '</td></tr>';
+  }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:16px;">无因子数据</td></tr>';
+}
+
+function renderAttribution(attr) {
+  var el = document.getElementById('eval-attr');
+  if (!attr || attr.missing) { el.innerHTML = '<span style="color:var(--text-muted);font-size:13px;">' + (attr && attr.note || '归因数据缺失') + '</span>'; return; }
+  var html = '';
+  // 集中度
+  var c = attr.concentration || {};
+  var cFlag = (c.flag || '').indexOf('⚠️') === 0 ? 'var(--red)' : 'var(--green)';
+  html += '<div style="font-size:12px;margin-bottom:8px;">集中度 top5 占比 <span style="color:' + cFlag + ';font-weight:700;">' + (c.top5_share_pct !== null ? c.top5_share_pct + '%' : '--') + '</span> <span style="color:var(--text-muted);">(' + (c.flag || '') + ')</span></div>';
+  // 族归因
+  html += '<div style="font-size:12px;color:var(--text-muted);margin:8px 0 4px;">按族（信号数×平均期望）</div>';
+  html += (attr.by_family || []).map(function(r) {
+    return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;border-bottom:1px solid var(--border);">'
+      + '<span>' + r.family + ' <span style="color:var(--text-muted);">(n=' + r.n + ')</span></span><span>' + fmtCell(r.avg14, '%') + ' · 贡献 ' + fmtCell(r.contribution_pct, '') + '</span></div>';
+  }).join('');
+  // 时期归因
+  html += '<div style="font-size:12px;color:var(--text-muted);margin:8px 0 4px;">按时期</div>';
+  html += (attr.by_period || []).map(function(r) {
+    return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;border-bottom:1px solid var(--border);">'
+      + '<span>' + r.period + ' <span style="color:var(--text-muted);">(n=' + r.n + ')</span></span><span>' + fmtCell(r.avg14, '%') + ' · 胜率 ' + fmtCell(r.win14, '%') + '</span></div>';
+  }).join('');
+  // 品类归因
+  html += '<div style="font-size:12px;color:var(--text-muted);margin:8px 0 4px;">按品类</div>';
+  html += (attr.by_category || []).slice(0, 8).map(function(r) {
+    return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;border-bottom:1px solid var(--border);">'
+      + '<span>' + r.category + ' <span style="color:var(--text-muted);">(n=' + r.n + ')</span></span><span>' + fmtCell(r.avg14, '%') + '</span></div>';
+  }).join('');
+  // 组合 closed
+  var pc = attr.portfolio_closed || {};
+  html += '<div style="font-size:12px;color:var(--text-muted);margin:8px 0 4px;">组合模拟 closed 逐笔（B1 v2）</div>';
+  html += '<div style="font-size:12px;">n=' + (pc.n_trades || 0) + ' · 总盈亏 ' + fmtCell(pc.total_pnl, '') + ' · 胜率 ' + fmtCell(pc.win_rate, '%') + ' · 均值 ' + fmtCell(pc.avg_pnl, '') + '</div>';
+  el.innerHTML = html;
+}
+
+function renderFee(fee) {
+  var body = document.getElementById('eval-fee-body');
+  if (!fee || fee.missing) { body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:16px;">' + (fee && fee.note || '费率数据缺失') + '</td></tr>'; return; }
+  body.innerHTML = (fee.table || []).map(function(r) {
+    return '<tr><td>' + (r.label || r.key) + '</td><td>' + r.n + '</td>'
+      + '<td>' + fmtCell(r.old_win14, '%') + '</td><td>' + fmtCell(r.new_win14, '%') + '</td>'
+      + '<td>' + fmtCell(r.old_avg14, '%') + '</td><td>' + fmtCell(r.new_avg14, '%') + '</td>'
+      + '<td>' + fmtCell(r.delta_avg14, '') + '</td></tr>';
+  }).join('');
+}
+
+function loadEval() {
+  _spinShow("eval-spinner");
+  fetch("/api/evaluate/data")
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    _spinHide("eval-spinner");
+    var metaEl = document.getElementById('eval-meta');
+    if (metaEl) metaEl.textContent = '生成 ' + (d.generated || '--') + ' · ' + (d.layers_note || '');
+    renderQGate(d.quality_gate);
+    renderSignalLayer(d.signal_layer);
+    renderStrategyLayer(d.strategy_layer);
+    renderEquity((d.strategy_layer || {}).equity_curve);
+    renderFactorLayer(d.factor_layer);
+    renderAttribution(d.risk_attribution);
+    renderFee(d.fee_calibration);
+  })
+  .catch(function() { _spinHide("eval-spinner"); });
+}
+loadEval();
+</script>
+{% endblock %}

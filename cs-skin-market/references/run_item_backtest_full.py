@@ -41,6 +41,10 @@ def pool_a_items():
 
 def main():
     START, END, WARMUP = "2025-08-10", "2026-08-05", 30
+    # E2（2026-08-27）：费率 config 化——买0/卖1 不对称（round-trip=1.0%），取代硬编码 0.02。
+    # backtest_roundtrip_cost() 返回百分比（1.0=1%）；backtest_item 的 cost 参数为小数（0.01=1%）。
+    from pipeline.config import backtest_roundtrip_cost
+    cost = backtest_roundtrip_cost() / 100.0
     rib.patch_sentiment(50.0)
     market_ctx = build_market_context(START, end=END)
     print("market ctx dates:", len(market_ctx), flush=True)
@@ -49,7 +53,7 @@ def main():
     results = []
     t0 = datetime.now()
     for n_i, (iid, iname) in enumerate(sorted(items.items()), 1):
-        r = rib.backtest_item(iid, iname, START, END, WARMUP, market_ctx, cost=0.02)
+        r = rib.backtest_item(iid, iname, START, END, WARMUP, market_ctx, cost=cost)
         results.append(r)
         sigs = [s for s in r.get("signals", []) if s.get("fwd14") is not None]
         if n_i % 20 == 0 or sigs:
@@ -57,7 +61,9 @@ def main():
                   f"elapsed={str(datetime.now()-t0)[:8]}", flush=True)
     sigs_out = [s for r in results for s in r.get("signals", []) if s.get("fwd14") is not None]
     rows, agg = rib.summarize(results)
-    out = {"args": {"start": START, "end": END, "warmup": WARMUP, "pool": "A(98老品,365天窗口)"},
+    out = {"args": {"start": START, "end": END, "warmup": WARMUP, "pool": "A(98老品,365天窗口)",
+                    "fees": {"buy_pct": 0.0, "sell_pct": 1.0, "roundtrip_pct": cost,
+                             "note": "E2 不对称费率 config 化（pipeline.config.BACKTEST_FEES），原 2% 双边"}},
            "generated": datetime.now().strftime("%Y-%m-%d %H:%M"),
            "aggregate": agg, "per_item": rows, "signals": sigs_out}
     with open("data/item_backtest_full_2025.json", "w", encoding="utf-8") as f:

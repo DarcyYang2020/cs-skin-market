@@ -39,6 +39,12 @@
   大幅跑赢大盘 -24.20%/-58.21%，但低于池内等权 +252.32%/-55.59% —— 引擎边际价值在风险控制（maxDD 9.13% vs 55~58%）。
 - **组合归因（A1-3，2026-08-15 重跑 hold21 + taxonomy 双基线）**：`python references/portfolio_attribution.py` → `data/portfolio_attribution.json`（leave-one-out 族级/月度/集中度，与 portfolio_backtest 同源口径）。HIST-FULL（317）：accumulate +111.69pp（n=198）、deep_value +59.39pp（n=27）、panic +56.35pp（n=92）；CLEAN-CUR（230，展示参考）：以 `data/portfolio_attribution.json` 的 `baselines.CLEAN-CUR` 为唯一当前数字。旧 hold14 口径 +34.2pp（n=212）/ +21.65pp（n=93）/ +13.98pp（n=27）仅作历史存证，不与当前 hold21 + taxonomy 标尺混用。
 
+### 评估层 Wave4 E1–E4（2026-08-27 落地，待③审计）
+
+- **E1 回测质量门**：`python references/run_quality_gate.py` → `data/_exp_quality_gate_2026-08-27.json`（5 项：①ADF/KPSS 平稳性——验证对象为价格/指数日收益比率形式，纯标准库自实现 ②特征无泄露 ③幸存者偏差 ④压力测试 ⑤成本真实化=买0/卖1）。候选/策略准入前必过；/evaluate 展示据此挂质量标签。
+- **E2 费率校准**：费率唯一事实源 `config.BACKTEST_FEES = {"buy_pct": 0.0, "sell_pct": 1.0}`（`backtest_roundtrip_cost()`=1.0%；**注意 cost 参数为小数**，脚本调用须 `/100`）。`python references/run_fee_calibration.py` → `data/_exp_v2t13_fee_cal_2026-08-27.json`（FEE-CAL 基线，第三基线已注册 BASELINE_LEDGER）+ `data/_exp_fee_calibration_2026-08-27.json`（新旧差异，avg14 全体 +1.0pp）；sync_expectancy_config 同步 `ITEM_EXPECTANCY_STATS_FEE_CAL`。费率不影响信号判定（重算=重跑，小样本对照实证）。
+- **E3/E4 /evaluate 页**：`GET /evaluate`（AUTH-1 登录）+ `GET /api/evaluate/data`；`webapp/evaluate_service.py` 聚合三层（信号级/策略族级/因子组合级）+ 质量标签 + 风险归因 + 净值曲线。研究视图，主界面决策视角不变，零引擎改动。
+
 
 ## 数据来源与采集
 
@@ -125,6 +131,8 @@ cd cs-skin-market && python run_server.py
 | POST | /api/discover/scan-all | 扫描全武器类型，异步分析 |
 | GET  | /api/items/discover-progress/{task_id} | 发现高分品进度轮询 |
 | GET  | /api/discover/latest | 获取上次扫描缓存结果 |
+| GET  | /evaluate | 评估中心（Wave4 E3，研究视图：三层展示 + 质量标签 + 风险归因） |
+| GET  | /api/evaluate/data | 评估中心数据 API（聚合 E1 质量门/E2 费率校准/R1 因子/R2 registry/b1 组合） |
 
 **模板结构**:
 ```

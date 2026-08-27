@@ -1,0 +1,82 @@
+{
+ "generated": "2026-08-27T19:20",
+ "source": "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\_exp_current_engine_fullpool_2026-08-27.json",
+ "calibrated": "C:\\Users\\81572\\Desktop\\codex\\cs-model\\cs-skin-market\\data\\_exp_v2t13_fee_cal_2026-08-27.json",
+ "old_roundtrip_pct": 2.0,
+ "new_roundtrip_pct": 1.0,
+ "fees": {
+  "buy_pct": 0.0,
+  "sell_pct": 1.0
+ },
+ "note": "E2 新旧期望差异：旧=2% 双边（net=fwd−2.0），新=买0/卖1（net=fwd−1.0）。信号集合不变（费率不影响判定），win/avg 全体 +1.0pp 平移由 avg 体现；win 变化仅因符号翻转（阈值附近信号）。滑点模型待 D2 盘口积累后补。",
+ "table": [
+  {
+   "key": "panic",
+   "label": "恐慌族",
+   "n": 155,
+   "old_win14": 93.5,
+   "new_win14": 94.8,
+   "old_avg14": 30.71,
+   "new_avg14": 31.71,
+   "old_win30": 85.2,
+   "new_win30": 86.5,
+   "old_avg30": 23.84,
+   "new_avg30": 24.84,
+   "ci14_lo": 90.1,
+   "ci14_hi": 97.4,
+   "delta_avg14": 1.0,
+   "delta_win14_pp": 1.3
+  },
+  {
+   "key": "deep_value",
+   "label": "深值企稳",
+   "n": 47,
+   "old_win14": 68.1,
+   "new_win14": 70.2,
+   "old_avg14": 18.24,
+   "new_avg14": 19.24,
+   "old_win30": 74.5,
+   "new_win30": 76.6,
+   "old_avg30": 49.28,
+   "new_avg30": 50.28,
+   "ci14_lo": 56.0,
+   "ci14_hi": 81.3,
+   "delta_avg14": 1.0,
+   "delta_win14_pp": 2.1
+  },
+  {
+   "key": "accumulate",
+   "label": "吸筹/回补组（供给收缩 + 深度回调 + 基础分批）",
+   "n": 174,
+   "old_win14": 59.2,
+   "new_win14": 63.2,
+   "old_avg14": 9.34,
+   "new_avg14": 10.34,
+   "old_win30": 60.9,
+   "new_win30": 60.9,
+   "old_avg30": 13.67,
+   "new_avg30": 14.67,
+   "ci14_lo": 55.8,
+   "ci14_hi": 70.0,
+   "delta_avg14": 1.0,
+   "delta_win14_pp": 4.0
+  },
+  {
+   "key": "ALL",
+   "label": "全量",
+   "n": 376,
+   "old_win14": 74.5,
+   "new_win14": 77.1,
+   "old_avg14": 19.26,
+   "new_avg14": 20.26,
+   "old_win30": 72.6,
+   "new_win30": 73.4,
+   "old_avg30": 22.31,
+   "new_avg30": 23.31,
+   "ci14_lo": 72.6,
+   "ci14_hi": 81.1,
+   "delta_avg14": 1.0,
+   "delta_win14_pp": 2.6
+  }
+ ]
+}

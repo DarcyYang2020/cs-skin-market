@@ -369,6 +369,25 @@ async def page_ops(request: Request):
     return response
 
 
+# ---- Wave4 E3 /evaluate 页（roadmap v82 卡，2026-08-27；架构 §5.2 研究视图，三层展示+质量标签）----
+@app.get("/evaluate", response_class=HTMLResponse)
+async def page_evaluate(request: Request):
+    """评估中心（研究视图）：信号级/策略族级/因子组合级 + 质量标签 + 风险归因 + E2 费率校准。
+    只读评估层产物（E1/E2/R1/R2/R3/b1），不引入任何引擎逻辑（E3 验收④）。"""
+    response = templates.TemplateResponse(request, "evaluate.html", {
+        "active_page": "evaluate",
+    })
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    return response
+
+
+@app.get("/api/evaluate/data")
+async def api_evaluate_data():
+    """/evaluate 数据 API：聚合评估层产物（质量门/三层/归因/费率校准）。"""
+    from webapp.evaluate_service import evaluate_payload
+    return JSONResponse(evaluate_payload())
+
+
 # ---- Search page ----
 @app.get("/search", response_class=HTMLResponse)
 async def page_search(request: Request, q: str = Query(default="")):

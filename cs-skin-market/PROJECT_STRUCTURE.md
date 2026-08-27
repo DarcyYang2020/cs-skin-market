@@ -99,10 +99,11 @@ cs-skin-market/
 |---|---|
 | `main.py` | FastAPI 应用：全部 REST API + Jinja2 渲染 + 批量扫描进度落盘持久化 |
 | `analysis_service.py` | 公共分析服务层：analyze_fresh 统一核心 + 锚价校验/DB K线兜底/market_snapshot 等助手 |
+| `evaluate_service.py` | **Wave4 E3/E4 评估层数据服务**：聚合 E1 质量门/E2 费率校准/R1 因子/R2 registry/R3 隔离/b1 组合 → /api/evaluate/data（三层展示 + 质量标签 + 风险归因） |
 | `render_html.py` | HTML 渲染纯函数（报告/发现榜/闪光图） |
 | `static/css/style.css` | 全局样式 |
 | `static/js/app.js` | 前端交互（HTMX/模态/表单） |
-| `templates/` | `base/dashboard/search/watchlist/discover/replay/checkup/ops + partials/analysis,analysis_results,dashboard_refresh,discover_html,engine_telemetry,exec_modal,index_analysis,index_card,scan_html` |
+| `templates/` | `base/dashboard/search/watchlist/discover/replay/checkup/ops/evaluate + partials/analysis,analysis_results,dashboard_refresh,discover_html,engine_telemetry,exec_modal,index_analysis,index_card,scan_html` |
 
 ## `tests/` 测试
 
@@ -141,7 +142,10 @@ cs-skin-market/
 - `cap_family_backtest.py` / `s3_bucket_replay.py` — cap 族级/分桶复验
 - `sync_expectancy_config.py` / `sync_replay_snapshot.py` — 期望统计/回放口径同步
 - `j1_event_counts.py` — 各族独立事件数 → `signal_event_counts.json`
-- `run_item_backtest_full.py` — 全窗口单品回放（产出 HIST-FULL 冻结归档 `item_backtest_full_2025.json`）
+- `run_item_backtest_full.py` — 全窗口单品回放（产出 HIST-FULL 冻结归档 `item_backtest_full_2025.json`；E2 起费率读 `config.BACKTEST_FEES` 买0/卖1）
+- `run_item_backtest_fullpool_parallel.py` — 全池并行回放（3 年窗口；E2 起费率 config 化）
+- `run_fee_calibration.py` — **Wave4 E2 费率校准**（买0/卖1 vs 旧 2%：重算 net + 小样本真重跑对照）→ `_exp_v2t13_fee_cal_2026-08-27.json` / `_exp_fee_calibration_2026-08-27.json`
+- `run_quality_gate.py` — **Wave4 E1 回测质量门 5 项**（纯标准库 ADF/KPSS 自实现）→ `_exp_quality_gate_2026-08-27.json`
 - `backfill_cycle_window.py` — 回放池 A 96 品 3 年历史回填（v69，写死 96 品，仅存证）
 - `backfill_full_pool.py` — DATA-1 全池 3 年历史回填（非印花非角色 240 品，good_id 对齐，去重不覆盖）→ `_exp_data1_plan.json` / `_exp_data1_audit.json`
 - `trend_leg_*.py / th_*_study.py / topup_replay.py / tranche_fit*.py / c1_p10_replay.py / advice_layer_fit.py / portfolio_cap_fit.py` — 历史研究脚本
@@ -161,6 +165,9 @@ cs-skin-market/
 | `backup/` | 每日 DB 备份（保留 14 份，gitignore） |
 | `pool_maintenance_log.jsonl` | 池维护台账（daily/prune/discover 三类，F-3.2） |
 | `ops_kill_switch.json` / `config_audit_log.jsonl` / `ops_log.jsonl` / `ops_paper_peak.json` / `ops_monitor_latest.json` | Wave6 运维层运行时状态/审计/结构化日志/峰值台账（append-only，gitignore 级运行时产物） |
+| `_exp_v2t13_fee_cal_2026-08-27.json` | **FEE-CAL 费率校准基线**（Wave4 E2：v2-T13 全池 + 买0/卖1，net=fwd−1.0%；BASELINE_LEDGER 注册） |
+| `_exp_fee_calibration_2026-08-27.json` | Wave4 E2 新旧期望差异表（2% 双边 vs 买0/卖1） |
+| `_exp_quality_gate_2026-08-27.json` | Wave4 E1 回测质量门 5 项状态（v2-T13 全池基线，2026-08-27 全通过） |
 | `scan_history/` / `scan_progress_*.json` / `batch_scan_latest.json` | 批量扫描归档/进度/缓存（gitignore） |
 
 

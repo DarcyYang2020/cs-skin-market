@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-"""期望统计双基线同步器（J-3 口径，2026-08-07 定稿，2026-08-14 改双基线）。
+"""期望统计双基线同步器（J-3 口径，2026-08-07 定稿，2026-08-14 改双基线，2026-08-27 加 FEE-CAL）。
 
-HIST-FULL = data/item_backtest_full_2025.json（v2-T4/T5 冻结归档）；CLEAN-CUR = data/_exp_v2t9_win_replay.json（v2-T9 展示参考）。
+HIST-FULL = data/item_backtest_full_2025.json（v2-T4/T5 冻结归档）；CLEAN-CUR = data/_exp_v2t9_win_replay.json（v2-T9 展示参考）；
+FEE-CAL = data/_exp_v2t13_fee_cal_2026-08-27.json（Wave4 E2：v2-T13 当前引擎全池 + 买0/卖1 不对称费率，2026-08-27）。
 本脚本把回放产物按展示键（panic / deep_value / accumulate）重算
 n / events / win14 / avg14 / ci14 / win30 / avg30，并同步写入：
 
@@ -26,6 +27,7 @@ ROOT = Path(__file__).resolve().parent.parent
 CONFIG = ROOT / "pipeline" / "config.py"
 REPLAY = ROOT / "data" / "item_backtest_full_2025.json"
 REPLAY_CLEAN = ROOT / "data" / "_exp_v2t9_win_replay.json"
+REPLAY_FEE_CAL = ROOT / "data" / "_exp_v2t13_fee_cal_2026-08-27.json"
 
 sys.path.insert(0, str(ROOT))
 from pipeline.config import SIGNAL_FAMILY_TAXONOMY  # noqa: E402
@@ -114,6 +116,15 @@ def sync():
                     "(of which 97.5%% = 2026-05 single-event panic cluster, least extrapolable), "
                     "missing early bull segment; in_sale NULL + 0-value gap backfilled via csQAQ period=1095") % (clean_total, clean_panic_share)
 
+    fee_stats = fee_total = fee_comp = None
+    if REPLAY_FEE_CAL.exists():
+        fee_stats, fee_total, fee_comp = compute_display_stats(REPLAY_FEE_CAL)
+        fee_caveat = ("FEE-CAL: %d signals, v2-T13 current-engine full pool, buy 0/sell 1 asymmetric fee "
+                      "(round-trip 1.0%% vs legacy 2.0%%); signal set identical to 2%% replay (fee does not affect "
+                      "signal emission), avg14 shifts +1.00pp by construction; see data/_exp_fee_calibration_2026-08-27.json") % fee_total
+    else:
+        fee_caveat = "FEE-CAL: replay file missing, block omitted"
+
     hist_block = render_block(hist_stats, hist_total, hist_comp,
                               var_name="ITEM_EXPECTANCY_STATS", replay_path=str(REPLAY),
                               baseline_label="HIST-FULL",
@@ -122,15 +133,26 @@ def sync():
                                var_name="ITEM_EXPECTANCY_STATS_CLEAN_CUR", replay_path=str(REPLAY_CLEAN),
                                baseline_label="CLEAN-CUR",
                                caveat=clean_caveat)
+    if fee_stats is not None:
+        fee_block = render_block(fee_stats, fee_total, fee_comp,
+                                 var_name="ITEM_EXPECTANCY_STATS_FEE_CAL", replay_path=str(REPLAY_FEE_CAL),
+                                 baseline_label="FEE-CAL",
+                                 caveat=fee_caveat)
+    else:
+        fee_block = None
 
     src = io.open(CONFIG, encoding="utf-8").read()
     # normalize an empty clean block so the regex below can replace it
     src = src.replace("ITEM_EXPECTANCY_STATS_CLEAN_CUR = {}", "ITEM_EXPECTANCY_STATS_CLEAN_CUR = {\n}")
     new_src = _replace_block(src, "ITEM_EXPECTANCY_STATS", hist_block)
     new_src = _replace_block(new_src, "ITEM_EXPECTANCY_STATS_CLEAN_CUR", clean_block)
+    if fee_block is not None:
+        new_src = new_src.replace("ITEM_EXPECTANCY_STATS_FEE_CAL = {}", "ITEM_EXPECTANCY_STATS_FEE_CAL = {\n}")
+        new_src = _replace_block(new_src, "ITEM_EXPECTANCY_STATS_FEE_CAL", fee_block)
     if new_src != src:
         io.open(CONFIG, "w", encoding="utf-8", newline="").write(new_src)
-        print("updated pipeline/config.py ITEM_EXPECTANCY_STATS / ITEM_EXPECTANCY_STATS_CLEAN_CUR")
+        print("updated pipeline/config.py ITEM_EXPECTANCY_STATS / ITEM_EXPECTANCY_STATS_CLEAN_CUR%s" %
+              (" / ITEM_EXPECTANCY_STATS_FEE_CAL" if fee_block else ""))
     else:
         print("pipeline/config.py 双基线期望统计无变化")
 
@@ -141,6 +163,10 @@ def sync():
     clean_payload["note"] = "CLEAN-CUR baseline (" + str(REPLAY_CLEAN) + "): same display-key mapping as HIST-FULL"
     out = {k: v for k, v in hist_payload.items()}
     out["baselines"] = {"HIST-FULL": hist_payload, "CLEAN-CUR": clean_payload}
+    if fee_stats is not None:
+        fee_payload = j1.generate_payload(str(REPLAY_FEE_CAL), source_label="FEE-CAL")
+        fee_payload["note"] = "FEE-CAL baseline (" + str(REPLAY_FEE_CAL) + "): v2-T13 + buy0/sell1 fee"
+        out["baselines"]["FEE-CAL"] = fee_payload
     with io.open(ROOT / "data" / "signal_event_counts.json", "w", encoding="utf-8", newline="\n") as f:
         json.dump(out, f, ensure_ascii=False, indent=1)
     print("updated data/signal_event_counts.json")
