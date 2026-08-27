@@ -1,0 +1,1155 @@
+{
+ "meta": {
+  "title": "R3 策略隔离评估",
+  "generated": "2026-08-27 17:58",
+  "prereg": "references/r3-family-isolation-prereg-2026-08-27.md（DR PM 冻结）",
+  "candidate_source": "候选族=现有生产族（引擎 v2-T13 SIGNAL_FAMILIES 已注册）；rise_contract/xishou_mid/second_wave 为引擎已注册默认关族，评估期开启（env 声明）——无新族注入",
+  "oos_zone": "探索只许 fit 段（<2025-08-10，config.OOS_ZONE.val_start）；val 段仅四关 G2/G3/G4 预注册验证触碰，回放逐日期 oos_guard.require_fit(prereg=... ) 接线",
+  "version_freeze": "回放输入库 replay_cycle_win.db（405 items/259,222 price_history/1015 market_index），研究基线 _exp_cycle_replay_fullpool_2026.json（376 信号）",
+  "zero_drift_basis": "零漂移对照=当前引擎无注入全池 _exp_current_engine_fullpool_2026-08-27.json（同引擎同数据口径）"
+ },
+ "families": {
+  "panic": {
+   "label": "恐慌",
+   "signals": 155,
+   "delta": {
+    "baseline_family_sigs": 153,
+    "kept": 153,
+    "missing_total": 0,
+    "missing_real": 0,
+    "missing_legacy_baseline": 0,
+    "missing_samples": [],
+    "added_vs_baseline": 2,
+    "zero_drift": true,
+    "zero_drift_note": "零漂移=相对当前引擎无注入参照，基线族信号同键(品,日,net14)全保持；missing 归因=族内去重自约束(去重交互真实行为) 或 基线旧引擎产物(参照无注入亦无)"
+   },
+   "stats": {
+    "n": 155,
+    "win14": 93.5,
+    "avg14": 30.71,
+    "win30": 85.2,
+    "avg30": 23.84
+   },
+   "gates": {
+    "G1_a2": {
+     "added_total": 2,
+     "displaced_total": 223,
+     "fit": {
+      "n": 0,
+      "p_avg": null,
+      "added_avg14": null,
+      "book_avg14": null
+     },
+     "val": {
+      "n": 2,
+      "p_avg": 0.402,
+      "added_avg14": 25.4,
+      "book_avg14": 26.55
+     },
+     "passed": false
+    },
+    "G2_portfolio": {
+     "family": {
+      "total_return_pct": 908.27,
+      "max_drawdown_pct": -139.88,
+      "max_position": 24.7,
+      "rejected_cap": 0,
+      "rejected_breaker": 0,
+      "rejected_item": 0,
+      "breaker_active_pct": 0.0,
+      "days": 241,
+      "n": 155,
+      "calmar": 6.49
+     },
+     "baseline": {
+      "total_return_pct": 1510.87,
+      "max_drawdown_pct": -30.85,
+      "max_position": 25.25,
+      "rejected_cap": 0,
+      "rejected_breaker": 0,
+      "rejected_item": 0,
+      "breaker_active_pct": 0.0,
+      "days": 880,
+      "n": 376,
+      "calmar": 48.97
+     },
+     "d_total_pp": 602.5999999999999,
+     "d_maxdd_pp": -109.03,
+     "passed": false
+    },
+    "G3_half": {
+     "fit": {
+      "n": 0,
+      "win14": null,
+      "avg14": null,
+      "net30_avg": null
+     },
+     "val": {
+      "n": 155,
+      "win14": 93.5,
+      "avg14": 30.71,
+      "win30": 85.2,
+      "avg30": 23.84
+     },
+     "passed": false
+    },
+    "G4_perm": {
+     "val_n": 155,
+     "perm": {
+      "p_avg": 0.018,
+      "p_win": 0.0,
+      "book_avg14": 26.55,
+      "book_win14": 82.4,
+      "with_replacement": false
+     },
+     "passed": true
+    }
+   },
+   "gates_all_pass": false,
+   "verdict": "证伪（从多策略候选划掉）"
+  },
+  "deep": {
+   "label": "深值",
+   "signals": 47,
+   "delta": {
+    "baseline_family_sigs": 49,
+    "kept": 45,
+    "missing_total": 4,
+    "missing_real": 2,
+    "missing_legacy_baseline": 2,
+    "missing_samples": [
+     {
+      "date": "2025-06-07",
+      "name": "沙漠之鹰 | 后发制人 (崭新出厂)",
+      "label": "🟢 深值·大盘企稳·分批建仓",
+      "net14": 6.6,
+      "attribution": "族内去重自约束"
+     },
+     {
+      "date": "2024-06-26",
+      "name": "格洛克 18 型 | 本生灯 (崭新出厂)",
+      "label": "🟢 深值·大盘企稳·分批建仓",
+      "net14": -5.55,
+      "attribution": "引擎演进(基线旧产物)"
+     },
+     {
+      "date": "2026-01-19",
+      "name": "AK-47 | 火神 (崭新出厂)",
+      "label": "🟢 深值·大盘企稳·分批建仓",
+      "net14": -5.63,
+      "attribution": "引擎演进(基线旧产物)"
+     },
+     {
+      "date": "2025-06-05",
+      "name": "M4A4 | 喧嚣杀戮 (久经沙场)",
+      "label": "🟢 深值·大盘企稳·分批建仓",
+      "net14": 6.93,
+      "attribution": "族内去重自约束"
+     }
+    ],
+    "added_vs_baseline": 0,
+    "zero_drift": false,
+    "zero_drift_note": "零漂移=相对当前引擎无注入参照，基线族信号同键(品,日,net14)全保持；missing 归因=族内去重自约束(去重交互真实行为) 或 基线旧引擎产物(参照无注入亦无)"
+   },
+   "stats": {
+    "n": 47,
+    "win14": 68.1,
+    "avg14": 18.17,
+    "win30": 72.3,
+    "avg30": 49.21
+   },
+   "gates": {
+    "G1_a2": {
+     "added_total": 0,
+     "displaced_total": 329,
+     "fit": {
+      "n": 0,
+      "p_avg": null,
+      "added_avg14": null,
+      "book_avg14": null
+     },
+     "val": {
+      "n": 0,
+      "p_avg": null,
+      "added_avg14": null,
+      "book_avg14": null
+     },
+     "passed": false
+    },
+    "G2_portfolio": {
+     "family": {
+      "total_return_pct": 299.42,
+      "max_drawdown_pct": -20.38,
+      "max_position": 2.2,
+      "rejected_cap": 0,
+      "rejected_breaker": 0,
+      "rejected_item": 0,
+      "breaker_active_pct": 0.0,
+      "days": 617,
+      "n": 47,
+      "calmar": 14.69
+     },
+     "baseline": {
+      "total_return_pct": 1510.87,
+      "max_drawdown_pct": -30.85,
+      "max_position": 25.25,
+      "rejected_cap": 0,
+      "rejected_breaker": 0,
+      "rejected_item": 0,
+      "breaker_active_pct": 0.0,
+      "days": 880,
+      "n": 376,
+      "calmar": 48.97
+     },
+     "d_total_pp": 1211.4499999999998,
+     "d_maxdd_pp": 10.470000000000002,
+     "passed": false
+    },
+    "G3_half": {
+     "fit": {
+      "n": 25,
+      "win14": 64.0,
+      "avg14": 2.66,
+      "win30": 64.0,
+      "avg30": 15.06
+     },
+     "val": {
+      "n": 22,
+      "win14": 72.7,
+      "avg14": 35.8,
+      "win30": 81.8,
+      "avg30": 88.03
+     },
+     "passed": true
+    },
+    "G4_perm": {
+     "val_n": 22,
+     "perm": {
+      "p_avg": 0.11,
+      "p_win": 0.928,
+      "book_avg14": 26.55,
+      "book_win14": 82.4,
+      "with_replacement": false
+     },
+     "passed": false
+    }
+   },
+   "gates_all_pass": false,
+   "verdict": "证伪（从多策略候选划掉）"
+  },
+  "rise": {
+   "label": "趋势买涨",
+   "signals": 370,
+   "delta": {
+    "baseline_family_sigs": 29,
+    "kept": 29,
+    "missing_total": 0,
+    "missing_real": 0,
+    "missing_legacy_baseline": 0,
+    "missing_samples": [],
+    "added_vs_baseline": 341,
+    "zero_drift": true,
+    "zero_drift_note": "零漂移=相对当前引擎无注入参照，基线族信号同键(品,日,net14)全保持；missing 归因=族内去重自约束(去重交互真实行为) 或 基线旧引擎产物(参照无注入亦无)"
+   },
+   "stats": {
+    "n": 370,
+    "win14": 50.5,
+    "avg14": 10.49,
+    "win30": 57.0,
+    "avg30": 13.74
+   },
+   "gates": {
+    "G1_a2": {
+     "added_total": 341,
+     "displaced_total": 347,
+     "fit": {
+      "n": 213,
+      "p_avg": 0.002,
+      "added_avg14": 4.82,
+      "book_avg14": 1.99
+     },
+     "val": {
+      "n": 128,
+      "p_avg": 0.994,
+      "added_avg14": 20.1,
+      "book_avg14": 26.55
+     },
+     "passed": false
+    },
+    "G2_portfolio": {
+     "family": {
+      "total_return_pct": 235.45,
+      "max_drawdown_pct": -30.23,
+      "max_position": 3.3,
+      "rejected_cap": 0,
+      "rejected_breaker": 0,
+      "rejected_item": 0,
+      "breaker_active_pct": 0.0,
+      "days": 875,
+      "n": 370,
+      "calmar": 7.79
+     },
+     "baseline": {
+      "total_return_pct": 1510.87,
+      "max_drawdown_pct": -30.85,
+      "max_position": 25.25,
+      "rejected_cap": 0,
+      "rejected_breaker": 0,
+      "rejected_item": 0,
+      "breaker_active_pct": 0.0,
+      "days": 880,
+      "n": 376,
+      "calmar": 48.97
+     },
+     "d_total_pp": 1275.4199999999998,
+     "d_maxdd_pp": 0.620000000000001,
+     "passed": false
+    },
+    "G3_half": {
+     "fit": {
+      "n": 229,
+      "win14": 48.5,
+      "avg14": 4.28,
+      "win30": 56.3,
+      "avg30": 8.28
+     },
+     "val": {
+      "n": 141,
+      "win14": 53.9,
+      "avg14": 20.56,
+      "win30": 58.2,
+      "avg30": 22.61
+     },
+     "passed": false
+    },
+    "G4_perm": {
+     "val_n": 141,
+     "perm": {
+      "p_avg": 0.998,
+      "p_win": 1.0,
+      "book_avg14": 26.55,
+      "book_win14": 82.4,
+      "with_replacement": false
+     },
+     "passed": false
+    }
+   },
+   "gates_all_pass": false,
+   "verdict": "证伪（从多策略候选划掉）"
+  },
+  "supply": {
+   "label": "供给",
+   "signals": 52,
+   "delta": {
+    "baseline_family_sigs": 50,
+    "kept": 50,
+    "missing_total": 0,
+    "missing_real": 0,
+    "missing_legacy_baseline": 0,
+    "missing_samples": [],
+    "added_vs_baseline": 2,
+    "zero_drift": true,
+    "zero_drift_note": "零漂移=相对当前引擎无注入参照，基线族信号同键(品,日,net14)全保持；missing 归因=族内去重自约束(去重交互真实行为) 或 基线旧引擎产物(参照无注入亦无)"
+   },
+   "stats": {
+    "n": 52,
+    "win14": 59.6,
+    "avg14": 12.58,
+    "win30": 59.6,
+    "avg30": 14.88
+   },
+   "gates": {
+    "G1_a2": {
+     "added_total": 2,
+     "displaced_total": 326,
+     "fit": {
+      "n": 0,
+      "p_avg": null,
+      "added_avg14": null,
+      "book_avg14": null
+     },
+     "val": {
+      "n": 2,
+      "p_avg": 0.27,
+      "added_avg14": 36.01,
+      "book_avg14": 26.55
+     },
+     "passed": false
+    },
+    "G2_portfolio": {
+     "family": {
+      "total_return_pct": 87.46,
+      "max_drawdown_pct": -18.52,
+      "max_position": 1.2,
+      "rejected_cap": 0,
+      "rejected_breaker": 0,
+      "rejected_item": 0,
+      "breaker_active_pct": 0.0,
+      "days": 766,
+      "n": 52,
+      "calmar": 4.72
+     },
+     "baseline": {
+      "total_return_pct": 1510.87,
+      "max_drawdown_pct": -30.85,
+      "max_position": 25.25,
+      "rejected_cap": 0,
+      "rejected_breaker": 0,
+      "rejected_item": 0,
+      "breaker_active_pct": 0.0,
+      "days": 880,
+      "n": 376,
+      "calmar": 48.97
+     },
+     "d_total_pp": 1423.4099999999999,
+     "d_maxdd_pp": 12.330000000000002,
+     "passed": false
+    },
+    "G3_half": {
+     "fit": {
+      "n": 28,
+      "win14": 50.0,
+      "avg14": 2.52,
+      "win30": 53.6,
+      "avg30": 8.65
+     },
+     "val": {
+      "n": 24,
+      "win14": 70.8,
+      "avg14": 24.31,
+      "win30": 66.7,
+      "avg30": 22.14
+     },
+     "passed": false
+    },
+    "G4_perm": {
+     "val_n": 24,
+     "perm": {
+      "p_avg": 0.574,
+      "p_win": 0.958,
+      "book_avg14": 26.55,
+      "book_win14": 82.4,
+      "with_replacement": false
+     },
+     "passed": false
+    }
+   },
+   "gates_all_pass": false,
+   "verdict": "证伪（从多策略候选划掉）"
+  },
+  "reversal": {
+   "label": "反转",
+   "signals": 285,
+   "delta": {
+    "baseline_family_sigs": 28,
+    "kept": 28,
+    "missing_total": 0,
+    "missing_real": 0,
+    "missing_legacy_baseline": 0,
+    "missing_samples": [],
+    "added_vs_baseline": 254,
+    "zero_drift": true,
+    "zero_drift_note": "零漂移=相对当前引擎无注入参照，基线族信号同键(品,日,net14)全保持；missing 归因=族内去重自约束(去重交互真实行为) 或 基线旧引擎产物(参照无注入亦无)"
+   },
+   "stats": {
+    "n": 285,
+    "win14": 50.5,
+    "avg14": 6.38,
+    "win30": 53.5,
+    "avg30": 24.97
+   },
+   "gates": {
+    "G1_a2": {
+     "added_total": 254,
+     "displaced_total": 345,
+     "fit": {
+      "n": 88,
+      "p_avg": 0.0,
+      "added_avg14": 5.27,
+      "book_avg14": 1.99
+     },
+     "val": {
+      "n": 166,
+      "p_avg": 1.0,
+      "added_avg14": 5.55,
+      "book_avg14": 26.55
+     },
+     "passed": false
+    },
+    "G2_portfolio": {
+     "family": {
+      "total_return_pct": 321.31,
+      "max_drawdown_pct": -16.24,
+      "max_position": 4.96,
+      "rejected_cap": 0,
+      "rejected_breaker": 0,
+      "rejected_item": 0,
+      "breaker_active_pct": 0.0,
+      "days": 820,
+      "n": 285,
+      "calmar": 19.79
+     },
+     "baseline": {
+      "total_return_pct": 1510.87,
+      "max_drawdown_pct": -30.85,
+      "max_position": 25.25,
+      "rejected_cap": 0,
+      "rejected_breaker": 0,
+      "rejected_item": 0,
+      "breaker_active_pct": 0.0,
+      "days": 880,
+      "n": 376,
+      "calmar": 48.97
+     },
+     "d_total_pp": 1189.56,
+     "d_maxdd_pp": 14.610000000000003,
+     "passed": false
+    },
+    "G3_half": {
+     "fit": {
+      "n": 90,
+      "win14": 61.1,
+      "avg14": 5.07,
+      "win30": 72.2,
+      "avg30": 23.67
+     },
+     "val": {
+      "n": 195,
+      "win14": 45.6,
+      "avg14": 6.99,
+      "win30": 44.8,
+      "avg30": 25.57
+     },
+     "passed": false
+    },
+    "G4_perm": {
+     "val_n": 195,
+     "perm": {
+      "p_avg": 1.0,
+      "p_win": 1.0,
+      "book_avg14": 26.55,
+      "book_win14": 82.4,
+      "with_replacement": false
+     },
+     "passed": false
+    }
+   },
+   "gates_all_pass": false,
+   "verdict": "证伪（从多策略候选划掉）"
+  },
+  "base": {
+   "label": "基础",
+   "signals": 213,
+   "delta": {
+    "baseline_family_sigs": 65,
+    "kept": 60,
+    "missing_total": 5,
+    "missing_real": 5,
+    "missing_legacy_baseline": 0,
+    "missing_samples": [
+     {
+      "date": "2025-01-01",
+      "name": "沙漠之鹰 | 人造卫星 (崭新出厂)",
+      "label": "🟢 分批建仓",
+      "net14": 1.1,
+      "attribution": "族内去重自约束"
+     },
+     {
+      "date": "2026-02-19",
+      "name": "AWP | CMYK (崭新出厂)",
+      "label": "🟢 分批建仓",
+      "net14": -4.55,
+      "attribution": "族内去重自约束"
+     },
+     {
+      "date": "2026-06-16",
+      "name": "AK-47 | 火神 (崭新出厂)",
+      "label": "🟢 分批建仓",
+      "net14": 0.49,
+      "attribution": "族内去重自约束"
+     },
+     {
+      "date": "2026-02-23",
+      "name": "M4A1消音版 | 苔藓石英 (崭新出厂)",
+      "label": "🟢 分批建仓",
+      "net14": 14.29,
+      "attribution": "族内去重自约束"
+     },
+     {
+      "date": "2026-02-19",
+      "name": "M4A1消音版 | 气泡流行 (崭新出厂)",
+      "label": "🟢 分批建仓",
+      "net14": 7.28,
+      "attribution": "族内去重自约束"
+     }
+    ],
+    "added_vs_baseline": 140,
+    "zero_drift": false,
+    "zero_drift_note": "零漂移=相对当前引擎无注入参照，基线族信号同键(品,日,net14)全保持；missing 归因=族内去重自约束(去重交互真实行为) 或 基线旧引擎产物(参照无注入亦无)"
+   },
+   "stats": {
+    "n": 213,
+    "win14": 57.3,
+    "avg14": 4.48,
+    "win30": 54.9,
+    "avg30": 9.65
+   },
+   "gates": {
+    "G1_a2": {
+     "added_total": 140,
+     "displaced_total": 303,
+     "fit": {
+      "n": 26,
+      "p_avg": 0.07,
+      "added_avg14": 4.9,
+      "book_avg14": 1.99
+     },
+     "val": {
+      "n": 114,
+      "p_avg": 1.0,
+      "added_avg14": 2.82,
+      "book_avg14": 26.55
+     },
+     "passed": false
+    },
+    "G2_portfolio": {
+     "family": {
+      "total_return_pct": 228.64,
+      "max_drawdown_pct": -40.5,
+      "max_position": 12.8,
+      "rejected_cap": 0,
+      "rejected_breaker": 0,
+      "rejected_item": 0,
+      "breaker_active_pct": 0.0,
+      "days": 889,
+      "n": 213,
+      "calmar": 5.65
+     },
+     "baseline": {
+      "total_return_pct": 1510.87,
+      "max_drawdown_pct": -30.85,
+      "max_position": 25.25,
+      "rejected_cap": 0,
+      "rejected_breaker": 0,
+      "rejected_item": 0,
+      "breaker_active_pct": 0.0,
+      "days": 880,
+      "n": 376,
+      "calmar": 48.97
+     },
+     "d_total_pp": 1282.23,
+     "d_maxdd_pp": -9.649999999999999,
+     "passed": false
+    },
+    "G3_half": {
+     "fit": {
+      "n": 70,
+      "win14": 67.1,
+      "avg14": 3.74,
+      "win30": 81.4,
+      "avg30": 9.82
+     },
+     "val": {
+      "n": 143,
+      "win14": 52.4,
+      "avg14": 4.84,
+      "win30": 42.0,
+      "avg30": 9.57
+     },
+     "passed": false
+    },
+    "G4_perm": {
+     "val_n": 143,
+     "perm": {
+      "p_avg": 1.0,
+      "p_win": 1.0,
+      "book_avg14": 26.55,
+      "book_win14": 82.4,
+      "with_replacement": false
+     },
+     "passed": false
+    }
+   },
+   "gates_all_pass": false,
+   "verdict": "证伪（从多策略候选划掉）"
+  }
+ },
+ "three_tables": {
+  "overlap_matrix": {
+   "note": "同品同日多族触发；jaccard>0.5 或 overlap_min>0.5 = 非独立策略（合并或留一）",
+   "counts": {
+    "panic": 155,
+    "deep": 47,
+    "rise": 370,
+    "supply": 52,
+    "reversal": 285,
+    "base": 213
+   },
+   "matrix": {
+    "panic": {
+     "panic": null,
+     "deep": {
+      "inter": 0,
+      "jaccard": 0.0,
+      "overlap_min": 0.0
+     },
+     "rise": {
+      "inter": 0,
+      "jaccard": 0.0,
+      "overlap_min": 0.0
+     },
+     "supply": {
+      "inter": 0,
+      "jaccard": 0.0,
+      "overlap_min": 0.0
+     },
+     "reversal": {
+      "inter": 0,
+      "jaccard": 0.0,
+      "overlap_min": 0.0
+     },
+     "base": {
+      "inter": 0,
+      "jaccard": 0.0,
+      "overlap_min": 0.0
+     }
+    },
+    "deep": {
+     "panic": {
+      "inter": 0,
+      "jaccard": 0.0,
+      "overlap_min": 0.0
+     },
+     "deep": null,
+     "rise": {
+      "inter": 0,
+      "jaccard": 0.0,
+      "overlap_min": 0.0
+     },
+     "supply": {
+      "inter": 0,
+      "jaccard": 0.0,
+      "overlap_min": 0.0
+     },
+     "reversal": {
+      "inter": 0,
+      "jaccard": 0.0,
+      "overlap_min": 0.0
+     },
+     "base": {
+      "inter": 2,
+      "jaccard": 0.008,
+      "overlap_min": 0.043
+     }
+    },
+    "rise": {
+     "panic": {
+      "inter": 0,
+      "jaccard": 0.0,
+      "overlap_min": 0.0
+     },
+     "deep": {
+      "inter": 0,
+      "jaccard": 0.0,
+      "overlap_min": 0.0
+     },
+     "rise": null,
+     "supply": {
+      "inter": 0,
+      "jaccard": 0.0,
+      "overlap_min": 0.0
+     },
+     "reversal": {
+      "inter": 1,
+      "jaccard": 0.002,
+      "overlap_min": 0.004
+     },
+     "base": {
+      "inter": 0,
+      "jaccard": 0.0,
+      "overlap_min": 0.0
+     }
+    },
+    "supply": {
+     "panic": {
+      "inter": 0,
+      "jaccard": 0.0,
+      "overlap_min": 0.0
+     },
+     "deep": {
+      "inter": 0,
+      "jaccard": 0.0,
+      "overlap_min": 0.0
+     },
+     "rise": {
+      "inter": 0,
+      "jaccard": 0.0,
+      "overlap_min": 0.0
+     },
+     "supply": null,
+     "reversal": {
+      "inter": 3,
+      "jaccard": 0.009,
+      "overlap_min": 0.058
+     },
+     "base": {
+      "inter": 1,
+      "jaccard": 0.004,
+      "overlap_min": 0.019
+     }
+    },
+    "reversal": {
+     "panic": {
+      "inter": 0,
+      "jaccard": 0.0,
+      "overlap_min": 0.0
+     },
+     "deep": {
+      "inter": 0,
+      "jaccard": 0.0,
+      "overlap_min": 0.0
+     },
+     "rise": {
+      "inter": 1,
+      "jaccard": 0.002,
+      "overlap_min": 0.004
+     },
+     "supply": {
+      "inter": 3,
+      "jaccard": 0.009,
+      "overlap_min": 0.058
+     },
+     "reversal": null,
+     "base": {
+      "inter": 12,
+      "jaccard": 0.025,
+      "overlap_min": 0.056
+     }
+    },
+    "base": {
+     "panic": {
+      "inter": 0,
+      "jaccard": 0.0,
+      "overlap_min": 0.0
+     },
+     "deep": {
+      "inter": 2,
+      "jaccard": 0.008,
+      "overlap_min": 0.043
+     },
+     "rise": {
+      "inter": 0,
+      "jaccard": 0.0,
+      "overlap_min": 0.0
+     },
+     "supply": {
+      "inter": 1,
+      "jaccard": 0.004,
+      "overlap_min": 0.019
+     },
+     "reversal": {
+      "inter": 12,
+      "jaccard": 0.025,
+      "overlap_min": 0.056
+     },
+     "base": null
+    }
+   }
+  },
+  "return_corr_matrix": {
+   "note": "各族信号月度 avg net14 相关；|r|<0.5 有组合价值，|r|>=0.7 冗余(同质)",
+   "matrix": {
+    "panic": {
+     "panic": 1.0,
+     "deep": null,
+     "rise": null,
+     "supply": null,
+     "reversal": 0.268,
+     "base": null
+    },
+    "deep": {
+     "panic": null,
+     "deep": 1.0,
+     "rise": 0.264,
+     "supply": -0.002,
+     "reversal": 0.231,
+     "base": 0.56
+    },
+    "rise": {
+     "panic": null,
+     "deep": 0.264,
+     "rise": 1.0,
+     "supply": 0.373,
+     "reversal": 0.506,
+     "base": 0.684
+    },
+    "supply": {
+     "panic": null,
+     "deep": -0.002,
+     "rise": 0.373,
+     "supply": 1.0,
+     "reversal": -0.005,
+     "base": 0.171
+    },
+    "reversal": {
+     "panic": 0.268,
+     "deep": 0.231,
+     "rise": 0.506,
+     "supply": -0.005,
+     "reversal": 1.0,
+     "base": 0.662
+    },
+    "base": {
+     "panic": null,
+     "deep": 0.56,
+     "rise": 0.684,
+     "supply": 0.171,
+     "reversal": 0.662,
+     "base": 1.0
+    }
+   }
+  },
+  "period_coverage": {
+   "note": "各族在 P/S1/S2/S3/S4 五时期信号分布与贡献（n/win14/avg14）；不同族管不同时期=最强多策略理由",
+   "rows": {
+    "panic": {
+     "P恐慌深跌": {
+      "n": 152,
+      "win14": 93.4,
+      "avg14": 30.71,
+      "win30": 84.9,
+      "avg30": 23.89
+     },
+     "S1牛市上行": {
+      "n": 0,
+      "win14": null,
+      "avg14": null,
+      "net30_avg": null
+     },
+     "S2牛市回调": {
+      "n": 0,
+      "win14": null,
+      "avg14": null,
+      "net30_avg": null
+     },
+     "S3弱市阴跌": {
+      "n": 3,
+      "win14": 100.0,
+      "avg14": 30.93,
+      "win30": 100.0,
+      "avg30": 21.34
+     },
+     "S4弱市反弹": {
+      "n": 0,
+      "win14": null,
+      "avg14": null,
+      "net30_avg": null
+     }
+    },
+    "deep": {
+     "P恐慌深跌": {
+      "n": 6,
+      "win14": 50.0,
+      "avg14": 15.92,
+      "win30": 50.0,
+      "avg30": 19.01
+     },
+     "S1牛市上行": {
+      "n": 0,
+      "win14": null,
+      "avg14": null,
+      "net30_avg": null
+     },
+     "S2牛市回调": {
+      "n": 41,
+      "win14": 70.7,
+      "avg14": 18.5,
+      "win30": 75.6,
+      "avg30": 53.63
+     },
+     "S3弱市阴跌": {
+      "n": 0,
+      "win14": null,
+      "avg14": null,
+      "net30_avg": null
+     },
+     "S4弱市反弹": {
+      "n": 0,
+      "win14": null,
+      "avg14": null,
+      "net30_avg": null
+     }
+    },
+    "rise": {
+     "P恐慌深跌": {
+      "n": 1,
+      "win14": 0.0,
+      "avg14": -28.64,
+      "win30": 0.0,
+      "avg30": -28.64
+     },
+     "S1牛市上行": {
+      "n": 190,
+      "win14": 58.4,
+      "avg14": 17.2,
+      "win30": 67.4,
+      "avg30": 25.99
+     },
+     "S2牛市回调": {
+      "n": 6,
+      "win14": 66.7,
+      "avg14": -1.06,
+      "win30": 50.0,
+      "avg30": 6.22
+     },
+     "S3弱市阴跌": {
+      "n": 6,
+      "win14": 50.0,
+      "avg14": 8.51,
+      "win30": 66.7,
+      "avg30": -0.21
+     },
+     "S4弱市反弹": {
+      "n": 167,
+      "win14": 41.3,
+      "avg14": 3.58,
+      "win30": 45.5,
+      "avg30": 0.83
+     }
+    },
+    "supply": {
+     "P恐慌深跌": {
+      "n": 6,
+      "win14": 83.3,
+      "avg14": 48.86,
+      "win30": 83.3,
+      "avg30": 23.03
+     },
+     "S1牛市上行": {
+      "n": 39,
+      "win14": 59.0,
+      "avg14": 0.93,
+      "win30": 56.4,
+      "avg30": 6.78
+     },
+     "S2牛市回调": {
+      "n": 7,
+      "win14": 42.9,
+      "avg14": 46.37,
+      "win30": 57.1,
+      "avg30": 53.01
+     },
+     "S3弱市阴跌": {
+      "n": 0,
+      "win14": null,
+      "avg14": null,
+      "net30_avg": null
+     },
+     "S4弱市反弹": {
+      "n": 0,
+      "win14": null,
+      "avg14": null,
+      "net30_avg": null
+     }
+    },
+    "reversal": {
+     "P恐慌深跌": {
+      "n": 27,
+      "win14": 40.7,
+      "avg14": 11.37,
+      "win30": 48.1,
+      "avg30": 2.87
+     },
+     "S1牛市上行": {
+      "n": 127,
+      "win14": 51.2,
+      "avg14": 4.26,
+      "win30": 50.4,
+      "avg30": 27.89
+     },
+     "S2牛市回调": {
+      "n": 87,
+      "win14": 55.2,
+      "avg14": 7.42,
+      "win30": 64.4,
+      "avg30": 34.11
+     },
+     "S3弱市阴跌": {
+      "n": 29,
+      "win14": 48.3,
+      "avg14": 12.58,
+      "win30": 42.9,
+      "avg30": 18.1
+     },
+     "S4弱市反弹": {
+      "n": 15,
+      "win14": 40.0,
+      "avg14": -2.56,
+      "win30": 46.7,
+      "avg30": -0.15
+     }
+    },
+    "base": {
+     "P恐慌深跌": {
+      "n": 4,
+      "win14": 100.0,
+      "avg14": 29.72,
+      "win30": 100.0,
+      "avg30": 35.88
+     },
+     "S1牛市上行": {
+      "n": 62,
+      "win14": 58.1,
+      "avg14": 2.87,
+      "win30": 62.9,
+      "avg30": 8.29
+     },
+     "S2牛市回调": {
+      "n": 38,
+      "win14": 65.8,
+      "avg14": 10.68,
+      "win30": 78.9,
+      "avg30": 25.01
+     },
+     "S3弱市阴跌": {
+      "n": 18,
+      "win14": 55.6,
+      "avg14": 12.42,
+      "win30": 50.0,
+      "avg30": 16.64
+     },
+     "S4弱市反弹": {
+      "n": 91,
+      "win14": 51.6,
+      "avg14": 0.3,
+      "win30": 38.5,
+      "avg30": 1.64
+     }
+    }
+   }
+  }
+ },
+ "combination": {
+  "candidates": [],
+  "note": "组合=全过四关族的信号合并（b1 同口径 hold21/成本2%/拒绝优先级），禁优化器",
+  "results": {
+   "baseline_single_engine": {
+    "total_return_pct": 1510.87,
+    "max_drawdown_pct": -30.85,
+    "max_position": 25.25,
+    "rejected_cap": 0,
+    "rejected_breaker": 0,
+    "rejected_item": 0,
+    "breaker_active_pct": 0.0,
+    "days": 880,
+    "n": 376,
+    "calmar": 48.97
+   }
+  },
+  "multi_strategy_verdict": "候选族不足 2 个，无法组合——多策略形态不成立"
+ },
+ "decision": {
+  "multi_strategy": "候选族不足 2 个，无法组合——多策略形态不成立",
+  "note": "结论只到筛查层：不改引擎、不立落地卡；全过四关且差异化族 → PM 定形态（生命周期台账候选层）"
+ }
+}

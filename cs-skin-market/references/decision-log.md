@@ -1402,6 +1402,7 @@
 > 承接 CE 状态「C1 可独立推进」+ ③ BY 审计「C1 工程卫生、不在闸门范围」。**②已按候选方案做过一次完整验证落地（原 CG 条目，commit 7c475ea），随后按用户裁定「②窗口只做研究，落地须 PM 立项 → 研发执行」回滚生产代码**（本条目改写为候选移交记录，方案细节保留给研发）。纯展示层、零信号发射改动，ENGINE_VERSION v2-T13 不受影响。
 
 ### 改动点
+
 1. **`pipeline/config.py` SIGNAL_FAMILY_TAXONOMY（唯一事实源）**：细族由 6 扩为 14 = 引擎 `SIGNAL_FAMILIES` 11 族 + `base`（分批建仓=融合基础买点）+ `deep_dip`（深度回调低吸=P0 超跌）+ `weak_market`（弱市抗跌=历史遗留）；展示键由 3 扩为 8 = `panic`/`deep_value`/`accumulate`/`rise`/`longhold`/`oversold`/`base`/`weak_market`；`base` 从 accumulate 独立（C1 前 accumulate=supply+deep_dip+base，C1 后不含 base）。fine_order 按关键字特异性排序，`分批建仓`最后兜底。
 2. **`pipeline/batch_scan.py` signal_guidance**：废除自身关键词匹配，改用 `assign_fine_family`→展示键；仅对 taxonomy 未识别的历史/通用标签（周期吸筹/超跌反弹）保留关键词兜底。补 deep_value/rise/weak_market 持有指引。
 3. **`references/sync_expectancy_config.py`**：小样本组（n<5，如弱市抗跌 n≈2）跳过期望统计（无统计意义）——修复 C1 8 组下 render None 崩溃。
@@ -1409,14 +1410,17 @@
 5. **测试更新**（`tests/test_smoke.py` 2 处）：t_replay_source / t_data_progress 的硬编码 3 分组（恐慌/深值/else→accumulate）改用 `display_key_for_label`（单一事实源），小样本组同口径跳过。
 
 ### 验证
+
 - **冲突清零**：基线 374 信号中「深值/吸筹型上涨 误归 base」= 0（C1 前 deep_value→base、rise_accum→base 兜底）。
 - 新 signal_type 分布：panic 149 / accumulate 82 / deep_value 48 / base 64 / rise 29 / weak_market 2（基线 374 滤污染后）。
 - 冒烟 **131 passed / 0 failed / 0 skipped**；编码 PASS；`ENGINE_VERSION` 仍 `v2-T13`。模板零硬编码 signal_type（UI 安全）。
 
 ### 口径变化（勿混用）
+
 - C1 前 accumulate 含 base（HIST-FULL n=198，归因 +111.69pp）；C1 后 accumulate 不含 base（n=176，归因 +95.72pp），base 独立 22 条 +19.66pp。`terminology.md` / `AGENTS.md` 已同步。
 
 ### 状态
+
 - **已回滚**：生产代码恢复至 C1 前（`pipeline/config.py`/`batch_scan.py`/`tests/test_smoke.py`/`AGENTS.md`/`terminology.md`/`sync_expectancy_config.py`/`portfolio_attribution.json`/`signal_event_counts.json` 8 文件还原到 commit b1d20a5 状态，冒烟 131/0/0 复验）。**C1 移交 PM 立项 → 研发按上文方案落地。**
 - 研发落地时注意（踩坑固化）：改 taxonomy 展示键会连带 4 处数据重跑（`ITEM_EXPECTANCY_STATS` / CLEAN-CUR / `signal_event_counts.json` 进度卡 / `portfolio_attribution.json` 归因）+ `tests/test_smoke.py` 2 处硬编码 3 分组（t_replay_source / t_data_progress）须同步改用 `display_key_for_label`；小样本组（n<5）期望统计跳过（sync 脚本需带该修复）。
 - 族划分重构「新增族」方向已证伪闭环（CE/CF）；C1 为原三观察（族划分乱）的工程收口候选，落地与否由 PM 排期。
@@ -1471,8 +1475,8 @@
 ## CL. C2-RISE-ACCUM 立项（2026-08-20，①PM 立项，交②研究窗口执行）+ C3/C4/C5 排期裁定
 
 - **来源**：②预注册草案移交（references/c2-rise-accum-prereg-2026-08-20.md + decision-log CK，commit ee0c9ff）；用户确认「C2 单独立项（v78），判据素材已齐，PM 出卡后照卡开跑」。
-- **PM 只读核查（数字已核实）**：item_analysis.py:1262 rise_accum trigger 现为 chg7>3；_rise_chg7_cap() 默认 15；run_family_variant_replay.py 在库；基线 374 信号 rise_accum 29 条、chg7 分桶 ≤5:4/5-10:11/>10:14 与草案 H3 一致；环境门/上限/limit/priority/dedup 其余条件均在。
-- **卡内容**：候选锁定 = 仅改 chg7>3→chg7>10（其余条件一律不动）；反过拟合声明 = 阈值 10 为样本内候选，以四关 walk-forward 验证段（≥2025-08-10）为准，不显著即证伪；回放 = run_family_variant_replay.py 注入替换 trigger（非新增族）、232 品 3 年、CS_ENGINE_PERIOD_ROUTE=1、输出 _exp_c2_rise_accum_replay_2026-08-20.json；delta 验收 = 零漂移 + 29→N + 被砍 11 条明细 + displaced/月度分布；四关 = A2 发射复算 + 组合级 + 前后半段 + 置换（沿用 CC 否决线 + 单月>50% 自动驳回）。完整卡见 `references/iteration-roadmap.md` C2-RISE-ACCUM（roadmap v78）。
+- **PM 只读核查（数字已核实）**：item_analysis.py:1262 rise_accum trigger 现为 chg7>3；\_rise_chg7_cap() 默认 15；run_family_variant_replay.py 在库；基线 374 信号 rise_accum 29 条、chg7 分桶 ≤5:4/5-10:11/>10:14 与草案 H3 一致；环境门/上限/limit/priority/dedup 其余条件均在。
+- **卡内容**：候选锁定 = 仅改 chg7>3→chg7>10（其余条件一律不动）；反过拟合声明 = 阈值 10 为样本内候选，以四关 walk-forward 验证段（≥2025-08-10）为准，不显著即证伪；回放 = run_family_variant_replay.py 注入替换 trigger（非新增族）、232 品 3 年、CS_ENGINE_PERIOD_ROUTE=1、输出 \_exp_c2_rise_accum_replay_2026-08-20.json；delta 验收 = 零漂移 + 29→N + 被砍 11 条明细 + displaced/月度分布；四关 = A2 发射复算 + 组合级 + 前后半段 + 置换（沿用 CC 否决线 + 单月>50% 自动驳回）。完整卡见 `references/iteration-roadmap.md` C2-RISE-ACCUM（roadmap v78）。
 - **C3/C4/C5 排期裁定（用户 2026-08-20）**：C4 已关闭不排期（crash_vol 单月 100% 触 A2 否决线）；C5 已结论不排期（不分池）；C3 不随 C2 排期（C1 落地后 signal_guidance 已有 deep_value 21 日/rise 14 日持有指引，核心主张被部分覆盖，剩余为展示层微调，视 PM 意愿单独评估或关闭）。
 - **状态**：已立项，待②照卡开跑（预注册探针 → 回放 → 候选 → 交③审计）；本卡仅研究不落地。
 
@@ -1544,13 +1548,14 @@
 
 ## CG. 全量特征最优划分预注册 · ③审计判据本身（2026-08-20，③审计，两处修订后通过）
 
-> 被审：`references/family-optimal-partition-prereg-2026-08-20.md` + CP（替代已作废 CO）。只审判据本身，不涉回放产物（产物未产生）。
+> 被审：`references/family-optimal-partition-prereg-2026-08-20.md` + CP（替代已作废 CO）。只审判据本身，不涉回放产物（产物未产生）。  
 > 红线：只读预注册 + 原始特征矩阵产物（核验 §二 样本口径）；②结论文字不参与。
 
 ### 一、裁定：框架通过，两处修订后通过（外加一处样本口径缺陷必须修）
 
 ### 二、① 单事件分级：分档方向对，但「否决线」与「事件驱动标记」适用场景混了——须修订
-- **问题**：§五 把「单月>50% → 沿用 CC A2 否决线自动驳回、不得落地」**无差别套用到所有候选族**。但 CC 否决线的适用对象是**「该加」候选族**（新增族须跨期可外推才有落地价值，crash_vol/CN leaf3 均此场景，正确）；**恐慌深跌这类事件驱动现有族**天然单月集中（只在恐慌窗口发射），若被切出且>50%，会被这套规则误伤「不得落地」——**这正是用户担心的一刀切，分三档并未消除，只是把刀口移到 >50%**。
+
+- **问题**：§五 把「单月>50% → 沿用 CC A2 否决线自动驳回、不得落地」**无差别套用到所有候选族**。但 CC 否决线的适用对象&#x662F;**「该加」候选族**（新增族须跨期可外推才有落地价值，crash_vol/CN leaf3 均此场景，正确）；**恐慌深跌这类事件驱动现有族**天然单月集中（只在恐慌窗口发射），若被切出且>50%，会被这套规则误伤「不得落地」——**这正是用户担心的一刀切，分三档并未消除，只是把刀口移到 >50%**。
 - **修订**：分级标签 = **验证路径选择**，非直接否决——
   - 单月占比 ≤40% → 「跨期稳健」→ 常规四关路径；
   - 单月占比 >50% → 「事件驱动型」→ **事件级验证路径**（非自动驳回）：须报事件窗定义、独立事件数、事件窗内 win/avg；事件窗内正期望且独立事件≥2 可脱「弱候选」标签；
@@ -1560,6 +1565,7 @@
 - 分档阈值（40%/50%）为**描述性标签**，非 gate——须注明标签只影响验证路径，不直接产出留/删/并/加。
 
 ### 三、② 字段映射约束：接受局限，但表述与 §六 对照表直接冲突——须修订
+
 - **冲突**：§六 对照表「现有族有、数据无/平庸单事件 → 该删或该并」，与同节末段「不能据此判定该删」**自相矛盾**。
 - **修订**：
   1. 分层表精确化（吸收 CO 分层）：✅ 完全可对照 = rs_accum/ct_accum（仅 chg/mchg/pct/sc30 变化率）；⚠️ 部分 = supply/rise/xishou/volatile（s7/s30 均值**可重算**但矩阵未含，与 sent/TH 的「数据基础缺失」强度不同，须分开标注）；❌ 数据基础缺失 = panic_resonance/deep_value/panic_easing（sent/TH/stopped/micro_th）、second_wave（dd20/bid）。
@@ -1568,16 +1574,19 @@
   4. 补充不对称性说明：对受限族，数据对照**可证伪（可映射维度也无对应区域 → 缺乏数据支撑、可质疑）但不能证实（有对应区域 ≠ 族有效，因核心维度缺失）**。
 
 ### 四、③样本口径缺陷（必须修）：§二 236,686 ≠ CB 分析集
+
 - **事实**：`_exp_fullscan_features_2026-08-20.json` n_records=239,826；fwd14 有效 236,686（=CP 写的数）；但 **mchg7 缺 20,882 / mchg21 缺 23,934 / mchg30 缺 25,896**（早期 warmup 窗口）。CB 分析集 **208,517 = 剔除全部缺失后的完整样例**（CB regions meta.analysis_n 实锤）。
 - **风险**：CP 若在 236,686 上切，树将吃 NaN（sklearn 决策树不直接支持，须处置），或处置方式未声明 → **与 CB 的 21/63 gate 数字不可比**，且族内 n 口径漂移。
 - **修订**：**锁定 CB 同款分析集 208,517**（完整样例，gate 与 CB 逐字可比）——「复用矩阵」最干净口径。若坚持 236,686，必须写明缺失处置规则（丢弃/插补）+ 声明与 CB 数字不可比。
 
 ### 五、非阻断建议
+
 - 方法与参数（min_leaf≥200/depth≤4/双期限/稀有探针）复用 CB，已过③审（CA/CB），不重审。
 - 提醒：CB 已在此矩阵切过 63 区域/21 通过——CP 新增价值在「叶→族体系归纳 + 11 族对照」，**不是重新切分**；预注册对「叶→族合并规则」「未过 gate 的平庸叶是否进入对照」定义不足，建议补一小节（非阻断）。
 - 「该加」候选进入落地评估仍须走「族开回放 → 完整 A2 四关（含发射复算）→ ③审」链路（CE 已证宽触发全拒）；§七 建议补明（非阻断）。
 
 ### 状态
+
 - ①/② 修订 + §二 样本口径锁定后**放行跑切分**。③不替②改判据，修订稿由②落地后回③核验（同 CA 流程）。
 
 ---
@@ -1587,15 +1596,17 @@
 > 被审：`family-optimal-partition-prereg-2026-08-20.md` v2（CG 修订落地稿）。③回读逐项核对，不凭口头确认。
 
 ### 一、CG 三处修订核验结果
-| CG 要求 | v2 落地 | 判定 |
-|---|---|---|
-| ③样本口径锁定 CB 同款 208,517 | §二 锁定 208,517（12 特征全非空 + fwd 非空），写明 239,826/236,686/25,896 缺 mchg 口径 | ✅ 完全落地（数字与③独立核验一致）|
-| ①否决线限定「该加」候选；事件驱动型走事件级验证 | §五 否决线只对「该加」生效；事件驱动型（含恐慌深跌）不适用单月否决，走事件级验证（A 通道独立事件≥3） | ✅ 核心落地 |
-| ②「数据支撑度初判」+ unobserved_dims，消除自相矛盾 | §六 对照表「该删或该并（候选，须看 unobserved_dims）」+「不据此下该删结论」+「待补维度」 | ✅ 核心落地 |
-| ①事件计数规则须预注册（相邻月差≤1 合并） | **§五 未写入计数规则** | ⚠️ 缺口 |
-| ②逐族分层表（✅rs/ct ⚠️supply/rise/xishou/volatile ❌panic/deep_value/panic_easing/second_wave） | **§六 未给分层清单**（仅笼统列 sent/TH/stopped 与 s7/s30） | ⚠️ 缺口 |
+
+| CG 要求                                                                                   | v2 落地                                                                | 判定                 |
+| --------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | ------------------ |
+| ③样本口径锁定 CB 同款 208,517                                                                   | §二 锁定 208,517（12 特征全非空 + fwd 非空），写明 239,826/236,686/25,896 缺 mchg 口径 | ✅ 完全落地（数字与③独立核验一致） |
+| ①否决线限定「该加」候选；事件驱动型走事件级验证                                                                | §五 否决线只对「该加」生效；事件驱动型（含恐慌深跌）不适用单月否决，走事件级验证（A 通道独立事件≥3）                | ✅ 核心落地             |
+| ②「数据支撑度初判」+ unobserved_dims，消除自相矛盾                                                      | §六 对照表「该删或该并（候选，须看 unobserved_dims）」+「不据此下该删结论」+「待补维度」               | ✅ 核心落地             |
+| ①事件计数规则须预注册（相邻月差≤1 合并）                                                                  | **§五 未写入计数规则**                                                       | ⚠️ 缺口              |
+| ②逐族分层表（✅rs/ct ⚠️supply/rise/xishou/volatile ❌panic/deep_value/panic_easing/second_wave） | **§六 未给分层清单**（仅笼统列 sent/TH/stopped 与 s7/s30）                         | ⚠️ 缺口              |
 
 ### 二、裁定：补齐两处小缺口后放行跑切分
+
 - 主体修订（①②核心 + ③口径）全部如实落地，方向正确，执行干净。
 - **必须补**（执行可复现性，缺则中间态/事件驱动判定不可复现）：
   1. **§五 事件计数规则**：信号按月份排序，相邻月份差 ≤1 合并为同一事件窗口；独立事件数 = 合并后窗口数；同时必报「最大事件窗口占比」。
@@ -1603,6 +1614,7 @@
 - 补丁为确定性文字补充（几行），非新方法；③不替②改文档，由②补入并回③确认。
 
 ### 状态
+
 - 两处小缺口补齐后**放行跑切分**（复用 208,517 分析集）。执行与产出仍走「产物 → ③审 → PM 立项/样本外」链路。
 
 ---
@@ -1612,27 +1624,30 @@
 > 被审：`family-optimal-partition-prereg-2026-08-20.md` v3（CH 两处补丁落地稿）。③回读逐项核对。
 
 ### 一、CH 两处补丁核验
-| CH 要求 | v3 落地 | 判定 |
-|---|---|---|
-| §五 事件计数规则（YYYY-MM 聚合、相邻月差≤1 合并、独立事件数=合并窗口数） | §五 39 行完整落地（含 2025-05/06 相邻示例、月差≥2 记独立事件） | ✅ 完全落地 |
-| §六 unobserved_dims 逐族分层表（✅rs/ct ⚠️supply/rise/xishou/volatile ❌panic/…/second_wave） | §六 55-67 行落地且更细：✅rs_accum/ct_accum（无未覆盖维度）；⚠️supply_accum/rise_accum/rise_contract/xishou_mid/volatile_accum（逐族列 s7/s30 均值/market_th/chg5/chg8/vol7 单位差）；❌panic_resonance/deep_value/panic_easing/second_wave（逐族列 micro_th/sent/th/stopped/mkt180/dd20/dd20_age/bid_now/bid_peak） | ✅ 完全落地 |
-| （CH 补丁附带）必报「最大事件窗口占比」 | §五 未落该报告项 | ⚠️ 半句未落（非判定逻辑） |
+
+| CH 要求                                                                               | v3 落地                                                                                                                                                                                                                                                                             | 判定             |
+| ----------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| §五 事件计数规则（YYYY-MM 聚合、相邻月差≤1 合并、独立事件数=合并窗口数）                                         | §五 39 行完整落地（含 2025-05/06 相邻示例、月差≥2 记独立事件）                                                                                                                                                                                                                                         | ✅ 完全落地         |
+| §六 unobserved_dims 逐族分层表（✅rs/ct ⚠️supply/rise/xishou/volatile ❌panic/…/second_wave） | §六 55-67 行落地且更细：✅rs_accum/ct_accum（无未覆盖维度）；⚠️supply_accum/rise_accum/rise_contract/xishou_mid/volatile_accum（逐族列 s7/s30 均值/market_th/chg5/chg8/vol7 单位差）；❌panic_resonance/deep_value/panic_easing/second_wave（逐族列 micro_th/sent/th/stopped/mkt180/dd20/dd20_age/bid_now/bid_peak） | ✅ 完全落地         |
+| （CH 补丁附带）必报「最大事件窗口占比」                                                               | §五 未落该报告项                                                                                                                                                                                                                                                                         | ⚠️ 半句未落（非判定逻辑） |
 
 ### 二、裁定：放行跑切分（附一个零成本产出物字段锁定）
+
 - 两处补丁核心全部如实落地，**判定逻辑完整、可复现**（分级 = 单月最大占比 + 独立事件数，均有锁定规则）；样本口径 208,517、否决线限定「该加」、事件驱动型走事件级验证等主体要求均已在 v2/v3 落地。
 - **零成本闭合**：「最大事件窗口占比」防「单月各≤40% 但合并事件窗口集中（如 2025-05+06 各 30%）」误标跨期稳健——不参与判定逻辑，但**产出物 `_exp_optimal_partition_2026-08-20.json` 每候选族必报三字段**：`单月最大占比 / 最大事件窗口占比 / 独立事件数`（§八 补一行即可，跑前锁定）。
 - ③不替②改文档；②补 §八 字段清单后即开跑（或先跑、产出物带齐三字段亦可，因字段不参与判定）。
 
 ### 状态
+
 - **放行**：决策树双期限切分（复用 208,517 分析集）。执行与产出仍走「产物 → ③审 → PM 立项/样本外」链路；「该加」候选落地评估仍须族开回放 → 完整 A2 四关 → ③审。
 
 ## CQ. 全量特征最优划分 · 切分结果 + 逐族对照（2026-08-20，②研究）
 
 - **切分**：208,517 分析集，决策树双期限（fwd14/fwd30 depth4 min_leaf200）+ pct 20 桶 + 低 pct 细树 → 63 区域 → **21 过 gate**。
 - **21 候选族收敛 4 大类自然结构**（单事件三字段已标注）：
-  1. **牛市/强势上行**（5 候选，49,421 条，30d 正期望 +6.8~+19.9）：大盘上行(mchg21>3.7~14.5)+低波动(vol30≤82)+**供给收缩(sc30 −0.1~−10.8)**。leaf8 n=27,677 超宽（窗口 72%）；leaf11/12 供缩更强且事件 7 个最稳。hit 7~39。
-  2. **恐慌深跌**（11 候选，10,734 条，g14 87~99%）：深跌(chg30≤−28)+大盘深跌(mchg21<−18)+低 pct；**事件驱动**（单月 62~95%）。hit 多为个位~20。
-  3. **深值慢修复**（4~5 候选，5,843 条，g30 62~78%）：低 pct(20~30)+大盘企稳/修复+**供给扩张(sc30 +7~+28)**。hit 5~16。
+  1. **牛市/强势上行**（5 候选，49,421 条，30d 正期望 +6.8~+19.9）：大盘上行(mchg21>3.7~~14.5)+低波动(vol30≤82)+**供给收缩(sc30 −0.1~−10.8)**。leaf8 n=27,677 超宽（窗口 72%）；leaf11/12 供缩更强且事件 7 个最稳。hit 7~~39。
+  2. **恐慌深跌**（11 候选，10,734 条，g14 87~~99%）：深跌(chg30≤−28)+大盘深跌(mchg21<−18)+低 pct；**事件驱动**（单月 62~~95%）。hit 多为个位~20。
+  3. **深值慢修复**（4~~5 候选，5,843 条，g30 62~~78%）：低 pct(20~~30)+大盘企稳/修复+**供给扩张(sc30 +7~+28)**。hit 5~~16。
   4. **深跌反弹右侧**（leaf21，475 条，hit=0，单月 91.6%）→ 单事件簇，与 CN 一致证伪。
 - **关键发现（sc30 符号）**：上涨段 sc30 为**负**（供缩=吸筹型上涨）；深跌/低值段 sc30 为**正**（供扩=恐慌抛售/底部换手）。数据天然区分了「供缩配上涨、供扩配深跌」两个语义。
 - **逐族对照（数据支撑度初判，unobserved_dims 标注）**：
@@ -1651,19 +1666,22 @@
    - leaf18（sc30+5.5）→ 归「企稳/深跌中位」（mchg30−4.4 企稳段，非上涨段），故非 sc30 反例；leaf13（pct51 大盘深跌）→ 同归「企稳/深跌中位」。
 4. **sc30 表述降级**：非新发现，实为引擎 `trend_health._dim_supply_price` 已有语义（涨+供缩=吸筹 / 跌+供扩=抛压）的**引擎独立验证**。
 5. **事件驱动型判定口径**：单月>50% 的候选，若属「该留」（恐慌深跌↔panic 族已覆盖）→ 事件驱动型走事件级验证；若属「该加」（深跌反弹右侧 hit=0）→ 单事件簇触 A2 否决线。
+
 - **状态**：修订后待③复核。
 
 ---
 
 ## CR. CQ 切分结果 · ③独立审计（2026-08-20，③审计，切分层通过 / 对照层补落盘后复核）
 
-> 被审：CQ + `_exp_optimal_partition_2026-08-20.json` + `_exp_optimal_partition_groups_2026-08-20.json` + `family_optimal_partition.py`。审计报告：`references/audit-cq-2026-08-20.md`。
+> 被审：CQ + `_exp_optimal_partition_2026-08-20.json` + `_exp_optimal_partition_groups_2026-08-20.json` + `family_optimal_partition.py`。审计报告：`references/audit-cq-2026-08-20.md`。  
 > 红线：只读原始产物 + 预注册 v3 + 脚本；CQ 正文仅对照定位，「该留/该加/待补」结论未落盘前不采信。
 
 ### 一、切分层（通过）
+
 - 方法逐字忠实 §二~§五：208,517 分析集（meta 实锤）、双期限树 depth4/min_leaf200/random42、pct 20 桶、低 pct 细树 → 63 区域 → 21 过 gate（与 CB 一致）；gate 五条逐字；**event 三字段含相邻月差≤1 合并（CI 放行条件满足）**；engine_hits 与 CB 一致（leaf8=39/leaf21=0）。
 
 ### 二、对照层（暂不通过，补落盘后复核）
+
 1. **§八 承诺的「逐族对照差异表」未落盘**：对照结论（该留/该加/待补）仅存于 CQ 正文，产物无 11 族×区域×unobserved_dims×初判对照表 → 不可复核。
 2. **§五 分级标签未落盘执行**：脚本只算三字段，「跨期稳健/中间态/单事件簇/事件驱动型」无代码实现；②人工标「事件驱动（62~95%）」不可复现。
 3. **事件驱动型无操作化定义**：leaf21（hit=0，91.6%）判单事件簇，同组 rare_lowpct_leaf5（hit=2，95.5%）未单独判——判定不一致。建议：单月>50% 且 hit=0 → 无覆盖单事件簇；hit>0 → 事件驱动型走事件级验证。
@@ -1671,11 +1689,13 @@
 5. **sc30 符号发现**：供扩配深跌/底部（恐慌深跌+深值组 sc30 全正 ✅）、供缩配上涨（牛市组 4/5 负，leaf18 例外）——**是引擎 supply×价格语义的独立验证，非新发现**，CQ「天然区分」表述过度，须降级。
 
 ### 三、裁定
+
 - **切分层通过**（执行忠实、数字可复现、执行干净）。
 - **对照层暂不通过**：须②补 ①对照差异表落盘（11 族×区域×unobserved_dims×留/加/待补）②分级标签落盘+事件驱动型操作化 ③澄清三处归类漂移（产物为准）④sc30 表述降级为验证性结论。补后③复核。
 - 「该加」（牛市上行段）维持 CE 证伪关联（宽触发不可落地，仅数据支撑度初判）；「待补」（rs/ct/supply/volatile/second_wave）维持不判删，等补扫含 s7/s30 均值/sent/TH/dd20 的特征矩阵。
 
 ### 状态
+
 - 切分层闭环；对照层待②补落盘后③复核。下一阶段建议见 audit-cq-2026-08-20.md §五。
 
 ---
@@ -1685,20 +1705,23 @@
 > 被审：CR 四处补齐——`_exp_optimal_partition_comparison_2026-08-20.json`（新）+ `family_optimal_partition.py` v2 + `_exp_optimal_partition_2026-08-20.json`（更新）。③回读逐项核对。
 
 ### 一、CR 四处补齐核验
-| CR 要求 | 落地核验 | 判定 |
-|---|---|---|
-| ①分级标签代码实现 | `grade_region()`（≤40 跨期稳健 / 40~50 中间态 / >50 单事件簇）；partition 63 区域全带 grade，**21 passed 与单月占比全部一致（独立校验 0 不一致）** | ✅ |
-| ②逐族对照差异表落盘 | comparison.family_comparison 11 族逐族（key/label/default_on/unobserved_dims/data_match/verdict）；**unobserved_dims 与 §六 分层表逐族吻合；无一条「该删」**；verdict 均为数据支撑度初判（该留 3 / 该加 1 / 待补维度不判删 7） | ✅ |
-| ③三处漂移澄清 | leaf21 → 独立「深跌反弹右侧」组（note 触 A2 否决线）；深值慢修复 **7 候选 8,125 条**（rare_lowpct_leaf20/13/8 自恐慌深跌挪入）；leaf18 → 「企稳/深跌中位」组（非牛市）；总数 21 不变 | ✅ |
-| ④sc30 表述降级 | comparison.meta.note 写明「实为引擎 trend_health._dim_supply_price 已有语义的引擎独立验证」 | ✅ |
+
+| CR 要求      | 落地核验                                                                                                                                                                             | 判定 |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -- |
+| ①分级标签代码实现  | `grade_region()`（≤40 跨期稳健 / 40~50 中间态 / >50 单事件簇）；partition 63 区域全带 grade，**21 passed 与单月占比全部一致（独立校验 0 不一致）**                                                                    | ✅  |
+| ②逐族对照差异表落盘 | comparison.family_comparison 11 族逐族（key/label/default_on/unobserved_dims/data_match/verdict）；**unobserved_dims 与 §六 分层表逐族吻合；无一条「该删」**；verdict 均为数据支撑度初判（该留 3 / 该加 1 / 待补维度不判删 7） | ✅  |
+| ③三处漂移澄清    | leaf21 → 独立「深跌反弹右侧」组（note 触 A2 否决线）；深值慢修复 **7 候选 8,125 条**（rare_lowpct_leaf20/13/8 自恐慌深跌挪入）；leaf18 → 「企稳/深跌中位」组（非牛市）；总数 21 不变                                                    | ✅  |
+| ④sc30 表述降级 | comparison.meta.note 写明「实为引擎 trend_health.\_dim_supply_price 已有语义的引擎独立验证」                                                                                                        | ✅  |
 
 ### 二、裁定：对照层通过；四项收尾（须②补，零成本，不重跑）
+
 1. **产物一致性（必须）**：新归类在 comparison.groups，但 `_exp_optimal_partition_groups_2026-08-20.json` 仍是 18:40 旧版（leaf21 在恐慌深跌、深值 4 候选、leaf18 在牛市组）——**两份 groups 事实源并存且矛盾**，须废弃旧产物或重生成同步。
 2. **「该加」缺 CE 证伪关联（必须）**：rise_accum verdict="该加（大盘上行段盲区）"——该加的是「牛市/强势上行段」盲区结构，rise_accum 族本身应为「部分对齐+待补维度」；且 **CR 明确要求「该加」维持 CE 证伪关联（bull_steady 宽触发已 A2 全拒，仅数据支撑度初判，须高选择性窄化+四关）**，产物未带——防下游（PM/研发）误读为可落地，须补进 verdict/note。
 3. **leaf21 note 表述（必须）**：「该加候选，单事件簇触 A2 否决线」宜明确为「曾该加候选，因单事件簇触否决线**驳回、不落地**」（crash_vol 前身，CE 已 100% 单月驳回）。
 4. **事件驱动型标注一致性（建议）**：恐慌深跌组 6 个单事件簇候选均标「事件驱动型（该留）」；深值慢修复组 rare_lowpct_leaf20/13（单月 62.3%/68.3%）同为单事件簇却无 note——同为 deep_value 数据支撑，标注不一致，建议补。
 
 ### 三、状态
+
 - **对照层通过**（结构/方向/unobserved/无该删全部正确）；四项收尾补齐后**本轮闭环**。
 - 下一阶段：对照差异表（收尾后）交 PM 立项评估——「该留」（panic_resonance/panic_easing/deep_value）与事件级验证路径衔接（A 通道≥3）；「该加」（牛市上行段）仅数据支撑度初判、须高选择性窄化；「待补」（rs/ct/supply/volatile/second_wave/xishou_mid）等补扫含 s7/s30 均值/sent/TH/dd20 的特征矩阵。
 
@@ -1709,30 +1732,36 @@
 > 背景：CQ 对照层已过③复核（CS），剩四项零成本收尾；18:57 发现 data 目录 283 文件处于「已删除、未提交」工作区状态，收尾被阻断。④运维判定「误删/未授权」，按方案恢复；②配合登记 + 完成后收尾。
 
 ### 一、误删事件（2026-08-20 18:57，④运维确认「误删/未授权删除」）
+
 - **范围**：283 个 data 文件（工作区未提交状态），波及 ①全部 `_exp_*` 研究产物（含特征矩阵 33MB、基线回放、最优划分产物）②`_audit_*`/`_bak_*`/`_capsule_containers/*` ③**生产依赖文件**：`signal_event_counts.json`（J-3 进度卡）、`portfolio_attribution.json`（组合归因）、`portfolio_backtest.json`、`pool_maintenance_log.jsonl`（池台账，AGENTS 明令「不清理」）、`market_state_daily.json`、`paper_trading_status.json`、`trend_leg_*`。
 - **判定依据**：仓库无计划文档、无 decision-log 登记、无清理日志（唯一登记过的清理是 08-18 .bak 清理）；且波及 AGENTS 明令「不清理」的池台账 → **误删/未授权**。生产依赖文件明确应在清理范围外。
 - **教训**：疑似某脚本/窗口按 git 清单执行过宽删除；防复发排查归④运维（待确认结果）。
 
 ### 二、恢复动作（2026-08-20 20:43，④运维执行）
+
 1. 先重建 3 个滞后文件（family_drift / family_feature_cards / market_state_daily 等）08-19/20 增量（依据 daily_collect.log）→ 合并；
 2. `git checkout` 恢复全部 283 文件；
 3. decision-log 登记（本条，②落）；
 4. 排查 18:57 删除来源防复发（④运维跟进）。
+
 - **恢复验证（②）**：`git status` 删除计数归零；特征矩阵 `_exp_fullscan_features_2026-08-20.json`（33MB）、`_exp_optimal_partition_2026-08-20.json`、`_exp_optimal_partition_comparison_2026-08-20.json` 均在位。
 
 ### 三、CQ 四项收尾完成（②执行，CS 裁定全部兑现）
-| CS 裁定项 | 落地 | 判定 |
-|---|---|---|
-| ①产物一致性（必须） | 重跑 `family_optimal_partition.py` + `family_optimal_comparison.py` 生成新产物；`_exp_optimal_partition_groups_2026-08-20.json`（18:40 旧版）已 `git rm` 废弃，事实源唯一化 | ✅ |
-| ②「该加」补 CE 证伪关联（必须） | rise_accum verdict 补「关联 CE bull_steady 证伪」（宽触发已 A2 全拒，仅数据支撑度初判，须高选择性窄化） | ✅ |
-| ③leaf21 note 明确驳回（必须） | 深跌反弹右侧 note 改为「已驳回（单事件簇，A2 否决线，关联 CE crash_vol 证伪）」——不落地 | ✅ |
-| ④事件驱动型标注一致性（建议） | 恐慌深跌组（该留）+ 深值慢修复组单事件簇（rare_lowpct_leaf20/13）统一「事件驱动型（该留，走事件级验证）」标注 | ✅ |
+
+| CS 裁定项                | 落地                                                                                                                                                    | 判定 |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | -- |
+| ①产物一致性（必须）            | 重跑 `family_optimal_partition.py` + `family_optimal_comparison.py` 生成新产物；`_exp_optimal_partition_groups_2026-08-20.json`（18:40 旧版）已 `git rm` 废弃，事实源唯一化 | ✅  |
+| ②「该加」补 CE 证伪关联（必须）    | rise_accum verdict 补「关联 CE bull_steady 证伪」（宽触发已 A2 全拒，仅数据支撑度初判，须高选择性窄化）                                                                               | ✅  |
+| ③leaf21 note 明确驳回（必须） | 深跌反弹右侧 note 改为「已驳回（单事件簇，A2 否决线，关联 CE crash_vol 证伪）」——不落地                                                                                              | ✅  |
+| ④事件驱动型标注一致性（建议）       | 恐慌深跌组（该留）+ 深值慢修复组单事件簇（rare_lowpct_leaf20/13）统一「事件驱动型（该留，走事件级验证）」标注                                                                                    | ✅  |
 
 ### 四、状态
+
 - **CQ 本轮闭环**：对照差异表（收尾后版，11 族逐族 verdict）可交 PM 立项评估——「该留」3（panic_resonance/panic_easing/deep_value，衔接事件级验证 A 通道≥3）、「该加」1（牛市上行段盲区，仅数据支撑度初判、须高选择性窄化+四关）、「待补维度不判删」7（等补扫含 s7/s30 均值/sent/TH/dd20 的特征矩阵）。
 - 遗留：18:57 删除来源排查结果待④运维回填。
 
 ### 五、触警登记（2026-08-20 21:05，②按方案 A 登记，提交豁免依据）
+
 - **现象**：回放库重建后 `test_smoke` 124 passed / 1 failed / 6 skipped；唯一 FAIL =「时期边界季度重验台账 模块 C」：2025-08-10 期 gap **6.54 > 阈值 6.5**（其余期 5.24/2.93/5.31 均过）。
 - **根因（④运维判定，②采信）**：market_index 尾部 11 天新数据推进后的**真实季度边界效应**（2025-08-10 为最近季度边界），非重建引入；WATCH 已落账（④运维）。
 - **阈值出处核查**：阈值 6.5 在测试代码中为硬编码，**无预注册出处**（decision-log 无 6.5 阈值登记）——触警不构成既有承诺被破坏。
@@ -1889,22 +1918,24 @@
 
 ## DF. Wave6 O1–O4 落地 · ③独立审计（2026-08-27，③审计，①③④通过 / ②有条件通过）
 
-> 被审：DG（1859，④运维 Wave6 落地）+ roadmap v82 Wave6 卡（965–987 预注册判据）+ 代码（ops.py/ops_tool.py/notify_alert.py/webapp /api/ops/*/config.OPS_RULES/run_daily_collect 收尾）。审计报告：`references/audit-wave6-2026-08-27.md`。
+> 被审：DG（1859，④运维 Wave6 落地）+ roadmap v82 Wave6 卡（965–987 预注册判据）+ 代码（ops.py/ops_tool.py/notify_alert.py/webapp /api/ops/*/config.OPS_RULES/run_daily_collect 收尾）。审计报告：`references/audit-wave6-2026-08-27.md`。  
 > 红线：只认 roadmap 卡内预注册判据 + 代码事实；DD 自述仅对照。**独立重跑冒烟 137 passed / 0 failed / 0 skipped**（6 个 Wave6 用例全 PASS）。
 
 ### 一、四点复核
+
 1. **① kill switch 状态机：通过**——全局/策略级(paper/notify) × 手动/自动；`auto_escalate` 四条件（drawdown/rejects/stale_data/collect_gate）只开不恢复（解除仅人工，防震荡）；总开关 auto=False 仅记录；独立文件+CLI/webapp 双通道（webapp 卡死可停）；变更自动落 O3 审计。轻微建议：手动解除后 auto 记录残留不清空；自动急停仅 paper（notify 靠 O4 拦截，设计选择）。
 2. **② O4 三档路由与 D3–D5 联动：有条件通过**——route_alert 三档+标签+每级 webhook env 覆盖（缺省走基础=不漏报）+ notify 拦截留痕 ✅；**D3 联动 ✅**（health_fail→quality 告警+急停；stale_data_days 与 CLEANING_RULES.freshness 显式对齐）；**D4 cleaning_ledger ❌ 无监控消费**（仅采集侧写入）；**D5 备份新鲜度 ❌ 全库零命中**——roadmap/DD「已预留接口/自动生效」表述超前，须登记显式待办。
 3. **③ O1 对账/回撤口径：通过**——status.json equity vs 实库重算（cash+open qty×最新价）1% 阈值；自峰值回撤 15%（峰值台账 ops_paper_peak.json）；连续拒单≥3/数据源陈旧≥2 天/采集闸门 FAIL>0 → FAIL+急停；S2/S3 未上线 WARN 不误报。边界注明：S2 表已建未建仓+当日 buy≥3 会触发拒单急停（保护性，运维须知晓）。
 4. **④ S3 回报超时判据先行：通过**——report_timeout_hours=24 已预注册（PARAM_REGIME 登记），S3 未上线恒 WARN 不误报，上线后自动生效。
 
 ### 二、裁定
+
 - **①③④ 通过；② 有条件通过**（D3/O1/O2 联动 ✅，D4/D5 未实现 → O4 验收②部分未达）。冒烟 137/0/0 ✅；阈值全部走 config.OPS_RULES + PARAM_REGIME 台账，不进引擎决策、不 bump ENGINE_VERSION ✅。
 - **须④登记**：①D4/D5 联动缺口显式待办（cleaning_ledger 监控消费 + 备份新鲜度检查），补齐后 O4 验收②完整；②decision-log 编号重复（1847/1859 均 DD，后续须唯一）；③kill switch 手动解除清 auto 记录（建议）。
 
 ### 状态
-- Wave6 O1–O4：①③④ 审计通过；② 待 D4/D5 联动补实现后复核闭环。roadmap v82 Wave6 卡状态行可翻「③审计通过（D4/D5 待办挂账）」。
 
+- Wave6 O1–O4：①③④ 审计通过；② 待 D4/D5 联动补实现后复核闭环。roadmap v82 Wave6 卡状态行可翻「③审计通过（D4/D5 待办挂账）」。
 
 ## DH. Wave1 数据地基 D1–D7 研发落地（2026-08-27，研发执行，roadmap v82 卡）
 
@@ -1925,10 +1956,11 @@
 
 ## DI. Wave1 D1–D7 落地 · ③独立审计（2026-08-27，③审计，全部通过/有条件通过 + 四项须登记）
 
-> 被审：DH + roadmap v82 Wave1 卡（825–869 预注册判据/验收）。审计报告：`references/audit-wave1-d1d7-2026-08-27.md`。
+> 被审：DH + roadmap v82 Wave1 卡（825–869 预注册判据/验收）。审计报告：`references/audit-wave1-d1d7-2026-08-27.md`。  
 > 红线：只认 roadmap 卡判据 + 代码/产物事实；DH 仅对照。**独立重跑冒烟 140/0/0 + 不变量套件 4/4**。
 
 ### 一、逐项
+
 - **D1 price_source 列**：幂等迁移 + collector 集中写入 + 不重建历史 ✅；**锚定优先级冲突（实质）**：config/AGENTS.md=yyyp>buff>c5 vs 架构 §1.1 表=buff>yyyp——同口径三处两版，单一事实源铁律自身被违反，须 PM 定口径+更正架构文档。→ 有条件通过
 - **D2 卖侧列**：幂等迁移 + save_bid_history 写列 + 沿用 bid_history ✅；首周非空率低为预期。→ 通过
 - **D3 cleaning_ledger+规则配置化**：CLEANING_RULES 段 + 触警 append（run_daily_collect:144-147）+ health_monitor 计数 + batch_guard 阈值外置链路完整 ✅；无专门冒烟用例（建议补）。→ 通过
@@ -1938,12 +1970,14 @@
 - **D7 raw.db**：三表 append-only（无 UPDATE/DELETE）+ 采集接线 ✅；raw.db 文件待采集生成（正常）。→ 通过
 
 ### 二、四项须登记
+
 1. D1 锚定优先级：PM 定口径 + 更正架构文档（代码/AGENTS=yyyp 优先为实际口径，架构 §1.1 表过时）。
 2. D4 rebuild_derived 未实跑：验收②未验证，登记「待②R1 稳定后补跑」；卡状态行不得写验收全过。
 3. D6 oos_guard 未接线：Wave2 研究入口须落实 require_fit，否则反过拟合硬约束落空。
 4. D3 建议补「人为触发 batch_guard→LEDGER+计数」冒烟用例。
 
 ### 三、裁定
+
 - D1–D7 全部通过/有条件通过；冒烟 140/0/0、不变量 4/4 独立重跑确认；数据层不 bump ENGINE_VERSION ✅。
 - roadmap v82 Wave1 卡状态行已翻「③审计通过（四项登记：D1 口径/PM、D4 补跑、D6 Wave2 接线、D3 补用例）」（PM 据③指示落盘，2026-08-27 01:51）。
 
@@ -2047,19 +2081,22 @@
 
 ## DQ. R2 factor_registry 口径 · ③独立复核（2026-08-27，③审计，通过 + 2 项非阻断收尾）
 
-> 被审：DP + `data/factor_registry.json` + `init_factor_registry.py` + `factor-registry.md`。审计报告：`references/audit-r2-registry-2026-08-27.md`。
+> 被审：DP + `data/factor_registry.json` + `init_factor_registry.py` + `factor-registry.md`。审计报告：`references/audit-r2-registry-2026-08-27.md`。  
 > 红线：只认 R2 预注册判据（§1 schema/§2 状态机/§5 映射/§6 验收）+ 产物事实；DP 仅对照。独立重算 + R1 卡交叉验证。
 
 ### 一、核验（通过）
+
 - **结构**：21 因子、id 无重复、13 字段完整、必填 9 字段无缺失、status/role/category 枚举全合法、quality⇒tested_at；状态分布 证伪15/候选3/存档3 ✅
 - **状态映射（R1 卡独立交叉验证）**：候选（条件IC）→候选（sc7/sc30/s7_ratio cond_ic 正）；候选·无增量→证伪（sentiment 增量 IC −0.0008<0.02 已解释）；不稳定/弱·无效→证伪（spread/bid）；条件因子→存档（mchg7/21/30 截面 IC 无定义）——逐条正确 ✅
 - **关键口径**：引擎在用因子（pct/z/chg30/vol30/sc30/mchg30）status=证伪/候选/存档 但 in_engine 保留现状标注——「registry 证伪 ≠ 引擎移除」数据层成立 ✅；role/category 归一化留痕 ✅；md 视图 22 行 ✅；config 因子全部有 registry 条目 ✅
 
 ### 二、非阻断收尾（登记，不阻断 R2 生效）
+
 1. `references/validate_factor_registry.py` 独立脚本缺失（§6 验收①承诺；校验内嵌 init.validate()，功能覆盖）——补建或修订预注册说明。
 2. 证伪/候选+in_engine 非空 6 条建议统一加「引擎现状遗留，取舍待 R3 策略隔离评估裁决」防误读标注（registry 头部 meta 或 cs_note）。
 
 ### 三、裁定
+
 - **R2 registry 口径复核通过**；R3/R4/R5 不在本次范围，按各自卡流程。无生产改动、不 bump ENGINE_VERSION ✅。
 
 ---
@@ -2081,14 +2118,223 @@
   2. **DJ 双头编号已归口**（PM 建议 Option B：DJ(1951) 保留为权威条目、DJ(1970)→DM 作 O4② 澄清），编号唯一已修复，从悬置项移除。
 - **状态**：**R3/R5 判据冻结（DR）；②可开跑 6 族隔离评估（R3）+ v0 情绪评估（R5）；Wave1/Wave2/Wave6 闭环已据决策日志对齐；悬置两项待用户决策。**
 
-
 ## DS. Wave3 模拟盘 S1–S3 研发落地（2026-08-27，研发执行，roadmap v82 卡）
 
 - **立项依据**：roadmap v82 Wave3 S1–S3（架构 §4.2 意向单闭环 / §4.3 模拟成交规则 / §4.4 悠悠补充数据 / §4.5 交易域台账）+ decision-log DC 流程纪律。
 - **落地内容（按卡内预注册判据逐项）**：
-  - **S1 悠悠有品采集可行性预研**：Playwright headless 4 轮探针（references/yyyp_probe_*.py）→ 报告 `references/yyyp-feasibility-2026-08-27.md`。结论：**在售列表可采**（`pc-api.youpin898.com/api/homepage/pc/commodity/page`，无需登录，分页 totalElements≈11354，字段 id/commodityName/commodityHashName/iconUrl…）；**求购/成交未实证**（用户级 API 全返 84101 登录墙 + 详情路由 `/goods/{id}` 404）；反爬信号 `deviceW2` 设备指纹。仅预研不落库、不动生产。
+  - **S1 悠悠有品采集可行性预研**：Playwright headless 4 轮探针（references/yyyp_probe\_*.py）→ 报告 `references/yyyp-feasibility-2026-08-27.md`。结论：**在售列表可采**（`pc-api.youpin898.com/api/homepage/pc/commodity/page`，无需登录，分页 totalElements≈11354，字段 id/commodityName/commodityHashName/iconUrl…）；**求购/成交未实证**（用户级 API 全返 84101 登录墙 + 详情路由 `/goods/{id}` 404）；反爬信号 `deviceW2` 设备指纹。仅预研不落库、不动生产。
   - **S2 模拟盘台账 + 交易域表**：新增 `paper_orders` / `paper_fills` 表（orders/fills/positions/cash 四域齐）；模拟成交规则 §4.3（买=底价在售 0 费 / 卖=必须有货 1% 费 / 多数量按底价=信号价口径）；费率 config.PAPER_FEES 买0/卖1 与 E2 对齐；不自动下单；与真实库存可选同步（PAPER_SYNC_REAL_INVENTORY 默认关）。**顺带修复既有 bug**：`settle_exits` 现金回补公式 `qty×(px/entry)×(1−费)` 多除一个 entry（少回补），改为 `qty×px×(1−费)`——S2 新用例暴露（旧用例只断言数量未断言现金而漏网）。
   - **S3 钉钉通知闭环**：`create_intention`（意向单 status='intention'）+ `intention_card`（品/方向/数量/参考价/理由/期望/风控标签 7 字段）+ `push_intention`（复用 `notify_alert.route_alert` level=trade，kill switch notify 自动拦截）+ `report_fill` 回报入口（buy 建仓 / sell 平仓减仓，费率买0/卖1，重复回报拒、卖出无货拒单）+ `unreported_orders` 未回报超时（接线 O1：ops.py ⑥「S3 回报超时」检查，paper_orders 未回报 >24h → WARN）。
 - **验证**：`tests/test_smoke.py` **144 passed / 0 failed / 0 skipped**（新增 S2 交易域用例 + S3 闭环用例）。S1 探针只读不落库。**不 bump ENGINE_VERSION**。
 - **交接（③审计复核点）**：①S1 求购/成交需「悠悠有品登录账号」方可继续验证（挂账，等用户拍板）；②S2 现金 bug 修复改变未来平仓现金回补（历史 paper_trades 记录不变，前向生效）；③S3 钉钉 dry_run 已验证卡片格式与路由，真实送达需生产 webhook 环境验证；④O1「S3 回报超时」在自动镜像模式恒 PASS（意向单即时 filled），手动回报模式生效。
 - **状态**：**Wave3 S1–S3 已执行，冒烟 144/0/0，移交③审计；roadmap v82 卡状态行已同步（待③审计）。**
+
+---
+
+## DT. Wave3 S1–S3 落地 · ③独立审计（2026-08-27，③审计，全部通过 + 3 项待环境验证登记）
+
+> 被审：DS + roadmap v82 Wave3 卡 + commit 1424721。审计报告：`references/audit-wave3-s1s3-2026-08-27.md`。  
+> 红线：只认 roadmap 卡判据/验收 + 代码/报告事实；DS 仅对照。**独立重跑冒烟 144/0/0**。
+
+### 一、逐项
+
+- **S1 预研：通过**——4 轮 Playwright 探针 + 报告（在售列表 API 实证可采 totalElements≈11354；求购/成交 84101 登录墙 + /goods/{id} 404 实证受阻；反爬 deviceW2；历史深度=当前快照）；不落库不动生产。挂账「是否提供悠悠登录账号」待用户拍板（非预研缺口）。
+- **S2 交易域：通过**——paper_orders/paper_fills 新增（六表齐）；§4.3 规则（买 0 费/卖 1% 费/无货拒单/不自动下单/PAPER_SYNC_REAL_INVENTORY 默认关）；**现金 bug 修复** settle_exits `qty×px×(1−费)`（原 qty×px/entry 多除 entry），只处理 closed=0 → 前向生效、历史不变；费率与 E2 对齐。
+- **S3 闭环：通过**——意向单 7 字段卡片 + push_intention（route_alert trade 级 + kill switch notify 拦截）+ report_fill（重复回报拒/无货拒单/买建仓卖平仓）+ 未回报超时接线 ops.py ⑥（24h WARN，判据先行转实际检查）。
+
+### 二、3 项待环境验证（登记，非缺口）
+
+1. S1 求购/成交挂账：悠悠登录账号待用户拍板。
+2. S3 钉钉真实送达待生产 webhook 环境验证（dry_run 已验证格式/路由）。
+3. O1 回报超时：自动镜像模式恒 PASS（即时 filled）、手动回报模式生效——待实际运行确认。
+
+### 三、裁定
+
+- **S1/S2/S3 全部通过**；冒烟独立重跑 144/0/0；模拟盘层变更不 bump ENGINE_VERSION ✅。
+
+## DU. PM 拍板 Wave3 三项登记（2026-08-27，①PM 裁定 / ③审计 DT 收口）
+
+> 依据：DT（③独立审计 144/0/0）+ roadmap v82 Wave3 卡。③将 3 项「待环境验证」登记移交 PM 拍板/挂账。
+
+- **① S1 悠悠登录账号 —— PM 拍板：默认不开，挂账待用户明确授权。**
+  - 理由：S1 预研已确认求购/成交在登录墙后（deviceW2 反爬已标记），且**历史深度 = 当前快照**（无回放累积价值）；现有在售列表公开 API（totalElements≈11354）已满足 S1 主目标（补充数据非主口径）；登录逆向内部 API 涉 ToS/反爬风险，须账号所有者显式授权。
+  - 若解锁：须用户明确提供账号 + 用途授权，并走 W7-2「steamdt/求购成交」合规累积口径（积累 3-6 个月再评），不得即采即落主分析。挂账不阻塞 S1/S2/S3 ③审计通过。
+- **② S3 钉钉真实送达 —— 挂账待生产 webhook 环境验证**：dry_run 已验证卡片格式/路由（③确认），真实送达需生产 webhook 凭证到位后④运维实跑一次确认；验证后③复核闭环（不阻塞 S3 通过）。
+- **③ O1 回报超时两模式 —— 挂账待实际运行确认**：自动镜像模式恒 PASS（即时 filled）、手动回报模式已接线 ops.py⑥（24h WARN）——③确认代码层生效，待模拟盘实际运行（出单→用户回报/超时）观察日志确认阈值触发无误报；观察期随每日运行自然闭环。
+- **roadmap v82 Wave3 卡状态行已翻「③审计通过（DT）」**；S1 账号拍板、S3 webhook、O1 运行确认三项登记挂账（非缺口），不阻塞 Wave3 整体通过。
+- **状态**：**Wave3 S1–S3 ③审计通过（DT）闭环；3 项环境验证登记挂账（DU），待条件触发后各自闭环。**
+
+---
+
+## DV. R3 策略隔离评估执行（2026-08-27，②执行，预注册 r3-family-isolation-prereg-2026-08-27.md 已冻结 DR）
+
+> 自主模式执行（②→PM 已冻结判据→②开跑），非独立人类可复核。产物：`data/_exp_family_isolation_2026-08-27.json` + 6 族单开回放 `data/_exp_family_<key>_replay_2026-08-27.json` + 当前引擎无注入参照 `data/_exp_current_engine_fullpool_2026-08-27.json`。
+
+### 一、执行面
+- **6 族独立族开回放**（单族模式注入：非目标族 trigger 恒 False + decide_fusion_signal 基础路径/深度回调低吸开关 patch，研究脚本 `references/run_family_isolation_replay.py` 不改 pipeline/）；全池 236 品 × 3 年（replay_cycle_win.db 405 items 口径）；rise_contract/xishou_mid/second_wave 为引擎已注册默认关族、评估期开启（env 声明，无新族注入）。
+- **零漂移校验**（对照当前引擎无注入 376 信号；研究基线 376 信号与当前引擎仅 4 条信号差异=引擎演进已记录）：panic/rise/supply/reversal 基线族信号全保持；deep missing=4（real 2=去重自约束 / legacy 2=基线旧产物）、base missing=5（去重自约束+周期吸筹 label 释放）——均归因非引擎漂移。
+
+### 二、完整四关（north_star 口径，切点 2025-08-10，G4 置换 n_iter=500 seed=42）
+| 族 | 信号数 | G1 A2 发射复算 | G2 组合级(vs 基线) | G3 前后半段(fit/val win14) | G4 置换 val p | verdict |
+|---|---|---|---|---|---|---|
+| panic 恐慌 | 155 | F（fit 段 0 信号） | F（maxDD −139.9 vs −30.9） | F（fit 0 / val 93.5%） | **P（0.018）** | 证伪 |
+| deep 深值 | 47 | F（fit added=0→p=None） | F（total 299 vs 1510） | **P（64.0% / 72.7%）** | F（0.11） | 证伪 |
+| rise 趋势买涨 | 370 | F（fit 0.002 但 val 0.994） | F（235 vs 1510） | F（48.5% / 53.9%） | F（0.998） | 证伪 |
+| supply 供给 | 52 | F（fit p=None） | F（87 vs 1510） | F（50.0% / 70.8%） | F（0.574） | 证伪 |
+| reversal 反转 | 285 | F（fit 0.0 但 val 1.0） | F（321 vs 1510） | F（61.1% / 45.6%） | F（1.0） | 证伪 |
+| base 基础 | 213 | F（fit 0.07 / val 1.0） | F（229 vs 1510） | F（67.1% / 52.4%） | F（1.0） | 证伪 |
+
+**硬判据执行**：任一关不过 → 从多策略候选划掉。**6 族全部证伪 → 组合测试无候选 → 多策略形态不成立**（预注册 §3/§5 口径）。
+
+### 三、差异化三表（形态决策证据）
+- **信号重叠矩阵**：Jaccard 全 ≤0.025（同品同日多族触发率极低）——各族发射足迹高度独立（隔离有效，但独立≠够格子策略）。
+- **收益相关矩阵**：|r|≥0.5 有 rise×base 0.684 / reversal×base 0.662 / reversal×rise 0.506（临界冗余）；deep×rise 0.264、supply×deep −0.002、supply×reversal −0.005（低相关=真差异化）；panic 与各族相关缺失（信号集中 2026-05 单月）。
+- **时期覆盖表**：分化真实存在——panic 管 P 恐慌深跌（152 信号 avg+30.7）、deep 管 S2 牛市回调（41 信号 avg+18.5）、rise 管 S1 牛市上行（190 信号 avg+17.2）、base/reversal 广泛覆盖。
+
+### 四、组合测试
+- 候选族 0 个（全证伪）→ 无法组合 → **多策略形态不成立**。基线全引擎组合 Calmar 48.97（total +1510.9% / maxDD −30.9%）远高于任何单族（4.7~19.8）——**引擎价值在融合而非单族**。
+
+### 五、方法论观察（诚实登记，不改判据、不改结论）
+1. **G1 对比基线口径对单族评估系统性偏严**：基线=全引擎（含该族信号本身），单开相对基线的 added 天然少 → fit_p 常 None（deep/supply）→ 判据默认不通过。此口径为预注册冻结（DR），如实执行；观察供③审计/PM 复核，若判据修订须重新预注册。
+2. **G2 单族 vs 全引擎总收益对比信号量不对称**（单族信号数 47~370 vs 基线 376），总收益自然偏低；但 maxDD 维度 deep（−20.4）/reversal（−16.2）/supply（−18.5）均优于基线（−30.9）——风险维度单族不劣。
+3. **deep 为 6 族中相对最强**：G3 PASS（fit/val 双 ≥60%）+ maxDD 改善 + val avg14 +35.8；仅统计显著性（G1 fit added=0 / G4 p=0.11）未过——样本量小（47）是关键限制。
+4. **panic 事件簇依赖被判据正确识别**：fit 段 0 信号、val 段 155 信号集中 2026-05 单一事件簇——无样本外证据，证伪符合预注册设计意图（防事件簇幸存者偏差）。
+
+### 六、状态
+- **R3 执行完成（结论只到筛查层：不改引擎、不立落地卡）**；决策建议 = **多策略形态不成立，单引擎维持**；6 族独立子策略资格全部不成立（融合是引擎价值所在）。
+- roadmap v82 R3 卡状态行已同步；待③审计复核判据口径（§7.1 待审计项）。
+
+## DW. R3 完成 · PM 整理各角色状态快照 + 新窗口接替定稿（2026-08-27 18:03，PM 执行 12:43 挂账待办）
+
+> 触发：②报 R3 跑完（DV 已落，产物 `data/_exp_family_isolation_2026-08-27.json`）。PM 独立核验：6 族 verdict 全「证伪」、oos_zone 守院（fit<2025-08-10）、零漂移对照（current_engine 376 信号）、无新族注入、组合测试 0 候选 → 多策略形态不成立。以下为各角色状态定稿 + 新窗口接替方案。
+
+### 一、各角色状态快照（R3 补完后）
+| 角色 | 状态 |
+|---|---|
+| **①PM 治理** | DC/DD/DE/DI+DJ/DG+DF+DN/DM/DR/DT+DU/DV 全闭环；挂账仅 **DJ③ D4 rebuild**（R1 已稳定→待④触发）；工作树拆 4 提交未 push。W7-3 随 R3 关闭。 |
+| **②研究** | R1✅(21因子无新候选) / R2✅(registry,DQ) / R3✅(DV,6族全证伪·待③审计) / R4✅(挖掘清单) / **R5❄判据冻结待跑**（v0情绪）。旧路径 C1–C5 已废。 |
+| **④研发+运维** | Wave1 D1–D7✅ / Wave6 O1–O4✅(O4②复核通过) / Wave3 S1–S3✅(DU 3项环境验证挂账) / D7 raw.db✅接每日采集(DO) / **DJ③ D4 rebuild⏳待④补跑** / S3 webhook⏳ / O1⏳运行观察。 |
+| **③审计** | DI/D4/D6/O4②(DN) / DF/DG(Wave6) / DQ(R2) / DT(Wave3) 全闭环；待 **R3 审计** + O4②复核(随DJ③)。 |
+| **W7 挂账** | W7-1 内生情绪v1 / W7-2 steamdt / **W7-3 多策略形态(关闭)** / W7-4 B通道样本外 / W7-5 滑点 / W7-6 信号强度→仓位。 |
+
+### 二、新窗口接替方案（定稿，待分发）
+1. **②窗口**：跑 **R5（v0 情绪评估）**——判据冻结 DR，产物 `data/_exp_emotion_v0_2026-08-27.json`，红线（固定权重禁优化/增量IC硬判据/oos_zone守院/仅加分过滤不进主干）；完成后移交③。R3 后②研究主线即收口（R1–R5 全过），余 W7-1/2 待数据积累。
+2. **③窗口**：审计 **R3（DV 产物 + 判据口径）**——重点复核 4 项方法论观察（G1 对比基线对单族偏严 / G2 信号量不对称 / deep 样本小 p=0.11 / panic 事件簇依赖）是否影响「6族全证伪」结论、oos_zone 守院、四关执行；同时 DJ③ 触发后 **O4② 复核**（实际 DJ③ 待④执行）。
+3. **④窗口**：执行 **DJ③ D4 rebuild 幂等补跑**（目标库=replay_cycle_win.db=R1在读库，R1已稳定可触发）→ 触发 O4② 复核闭环；raw.db 每日复查（自动化已挂 18:00）；S3 webhook 生产验证、O1 运行观察（环境验证挂账）。
+4. **研发窗口**：**Wave4 评估**（E1 质量门/E2 费率重跑/E3/E4）——前置 R1–R5 解冻，R5 完成后全解冻即可开；**Wave5 X1 抽象层接口 / X2 流动性守卫**（X2 挂账等盘口数据 D2/D7）。
+5. **①PM 窗口**：收口③审计结论、Wave4 立项、持续治理。
+
+### 三、关键裁决
+- **R3 结论定稿**：多策略形态不成立、单引擎（融合决策）维持为架构终态；6 族作为引擎内部模块保留（融合是价值所在），不拆独立子策略。W7-3 关闭。
+- **不踩红线**：R3 仅到筛查层（产评估卡，不改引擎、不立落地卡），与 DR 冻结判据一致；待③审计复核口径。
+- **状态**：**R3 执行完成（DV）已核验；各角色状态定稿；新窗口接替方案已备，待分发执行。**
+
+## DX. R3 策略隔离评估 · ③独立审计（2026-08-27，③审计，通过 + 2 项非阻断登记）
+
+> 被审：DV + `data/_exp_family_isolation_2026-08-27.json` + 6 族回放 `_exp_family_<key>_replay_2026-08-27.json` + 当前引擎参照 `_exp_current_engine_fullpool_2026-08-27.json` + 研究脚本。审计报告：`references/audit-r3-family-isolation-2026-08-27.md`；审计复算产物：`data/_audit_r3_recompute_2026-08-27.json`。
+> 红线：只认 R3 预注册判据（DR 冻结）+ 产物事实；DV 仅对照。独立复算（独立实现 G3/重叠/相关/period/delta/G4 置换 seed42 复现+seed7 敏感性 + 复用 a2_emission/b1 重跑 G1/G2）+ SQL 直查版本冻结 + 独立重跑冒烟。
+
+### 一、核验（通过，9 项独立复算全 PASS）
+
+- **四关**：6 族 verdict 全「证伪」复现一致（panic/deep/supply G1 fit 段无新增信号 → p=None 直接证伪；rise/reversal/base val p 趋近 1 证伪；deep G3 单关过但 G1/G4 双不过）。G4 seed42 复现 + seed7 敏感性方向全稳定（panic 0.018/0.012、deep 0.11/0.138），无边缘抖动。
+- **结论稳健性**：对 G1「对比基线偏严」口径放宽亦无一族能全过四关（deep 最优仍 G4 p=0.11 不显著）；"6 族全证伪 → 多策略形态不成立"不依赖 G1 口径 ✅
+- **三表**：重叠 Jaccard 全 ≤0.025、收益相关（rise×base 0.684 / reversal×base 0.662 临界冗余）、时期分化（panic 管 P / deep 管 S2 / rise 管 S1）数字全一致；**_period 独立重建 market_ctx 重算 6 族 1122 信号 mismatch=0** ✅
+- **守院**：oos_zone 合规（panic 全 155 信号在 val 段、fit 段 0 信号 → G1/G3 证伪=防事件簇设计意图正确执行）；版本冻结 SQL 直查 405/259,222/1015 一致；零漂移归因成立（deep missing 4 = 去重 2 + legacy 2、base missing 5 = 去重 5）；候选=现有生产族无注入 ✅
+
+### 二、非阻断登记（不影响裁定）
+
+1. **G2 实现口径说明**：预注册 §3.2「劣化 ≥10pp 即不过」为单向语义，实现 `d_dd≤10` 双向门槛使回撤改善 >10pp 亦判不过（deep +10.47/supply +12.33/reversal +14.61）；三族 d_total_pp 均 >1000，即便单向语义 G2 仍全 F——verdict 不受影响。另 G2 两臂均未传 cap/熔断（裸跑，同口径可比；panic maxDD −139.9 含裸跑因素）。判据修订须重新预注册。
+2. **冒烟环境登记**：独立重跑 142/2/0（2 失败=SKIP_NET 联网 API 用例，csQAQ 外部源当前不可达）；SKIP_NET=1 复跑 138/0/0/6skip——非网络用例全过，R3 零回归；与 DT（144/0/0，网络可用时）差异为环境网络状态，待网络恢复复核闭环。
+
+### 三、裁定
+
+- **R3 复核通过**：多策略形态不成立、单引擎（融合决策）维持为架构终态（与 DV 一致）；deep 相对最强但不足格（G4 p=0.11 不显著），证伪符合预注册硬判据，非人为放行。
+- 不踩红线：R3 仅到筛查层（评估卡，不改引擎、不立落地卡）；审计未替②调参、未改判据到通过。无生产改动、不 bump ENGINE_VERSION ✅。
+- **状态**：R3 ③审计通过（DX）闭环；2 项非阻断登记移交 PM；②R3 研究主线收口完成。
+
+## DY. R5 内生情绪 v0 评估执行（2026-08-27，②执行，预注册 r5-emotion-v0-prereg-2026-08-27.md 已冻结 DR）
+
+> 自主模式执行（②→PM 已冻结判据 DR→②开跑），非独立人类可复核。产物：`data/_exp_emotion_v0_2026-08-27.json` + 研究脚本 `references/run_emotion_v0_eval.py`（复用 R1 矩阵/name 桥/require_fit 口径）。
+
+### 一、执行面（判据 §0-§4 逐项）
+- **v0 合成（固定权重，禁优化）**：`emo_v0 = clip(恐慌分 + 0.5*sc30_norm - 0.5*chg7_norm, 0, 100)`，w1=w2=0.5（判据 §1 固定值，权重变化=新预注册）；归一化 sc30_norm/chg7_norm = 逐日截面百分位 rank（0-100，规则预注册固定，fit/val 同规则）。
+- **数据**：矩阵 `_exp_fullscan_features_2026-08-20.json`（239,826 行：fit 156,418 / val 83,408）+ 回放库 `replay_cycle_win.db`（price_history 全量 259,222 行，与 R1 同源 name 桥命中 221/231）；fwd14/fwd30 已扣 2% 双边成本。
+- **恐慌分复算**：approx_sentiment（pipeline/backtest_common.py，R1 同款）fit 段探索（require_fit D6 守卫）+ val 段仅复验触碰；emo_v0 fit 段可算 152,036/156,418（coverage 0.972）。
+
+### 二、结果（fit 段评估，verdict 判据 §2）
+| 项 | 值 | 判据门槛 | 判定 |
+|---|---|---|---|
+| 组件 sentiment IC14 | +0.1579（滚动同号 0.917） | R1 已证候选·无增量 | 与 R1（+0.142）同量级 ✅ |
+| 组件 sc30 IC14 | +0.0215（滚动 0.64） | — | 与 R1 一致（条件IC候选） |
+| 组件 chg7 IC14 | −0.1457（滚动 0.08） | — | 与 R1（−0.130）同量级（反转） |
+| emo_v0 全 IC14 | +0.1264（t=22.5） | — | 合成保留恐慌分主信号 |
+| **增量 IC（fit，硬判据）** | **+0.0026（n=392）** | **≥0.02** | **❌ 未过** |
+| 增量 IC 滚动同号月 | 0.9375（16 月） | ≥0.80 | ✅ 过（但主判据未过） |
+| **val 复验（§4 声明触碰）** | **−0.0055（n=329）** | 一致方向 | ❌ 反向，印证无增量 |
+
+**verdict = 无增量**：fit 增量 IC 0.0026 < 0.02（硬判据），val 复验 −0.0055 反向印证——**v0 合成（恐慌分+供给/动量调节）对核心因子集无新增信息量**，与 R1「单组件均无增量」结论一致（合成引入非线性交互后仍无增量，按判据正负都登记）。
+
+### 三、守院与边界
+- **oos_zone**：探索（组件/合成/权重/阈值）仅 fit 段（require_fit 守卫）；val 段仅预注册 §4 声明的增量 IC 复验触碰（meta 明示，未用 val 选择组件/权重/阈值）。
+- **仅筛查层**：产物只到评估卡，不进打分主干、不改族触发、不改 position_limit、不碰引擎（v2-T13 只读）、不立落地卡 ✅。
+
+### 四、结论与流向
+- **R5 执行完成**：v0 情绪分（价格/在售量内生合成）**无增量证伪登记**——增量 IC 硬判据未过，v0 不作为候选推进；登记防重复挖（与 R1 sentiment「候选·无增量」合并口径）。
+- **R1–R5 研究主线全收口**：R1✅ / R2✅ / R3✅（DX ③审计通过）/ R4✅ / R5✅（本条目）→ **Wave4 评估（E1–E4）解冻前置齐备**（roadmap v82 Wave4 前置 = R1–R5 解冻）。
+- **待③审计复核**：判据口径（§7.1）+ 产物 `data/_exp_emotion_v0_2026-08-27.json`（组件 IC / v0 合成定义 / 增量 IC 报告 / verdict 无增量）。
+- **状态**：**R5 执行完成（DY）**，移交③审计；roadmap v82 R5 卡状态行已同步。
+
+## DZ. R5 内生情绪 v0 评估 · ③独立审计（2026-08-27，③审计，通过 + 2 项非阻断登记）
+
+> 被审：DY + `data/_exp_emotion_v0_2026-08-27.json` + 研究脚本 `run_emotion_v0_eval.py`。审计报告：`references/audit-r5-emotion-v0-2026-08-27.md`；审计复算产物：`data/_audit_r5_recompute_2026-08-27.json`。
+> 红线：只认 R5 预注册判据（DR 冻结）+ 产物事实；DY 仅对照。独立复算（独立实现 Spearman/平均秩/OLS 残差/增量 IC，恐慌分复用生产 approx_sentiment，同②数据口径）。
+
+### 一、核验（通过，8 项复算 PASS + 1 项口径差异已定位）
+
+- **核心数字全复现**：组件 IC（sentiment 0.1579 / sc30 0.0215 / chg7 −0.1457）、emo_v0 IC14 0.1264、分位数表、meta（fit 156,418/val 83,408）全一致。
+- **硬判据主指标**：增量 IC fit **+0.0026**（n 392）< 0.02 复现一致；val 复验 **−0.0055**（n 329）反向印证复现一致 → **verdict=无增量 判定正确**（增量 IC 远低于阈值，滚动不参与判定，对滚动口径稳健）。
+- **守院**：fit 行逐行 require_fit 接线（代码核验）；val 仅预注册 §4 增量 IC 复验触碰；w1=w2=0.5 固定禁优化；仅加分/过滤未碰引擎（meta 声明 + 只读核验）；确定性（无 RNG）✅。
+
+### 二、非阻断登记（不影响裁定）
+
+1. **增量 IC 滚动同号月口径**：②月度滚动仅统计 period_of（市场上下文 chg180/chg30 可算）日期（fit 64% 覆盖、16 个月/0.9375）；审计全量可算口径 21 个月/0.5238。已复现②口径（period_of 过滤 → 16/0.9375 与产物一致）= 口径选择非数据错误；但②脚本内部日度增量 IC（n=392）不过滤 vs 月度滚动过滤——口径不一致，0.9375 对稳定性偏乐观（排除月份多为负值期）。verdict 不受影响。
+2. **verdict_note 表述错误**：「或滚动同号月 0.9375（阈值0.8）未过」——实际 0.9375≥0.8 是过的，未过的只有增量 IC；系脚本模板字符串所致，判定逻辑正确。
+
+### 三、裁定
+
+- **R5 复核通过**：v0 内生情绪分无增量证伪登记成立（与 R1 sentiment「候选·无增量」合并口径防重复挖）；R5 仅到筛查层（不立落地卡、不 bump ENGINE_VERSION）。
+- 附带观察：emo_v0 全 IC 0.1264 主要由恐慌分带动、增量 IC≈0 = 相对核心 6 因子无新信息（与②预注册诚实预期一致）。
+- **状态**：R5 ③审计通过（DZ）闭环；**R1–R5 研究主线全收口，Wave4 评估（E1–E4）解冻前置齐备**；2 项非阻断登记移交 PM。
+
+## EA. Wave4 评估层 E1–E4 落地（2026-08-27，④研发执行，待③审计）
+
+> 范围：roadmap v82 Wave4 评估层（前置 R1–R5 全解冻已齐，PM 指令立卡）。产物 = 质量门脚本+5 项基线 / 费率校准+第三基线 / /evaluate 页 / 绩效仪表盘。全部只读评估层，**零引擎决策改动、不 bump ENGINE_VERSION**。
+
+### E2 · 历史回测按 买0/卖1 重跑校准（先行，E1⑤依赖）
+
+- **费率 config 化（判据①）**：`pipeline/config.py` 新增 `BACKTEST_FEES={buy_pct:0.0, sell_pct:1.0}` + `backtest_roundtrip_cost()`（=1.0%，与 S2 PAPER_FEES 一致）；`run_item_backtest_full.py` / `run_item_backtest_fullpool_parallel.py` 改从 config 读。**坑（已修）**：config 返回百分比（1.0），backtest_item 的 cost 参数为小数（0.01）——调用处须 `/100`，否则 net 偏差 100 倍。
+- **校准（判据②，诚实标注）**：费率只影响 net14/net30（net=fwd−roundtrip），**不影响信号判定** → 对 v2-T13 全池产物（376 信号）按新费率重算 net 与重跑数学等价；小样本 5 品真重跑对照 **0 处不一致**（实证）。差异表 `data/_exp_fee_calibration_2026-08-27.json`：avg14 全体 **+1.00pp**（ALL +19.26→+20.26、win14 74.5→77.1，panic 94.8%/31.71、deep 70.2%/19.24、accumulate 63.2%/10.34）。
+- **期望统计同步（验收②）**：sync_expectancy_config.py 扩展第三基线 **FEE-CAL** → `config.ITEM_EXPECTANCY_STATS_FEE_CAL` + BASELINE_LEDGER 注册（不动冻结的 HIST-FULL/CLEAN-CUR）；校准产物 `data/_exp_v2t13_fee_cal_2026-08-27.json`。
+- **滑点（判据③）**：随 D2 盘口数据积累后补，挂账。
+
+### E1 · 回测质量门 5 项（判据①实现 + 判据②基线登记）
+
+- `references/run_quality_gate.py`（纯标准库，无 numpy/scipy；ADF/KPSS 自实现 OLS + 临界值查表）对 v2-T13 全池回放（376 信号）跑出 5 项 **全部通过** → `data/_exp_quality_gate_2026-08-27.json`：
+  ① **平稳性** 13/13 序列收益平稳（验证对象=价格/指数日收益比率形式，修正了初版"信号日截面值"误判——非均匀采样天然非平稳，非因子问题）；② **无泄露** 源码扫描+特征定义全 OK；③ **幸存者** 回放池 vs 生产池无淘汰品；④ **压力测试** 2024-02 崩盘/2025-10 回落/2026-02~04 断档窗口 avg14 全正；⑤ **成本真实化** FEE-CAL net=fwd−1.0% 与 config 一致。
+- **待③审计复核口径**（§7.1）：ADF/KPSS 自实现统计量/临界值、压力窗口选择、幸存者比对口径。
+
+### E3 · /evaluate 页（三层展示 + 质量标签）
+
+- 新路由 `GET /evaluate`（AUTH-1 登录保护）+ `GET /api/evaluate/data`；`webapp/evaluate_service.py` 聚合三层数据；`webapp/templates/evaluate.html`（原生 JS/SVG，无新依赖）；base.html 导航加「评估中心」。
+- 三层：①信号级=族期望+最近信号 ②策略族级=组合指标+基准对照+月度+分布+净值曲线 ③因子级=R1 评估卡 21 因子+R2 registry。质量标签 = E1 质量门状态绑定展示（未过不展示纪律）。
+- **零引擎逻辑**（验收④）；主界面决策视角不变（/evaluate 仅研究视图）。
+
+### E4 · 绩效仪表盘（随 E3 页内实现）
+
+- 净值曲线（复用 b1v2.simulate cap0.8/hold21，64 点 SVG 折线，末值 +266% vs 大盘同期）、月度热力图（逐月 avg14）、收益分布（7 桶）、风险归因（按族/时期/品类 + B1 closed 逐笔）、集中度 top5=23.3%（<50% 正常）。
+- 口径注释挂费率标签：组合级仍为 B1 v2 的 2% 双边（E2 校准后信号级 1%，组合级待重跑校准，仅形态参考——诚实标注）。
+
+### 验证与移交
+
+- 冒烟 **148 passed / 0 failed / 0 skipped**（原 144 + Wave4 新增 4 用例：E2 config / E2 calibration+sync / E1 质量门 / E3+E4 evaluate 路由+三层+质量标签+净值曲线）。
+- roadmap v82 Wave4 四卡状态行 → 已执行（待③审计）；本条目待③审计复核（判据口径 + 产物）。

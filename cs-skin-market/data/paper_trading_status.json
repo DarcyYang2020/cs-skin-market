@@ -19,7 +19,7 @@
   "state": "accumulating",
   "note": "结算 1/20 笔，达到 20 笔后按族判据自动评估（胜率≥族卡−15pp 且 期望≥−5pp）"
  },
- "date": "2026-08-20",
+ "date": "2026-08-27",
  "closed_today": [],
  "opened_today": 0
 }

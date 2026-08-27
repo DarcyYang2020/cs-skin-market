@@ -1,0 +1,323 @@
+{
+ "title": "③审计 R5 独立复算",
+ "checks": {
+  "component_sentiment": {
+   "ok": true,
+   "actual": {
+    "coverage_fit": 0.9744,
+    "IC14": {
+     "n": 700,
+     "mean": 0.1579,
+     "std": 0.1543,
+     "t": 27.088,
+     "pos_ratio": 0.88
+    },
+    "IC30": {
+     "n": 700,
+     "mean": 0.1164,
+     "std": 0.1461,
+     "t": 21.08,
+     "pos_ratio": 0.8
+    },
+    "rolling_stability": {
+     "months": 24,
+     "same_sign_ratio": 0.9167
+    }
+   },
+   "expected": {
+    "name": "恐慌分(approx_sentiment)",
+    "coverage_fit": 0.9744,
+    "IC14": {
+     "n": 700,
+     "mean": 0.1579,
+     "std": 0.1543,
+     "t": 27.088,
+     "pos_ratio": 0.88
+    },
+    "IC30": {
+     "n": 700,
+     "mean": 0.1164,
+     "std": 0.1461,
+     "t": 21.08,
+     "pos_ratio": 0.8
+    },
+    "rolling_stability": {
+     "months": 24,
+     "same_sign_ratio": 0.9167
+    }
+   }
+  },
+  "component_sc30": {
+   "ok": true,
+   "actual": {
+    "coverage_fit": 0.9976,
+    "IC14": {
+     "n": 712,
+     "mean": 0.0215,
+     "std": 0.1238,
+     "t": 4.644,
+     "pos_ratio": 0.5787
+    },
+    "IC30": {
+     "n": 712,
+     "mean": 0.0004,
+     "std": 0.1185,
+     "t": 0.097,
+     "pos_ratio": 0.4846
+    },
+    "rolling_stability": {
+     "months": 25,
+     "same_sign_ratio": 0.64
+    }
+   },
+   "expected": {
+    "name": "供给30日变化",
+    "coverage_fit": 0.9976,
+    "IC14": {
+     "n": 712,
+     "mean": 0.0215,
+     "std": 0.1238,
+     "t": 4.644,
+     "pos_ratio": 0.5787
+    },
+    "IC30": {
+     "n": 712,
+     "mean": 0.0004,
+     "std": 0.1185,
+     "t": 0.097,
+     "pos_ratio": 0.4846
+    },
+    "rolling_stability": {
+     "months": 25,
+     "same_sign_ratio": 0.64
+    }
+   }
+  },
+  "component_chg7": {
+   "ok": true,
+   "actual": {
+    "coverage_fit": 1.0,
+    "IC14": {
+     "n": 712,
+     "mean": -0.1457,
+     "std": 0.1469,
+     "t": -26.473,
+     "pos_ratio": 0.118
+    },
+    "IC30": {
+     "n": 712,
+     "mean": -0.1085,
+     "std": 0.1435,
+     "t": -20.163,
+     "pos_ratio": 0.2079
+    },
+    "rolling_stability": {
+     "months": 25,
+     "same_sign_ratio": 0.08
+    }
+   },
+   "expected": {
+    "name": "价格7日动量",
+    "coverage_fit": 1.0,
+    "IC14": {
+     "n": 712,
+     "mean": -0.1457,
+     "std": 0.1469,
+     "t": -26.473,
+     "pos_ratio": 0.118
+    },
+    "IC30": {
+     "n": 712,
+     "mean": -0.1085,
+     "std": 0.1435,
+     "t": -20.163,
+     "pos_ratio": 0.2079
+    },
+    "rolling_stability": {
+     "months": 25,
+     "same_sign_ratio": 0.08
+    }
+   }
+  },
+  "emo_v0_ic": {
+   "ok": true,
+   "actual": {
+    "coverage_fit": 0.972,
+    "IC14": {
+     "n": 700,
+     "mean": 0.1264,
+     "std": 0.1486,
+     "t": 22.505,
+     "pos_ratio": 0.8371
+    },
+    "IC30": {
+     "n": 700,
+     "mean": 0.0876,
+     "std": 0.1448,
+     "t": 16.0,
+     "pos_ratio": 0.7329
+    },
+    "rolling_stability": {
+     "months": 24,
+     "same_sign_ratio": 0.9167
+    }
+   },
+   "expected": {
+    "coverage_fit": 0.972,
+    "IC14": {
+     "n": 700,
+     "mean": 0.1264,
+     "std": 0.1486,
+     "t": 22.505,
+     "pos_ratio": 0.8371
+    },
+    "IC30": {
+     "n": 700,
+     "mean": 0.0876,
+     "std": 0.1448,
+     "t": 16.0,
+     "pos_ratio": 0.7329
+    },
+    "rolling_stability": {
+     "months": 24,
+     "same_sign_ratio": 0.9167
+    }
+   }
+  },
+  "emo_v0_inc_ic": {
+   "ok": false,
+   "actual": {
+    "inc_ic_fit": {
+     "n": 392,
+     "mean": 0.0026,
+     "std": 0.0681,
+     "t": 0.755,
+     "pos_ratio": 0.4898
+    },
+    "inc_ic_rolling": {
+     "months": 21,
+     "same_sign_ratio": 0.5238
+    },
+    "val_recheck": {
+     "n": 329,
+     "mean": -0.0055,
+     "std": 0.0936,
+     "t": -1.072,
+     "pos_ratio": 0.4833
+    }
+   },
+   "expected": {
+    "inc_ic_fit": {
+     "n": 392,
+     "mean": 0.0026,
+     "std": 0.0681,
+     "t": 0.755,
+     "pos_ratio": 0.4898
+    },
+    "inc_ic_rolling": {
+     "months": 16,
+     "same_sign_ratio": 0.9375
+    },
+    "val_recheck": {
+     "n": 329,
+     "mean": -0.0055,
+     "std": 0.0936,
+     "t": -1.072,
+     "pos_ratio": 0.4833
+    }
+   }
+  },
+  "quantile": {
+   "ok": true,
+   "actual": [
+    {
+     "q": 1,
+     "n": 30407,
+     "avg_fwd14": -1.865,
+     "win": 0.3328
+    },
+    {
+     "q": 2,
+     "n": 30407,
+     "avg_fwd14": 1.019,
+     "win": 0.3731
+    },
+    {
+     "q": 3,
+     "n": 30407,
+     "avg_fwd14": -0.291,
+     "win": 0.3703
+    },
+    {
+     "q": 4,
+     "n": 30407,
+     "avg_fwd14": -0.135,
+     "win": 0.3743
+    },
+    {
+     "q": 5,
+     "n": 30408,
+     "avg_fwd14": 2.026,
+     "win": 0.4421
+    }
+   ],
+   "expected": [
+    {
+     "q": 1,
+     "n": 30407,
+     "avg_fwd14": -1.865,
+     "win": 0.3328
+    },
+    {
+     "q": 2,
+     "n": 30407,
+     "avg_fwd14": 1.019,
+     "win": 0.3731
+    },
+    {
+     "q": 3,
+     "n": 30407,
+     "avg_fwd14": -0.291,
+     "win": 0.3703
+    },
+    {
+     "q": 4,
+     "n": 30407,
+     "avg_fwd14": -0.135,
+     "win": 0.3743
+    },
+    {
+     "q": 5,
+     "n": 30408,
+     "avg_fwd14": 2.026,
+     "win": 0.4421
+    }
+   ]
+  },
+  "verdict": {
+   "ok": true,
+   "actual": "无增量"
+  },
+  "inc_roll_period_of_repro": {
+   "ok": true,
+   "actual": {
+    "months": 16,
+    "same_sign_ratio": 0.9375,
+    "note": "②口径：月度聚合仅统计 period_of（市场上下文可算）日期；审计全量口径见 inc_ic_rolling_stability"
+   },
+   "expected": {
+    "months": 16,
+    "same_sign_ratio": 0.9375
+   }
+  },
+  "meta_rows": {
+   "ok": true,
+   "actual": {
+    "fit": 156418,
+    "val": 83408,
+    "split": "2025-08-10"
+   }
+  }
+ },
+ "pass": false
+}
