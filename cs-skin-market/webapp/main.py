@@ -1767,7 +1767,8 @@ async def page_exec2_progress(request: Request):
 async def api_exec2_progress():
     """EXEC-2 进度数据（读 data/exec2_progress.json + G1 冷却/降级状态）。"""
     from exec2_auto_watch import (_progress_file, cooldown_remaining_sec, degraded_daily,
-                                  failed_ledger_today, G1_FAIL_THRESHOLD, G1_COOLDOWN_MIN, G1_MAX_ROUNDS)
+                                  failed_ledger_today, G1_FAIL_THRESHOLD, G1_COOLDOWN_MIN, G1_MAX_ROUNDS,
+                                  check_stuck_exec2)
     import json as _J
     from pipeline import db as _db
     prog = {}
@@ -1793,6 +1794,7 @@ async def api_exec2_progress():
             "fail_threshold": G1_FAIL_THRESHOLD,
         },
         "failed_ledger_today": failed_ledger_today()[-20:],
+        "stuck": check_stuck_exec2(),
     })
 
 

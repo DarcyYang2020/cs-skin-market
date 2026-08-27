@@ -4692,6 +4692,11 @@ def t_exec2_g1_guardrail():
             conn.close()
         _e2.reset_fail_rounds()
         assert _e2.degraded_daily() is False
+        # ⑥ 失败台账补扫死代码修复（PM 非阻断登记）：跨范围补入生效（rows = rows + _extra），
+        #    旧 no-op（rows = rows 注释）已删除
+        _src = open(os.path.join(TEST_DIR, '..', 'exec2_auto_watch.py'), encoding='utf-8').read()
+        assert 'rows = rows + _extra' in _src, '失败台账跨范围补扫未接线（rows += extra）'
+        assert 'SELECT id, name, holding, avg_cost, quantity FROM items' in _src
     finally:
         conn = _db.get_conn()
         try:
@@ -4745,6 +4750,16 @@ def t_exec2_g2_progress():
     assert r.status_code == 200, r.status_code
     d2 = r.json()
     assert 'progress' in d2 and 'gate' in d2 and 'failed_ledger_today' in d2, list(d2.keys())
+    # stuck 卡住检测已接线（PM 非阻断登记）：以 updated 为基准读 exec2_progress.json，API 返回 (bool, note)
+    assert 'stuck' in d2, 'API 缺 stuck 字段'
+    assert isinstance(d2['stuck'], list) and len(d2['stuck']) == 2, d2['stuck']
+    stuck, note = d2['stuck']
+    assert isinstance(stuck, bool), d2['stuck']
+    _src2 = open(os.path.join(TEST_DIR, '..', 'exec2_auto_watch.py'), encoding='utf-8').read()
+    assert 'def check_stuck_exec2' in _src2, '缺 check_stuck_exec2'
+    _func = _src2.split('def check_stuck_exec2')[1].split('\ndef ')[0]
+    assert '_progress_file()' in _func and 'updated' in _func, 'check_stuck_exec2 应以 exec2_progress.json 的 updated 为基准'
+    assert '"scan_progress_"' not in _func, 'check_stuck_exec2 不得读 batch_scan 老格式'
 check('HG-G2 进度可见性（落盘 source=auto + /exec2 页 + API）', t_exec2_g2_progress)
 
 print(f'=== Results: {passed} passed, {failed} failed, {skipped} skipped ===')

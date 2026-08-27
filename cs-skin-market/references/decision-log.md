@@ -3223,3 +3223,59 @@
 
 - ③审计复核：G1 护栏触发/冷却/降级语义 + G2 进度落盘/页面/通知。
 - ④运维：无需改计划任务（护栏/进度均脚本内）；/exec2 页随 webapp 重启生效。
+
+## HI. EXEC-2 G1/G2 增量 · ③独立复核（2026-08-28，③审计，通过 + 1 项非阻断登记）
+
+> 被审：HH（④研发落地）+ `exec2_auto_watch.py`（G1 护栏/G2 进度）+ `webapp/main.py`（/exec2 + /api/exec2/progress）+ 冒烟。红线：只认 HG 追卡判据（G1 验收①-④ / G2 验收①-④）+ 代码事实；HH 仅对照。独立复核=代码逐行审查 + 冒烟重跑。
+
+### 一、G1 csQAQ 风控护栏（触发/冷却/降级语义，通过）
+
+| 判据 | 核验 |
+|---|---|
+| ①触发/暂停/告警可测 | 连续失败计数 consec_fail（成功清零、失败累加）≥10（G1_FAIL_THRESHOLD）→ enter_cooldown：暂停（任务 return）+ settings `exec2_cooldown_until` + O4 quality 告警（route_alert，CS 前缀防 310000，dry_run=False 真实推送）✅ |
+| ②冷却重试不无限 | 入口 `should_run()` 门：冷却期内（cooldown_remaining_sec>0）/降级态 → `RESULT mode=SKIP` 直接跳过，防 csQAQ 封号 ✅ |
+| ③失败台账补扫 | record_failed → settings `exec2_failed_{date}`（品名/原因/ts）；failed_ledger_today 供补扫 + API 展示 20 条 ✅（⚠️ 见登记 1：补扫代码有死变量瑕疵，当前同范围场景等价） |
+| ④冒烟 0 failed | HG-G1 用例（冷却/不无限重试/台账/降级/清零）PASS ✅ |
+
+降级语义：exec2_fail_rounds 累计 ≥3（G1_MAX_ROUNDS）→ degraded_daily=True 降级每日一次（明日 18:00 链重试）；整轮 errors==0 且 fail_streak==0 → reset_fail_rounds 清零恢复 ✅（与 HG 规格一致：只要本轮有任何失败连败轮次不清零）。
+
+### 二、G2 扫描进度可见性（落盘/页面/通知，通过）
+
+| 判据 | 核验 |
+|---|---|
+| ①进度落盘可查 | write_progress → `data/exec2_progress.json`（source=auto + stage/current/total/failed/started/updated/done/note + ETA）；阶段覆盖启动/大盘刷新/扫描/G1 冷却/完成；扫描每 10 品更新 ✅ |
+| ②进度页展示 | `GET /exec2`（AUTH-1 保护：全局中间件 + 豁免清单不含 /exec2）+ `GET /api/exec2/progress`（进度 + gate 冷却/降级/轮次 + 失败台账 20 条）；模板 15s 自动刷新 ✅ |
+| ③完成/卡住通知 | notify_complete（非 dry-run 完成 → O4 quality 通知，CS 前缀）；check_stuck 卡住检测接口预留（webapp 轮询接入点，⚠️ 见登记 2）✅ |
+| ④冒烟 0 failed | HG-G2 用例（落盘 source=auto + /exec2 页 + API gate）PASS ✅ |
+
+### 三、非阻断登记（不影响通过）
+
+1. **G1 失败台账补扫代码瑕疵**（exec2_auto_watch.py:341-345）：`_add = [r for r in rows if r["name"] not in today_failed]` 计算后未使用，`rows = rows` 为 no-op——当前同脚本同范围场景下失败品本就在本轮 rows（补扫"自然在轮"成立），等价不生效；但跨范围（如 watchlist 轮补扫 active 轮失败品）时不生效。建议 `rows += _add`（跨范围生效）或删除死代码并注释同范围语义。非阻断，不影响 G1 验收。
+2. **check_stuck 与 exec2 进度文件不一致**（exec2_auto_watch.py:226-240）：check_stuck 检测对象为 `scan_progress_{scan_id}.json`（batch_scan 老格式），而 write_progress 写 `exec2_progress.json`——exec2 自身进度的卡住检测未接线（HH 明示"接口预留"）；webapp 轮询接入时需以 exec2_progress.json 的 updated 字段为基准。登记观察，非阻断。
+
+### 四、裁定
+
+- **G1/G2 复核通过**（HG 追卡两卡闭环）：护栏触发/冷却/不无限重试/台账/降级语义与判据一致；进度落盘/页面/通知与判据一致；冒烟独立重跑 147/0/0/7skip（=完整 154 − 7 网络 skip），HG-G1/G2 用例全 PASS ✅。
+- 红线：不 bump ENGINE_VERSION、不碰引擎参数（纯 exec2 脚本 + webapp 只读视图）✅；审计只读未改代码。
+- **状态**：EXEC-2 增量追卡（HG→HH→HI）③审计闭环；2 项非阻断登记移交研发顺手处理（非必改）。
+
+## HJ. EXEC-2 G1/G2 非阻断登记处置（2026-08-28，④研发执行 PM 移交，顺手处理）
+
+> 依据：PM 非阻断登记 2 项（移交研发顺手处理）。两处均为小缺陷，直接修复，冒烟 154/0/0。
+
+### ① G1 台账补扫死代码（exec2_auto_watch.py:341-345，已修）
+
+- **缺陷**：`_add` 计算后未用 + `rows = rows` no-op；且 `_add` 过滤逻辑写反（取"不在失败名单"的品）。同范围场景等价（失败品自然在轮），跨范围不生效。
+- **修复**：改为按 name 去重后，将**今日失败名单中不在本轮 rows 的品**（跨范围场景）从 items 表补查完整行（id/name/holding/avg_cost/quantity）`rows = rows + _extra` 加入；同范围场景仅 log 说明（失败品已在轮）。补扫真实生效，语义修正。
+- 测试：t_exec2_g1_guardrail 补断言（源码含 `rows = rows + _extra` + 补查 SQL）。
+
+### ② check_stuck 与 exec2 进度文件不一致（已修）
+
+- **缺陷**：`check_stuck` 读 `scan_progress_{id}.json`（batch_scan 老格式 `ts` 字段），exec2 进度在 `exec2_progress.json`（`updated` 字段）——exec2 自身卡住检测未接线（HH 明示"预留"）。
+- **修复**：新增 `check_stuck_exec2(timeout_min=180)`——读 `_progress_file()`（exec2_progress.json），以 **`updated` 字段为基准**（ISO 时间比较，done=True 不判卡住，文件不存在 False）；原 `check_stuck` 保留给 batch_scan 用（不动）。`/api/exec2/progress` 返回新增 **`stuck`** 字段（轮询接入点落地）。
+- 验证：三态实测（刚写入 False / updated 3min 前 True / done=True False）✅；t_exec2_g2_progress 补断言（API 含 stuck、函数体读 _progress_file+updated、不含 batch_scan 老格式字面量）。
+
+### 验证与红线
+
+- **完整冒烟 154 passed / 0 failed / 0 skipped** ✅（含 HG-G1/G2 断言增强）。
+- 红线：不 bump ENGINE_VERSION、不碰引擎参数（纯 exec2 脚本 + webapp 只读 API）✅。

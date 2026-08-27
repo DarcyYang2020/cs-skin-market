@@ -240,6 +240,30 @@ def check_stuck(scan_id, timeout_min=180):
     return False, ""
 
 
+def check_stuck_exec2(timeout_min=180):
+    """G2：EXEC-2 自身卡住检测（PM 非阻断登记 2026-08-28 已修）——读 exec2_progress.json，
+    以 updated 字段为基准（与 batch_scan 老格式 scan_progress_{id}.json 的 ts 字段区分开；
+    check_stuck 保留给 batch_scan 用）。返回 (stuck, note)。webapp /api/exec2/progress 轮询接入。"""
+    try:
+        fp = _progress_file()
+        if not fp.exists():
+            return False, ""
+        import json as _json
+        d = _json.loads(fp.read_text(encoding="utf-8"))
+        if d.get("done"):
+            return False, ""
+        upd = d.get("updated") or ""
+        if not upd:
+            return False, ""
+        from datetime import datetime as _dt
+        ts = _dt.fromisoformat(upd).timestamp()
+        if time.time() - ts > timeout_min * 60:
+            return True, f"exec2 卡住（{timeout_min}min 未更新，updated={upd}）"
+    except Exception:
+        pass
+    return False, ""
+
+
 async def _scan_one(row, idx, ms, market_th_score, sentiment_score, total_assets):
     from pipeline.scan_tasks import _scan_item
     try:
@@ -337,12 +361,26 @@ async def main_async(args):
     finally:
         conn_r.close()
 
-    # 失败品台账补扫（G1）：今日失败名单加入本轮 rows（去重，仅补扫一次）
-    today_failed = {f["name"] for f in failed_ledger_today()}
+    # 失败品台账补扫（G1）：今日失败名单补入本轮 rows（按 name 去重）。
+    # 同范围场景失败品本就在 rows（自然在轮）→ 无需操作；跨范围（如 active→watchlist）
+    # 时按 name 从 items 补查完整行加入，补扫真实生效（PM 非阻断登记 2026-08-28 已修）。
+    today_failed = [f["name"] for f in failed_ledger_today()]
     if today_failed:
-        _add = [r for r in rows if r["name"] not in today_failed]
-        _log(f"G1 失败台账补扫：今日失败 {len(today_failed)} 品已入轮")
-        rows = rows  # 失败品已在本轮（同日同范围）；跨范围时此处可扩展
+        in_rows = {r["name"] for r in rows}
+        missing = [n for n in today_failed if n not in in_rows]
+        if missing:
+            _conn = db.get_conn()
+            try:
+                _q = ",".join("?" * len(missing))
+                _extra = [dict(r) for r in _conn.execute(
+                    f"SELECT id, name, holding, avg_cost, quantity FROM items "
+                    f"WHERE name IN ({_q})", missing).fetchall()]
+            finally:
+                _conn.close()
+            rows = rows + _extra
+            _log(f"G1 失败台账补扫：跨范围补入 {len(_extra)} 品")
+        else:
+            _log(f"G1 失败台账：今日失败 {len(today_failed)} 品已在本轮（同范围）")
 
     pushed, skipped, no_signal, errors = 0, 0, 0, 0
     fail_streak = 0
