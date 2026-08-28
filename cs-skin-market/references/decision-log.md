@@ -3341,3 +3341,30 @@ O4 运维告警（采集/质量/交易三档）、健康监控 FAIL（notify_ale
 - **不 bump ENGINE_VERSION、不碰引擎参数**。
 
 - **状态**：PM 登记（HM），交④研发执行；带话就绪。
+
+## HN. HM 通知裁剪三项落地（2026-08-28，④研发执行，老板拍板 HM，待③轻量复核）
+
+> 依据：decision-log HM（老板拍板，PM 盘点 5 处通知链路）。三处小改，不 bump ENGINE_VERSION、不碰引擎参数。
+
+### ① EXEC-2 完成通知关闭（exec2_auto_watch.notify_complete）
+
+- 完成（failed=0）→ **不再推钉钉**（仅 log 留痕 `G2 盯盘完成（HM① 不推钉钉）`）；failed>0（异常）→ 推送「EXEC-2 盯盘异常」（O4 quality 保留）；卡住检测（check_stuck_exec2）走 webapp 轮询展示保留。
+- 验收：完成不推 ✓ / 失败推（mock 验证）✓。
+
+### ② 监控日报「有异常才发」（pipeline/monitor.push_daily）
+
+- 推送前判断：**无 danger（买点）/warn（异常）事件 → 不推钉钉**（返回 no_abnormal_events，本地 log 留痕）；有 danger/warn 才推。午间/晚间统一生效（push_daily 共用推送点）。
+- 验收：无异常日不推 ✓ / 有异常日推（mock send）✓。
+
+### ③ 意向单同品同日幂等（paper_trading.push_intention + exec2 key 统一）
+
+- `push_intention` 加幂等守卫：settings key **`intention_push_{date}_{item_id}`**（M2 同款，推送成功 mark）；已推过 → 返回 already_pushed_intention 不重复推。
+- **EXEC-2 key 统一**：`_PUSH_KEY_PREFIX` 由 exec2_push 改为 **intention_push**——EXEC-2 自动与手动链路对同一 buy 仅推一次（双向互斥：任一路径推过，另一路径跳过）。
+- 容错：settings 表缺失（临时库/测试）→ 幂等检查与 mark 静默跳过，不阻断推送。
+- 验收：同品同日两链路仅推一次 ✓（mock route_alert：第一次 pushed、第二次 already_pushed）✓ / 异日可再推 ✓。
+
+### 验证
+
+- 冒烟新增 t_hm_notification_trim（三项验收），**完整冒烟 156 passed / 0 failed / 0 skipped**。
+- 教训：测试内 push_daily 成功 mark 会写生产 settings——用独立日期（2098-01-01）+ 测试后清理，避免污染 t_monitor_push（2099-01-01）幂等 key。
+- 效果：钉钉只响买点（danger）与异常（warn/失败/告警），常规完成/日报不响。

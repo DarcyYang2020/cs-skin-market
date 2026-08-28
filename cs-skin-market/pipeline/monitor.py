@@ -301,6 +301,10 @@ def push_daily(summary, events, slot="night"):
             return {"pushed": False, "reason": "already_pushed"}
     finally:
         conn.close()
+    # HM②（2026-08-28 老板拍板）：监控日报「有异常才发」——无 danger（买点）/warn（异常）事件不推钉钉
+    # （纯 info 常规事件仅本地 log 留痕；午间/晚间统一生效）
+    if not any(e.get("level") in ("danger", "warn") for e in events):
+        return {"pushed": False, "reason": "no_abnormal_events"}
     try:
         from notify_alert import load_webhook_url, send
     except Exception as e:

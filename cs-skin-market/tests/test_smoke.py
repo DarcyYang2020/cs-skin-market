@@ -4817,6 +4817,67 @@ def t_scan_recent_progress():
             pass
 check('2026-08-28 全局扫描进度恢复（/api/scan/recent + 页面进度条）', t_scan_recent_progress)
 
+
+def t_hm_notification_trim():
+    """HM（2026-08-28 老板拍板）通知裁剪三项：①EXEC-2 完成不推/失败推 ②日报无异常不推 ③意向单幂等。"""
+    import time
+    from unittest import mock
+    # ① notify_complete：failed=0 完成 → 不推（仅 log）；failed>0 → 推（mock route_alert）
+    import exec2_auto_watch as _e2
+    r = _e2.notify_complete({"scope": "watchlist", "pushed": 0,
+                             "progress": {"total": 117, "failed": 0, "stage": "完成"}})
+    assert r.get("reason") == "hm_complete_no_push", r
+    with mock.patch("notify_alert.route_alert", return_value={"pushed": True}) as _m:
+        _e2.notify_complete({"scope": "watchlist", "pushed": 1,
+                             "progress": {"total": 117, "failed": 3, "stage": "扫描"}})
+        assert _m.called, "failed>0 应推送（异常类保留）"
+    # ② push_daily：无 danger/warn 事件 → 不推（no_abnormal_events）；有 danger → 推（mock send）
+    from pipeline import monitor as _mon
+    _DATE = "2098-01-01"  # 独立日期，避免与 t_monitor_push(2099-01-01) 幂等 key 冲突
+    conn = _mon.db.get_conn()
+    try:
+        conn.execute("DELETE FROM settings WHERE key=?", (f"monitor_push_{_DATE}_night",))
+        conn.commit()
+    finally:
+        conn.close()
+    r = _mon.push_daily({"date": _DATE, "bucket": "S3", "analyzed": 10, "skipped": 0, "generated": 1, "saved": 1},
+                        [{"event_type": "market_state", "level": "info", "detail": "x", "dedup_key": "t"}], "night")
+    assert r.get("reason") == "no_abnormal_events", r
+    with mock.patch("notify_alert.load_webhook_url", return_value="http://fake"):
+        with mock.patch("notify_alert.send", return_value=200):
+            r2 = _mon.push_daily({"date": _DATE, "bucket": "S3", "analyzed": 10, "skipped": 0, "generated": 1, "saved": 1},
+                                 [{"event_type": "new_buy_signal", "level": "danger", "detail": "x", "dedup_key": "t"}], "night")
+            assert r2.get("pushed") is True, r2
+    # 清理本次测试写入的生产 settings（mock send 成功后 mark 的 key）
+    conn = _mon.db.get_conn()
+    try:
+        conn.execute("DELETE FROM settings WHERE key=?", (f"monitor_push_{_DATE}_night",))
+        conn.commit()
+    finally:
+        conn.close()
+    # ③ push_intention 幂等：同品同日推一次后跳过（already_pushed_intention）；清 key 后可再推
+    import sqlite3 as _sq
+    from pipeline import paper_trading as _pt
+    m = _sq.connect(":memory:")
+    m.row_factory = _sq.Row
+    _pt.ensure_schema(m)
+    # 幂等 key 需要 settings 表（ensure_schema 不含；生产库 market.db 有）
+    m.execute("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT, updated_at TEXT)")
+    oid = _pt.create_intention(m, item_id=777, item_name="HM-冒烟品", family="base", direction="buy",
+                               qty=1, ref_price=10.0, reason="HM 幂等测试", expectancy="x", risk_tag="limit=0.1")
+    with mock.patch("notify_alert.route_alert", return_value={"pushed": True, "dry_run": False}):
+        r1 = _pt.push_intention(m, oid, dry_run=False)
+        assert r1.get("pushed") is True, r1
+        r2 = _pt.push_intention(m, oid, dry_run=False)
+        assert r2.get("reason") == "already_pushed_intention", r2
+    # 异日（清 key 模拟次日）可再推
+    m.execute("DELETE FROM settings WHERE key LIKE 'intention_push_%'")
+    with mock.patch("notify_alert.route_alert", return_value={"pushed": True, "dry_run": False}):
+        r3 = _pt.push_intention(m, oid, dry_run=False)
+        assert r3.get("pushed") is True, r3
+    m.close()
+check('HM 通知裁剪三项（完成不推/日报无异常不推/意向单幂等）', t_hm_notification_trim)
+
 print(f'=== Results: {passed} passed, {failed} failed, {skipped} skipped ===')
 if failures:
     print()

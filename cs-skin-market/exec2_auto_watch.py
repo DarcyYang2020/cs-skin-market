@@ -40,8 +40,10 @@ sys.path.insert(0, BASE)
 from pipeline.config import TZ_BJ  # noqa: E402
 from pipeline import db  # noqa: E402
 
-# 幂等 key 前缀（对齐 M2 monitor_push_{date}_{slot}）：exec2_push_{date}_{item_id}
-_PUSH_KEY_PREFIX = "exec2_push"
+# 幂等 key 前缀（对齐 M2 monitor_push_{date}_{slot}）：intention_push_{date}_{item_id}
+# HM③（2026-08-28 老板拍板）：与 paper_trading.push_intention 统一 key——EXEC-2 与手动链路
+# 对同一 buy 仅推一次（原 exec2_push_* 历史 key 不影响，同品同日语义一致）。
+_PUSH_KEY_PREFIX = "intention_push"
 
 # HG-G1 护栏参数（decision-log HG，2026-08-28）
 G1_FAIL_THRESHOLD = 10      # 连续失败 ≥10 触发护栏
@@ -213,15 +215,25 @@ def write_progress(stage, current, total, failed=0, started=None, done=False, no
 
 
 def notify_complete(payload):
-    """G2：任务完成/卡住 → O4 钉钉通知。"""
+    """G2：任务完成/异常 → O4 钉钉通知。
+
+    HM①（2026-08-28 老板拍板）：**完成不再推钉钉（仅 log 留痕）**——只有失败（failed>0，
+    异常类）才推送；卡住检测（check_stuck_exec2）走 webapp 轮询展示保留。
+    """
+    scope = payload.get("scope", "?")
+    p = payload.get("progress") or {}
+    failed = int(p.get("failed") or 0)
+    if failed == 0:
+        _log(f"G2 盯盘完成（HM① 不推钉钉，仅留痕）scope={scope} items={p.get('total')} "
+             f"pushed={payload.get('pushed')}")
+        return {"pushed": False, "reason": "hm_complete_no_push"}
     try:
         from notify_alert import route_alert
-        scope = payload.get("scope", "?")
-        p = payload.get("progress") or {}
-        route_alert("quality", "EXEC-2 盯盘完成",
+        route_alert("quality", "EXEC-2 盯盘异常",
                     f"scope={scope} items={p.get('total')} pushed={payload.get('pushed')} "
-                    f"failed={p.get('failed')} 阶段={p.get('stage')}",
+                    f"failed={failed} 阶段={p.get('stage')}",
                     dry_run=False)
+        _log(f"G2 盯盘异常已推送（failed={failed}）")
     except Exception as exc:
         _log(f"G2 完成通知异常（不阻断）: {type(exc).__name__}: {str(exc)[:80]}")
 

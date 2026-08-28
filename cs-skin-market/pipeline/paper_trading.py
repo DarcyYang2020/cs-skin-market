@@ -435,12 +435,33 @@ def intention_card(o):
 
 
 def push_intention(conn, order_id, dry_run=False):
-    """S3 意向单推钉钉（复用 notify_alert.route_alert，level=trade；kill switch(notify) 拦截自动处理）。"""
+    """S3 意向单推钉钉（复用 notify_alert.route_alert，level=trade；kill switch(notify) 拦截自动处理）。
+
+    HM③（2026-08-28 老板拍板）：同品同日幂等守卫——settings key `intention_push_{date}_{item_id}`
+    （M2 同款，推送成功 mark）；与 EXEC-2 统一 key（exec2 push_buy_signal 复用同 key），
+    解决 EXEC-2 自动与手动链路对同一 buy 重复推送。
+    """
     from notify_alert import route_alert
     o = conn.execute("SELECT * FROM paper_orders WHERE id=?", (order_id,)).fetchone()
     if not o:
         return {"pushed": False, "reason": "no_order"}
+    today = datetime.now().strftime("%Y-%m-%d")
+    key = f"intention_push_{today}_{o['item_id']}"
+    try:
+        _already = bool(db.get_setting(conn, key, ""))
+    except Exception:
+        _already = False  # 临时库无 settings 表（测试）→ 视为未推送
+    if _already:
+        return {"pushed": False, "reason": "already_pushed_intention", "key": key}
     res = route_alert("trade", f"模拟盘意向单 #{o['id']}", intention_card(o), dry_run=dry_run)
+    if not dry_run and res.get("pushed"):
+        try:
+            db.set_setting(conn, key, json.dumps(
+                {"ts": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "order_id": o["id"]},
+                ensure_ascii=False))
+            conn.commit()
+        except Exception:
+            pass  # 临时库无 settings 表（测试）→ 幂等 key 写不了，不阻断推送
     res["order_id"] = o["id"]
     return res
 
