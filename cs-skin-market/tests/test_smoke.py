@@ -4776,8 +4776,10 @@ def t_scan_recent_progress():
     from pipeline.scan_tasks import _scan_progress_file
     fp = _scan_progress_file('smoke_recent')
     try:
-        # ① 活跃任务（done=False + ts 新鲜）→ recent 返回
-        fp.write_text(_J.dumps({'current': 5, 'total': 50, 'name': '冒烟品', 'done': False, 'html': '', 'ts': time.time()}),
+        # ① 活跃任务（done=False + ts 新鲜）→ recent 返回；ts 用未来 1h 确保压过并发真实扫描
+        #    （用户/计划任务可能同时在跑批量扫描，ts 持续更新会抢占 recent——未来 ts 断言确定）
+        _now_ts = time.time()
+        fp.write_text(_J.dumps({'current': 5, 'total': 50, 'name': '冒烟品', 'done': False, 'html': '', 'ts': _now_ts + 3600}),
                       encoding='utf-8')
         from fastapi.testclient import TestClient
         from webapp import main as wm
@@ -4789,19 +4791,23 @@ def t_scan_recent_progress():
         assert r.status_code == 200, r.status_code
         d = r.json()
         assert d.get('active') and d.get('id') == 'smoke_recent' and d.get('type') == 'batch', d
-        # ② 僵尸任务（done=False 但 ts 超 30min）→ 不活跃（不误报恢复）
+        # ② 僵尸任务（done=False 但 ts 超 30min）→ 不被 recent 返回（可能返回其它真活跃任务或 active=False）
         fp.write_text(_J.dumps({'current': 5, 'total': 50, 'name': '冒烟品', 'done': False, 'html': '', 'ts': time.time() - 4000}),
                       encoding='utf-8')
         r = client.get('/api/scan/recent')
-        assert r.json().get('active') is False, r.json()
-        # ③ done=True → 不活跃（完成/历史任务不误报）
+        assert r.json().get('id') != 'smoke_recent', r.json()
+        # ③ done=True → 不被返回（完成/历史任务不误报）
         fp.write_text(_J.dumps({'current': 50, 'total': 50, 'name': '冒烟品', 'done': True, 'html': '', 'ts': time.time()}),
                       encoding='utf-8')
         r = client.get('/api/scan/recent')
-        assert r.json().get('active') is False, r.json()
-        # ④ 页面含全局进度条（刷新后恢复的 UI 载体）
+        assert r.json().get('id') != 'smoke_recent', r.json()
+        # ④ 页面含全局进度条（刷新后恢复的 UI 载体）+ 报告弹窗组件（modal-body-scroll，防 HL 误删回归）
         r = client.get('/')
         assert r.status_code == 200 and 'scan-progress-global' in r.text, r.status_code
+        r = client.get('/watchlist')
+        assert 'modal-body-scroll' in r.text and 'analysis-modal' in r.text, '报告弹窗组件缺失（watchlist）'
+        r = client.get('/discover')
+        assert 'modal-body-scroll' in r.text, '报告弹窗组件缺失（discover）'
     finally:
         # 覆盖为 done=True（避免 unlink 被安全删除钩子拦截；残留无害，_prune_progress 会清理）
         try:
