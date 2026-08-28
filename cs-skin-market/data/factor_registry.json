@@ -893,10 +893,10 @@
     },
     "single_period_dep": "S1牛市上行"
    },
-   "status": "候选",
+   "status": "重叠敏感（P3 降级）",
    "in_engine": null,
-   "cs_note": "供给类：条件 IC（sc30 收缩时有效）",
-   "tested_at": "2026-08-27"
+   "cs_note": "P3 去重叠后显著性消失（IC14 原 0.0493 去重叠后无显著）；P1 条件校准 S1/S2 证伪 → 移出候选（decision-log ID 裁定，2026-08-28）",
+   "tested_at": "2026-08-28"
   },
   {
    "id": "sc30",
@@ -1015,10 +1015,10 @@
      }
     }
    },
-   "status": "候选",
+   "status": "重叠敏感（P3 降级）",
    "in_engine": "打分（供给维度）",
-   "cs_note": "供给收缩条件 IC 0.072，唯一正信号类别",
-   "tested_at": "2026-08-27"
+   "cs_note": "P3 去重叠后显著性消失（IC14 原 0.0523 去重叠后无显著）；P1 条件校准 S1/S2 证伪 → 移出候选（decision-log ID 裁定，2026-08-28）",
+   "tested_at": "2026-08-28"
   },
   {
    "id": "s7_ratio",
@@ -1144,10 +1144,10 @@
      "pos_ratio": 0.5464
     }
    },
-   "status": "候选",
+   "status": "条件校准未达（P1）",
    "in_engine": null,
-   "cs_note": "供给类，条件 IC",
-   "tested_at": "2026-08-27"
+   "cs_note": "P1 五时期条件校准：S1/S2 时期临界值 0.13 未达、S3/S4 样本不足（n<90）→ 无时期候选 → 移出候选（decision-log ID 裁定，2026-08-28）",
+   "tested_at": "2026-08-28"
   },
   {
    "id": "th_persistence",
@@ -1824,10 +1824,10 @@
     },
     "verdict_note": "IC 有效且稳定，但增量 IC=-0.0008 < 0.02（判据 §3）——信息与核心因子冗余，无新自由度"
    },
-   "status": "证伪",
+   "status": "候选·无增量",
    "in_engine": null,
-   "cs_note": "恐慌抄底逻辑 fit 段成立但增量 IC≈0=动量反转镜像（R1 原 role='加分/过滤' → registry '过滤'，主角色归一化）",
-   "tested_at": "2026-08-27"
+   "cs_note": "P6 DSR=1.0 + P1 S2 牛市回调条件候选（mean_ic 0.169≥0.132、同号月 88.9%）→ 存在性成立；R1 增量 IC 无增量（与核心因子冗余）→ 候选但无增量（decision-log ID 裁定，2026-08-28）",
+   "tested_at": "2026-08-28"
   },
   {
    "id": "mchg7",
