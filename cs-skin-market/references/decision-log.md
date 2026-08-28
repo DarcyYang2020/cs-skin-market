@@ -9,8 +9,8 @@
 **背景**：2026-08-27 并发多窗口写档，已发生 4 次编号撞车（EB→EE、EZ 双号、FA 撞号、FH 双号），③/④均建议 PM 归口编号治理。
 
 **占号簿（追加新条目前必查）**：
-- 已用编号至 **HG**（2026-08-28 00:20）：`FA FB FC FD FE FF FG FH FI GI GJ GK GL GM GN GO GP GQ GR GS GT GU GV GW GX GY GZ HA HB HC HD HE HF HG`
-- 当前指针：**HH**（下一个新条目用 HH，随后 HI/HJ...）
+- 已用编号至 **HM**（2026-08-28 10:24）：`FA FB FC FD FE FF FG FH FI GI GJ GK GL GM GN GO GP GQ GR GS GT GU GV GW GX GY GZ HA HB HC HD HE HF HG HH HI HJ HK HL HM`
+- 当前指针：**HN**（下一个新条目用 HN，随后 HO/HP...）
 
 **规则**：
 1. 落条目前先查本段占号簿确认下一个可用编号；占号 = 在本段「当前指针」先行更新后再写正文（并发窗口同理，先占号者得）；
@@ -3319,3 +3319,25 @@
 ### 红线
 
 - 不 bump ENGINE_VERSION、不碰引擎逻辑（webapp 只读视图 + 进度展示）。待③审计。
+
+## HM. 钉钉通知裁剪指令（2026-08-28 10:24，老板拍板，交④研发执行）
+
+> 背景：老板要求统计全部钉钉通知点后裁剪噪声（原 8 类自动通知）。PM 全量盘点（notify_alert/run_night_push/monitor/paper_trading/exec2 五处链路）后，老板拍板三项。
+
+### 拍板三项
+1. **关掉 EXEC-2 完成通知**：`exec2_auto_watch.py notify_complete`（G2）——任务**完成不再推钉钉**（仅 log 留痕）；**卡住/异常保留**（check_stuck 卡住通知属异常类，保留）；验收：APPLY/dry-run 完成均不推、卡住/失败仍推、冒烟 0 failed。
+2. **监控日报改「有异常才发」**：`run_night_push.py`（21:30 重跑 run_daily_monitor slot=night）推送前判断——**无 FAIL/异常事件不推钉钉**（本地 log 留痕）；有异常才推；验收：无异常日不推、有异常日推、冒烟 0 failed。
+3. **解决 EXEC-2 新买点 与 S3 意向单重复推送**（PM 核验）：
+   - EXEC-2 链路 `push_buy_signal` 有 `already_pushed`（exec2_push key）✅ 自带幂等；
+   - **手动链路 `push_intention`（paper_trading.py:437）无同品同日幂等** → 同一 buy（手动刷新 daily_run 建单 + EXEC-2 自动）可能被推两次；
+   - **方案**：`push_intention` 内加幂等守卫——settings key `intention_push_{date}_{item_id}`（M2 同款，推送成功后 mark）；EXEC-2 的 exec2_push key 与统一 key 复用/合并（避免双 key 语义分裂）；
+   - 验收：①同品同日 EXEC-2+手动两链路仅推一次 ②异日可再推 ③冒烟 0 failed。
+
+### 保留项（默认不动）
+O4 运维告警（采集/质量/交易三档）、健康监控 FAIL（notify_alert monitor_mode）、G1 风控护栏告警、交易/质量告警、手动工具推送——异常类保留（系统出事才叫醒）。
+
+### 分工与红线
+- ④研发落地（三处小改：exec2 notify_complete 条件 / run_night_push 推送条件 / push_intention 幂等守卫）→ 冒烟 → ③审计轻量复核；
+- **不 bump ENGINE_VERSION、不碰引擎参数**。
+
+- **状态**：PM 登记（HM），交④研发执行；带话就绪。
