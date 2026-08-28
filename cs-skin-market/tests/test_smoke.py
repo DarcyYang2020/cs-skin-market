@@ -4768,6 +4768,49 @@ def t_exec2_g2_progress():
     assert '"scan_progress_"' not in _func, 'check_stuck_exec2 不得读 batch_scan 老格式'
 check('HG-G2 进度可见性（落盘 source=auto + /exec2 页 + API）', t_exec2_g2_progress)
 
+
+def t_scan_recent_progress():
+    """2026-08-28：/api/scan/recent 最近活跃扫描恢复——批量扫描/discover 刷新页面后进度条恢复。"""
+    import time
+    import json as _J
+    from pipeline.scan_tasks import _scan_progress_file
+    fp = _scan_progress_file('smoke_recent')
+    try:
+        # ① 活跃任务（done=False + ts 新鲜）→ recent 返回
+        fp.write_text(_J.dumps({'current': 5, 'total': 50, 'name': '冒烟品', 'done': False, 'html': '', 'ts': time.time()}),
+                      encoding='utf-8')
+        from fastapi.testclient import TestClient
+        from webapp import main as wm
+        import os as _os
+        _os.environ['CS_MARKET_PASSWORD'] = 'smoke-test-pass'
+        client = TestClient(wm.app)
+        client.post('/login', data={'password': 'smoke-test-pass'}, follow_redirects=False)
+        r = client.get('/api/scan/recent')
+        assert r.status_code == 200, r.status_code
+        d = r.json()
+        assert d.get('active') and d.get('id') == 'smoke_recent' and d.get('type') == 'batch', d
+        # ② 僵尸任务（done=False 但 ts 超 30min）→ 不活跃（不误报恢复）
+        fp.write_text(_J.dumps({'current': 5, 'total': 50, 'name': '冒烟品', 'done': False, 'html': '', 'ts': time.time() - 4000}),
+                      encoding='utf-8')
+        r = client.get('/api/scan/recent')
+        assert r.json().get('active') is False, r.json()
+        # ③ done=True → 不活跃（完成/历史任务不误报）
+        fp.write_text(_J.dumps({'current': 50, 'total': 50, 'name': '冒烟品', 'done': True, 'html': '', 'ts': time.time()}),
+                      encoding='utf-8')
+        r = client.get('/api/scan/recent')
+        assert r.json().get('active') is False, r.json()
+        # ④ 页面含全局进度条（刷新后恢复的 UI 载体）
+        r = client.get('/')
+        assert r.status_code == 200 and 'scan-progress-global' in r.text, r.status_code
+    finally:
+        # 覆盖为 done=True（避免 unlink 被安全删除钩子拦截；残留无害，_prune_progress 会清理）
+        try:
+            fp.write_text(_J.dumps({'current': 50, 'total': 50, 'name': '冒烟品', 'done': True, 'html': '', 'ts': time.time()}),
+                          encoding='utf-8')
+        except Exception:
+            pass
+check('2026-08-28 全局扫描进度恢复（/api/scan/recent + 页面进度条）', t_scan_recent_progress)
+
 print(f'=== Results: {passed} passed, {failed} failed, {skipped} skipped ===')
 if failures:
     print()

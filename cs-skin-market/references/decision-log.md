@@ -3300,3 +3300,22 @@
 
 - ③审计：2h 任务真刷新语义（1h 窗口）+ 进度文件路径修复。
 - ④运维：计划任务已注册（CS_Skin_Exec2Watch 每 2h，09:22 注册 + 手动运行验证链路 OK）。
+
+## HL. 批量扫描进度刷新恢复（2026-08-28，④研发，用户需求）
+
+> 触发：用户反馈「批量扫描进度展示没看见，刷新页面后也要有进度条」——原实现 watchlist/discover 进度条轮询依赖页面内运行时 scan_id，刷新后丢失无法恢复。
+
+### 交付
+
+- **`GET /api/scan/recent`**：遍历 `data/scan_progress_*.json` + `data/discover_progress_*.json`，返回**最近活跃**（done!=true 且 ts 30min 内，防僵尸任务）扫描 {active, type, id, current, total, ts}。
+- **base.html 全局进度条**：页面右下角固定卡片（批量扫描/发现扫描进行中 + 进度条 + 名称 X/Y），页面加载时（DOMContentLoaded）自动调 /api/scan/recent 恢复，1.5s 轮询对应进度 API，done 自动隐藏、可手动关闭。**任何页面刷新后进度条自动恢复**。
+- **僵尸任务清理**：历史上 7 个 done=false 残留（完成但标志未置/中断退出，如昨晚 00:35 批量扫描 6/6）→ 覆盖写 done=true（避免安全删除钩子拦截 unlink）。
+
+### 验证
+
+- 冒烟新增 t_scan_recent_progress（活跃恢复 / 僵尸 30min 过滤 / done 不误报 / 页面含进度条），**155 passed / 0 failed / 0 skipped**。
+- 实测：造活跃进度文件 → /api/scan/recent 返回 active=true；老 ts → active=false；页面 HTML 含 scan-progress-global。
+
+### 红线
+
+- 不 bump ENGINE_VERSION、不碰引擎逻辑（webapp 只读视图 + 进度展示）。待③审计。

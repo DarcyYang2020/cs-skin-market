@@ -1734,6 +1734,44 @@ async def api_batch_scan_progress(scan_id: str):
     return {"current": p["current"], "total": p["total"], "name": p.get("name", ""), "done": p["done"], "html": p.get("html", "")}
 
 
+@app.get("/api/scan/recent")
+async def api_scan_recent():
+    """2026-08-28：最近活跃批量扫描（batch scan / discover）——页面刷新后恢复进度条用。
+    遍历 data/scan_progress_*.json 与 data/discover_progress_*.json，取未完成(done!=true)、
+    ts 新鲜（30min 内，防僵尸任务）且最近的一个返回；无则 {active: false}。"""
+    from pipeline.scan_tasks import _scan_progress_file
+    from pipeline.discover_tasks import _discover_progress_file as _dpf
+    import glob as _glob
+    _now = time.time()
+    _fresh = 1800.0  # 30min：超过视为僵尸任务（扫描中断/进程退出 done 未置），不恢复进度条
+    best = None
+    for fp in _glob.glob(str(Path(__file__).resolve().parent.parent / "data" / "scan_progress_*.json")):
+        try:
+            d = json.loads(Path(fp).read_text(encoding="utf-8"))
+            if isinstance(d, dict) and not d.get("done") and d.get("ts") and _now - float(d.get("ts")) < _fresh:
+                _id = Path(fp).stem.replace("scan_progress_", "")
+                cand = {"type": "batch", "id": _id, "current": d.get("current", 0),
+                        "total": d.get("total", 0), "ts": d.get("ts", 0)}
+                if best is None or cand["ts"] > best["ts"]:
+                    best = cand
+        except Exception:
+            continue
+    for fp in _glob.glob(str(Path(__file__).resolve().parent.parent / "data" / "discover_progress_*.json")):
+        try:
+            d = json.loads(Path(fp).read_text(encoding="utf-8"))
+            if isinstance(d, dict) and not d.get("done") and d.get("ts") and _now - float(d.get("ts")) < _fresh:
+                _id = Path(fp).stem.replace("discover_progress_", "")
+                cand = {"type": "discover", "id": _id, "current": d.get("current", 0),
+                        "total": d.get("total", 0), "ts": d.get("ts", 0)}
+                if best is None or cand["ts"] > best["ts"]:
+                    best = cand
+        except Exception:
+            continue
+    if not best:
+        return {"active": False}
+    return {"active": True, **best}
+
+
 # ---- 信号体检页 (P2-1, 2026-08-07: J-2 C 通道月度 + 实盘信号跟踪) ----
 @app.get("/checkup", response_class=HTMLResponse)
 async def page_checkup(request: Request):

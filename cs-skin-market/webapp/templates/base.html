@@ -81,30 +81,55 @@
     {% block content %}{% endblock %}
   </main>
 
+  <!-- 2026-08-28：全局扫描进度条（批量扫描/discover 刷新页面后自动恢复） -->
+  <div id="scan-progress-global" style="display:none;position:fixed;bottom:16px;right:16px;z-index:1200;width:300px;background:var(--card-bg,#fff);border:1px solid var(--border-color,#e2e8f0);border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.12);padding:12px 14px;font-size:13px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <span id="scan-progress-global-title" style="font-weight:700;">批量扫描进行中</span>
+      <button type="button" onclick="hideGlobalScanProgress()" style="border:none;background:none;cursor:pointer;color:var(--text-muted,#64748b);font-size:14px;" aria-label="关闭">✕</button>
+    </div>
+    <div style="height:8px;background:var(--border-color,#e2e8f0);border-radius:4px;overflow:hidden;margin-bottom:6px;">
+      <div id="scan-progress-global-bar" style="width:0%;height:100%;background:var(--accent,#3b82f6);border-radius:4px;transition:width .4s;"></div>
+    </div>
+    <div id="scan-progress-global-text" style="color:var(--text-secondary,#64748b);"></div>
+  </div>
+
   <div id="toast-container" role="status" aria-live="polite"></div>
   {% block scripts %}{% endblock %}
 
-  <!-- Confirm Modal (replaces native confirm) -->
-  <div id="confirm-modal" class="modal-overlay" style="display:none;" role="dialog" aria-modal="true" aria-label="确认操作">
-    <div class="modal" style="max-width:400px;">
-      <h3>确认操作</h3>
-      <p id="confirm-message" style="color:var(--text-secondary);font-size:14px;margin:8px 0 20px;line-height:1.6;"></p>
-      <div class="modal-actions">
-        <button type="button" class="btn btn-outline" onclick="closeConfirmModal(false)">取消</button>
-        <button type="button" class="btn btn-danger" onclick="closeConfirmModal(true)">确认</button>
-      </div>
-    </div>
-  </div>
-  <!-- Global Analysis Modal -->
-  <div id="analysis-modal" class="modal-overlay" style="display:none;" role="dialog" aria-modal="true" aria-label="分析报告">
-    <div class="modal-container">
-      <div class="modal-header-bar">
-        <span class="modal-title-text">分析报告</span>
-        <button class="modal-close-btn" onclick="closeModal('analysis-modal')" aria-label="关闭">✕</button>
-      </div>
-      <div class="modal-body-scroll" id="modal-body"></div>
-    </div>
-  </div>
+  <script>
+  // 2026-08-28：页面加载后查询最近活跃批量扫描 → 恢复进度条（刷新不丢失）
+  var _globalScanPoll = null;
+  function hideGlobalScanProgress() {
+    var el = document.getElementById('scan-progress-global');
+    if (el) el.style.display = 'none';
+    if (_globalScanPoll) { clearInterval(_globalScanPoll); _globalScanPoll = null; }
+  }
+  function restoreGlobalScanProgress() {
+    fetch('/api/scan/recent')
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (!d || !d.active) return;
+        var el = document.getElementById('scan-progress-global');
+        if (!el) return;
+        el.style.display = 'block';
+        document.getElementById('scan-progress-global-title').textContent =
+          d.type === 'discover' ? '发现扫描进行中' : '批量扫描进行中';
+        var url = d.type === 'discover' ? ('/api/items/discover-progress/' + d.id) : ('/api/watchlist/batch-scan-progress/' + d.id);
+        var bar = document.getElementById('scan-progress-global-bar');
+        var txt = document.getElementById('scan-progress-global-text');
+        if (_globalScanPoll) clearInterval(_globalScanPoll);
+        _globalScanPoll = setInterval(function() {
+          fetch(url).then(function(r) { return r.json(); }).then(function(p) {
+            if (p.error || p.done) { hideGlobalScanProgress(); return; }
+            if (bar && p.total > 0) bar.style.width = (p.current / p.total * 100) + '%';
+            if (txt) txt.textContent = (p.name || '') + ' ' + p.current + '/' + p.total;
+          }).catch(function() { hideGlobalScanProgress(); });
+        }, 1500);
+      })
+      .catch(function() {});
+  }
+  document.addEventListener('DOMContentLoaded', restoreGlobalScanProgress);
+  </script>
 {% include 'partials/exec_modal.html' %}
 </body>
 </html>
