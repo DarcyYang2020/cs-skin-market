@@ -49,6 +49,10 @@ _PUSH_KEY_PREFIX = "intention_push"
 G1_FAIL_THRESHOLD = 10      # 连续失败 ≥10 触发护栏
 G1_COOLDOWN_MIN = 45        # 冷却 45min（规格 30-60min 取中）
 G1_MAX_ROUNDS = 3           # 连败 3 轮 → 降级每日一次
+# 2026-08-28 追加（用户反馈：csQAQ 风控验证致扫描降速不告警）：慢速卡住检测——
+# 单品耗时 >30s 连续 5 品 → O4 quality 告警（风控/限流降速，仅 log 的完成通知不覆盖异常类）。
+G1_SLOW_SEC = 30
+G1_SLOW_STREAK = 5
 G1_COOLDOWN_KEY = "exec2_cooldown_until"
 G1_ROUNDS_KEY = "exec2_fail_rounds"
 G1_FAIL_LEDGER_KEY = "exec2_failed"  # +_{date} = 失败品名单
@@ -404,13 +408,35 @@ async def main_async(args):
     pushed, skipped, no_signal, errors = 0, 0, 0, 0
     fail_streak = 0
     consec_fail = 0  # 连续失败计数（G1 触发判定）
+    slow_streak = 0  # 连续慢速计数（G1 慢速卡住检测，2026-08-28）
+    slow_alerted = False  # 本轮慢速告警已发（避免刷屏，每轮最多一次）
     t0 = time.time()
     # 2026-08-28：watchlist 2h 任务需真实刷新（当日已采超 1h 强制重新采集）；
     # active（18:00 链收尾）复用当日采集数据重算即可（max_stale_hours=0 保持默认 3 日窗口）。
     max_stale_hours = 1 if args.scope == "watchlist" else 0
     for i, row in enumerate(rows, 1):
+        _t_item = time.time()
         res = await _scan_one(row, idx, ms, market_th_score, sentiment_score, total_assets,
                               max_stale_hours=max_stale_hours)
+        _elapsed = time.time() - _t_item
+        # G1 慢速卡住检测：单品耗时 >30s 连续 5 品 → O4 quality 告警（csQAQ 风控验证/限流降速）
+        # ——用户反馈「风控验证但钉钉未通知」根因：慢速不是失败，原 G1 连续失败计数不触发。
+        if _elapsed > G1_SLOW_SEC:
+            slow_streak += 1
+            if slow_streak >= G1_SLOW_STREAK and not slow_alerted and not args.dry_run:
+                slow_alerted = True
+                try:
+                    from notify_alert import route_alert
+                    route_alert("quality", "EXEC-2 扫描降速（csQAQ 风控/限流）",
+                                f"连续 {slow_streak} 品采集超 {G1_SLOW_SEC}s（风控验证/限流），"
+                                f"当前 {i}/{len(rows)} · 预计剩余 {int(_elapsed * (len(rows) - i) / 60)}min；"
+                                f"扫描继续但显著降速，G1 连续失败护栏仍生效。",
+                                dry_run=False)
+                    _log(f"G1 慢速告警已推送（连续 {slow_streak} 品 >{G1_SLOW_SEC}s）")
+                except Exception as exc:
+                    _log(f"G1 慢速告警异常: {type(exc).__name__}: {str(exc)[:80]}")
+        else:
+            slow_streak = 0
         if res is None or res.get("error"):
             errors += 1
             consec_fail += 1

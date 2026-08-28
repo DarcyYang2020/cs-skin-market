@@ -3107,6 +3107,9 @@ def t_monitor_push():
     ]
     title, text = _mon._build_push_text(summary, events, "night")
     assert "🚨2危险" in title and "破位止损" in text, (title, text)
+    # 2026-08-28（用户反馈「大盘状态重复」）：标题去 bucket，正文首行唯一出现大盘状态
+    assert "S3弱市阴跌" not in title, f"标题不应含大盘状态（正文已有）: {title}"
+    assert text.count("S3弱市阴跌") == 1, f"大盘状态应仅出现 1 次: {text}"
     # A-8: 持仓 danger 置顶（火卫一 在 非持仓 price_spike 之前）
     _i_sl = text.find("破位止损")
     _i_ps = text.find("单日 -9%")
@@ -4831,6 +4834,11 @@ def t_hm_notification_trim():
         _e2.notify_complete({"scope": "watchlist", "pushed": 1,
                              "progress": {"total": 117, "failed": 3, "stage": "扫描"}})
         assert _m.called, "failed>0 应推送（异常类保留）"
+    # ①b（用户反馈 2026-08-28）：csQAQ 风控验证致扫描降速 → 慢速卡住告警（连续>30s 达 5 品）
+    assert _e2.G1_SLOW_SEC == 30 and _e2.G1_SLOW_STREAK == 5, (_e2.G1_SLOW_SEC, _e2.G1_SLOW_STREAK)
+    _src_e2b = open(os.path.join(os.path.dirname(TEST_DIR), 'exec2_auto_watch.py'), encoding='utf-8').read()
+    assert '扫描降速（csQAQ 风控/限流）' in _src_e2b, "exec2 缺慢速降速告警（风控验证不告警问题）"
+    assert 'slow_streak >= G1_SLOW_STREAK' in _src_e2b, "exec2 缺慢速连续计数触发"
     # ② push_daily：无 danger/warn 事件 → 不推（no_abnormal_events）；有 danger → 推（mock send）
     from pipeline import monitor as _mon
     _DATE = "2098-01-01"  # 独立日期，避免与 t_monitor_push(2099-01-01) 幂等 key 冲突

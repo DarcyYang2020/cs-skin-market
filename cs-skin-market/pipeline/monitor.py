@@ -281,7 +281,9 @@ def _build_push_text(summary, events, slot="night"):
         _parts = "、".join(f"{k} {n} 条" for k, n in sorted(_kinds.items()))
         lines.append("")
         lines.append(f"🔵 信息 {len(info)} 条：" + _parts)
-    title = f"CS 监控 {summary['date']} · {SLOT_LABEL.get(slot, slot)} · {summary['bucket']}"
+    # 2026-08-28：标题去 bucket——正文首行已有「大盘：bucket」，标题再带造成推送内容重复
+    # （用户反馈「大盘状态重复出现」）。标题保留日期/时段/危险计数。
+    title = f"CS 监控 {summary['date']} · {SLOT_LABEL.get(slot, slot)}"
     if danger:
         title += f" · 🚨{len(danger)}危险"
     elif warn:
