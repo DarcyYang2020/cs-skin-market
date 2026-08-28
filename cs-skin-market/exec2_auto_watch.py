@@ -131,8 +131,9 @@ def cooldown_remaining_sec():
     return max(0, until - time.time())
 
 
-def enter_cooldown(reason):
-    """触发冷却：记录 until + 连败轮次 +1 + O4 告警。"""
+def enter_cooldown(reason, dry_run=False):
+    """触发冷却：记录 until + 连败轮次 +1 + O4 告警。
+    dry_run=True 时告警仅 dry-run 不真实推送（测试/演练用；2026-08-28 修复：冒烟测试曾真实推送钉钉 ~10 次）。"""
     until = time.time() + G1_COOLDOWN_MIN * 60
     _set_setting(G1_COOLDOWN_KEY, str(until))
     rounds = int(_get_setting(G1_ROUNDS_KEY, "0") or 0) + 1
@@ -142,7 +143,7 @@ def enter_cooldown(reason):
         from notify_alert import route_alert
         route_alert("quality", "EXEC-2 风控护栏", 
                     f"连续失败≥{G1_FAIL_THRESHOLD}：{reason}；暂停 {G1_COOLDOWN_MIN}min 冷却（防 csQAQ 封号）；"
-                    f"连败轮次 {rounds}/{G1_MAX_ROUNDS}，达上限降级每日一次。", dry_run=False)
+                    f"连败轮次 {rounds}/{G1_MAX_ROUNDS}，达上限降级每日一次。", dry_run=dry_run)
     except Exception as exc:
         _log(f"G1 O4 告警异常（不阻断冷却）: {type(exc).__name__}: {str(exc)[:80]}")
 

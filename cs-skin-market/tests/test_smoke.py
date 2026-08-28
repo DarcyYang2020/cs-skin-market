@@ -4662,8 +4662,8 @@ def t_exec2_g1_guardrail():
         # ① 未冷却时放行
         ok, reason = _e2.should_run()
         assert ok, reason
-        # ② 触发冷却 → 冷却期内拒绝（不无限重试）
-        _e2.enter_cooldown("测试触发")
+        # ② 触发冷却 → 冷却期内拒绝（不无限重试）；dry_run=True 防真实推送钉钉（2026-08-28 修复）
+        _e2.enter_cooldown("测试触发", dry_run=True)
         ok, reason = _e2.should_run()
         assert not ok and "冷却中" in reason, reason
         # ③ 失败台账记录 + 读取
@@ -4727,7 +4727,7 @@ def t_exec2_g2_progress():
     finally:
         conn.close()
     try:
-        _e2.enter_cooldown("测试")
+        _e2.enter_cooldown("测试", dry_run=True)
         assert _e2.cooldown_remaining_sec() > 0
     finally:
         conn = _db2.get_conn()
