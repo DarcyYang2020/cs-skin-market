@@ -189,7 +189,9 @@ def should_run():
 
 def _progress_file():
     from pathlib import Path as _P
-    return _P(__file__).resolve().parent.parent / "data" / "exec2_progress.json"
+    # 2026-08-28 修复：脚本位于 cs-skin-market 根目录，正确为 parent/"data"（原 parent.parent
+    # 多一层，曾写到 cs-model/data/exec2_progress.json——git 仓库根污染 + 位置违反约定）。
+    return _P(__file__).resolve().parent / "data" / "exec2_progress.json"
 
 
 def write_progress(stage, current, total, failed=0, started=None, done=False, note=""):
@@ -265,11 +267,15 @@ def check_stuck_exec2(timeout_min=180):
     return False, ""
 
 
-async def _scan_one(row, idx, ms, market_th_score, sentiment_score, total_assets):
+async def _scan_one(row, idx, ms, market_th_score, sentiment_score, total_assets, max_stale_hours=0):
+    """max_stale_hours（2026-08-28）：watchlist 2h 任务传 1——当日已采超 1h 强制重新采集，
+    保证每 2h 轮次拿到真实新数据（此前 3 日缓存窗口导致 2h 任务纯走缓存不刷新）。
+    active（18:00 链收尾重算）传 0：当日刚全量采集，复用重算即可。"""
     from pipeline.scan_tasks import _scan_item
     try:
         res = await _scan_item(row, idx, ms, market_th_score, sentiment_score,
-                               total_assets=total_assets, force_refresh=False)
+                               total_assets=total_assets, force_refresh=False,
+                               max_stale_hours=max_stale_hours)
         return res
     except Exception as exc:
         _log(f"  scan FAIL {row['name'][:30]}: {type(exc).__name__}: {str(exc)[:80]}")
@@ -387,8 +393,12 @@ async def main_async(args):
     fail_streak = 0
     consec_fail = 0  # 连续失败计数（G1 触发判定）
     t0 = time.time()
+    # 2026-08-28：watchlist 2h 任务需真实刷新（当日已采超 1h 强制重新采集）；
+    # active（18:00 链收尾）复用当日采集数据重算即可（max_stale_hours=0 保持默认 3 日窗口）。
+    max_stale_hours = 1 if args.scope == "watchlist" else 0
     for i, row in enumerate(rows, 1):
-        res = await _scan_one(row, idx, ms, market_th_score, sentiment_score, total_assets)
+        res = await _scan_one(row, idx, ms, market_th_score, sentiment_score, total_assets,
+                              max_stale_hours=max_stale_hours)
         if res is None or res.get("error"):
             errors += 1
             consec_fail += 1

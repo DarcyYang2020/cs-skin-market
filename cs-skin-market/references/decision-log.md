@@ -3279,3 +3279,24 @@
 
 - **完整冒烟 154 passed / 0 failed / 0 skipped** ✅（含 HG-G1/G2 断言增强）。
 - 红线：不 bump ENGINE_VERSION、不碰引擎参数（纯 exec2 脚本 + webapp 只读 API）✅。
+
+## HK. EXEC-2 2h 任务真刷新修复 + 进度文件路径 BUG（2026-08-28，④研发，用户实测反馈）
+
+> 触发：用户实测指出「14 秒完成 117 品不对，没有强制联网刷新，走的缓存」。核验属实 + 顺带挖出 G2 进度文件路径 BUG。
+
+### ① 2h 任务纯走缓存（真 BUG，已修）
+
+- **根因**：exec2 `_scan_one` 调 `_scan_item(force_refresh=False)` → `resolve_item` 走 `db_kline_fresh(good_id, name, 3, 0)`——**3 日缓存窗口**内 K 线复用不联网。昨晚 23:50/00:03 采集过 → 09:22 首次运行 117 品全命中缓存 → 14 秒完成、price_history 0 新增、数据零刷新。
+- **修复**：`scan_tasks._scan_item` 增加 `max_stale_hours=0` 透传参数（默认 0=现有行为不变，接口扩展非信号参数、不 bump ENGINE_VERSION）→ 透传 `resolve_item`；exec2 watchlist 范围传 **1**（当日已采超 1h 强制重新采集 → 每 2h 任务必真刷新）、active（18:00 链收尾）保持 0（当日已全量采集，复用重算）。
+- **验证**：修复后 dry-run 117 品耗时 **9m50s**（真联网逐品，进度 60/117 ETA=270s，price_history 新增 42 条）；1h 窗口内重跑 1m10s（复用，节流正确）；RESULT errors=0。
+
+### ② G2 进度文件路径 BUG（顺带挖出，已修）
+
+- **根因**：`exec2_auto_watch._progress_file()` 用 `Path(__file__).resolve().parent.parent / "data"`——脚本位于 **cs-skin-market 根目录**，parent.parent 多一层解析到 **`cs-model/data/exec2_progress.json`**（git 仓库根，未跟踪污染 `?? data/`）。
+- **修复**：改 `parent / "data"`（cs-skin-market/data，符合 PROJECT_STRUCTURE 约定）；webapp 与 exec2 共用同一函数，读写一致无需联动。残留 `cs-model/data/exec2_progress.json` 已清（该目录另有历史遗留 market.db/server_*.log 非本次引入）。
+- 测试：t_exec2 补断言（watchlist max_stale_hours=1 源码 + scan_tasks 透传）；**完整冒烟 154 passed / 0 failed / 0 skipped**。
+
+### 移交
+
+- ③审计：2h 任务真刷新语义（1h 窗口）+ 进度文件路径修复。
+- ④运维：计划任务已注册（CS_Skin_Exec2Watch 每 2h，09:22 注册 + 手动运行验证链路 OK）。

@@ -4646,6 +4646,12 @@ def t_exec2_scope_idempotent():
     _src_e2 = open(os.path.join(os.path.dirname(TEST_DIR), 'exec2_auto_watch.py'), encoding='utf-8').read()
     assert "_rdc.collect_market_index" in _src_e2, "exec2_auto_watch.py watchlist 入口未补大盘指数刷新（HC 修订段）"
     assert 'args.scope == "watchlist"' in _src_e2, "大盘刷新应仅在 watchlist 范围触发"
+    # ⑤ 2026-08-28：2h 任务真刷新（max_stale_hours）——watchlist 传 1（当日已采超 1h 重新采集），
+    #    scan_tasks._scan_item 透传 max_stale_hours 至 resolve_item（此前 3 日缓存窗口致 2h 任务纯走缓存不刷新）
+    assert 'max_stale_hours = 1 if args.scope == "watchlist" else 0' in _src_e2, "watchlist 未启用 1h 真刷新窗口"
+    _src_st = open(os.path.join(os.path.dirname(TEST_DIR), 'pipeline', 'scan_tasks.py'), encoding='utf-8').read()
+    assert 'max_stale_hours=0' in _src_st and 'max_stale_hours=max_stale_hours' in _src_st, \
+        "_scan_item 未透传 max_stale_hours（2h 真刷新依赖）"
 check('EXEC-2 范围/幂等/推送链路', t_exec2_scope_idempotent)
 
 def t_exec2_g1_guardrail():

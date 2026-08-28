@@ -72,11 +72,14 @@ def _item_report_link(name):
     return ('<a href="javascript:void(0)" onclick="showItemReport(\'' + esc + '\')" '
             'style="color:var(--accent);text-decoration:none;cursor:pointer;font-weight:600;">' + str(name) + '</a>')
 
-async def _scan_item(row, idx, ms, market_th_score, sentiment_score, total_assets=0.0, force_refresh=False, good_id_override=None):
+async def _scan_item(row, idx, ms, market_th_score, sentiment_score, total_assets=0.0, force_refresh=False, good_id_override=None, max_stale_hours=0):
     """批量扫描单个物品（可并发调用，共享 Playwright 浏览器多 page）。
 
     2026-08-10：good_id_override 由任务层在搜索串行阶段预解析后传入，
     采集/分析阶段可并行（锚校验兜底脏 chart），避免搜索 UI 并发串品。
+    2026-08-28（EXEC-2 2h 真刷新）：max_stale_hours 透传 resolve_item——当日已采数据
+    超该小时窗口视为不新鲜重新采集（默认 0=按天 3 日窗口复用，现有调用行为不变；
+    仅采集新鲜度接口扩展，非信号判定参数，不 bump ENGINE_VERSION）。
     """
     import json as _json
     from pipeline.batch_scan import _portfolio_advice, summarize_buy_distance
@@ -89,7 +92,8 @@ async def _scan_item(row, idx, ms, market_th_score, sentiment_score, total_asset
             good_id, _ = await _resolve_good_id(name)
         if good_id == 0:
             return dict(name=name, holding=holding, error="未找到")
-        item = await resolve_item(good_id, name, KLINE_FRESH_BATCH, force_refresh=force_refresh)
+        item = await resolve_item(good_id, name, KLINE_FRESH_BATCH, force_refresh=force_refresh,
+                                  max_stale_hours=max_stale_hours)
         if item is None:
             return dict(name=name, holding=holding, error="详情获取失败")
         exact_name = item.name or name
