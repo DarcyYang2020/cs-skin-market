@@ -9,8 +9,8 @@
 **背景**：2026-08-27 并发多窗口写档，已发生 4 次编号撞车（EB→EE、EZ 双号、FA 撞号、FH 双号），③/④均建议 PM 归口编号治理。
 
 **占号簿（追加新条目前必查）**：
-- 已用编号至 **HM**（2026-08-28 10:24）：`FA FB FC FD FE FF FG FH FI GI GJ GK GL GM GN GO GP GQ GR GS GT GU GV GW GX GY GZ HA HB HC HD HE HF HG HH HI HJ HK HL HM`
-- 当前指针：**HN**（下一个新条目用 HN，随后 HO/HP...）
+- 已用编号至 **HQ**（2026-08-28 12:22）：`FA FB FC FD FE FF FG FH FI GI GJ GK GL GM GN GO GP GQ GR GS GT GU GV GW GX GY GZ HA HB HC HD HE HF HG HH HI HJ HK HL HM HN HO HP HQ`
+- 当前指针：**HR**（下一个新条目用 HR，随后 HS/HT...）
 
 **规则**：
 1. 落条目前先查本段占号簿确认下一个可用编号；占号 = 在本段「当前指针」先行更新后再写正文（并发窗口同理，先占号者得）；
@@ -3368,3 +3368,58 @@ O4 运维告警（采集/质量/交易三档）、健康监控 FAIL（notify_ale
 - 冒烟新增 t_hm_notification_trim（三项验收），**完整冒烟 156 passed / 0 failed / 0 skipped**。
 - 教训：测试内 push_daily 成功 mark 会写生产 settings——用独立日期（2098-01-01）+ 测试后清理，避免污染 t_monitor_push（2099-01-01）幂等 key。
 - 效果：钉钉只响买点（danger）与异常（warn/失败/告警），常规完成/日报不响。
+
+## HO. R6 多重检验校正统计闸门 · 预注册判据交付（2026-08-28，②研究，用户拍板「列为候选研究」）
+
+> 背景：用户质疑候选闸门（单族四关）与引擎融合价值错配；②L1 拆解发现两缺口——21 因子评估无多重检验校正、fwd14 标签相邻日重叠致 walk-forward 泄漏风险。调研 QuantSkills 三个 skill（factory/orthogonalize/backtest-overfit）后，确定只借鉴 backtest-overfit 的文献方法（DSR/PBO/MinTRL）。产物：`references/r6-overfit-gate-prereg-2026-08-28.md`。
+
+### 判据要点（待 PM 冻结，冻结后②执行）
+- **三个统计量**（文献原公式自行实现，不拷贝 GPL-3.0 代码）：
+  - **DSR**（Bailey & López de Prado 2014）：扣除试验次数 N 后真 Sharpe 是否 >0；`DSR ≥ 0.95 → PASS`；
+  - **PBO**（Bailey et al. 2017 CSCV，S=16/200 次，seed=42）：样本内最优在样本外落入下半区的概率；`PBO ≤ 0.05 → PASS`；
+  - **MinTRL**（Bailey & López de Prado 2018）：达到目标 SR=1.0 所需最少样本期数，对比 B 通道剩余（~2027-04，提示项非硬判据）。
+- **输入**：复用 R1 矩阵与 21 因子评估产物（零新采集）；逐期收益桥 = 每因子每日 Q5 档组合 fwd14 收益（预注册固定）；基线 = 官方 HQ 189 信号收益序列。
+- **试验次数 N 口径**：因子层 N=21；候选闸门 N=decision-log 实计历史候选试验数（执行时计数，meta 记录）。
+- **verdict**：DSR 且 PBO 均 PASS → 「校正后仍成立」；任一 FAIL → 「校正后不成立（多重检验嫌疑）」。
+- **守院**：探索仅 fit 段（require_fit D6）；val 仅预注册声明复验（DSR/PBO val 复验）触碰。
+- **诚实预期**：R1 候选 IC 绝对值 0.01~0.05 量级，DSR/PBO 大概率 FAIL——量化"试 21 次成本"，为闸门松紧提供证据（正负都登记）。
+- **产物**：`data/_exp_overfit_gate_2026-08-28.json`；实现 `references/run_overfit_gate.py`（纯标准库，确定性 seed=42）。
+- **状态**：**预注册判据交付（HO），待 PM 冻结**；冻结后②执行。
+
+## HP. L1 因子评估可靠性工程 · 计划定稿（2026-08-28，②研究，用户定基调「一步一步将系统变得可靠」）
+
+> 基调：数据层 ✅ → 五时期 ✅ → **L1 因子评估可靠性（当前）** → L2/L3。产物：`references/l1-reliability-plan-2026-08-28.md`。
+
+### 问题清单 P1-P6（识别自 2026-08-28 讨论）
+| # | 问题 | 解法 | 顺序 |
+|---|---|---|---|
+| P6 | 21 因子多重检验未校正 | **R6（判据已交付 HO）** DSR/PBO/MinTRL | 1 |
+| P3 | fwd14 标签重叠 → t 值虚高 | 去重叠采样（7 天）或 Newey-West 校正 | 2 |
+| P1 | 阈值 0.05/0.02 股票惯例未校准 | **五时期条件校准**：每时期置换检验挖临界值；小样本时期（n<90 天）不硬挖 | 3 |
+| P4 | 成本 2% 可能低估 | 成本敏感性 2/4/6% 三档 | 4 |
+| P2 | 小截面（231 品）统计功效弱 | IC 置信区间（bootstrap）+ MinTRL | 5 |
+| P5 | 单因子评估 ≠ 融合价值 | 跨层解决（L2/L3 增量组合检验），本计划仅登记 | 跨层 |
+
+### 关键裁量（②建议，待用户/PM 确认）
+- **执行顺序 P6→P3→P1→P4→P2**：P6 不依赖新数据先做（第一块地基）；P3 是统计正确性修正（无需争论直接修）；P1 是最大工程（用修正后 IC 挖 CS 原生阈值）；P4/P2 随口径定稿。
+- **P1 防新过拟合**：小样本时期（P 仅 45 天）不单独挖阈值，标记"样本不足"；校准结果只作评估口径，不直接落地引擎阈值。
+- **P6 判据已交付（HO），待 PM 冻结后执行**；P3/P1/P4/P2 待按序交付独立预注册判据（本计划为总纲非冻结判据）。
+- **状态**：**L1 可靠性工程计划定稿（HP）**；下一步 = PM 冻结 R6（HQ）→ ②执行 P6；P3 判据按序交付。
+
+## HQ. PM 冻结 R6 多重检验校正判据（2026-08-28 12:22，①PM 冻结，②执行 P6）
+
+> 核验 HO 判据文档 `references/r6-overfit-gate-prereg-2026-08-28.md`：四要素齐备、无越红线，**冻结通过**。更正：HP 3406「P6 已冻结」为②笔误（实际 HO 状态=待 PM 冻结），已改。
+
+### 判据核验（PM 逐项）
+1. **统计量定义（文献公式自行实现，不拷 GPL-3.0）**：DSR（Bailey 2014）≥0.95 → PASS；PBO（CSCV S=16/200 seed=42）≤0.05 → PASS；MinTRL（Bailey 2018，目标 SR=1.0）→ 提示项（对比 B 通道剩余 ~2027-04）✅；
+2. **输入零新采集**：复用 R1 矩阵 `_exp_fullscan_features_2026-08-20.json` + 21 因子产物；**Q5 组合逐期收益桥预注册固定** ✅；
+3. **N 口径固定**：因子层 N=21；候选闸门 N=decision-log 历史实计（执行时计数、meta 记录）✅；
+4. **verdict 规则**：DSR 且 PBO 均 PASS → 「校正后仍成立」；任一 FAIL → 「校正后不成立（多重检验嫌疑）」；引擎基线同口径 ✅；
+5. **oos_zone 守院**：探索仅 fit 段（require_fit D6）；val 仅预注册声明复验（DSR/PBO val 复验）触碰 ✅；
+6. **诚实预期（已登记）**：R1 候选 IC 0.01~0.05 量级，DSR/PBO 大概率 FAIL——价值=量化"试 21 次成本"，为闸门松紧提供证据（正负都登记）✅。
+
+### PM 冻结裁定
+- **R6 判据冻结，②可执行 P6**（第一块地基）：探索仅 fit 段；产物 `data/_exp_overfit_gate_2026-08-28.json`（21 因子 + 基线 DSR/PBO/MinTRL + verdict + N 记录 + meta）；实现 `references/run_overfit_gate.py`（纯标准库，seed=42 确定性）；
+- **P3（fwd14 去重叠/Newey-West）判据按序交付**——P6 执行后②交 P3 预注册判据，PM 再冻结；
+- **③审计复核点**：N 计数口径、Q5 收益桥、DSR/PBO 公式实现、oos 守院（判据 §6/§7）；
+- **状态**：**R6 已冻结（HQ），②执行中**；L1 P1-P6 顺序 P6→P3→P1→P4→P2（P5 跨层移交 L2/L3）。
